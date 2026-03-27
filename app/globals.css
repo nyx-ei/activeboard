@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: 'Sora';
+  --color-background: #f8fafc;
+  --color-foreground: #0f172a;
+  --color-card: rgba(255, 255, 255, 0.84);
+  --color-border: rgba(15, 23, 42, 0.08);
+  --color-brand: #0f766e;
+  --color-brand-strong: #115e59;
+  --color-accent: #f59e0b;
+  --color-success: #15803d;
+  --color-warning: #b45309;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top, rgba(20, 184, 166, 0.12), transparent 30%),
+    linear-gradient(180deg, #eff6ff 0%, #f8fafc 50%, #f1f5f9 100%);
+  color: var(--color-foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(15, 118, 110, 0.2);
+}
+
+@layer components {
+  .surface {
+    @apply rounded-4xl border border-border bg-card shadow-panel backdrop-blur;
+  }
+}
+
