@@ -15,11 +15,11 @@ The project is organized into 10 major milestones, each focusing on specific fea
 - [#18: Captain launches session with share code](https://github.com/nyx-ei/activeboard/issues/18) - Captain generates code to distribute, participants join via code or link (like Google Meet)
 
 ### QCM Session Flow (The Heartbeat)
-- [#19: Leader controls: create a question](https://github.com/nyx-ei/activeboard/issues/19)
-- [#20: Participant view: answer under timer](https://github.com/nyx-ei/activeboard/issues/20)
-- [#21: Leader reveals correct answer](https://github.com/nyx-ei/activeboard/issues/21)
-- [#22: Session flow: question loop](https://github.com/nyx-ei/activeboard/issues/22)
-- [#23: Session summary screen](https://github.com/nyx-ei/activeboard/issues/23)
+- ✅ [#19: Leader controls: create a question](https://github.com/nyx-ei/activeboard/issues/19)
+- ✅ [#20: Participant view: answer under timer](https://github.com/nyx-ei/activeboard/issues/20)
+- ✅ [#21: Leader reveals correct answer](https://github.com/nyx-ei/activeboard/issues/21)
+- ✅ [#22: Session flow: question loop](https://github.com/nyx-ei/activeboard/issues/22)
+- ✅ [#23: Session summary screen](https://github.com/nyx-ei/activeboard/issues/23)
 
 ---
 
@@ -86,7 +86,9 @@ The project is organized into 10 major milestones, each focusing on specific fea
 
 - **Total Issues:** 45
 - **Total Milestones:** 10
-- **Current Status:** All issues open
+- **Completed:** 5 issues
+- **In Progress:** 40 issues
+- **Current Status:** Phase 1 core flow complete, Phase 2+ pending
 - **Last Updated:** March 29, 2026
 
 ---
