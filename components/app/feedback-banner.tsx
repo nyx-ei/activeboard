@@ -15,12 +15,13 @@ export function FeedbackBanner({ message, tone }: FeedbackBannerProps) {
   return (
     <div
       className={cn(
-        'rounded-3xl border px-4 py-3 text-sm',
-        isSuccess ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700',
+        'rounded-[20px] border px-4 py-3 text-sm backdrop-blur',
+        isSuccess
+          ? 'border-brand/25 bg-brand/10 text-brand'
+          : 'border-rose-500/20 bg-rose-500/10 text-rose-300',
       )}
     >
       {message}
     </div>
   );
 }
-

@@ -27,6 +27,7 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
   if (!data?.group) {
     notFound();
   }
+  const group = data.group;
 
   const statusLabels = {
     pending: t('pending'),
@@ -39,168 +40,208 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
     <main className="flex flex-1 flex-col gap-6">
       <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
 
-      <section className="surface p-8 sm:p-10">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <Link href="/dashboard" className="text-sm font-medium text-brand-strong">
-              {t('backToDashboard')}
-            </Link>
-            <h1 className="mt-3 text-3xl font-semibold text-slate-950">{data.group.name}</h1>
-            <p className="mt-3 text-sm leading-6 text-slate-600">{t('createdCode', { code: data.group.invite_code })}</p>
+      <section className="mx-auto grid w-full max-w-[1120px] gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+        <div className="surface p-6 sm:p-8">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <Link href="/dashboard" className="button-ghost -ml-4 justify-start px-4">
+                <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+                  <path d="M15 6l-6 6l6 6" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+                </svg>
+                {t('backToDashboard')}
+              </Link>
+              <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-white">{t('settingsTitle')}</h1>
+            </div>
+            <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand">
+              {data.membership.role === 'admin' ? t('captain') : t('member')}
+            </span>
           </div>
-          <span className="rounded-full bg-brand/10 px-4 py-2 text-sm font-semibold text-brand-strong">
-            {data.membership.role === 'admin' ? t('captain') : t('member')}
-          </span>
-        </div>
-      </section>
 
-      <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-        <div className="space-y-6">
-          {data.membership.role === 'admin' ? (
-            <>
-              <div className="surface p-6">
-                <h2 className="text-lg font-semibold text-slate-950">{t('inviteMember')}</h2>
+          <div className="mt-8 space-y-6">
+            <div className="surface-soft p-5">
+              <p className="text-sm font-semibold text-slate-300">{t('inviteCodeTitle')}</p>
+              <p className="mt-2 text-sm text-slate-500">{t('createdCode', { code: group.invite_code })}</p>
+            </div>
+
+            {data.membership.role === 'admin' ? (
+              <div className="surface-soft p-5">
+                <h2 className="text-xl font-bold text-white">{t('inviteMember')}</h2>
                 <form action={inviteMemberAction} className="mt-4 space-y-3">
                   <input type="hidden" name="locale" value={locale} />
                   <input type="hidden" name="groupId" value={params.groupId} />
                   <label className="block">
-                    <span className="mb-2 block text-sm font-medium text-slate-700">{t('email')}</span>
-                    <input
-                      name="email"
-                      type="email"
-                      placeholder={t('emailPlaceholder')}
-                      autoComplete="email"
-                      className="w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none ring-brand transition focus:ring-2"
-                    />
+                    <span className="mb-2 block text-sm font-medium text-slate-300">{t('email')}</span>
+                    <div className="flex items-center gap-3">
+                      <input
+                        name="email"
+                        type="email"
+                        placeholder={t('emailPlaceholder')}
+                        autoComplete="email"
+                        className="field"
+                      />
+                      <SubmitButton pendingLabel={t('sendInvitePending')} className="button-primary min-w-[70px]">
+                        {t('sendInviteShort')}
+                      </SubmitButton>
+                    </div>
                   </label>
-                  <SubmitButton
-                    pendingLabel={t('sendInvitePending')}
-                    className="w-full rounded-2xl bg-brand px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-strong"
-                  >
-                    {t('sendInvite')}
-                  </SubmitButton>
                 </form>
               </div>
+            ) : null}
 
-              <div className="surface p-6">
-                <h2 className="text-lg font-semibold text-slate-950">{t('scheduleSession')}</h2>
-                <form action={scheduleSessionAction} className="mt-4 grid gap-3">
-                  <input type="hidden" name="locale" value={locale} />
-                  <input type="hidden" name="groupId" value={params.groupId} />
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-medium text-slate-700">{t('date')}</span>
-                    <input
-                      name="date"
-                      type="date"
-                      className="w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none ring-brand transition focus:ring-2"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-medium text-slate-700">{t('time')}</span>
-                    <input
-                      name="time"
-                      type="time"
-                      className="w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none ring-brand transition focus:ring-2"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-medium text-slate-700">{t('timer')}</span>
-                    <select
-                      name="timerSeconds"
-                      className="w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none ring-brand transition focus:ring-2"
-                      defaultValue="60"
-                    >
-                      <option value="30">30</option>
-                      <option value="45">45</option>
-                      <option value="60">60</option>
-                      <option value="90">90</option>
-                    </select>
-                  </label>
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-medium text-slate-700">{t('meetingLink')}</span>
-                    <input
-                      name="meetingLink"
-                      type="url"
-                      placeholder={t('meetingLinkPlaceholder')}
-                      className="w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none ring-brand transition focus:ring-2"
-                    />
-                  </label>
-                  <SubmitButton
-                    pendingLabel={t('scheduleSessionPending')}
-                    className="w-full rounded-2xl border border-border bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                  >
-                    {t('scheduleSession')}
-                  </SubmitButton>
-                </form>
+            <div className="surface-soft p-5">
+              <h2 className="text-xl font-bold text-white">{t('membersTitle')}</h2>
+              <div className="mt-4 space-y-3">
+                {data.members.map((member) => {
+                  const label = member.profile?.display_name ?? member.profile?.email ?? member.user_id;
+                  const initials = label
+                    .split(' ')
+                    .map((part) => part[0])
+                    .join('')
+                    .slice(0, 2)
+                    .toUpperCase();
+
+                  return (
+                    <div key={member.user_id} className="rounded-[18px] bg-white/[0.04] px-4 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand/20 text-sm font-bold text-brand">
+                          {initials}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-white">{label}</p>
+                          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand">
+                            {member.role === 'admin' ? t('captain') : t('member')}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            </>
-          ) : null}
-
-          <div className="surface p-6">
-            <h2 className="text-lg font-semibold text-slate-950">{t('membersTitle')}</h2>
-            <div className="mt-4 space-y-3">
-              {data.members.map((member) => (
-                <div key={member.user_id} className="rounded-2xl border border-border bg-slate-50/80 p-4">
-                  <p className="text-sm font-semibold text-slate-900">
-                    {member.profile?.display_name ?? member.profile?.email ?? member.user_id}
-                  </p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">
-                    {member.role === 'admin' ? t('captain') : t('member')}
-                  </p>
-                </div>
-              ))}
             </div>
           </div>
         </div>
 
         <div className="space-y-6">
-          <div className="surface p-6">
-            <h2 className="text-lg font-semibold text-slate-950">{t('invitesTitle')}</h2>
+          <section className="surface p-6 sm:p-8">
+            <h2 className="text-2xl font-extrabold tracking-tight text-white">{t('scheduleSession')}</h2>
+            <form action={scheduleSessionAction} className="mt-6 grid gap-4">
+              <input type="hidden" name="locale" value={locale} />
+              <input type="hidden" name="groupId" value={params.groupId} />
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-300">{t('sessionName')}</span>
+                <input
+                  name="meetingNameDisplay"
+                  placeholder={t('sessionNamePlaceholder')}
+                  className="field"
+                  readOnly
+                />
+              </label>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-300">{t('date')}</span>
+                  <input name="date" type="date" className="field" />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-300">{t('time')}</span>
+                  <input name="time" type="time" className="field" />
+                </label>
+              </div>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-300">{t('timerMode')}</span>
+                <div className="grid grid-cols-2 gap-2 rounded-[18px] border border-border bg-white/[0.03] p-1">
+                  <div className="button-primary w-full py-3">{t('perQuestionMode')}</div>
+                  <div className="button-secondary w-full py-3 opacity-60">{t('globalMode')}</div>
+                </div>
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-300">{t('timer')}</span>
+                <select name="timerSeconds" className="field" defaultValue="60">
+                  <option value="30">30</option>
+                  <option value="45">45</option>
+                  <option value="60">60</option>
+                  <option value="90">90</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-300">{t('meetingLink')}</span>
+                <input
+                  name="meetingLink"
+                  type="url"
+                  placeholder={t('meetingLinkPlaceholder')}
+                  className="field"
+                />
+              </label>
+
+              <SubmitButton pendingLabel={t('scheduleSessionPending')} className="button-primary mt-2 w-full">
+                {t('createSession')}
+              </SubmitButton>
+            </form>
+          </section>
+
+          <section className="surface p-6 sm:p-8">
+            <h2 className="text-xl font-bold text-white">{t('invitesTitle')}</h2>
             <div className="mt-4 space-y-3">
               {data.invites.length > 0 ? (
                 data.invites.map((invite) => (
-                  <div key={invite.id} className="rounded-2xl border border-border bg-slate-50/80 p-4">
-                    <p className="text-sm font-semibold text-slate-900">{invite.invitee_email}</p>
-                    <p className="mt-1 text-sm text-slate-600">{invite.invitedByName ?? t('captain')}</p>
-                    <p className="mt-2 text-xs uppercase tracking-[0.18em] text-brand-strong">
+                  <div key={invite.id} className="surface-soft p-4">
+                    <p className="text-sm font-semibold text-white">{invite.invitee_email}</p>
+                    <p className="mt-1 text-sm text-slate-400">{invite.invitedByName ?? t('captain')}</p>
+                    <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-brand">
                       {statusLabels[invite.status]}
                     </p>
                   </div>
                 ))
               ) : (
-                <p className="text-sm leading-6 text-slate-600">{t('inviteEmpty')}</p>
+                <p className="text-sm leading-6 text-slate-400">{t('inviteEmpty')}</p>
               )}
             </div>
-          </div>
+          </section>
 
-          <div className="surface p-6">
-            <h2 className="text-lg font-semibold text-slate-950">{t('sessionsTitle')}</h2>
-            <div className="mt-4 space-y-3">
+          <section className="surface p-6 sm:p-8">
+            <h2 className="text-xl font-bold text-white">{t('sessionsTitle')}</h2>
+            <div className="mt-4 space-y-4">
               {data.sessions.length > 0 ? (
                 data.sessions.map((session) => (
-                  <div key={session.id} className="rounded-2xl border border-border bg-slate-50/80 p-4">
-                    <p className="text-sm font-semibold text-slate-900">
-                      {new Intl.DateTimeFormat(locale, {
-                        dateStyle: 'medium',
-                        timeStyle: 'short',
-                      }).format(new Date(session.scheduled_at))}
-                    </p>
-                    <p className="mt-1 text-sm text-slate-600">{session.timer_seconds}s</p>
-                    <div className="mt-4">
-                      <Link
-                        href={`/sessions/${session.id}`}
-                        className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm ring-1 ring-border transition hover:bg-slate-100"
-                      >
+                  <div key={session.id} className="surface-soft p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-lg font-bold text-white">{group.name}</p>
+                        <p className="mt-2 text-sm text-slate-400">
+                          {new Intl.DateTimeFormat(locale, {
+                            dateStyle: 'medium',
+                            timeStyle: 'short',
+                          }).format(new Date(session.scheduled_at))}
+                        </p>
+                        <p className="mt-1 text-sm text-slate-500">{t('timerValue', { seconds: session.timer_seconds })}</p>
+                        <p className="mt-1 text-xs uppercase tracking-[0.18em] text-brand">
+                          {t('sessionShareCode', { code: session.share_code })}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand">
+                        {session.status === 'active'
+                          ? t('statusActive')
+                          : session.status === 'scheduled'
+                            ? t('statusScheduled')
+                            : t('statusCompleted')}
+                      </span>
+                    </div>
+                    <div className="mt-5">
+                      <Link href={`/sessions/${session.id}`} className="button-secondary">
                         {t('openSession')}
                       </Link>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-sm leading-6 text-slate-600">{t('sessionEmpty')}</p>
+                <p className="text-sm leading-6 text-slate-400">{t('sessionEmpty')}</p>
               )}
             </div>
-          </div>
+          </section>
         </div>
       </section>
     </main>
