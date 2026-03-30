@@ -15,7 +15,7 @@ export function AuthForm() {
   const locale = useLocale() as AppLocale;
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('next') ?? `/${locale}/dashboard`;
-  const [mode, setMode] = useState<Mode>('sign-in');
+  const [mode, setMode] = useState<Mode>(searchParams.get('mode') === 'sign-up' ? 'sign-up' : 'sign-in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -131,39 +131,37 @@ export function AuthForm() {
 
   return (
     <div className="surface w-full max-w-xl p-8 sm:p-10">
-      <p className="text-sm uppercase tracking-[0.22em] text-slate-500">{t('eyebrow')}</p>
-      <h1 className="mt-4 text-3xl font-semibold text-slate-950">{t('title')}</h1>
-      <p className="mt-3 text-base leading-7 text-slate-600">{t('description')}</p>
+      <h1 className="text-3xl font-extrabold tracking-tight text-white">{t('title')}</h1>
 
       <div className="mt-8 space-y-4">
         {mode === 'sign-up' ? (
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-700">{t('displayName')}</span>
+            <span className="mb-2 block text-sm font-medium text-slate-300">{t('displayName')}</span>
             <input
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
-              className="w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none ring-brand transition focus:ring-2"
+              className="field"
             />
           </label>
         ) : null}
 
         <label className="block">
-          <span className="mb-2 block text-sm font-medium text-slate-700">{t('email')}</span>
+          <span className="mb-2 block text-sm font-medium text-slate-300">{t('email')}</span>
           <input
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none ring-brand transition focus:ring-2"
+            className="field"
           />
         </label>
 
         <label className="block">
-          <span className="mb-2 block text-sm font-medium text-slate-700">{t('password')}</span>
+          <span className="mb-2 block text-sm font-medium text-slate-300">{t('password')}</span>
           <input
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="w-full rounded-2xl border border-border bg-white px-4 py-3 outline-none ring-brand transition focus:ring-2"
+            className="field"
           />
         </label>
       </div>
@@ -171,10 +169,10 @@ export function AuthForm() {
       {message ? (
         <div
           className={cn(
-            'mt-4 rounded-2xl border px-4 py-3 text-sm',
+            'mt-4 rounded-[18px] border px-4 py-3 text-sm',
             messageTone === 'success'
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-              : 'border-rose-200 bg-rose-50 text-rose-700',
+              ? 'border-brand/25 bg-brand/10 text-brand'
+              : 'border-rose-500/20 bg-rose-500/10 text-rose-300',
           )}
         >
           {message}
@@ -185,7 +183,7 @@ export function AuthForm() {
         <button
           type="button"
           onClick={() => startTransition(handlePasswordAuth)}
-          className="rounded-2xl bg-brand px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-strong"
+          className="button-primary w-full"
           disabled={isPending}
         >
           {isPending ? (mode === 'sign-in' ? t('signInPending') : t('signUpPending')) : mode === 'sign-in' ? t('signIn') : t('signUp')}
@@ -193,7 +191,7 @@ export function AuthForm() {
         <button
           type="button"
           onClick={() => startTransition(handleMagicLink)}
-          className="rounded-2xl border border-border bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          className="button-secondary w-full"
           disabled={isPending}
         >
           {isPending ? t('magicLinkPending') : t('magicLink')}
@@ -201,7 +199,7 @@ export function AuthForm() {
         <button
           type="button"
           onClick={() => startTransition(handleGoogle)}
-          className="rounded-2xl border border-slate-900 bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+          className="w-full rounded-[16px] border border-white/10 bg-[#0f1530] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#131a39]"
           disabled={isPending}
         >
           {isPending ? t('googlePending') : t('google')}
@@ -211,7 +209,7 @@ export function AuthForm() {
       <button
         type="button"
         onClick={() => setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in')}
-        className="mt-5 text-sm font-medium text-brand-strong underline-offset-4 transition hover:underline"
+        className="mt-5 text-sm font-medium text-brand underline-offset-4 transition hover:underline"
       >
         {mode === 'sign-in' ? t('switchToSignUp') : t('switchToSignIn')}
       </button>

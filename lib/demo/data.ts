@@ -6,6 +6,25 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { computeAnswerDistribution } from '@/lib/demo/distribution';
 
 type PublicClient = ReturnType<typeof createSupabaseServerClient>;
+type DashboardSession = {
+  id: string;
+  group_id: string;
+  scheduled_at: string;
+  share_code: string;
+  status: 'scheduled' | 'active' | 'completed' | 'cancelled';
+  timer_seconds: number;
+};
+
+type DashboardGroup = {
+  id: string;
+  name: string;
+  invite_code: string;
+  created_by: string | null;
+  created_at: string;
+  role: 'admin' | 'member';
+  memberCount: number;
+  nextSession: DashboardSession | null;
+};
 
 async function getUsersMap(supabase: PublicClient, userIds: string[]) {
   if (userIds.length === 0) {
@@ -57,15 +76,40 @@ export const getDashboardData = cache(async (user: User) => {
         ).data ?? []
       : [];
 
-  const sessions =
+  const sessions: DashboardSession[] =
     groupIds.length > 0
       ? (
           await supabase
             .schema('public')
             .from('sessions')
-            .select('id, group_id, scheduled_at, status, timer_seconds')
+            .select('id, group_id, scheduled_at, share_code, status, timer_seconds')
             .in('group_id', groupIds)
             .order('scheduled_at', { ascending: true })
+        ).data ?? []
+      : [];
+
+  const sessionIds = sessions.map((session) => session.id);
+  const questions =
+    sessionIds.length > 0
+      ? (
+          await supabase
+            .schema('public')
+            .from('questions')
+            .select('id, session_id')
+            .in('session_id', sessionIds)
+        ).data ?? []
+      : [];
+
+  const questionIds = questions.map((question) => question.id);
+  const myAnswers =
+    questionIds.length > 0
+      ? (
+          await supabase
+            .schema('public')
+            .from('answers')
+            .select('question_id, confidence, is_correct')
+            .eq('user_id', user.id)
+            .in('question_id', questionIds)
         ).data ?? []
       : [];
 
@@ -80,42 +124,25 @@ export const getDashboardData = cache(async (user: User) => {
       .filter((session) => session.status !== 'completed' && session.status !== 'cancelled')
       .map((session) => [session.group_id, session]),
   );
+  const activeSessions = sessions.filter((session) => session.status === 'active');
+  const completedSessions = sessions.filter((session) => session.status === 'completed');
 
   const inviterIds = [...new Set((invites ?? []).map((invite) => invite.invited_by))];
   const inviteUsers = await getUsersMap(supabase, inviterIds);
 
-  const dashboardGroups = (memberships ?? [])
-    .map((membership) => {
+  const dashboardGroups = (memberships ?? []).reduce<DashboardGroup[]>((acc, membership) => {
       const group = groupsById.get(membership.group_id);
-      if (!group) return null;
+      if (!group) return acc;
 
-      return {
+      acc.push({
         ...group,
         role: membership.role,
         memberCount: countsByGroup.get(group.id) ?? 0,
         nextSession: upcomingByGroup.get(group.id) ?? null,
-      };
-    })
-    .filter(
-      (
-        value,
-      ): value is {
-        id: string;
-        name: string;
-        invite_code: string;
-        created_by: string | null;
-        created_at: string;
-        role: 'admin' | 'member';
-        memberCount: number;
-        nextSession: {
-          id: string;
-          group_id: string;
-          scheduled_at: string;
-          status: 'scheduled' | 'active' | 'completed' | 'cancelled';
-          timer_seconds: number;
-        } | null;
-      } => value !== null,
-    );
+      });
+
+      return acc;
+    }, []);
 
   const pendingInvites = (invites ?? []).map((invite) => ({
     ...invite,
@@ -124,7 +151,38 @@ export const getDashboardData = cache(async (user: User) => {
       inviteUsers.get(invite.invited_by)?.display_name ?? inviteUsers.get(invite.invited_by)?.email ?? null,
   }));
 
-  return { groups: dashboardGroups, pendingInvites };
+  const answeredCount = myAnswers.length;
+  const correctCount = myAnswers.filter((answer) => answer.is_correct).length;
+  const incorrectCount = myAnswers.filter((answer) => answer.is_correct === false).length;
+  const averageConfidence =
+    answeredCount > 0
+      ? myAnswers.reduce((sum, answer) => sum + (answer.confidence ?? 0), 0) / answeredCount
+      : null;
+  const successRate = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : null;
+  const errorRate = answeredCount > 0 ? Math.round((incorrectCount / answeredCount) * 100) : null;
+
+  const enrichedSessions = sessions.map((session) => ({
+    ...session,
+    groupName: groupsById.get(session.group_id)?.name ?? null,
+  }));
+
+  const nextSession = enrichedSessions.find((session) => session.status !== 'completed' && session.status !== 'cancelled') ?? null;
+
+  return {
+    groups: dashboardGroups,
+    pendingInvites,
+    metrics: {
+      answeredCount,
+      completedSessionsCount: completedSessions.length,
+      successRate,
+      errorRate,
+      averageConfidence,
+      leagueProgress: Math.min(100, Math.round((answeredCount / 300) * 100)),
+    },
+    sessions: enrichedSessions,
+    activeSessions,
+    nextSession,
+  };
 });
 
 export const getGroupData = cache(async (groupId: string, user: User) => {
@@ -159,7 +217,7 @@ export const getGroupData = cache(async (groupId: string, user: User) => {
     supabase
       .schema('public')
       .from('sessions')
-      .select('id, scheduled_at, status, timer_seconds, leader_id, meeting_link')
+      .select('id, scheduled_at, share_code, status, timer_seconds, leader_id, meeting_link')
       .eq('group_id', groupId)
       .order('scheduled_at', { ascending: false }),
   ]);
@@ -188,7 +246,7 @@ export const getSessionData = cache(async (sessionId: string, user: User) => {
   const { data: session } = await supabase
     .schema('public')
     .from('sessions')
-    .select('id, group_id, scheduled_at, started_at, ended_at, timer_seconds, status, meeting_link, leader_id')
+    .select('id, group_id, scheduled_at, share_code, started_at, ended_at, timer_seconds, status, meeting_link, leader_id')
     .eq('id', sessionId)
     .single();
 
@@ -258,5 +316,98 @@ export const getSessionData = cache(async (sessionId: string, user: User) => {
     answers,
     myAnswer,
     distribution: currentQuestion ? computeAnswerDistribution(answers, memberCount) : null,
+  };
+});
+
+export const getSessionSummaryData = cache(async (sessionId: string, user: User) => {
+  const supabase = createSupabaseServerClient();
+
+  const { data: session } = await supabase
+    .schema('public')
+    .from('sessions')
+    .select('id, group_id, scheduled_at, started_at, ended_at, status')
+    .eq('id', sessionId)
+    .maybeSingle();
+
+  if (!session) {
+    return null;
+  }
+
+  const { data: membership } = await supabase
+    .schema('public')
+    .from('group_members')
+    .select('group_id, role')
+    .eq('group_id', session.group_id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (!membership) {
+    return null;
+  }
+
+  const [{ data: group }, { data: members }, { data: questions }] = await Promise.all([
+    supabase.schema('public').from('groups').select('id, name').eq('id', session.group_id).maybeSingle(),
+    supabase.schema('public').from('group_members').select('user_id').eq('group_id', session.group_id),
+    supabase
+      .schema('public')
+      .from('questions')
+      .select('id, body, order_index, correct_option, phase')
+      .eq('session_id', sessionId)
+      .order('order_index', { ascending: true }),
+  ]);
+
+  const questionIds = (questions ?? []).map((question) => question.id);
+  const answers =
+    questionIds.length > 0
+      ? (
+          await supabase
+            .schema('public')
+            .from('answers')
+            .select('question_id, user_id, selected_option, confidence, is_correct')
+            .in('question_id', questionIds)
+        ).data ?? []
+      : [];
+
+  const memberCount = members?.length ?? 0;
+  const myAnswers = answers.filter((answer) => answer.user_id === user.id);
+  const correctCount = myAnswers.filter((answer) => answer.is_correct).length;
+  const totalQuestions = questions?.length ?? 0;
+  const answeredCount = myAnswers.length;
+  const averageConfidence =
+    myAnswers.length > 0
+      ? myAnswers.reduce((sum, answer) => sum + (answer.confidence ?? 0), 0) / myAnswers.length
+      : 0;
+  const totalDurationMinutes =
+    session.started_at && session.ended_at
+      ? Math.max(
+          0,
+          Math.round((new Date(session.ended_at).getTime() - new Date(session.started_at).getTime()) / 60000),
+        )
+      : 0;
+
+  const breakdown = (questions ?? []).map((question) => {
+    const questionAnswers = answers.filter((answer) => answer.question_id === question.id);
+    const myAnswer = questionAnswers.find((answer) => answer.user_id === user.id) ?? null;
+    const groupCorrectCount = questionAnswers.filter((answer) => answer.is_correct).length;
+
+    return {
+      ...question,
+      myAnswer,
+      groupAverage:
+        memberCount > 0 ? Math.round((groupCorrectCount / memberCount) * 100) : 0,
+    };
+  });
+
+  return {
+    session,
+    group,
+    membership,
+    totalQuestions,
+    answeredCount,
+    correctCount,
+    accuracy: totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0,
+    averageConfidence,
+    totalDurationMinutes,
+    breakdown,
   };
 });

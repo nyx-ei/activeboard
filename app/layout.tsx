@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from 'next';
-import { Sora } from 'next/font/google';
+import { Inter } from 'next/font/google';
 
 import '@/app/globals.css';
 
-const sora = Sora({
+const inter = Inter({
   subsets: ['latin'],
   variable: '--font-sans',
   display: 'swap',
@@ -33,7 +33,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#0f766e',
+  themeColor: '#070b18',
 };
 
 export default function RootLayout({
@@ -43,7 +43,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={sora.variable}>{children}</body>
+      <body className={inter.variable}>{children}</body>
     </html>
   );
 }

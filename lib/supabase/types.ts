@@ -167,6 +167,7 @@ type SessionsRow = {
   leader_id: string | null;
   meeting_link: string | null;
   scheduled_at: string;
+  share_code: string;
   started_at: string | null;
   status: 'scheduled' | 'active' | 'completed' | 'cancelled';
   timer_seconds: number;
@@ -180,6 +181,7 @@ type SessionsInsert = {
   leader_id?: string | null;
   meeting_link?: string | null;
   scheduled_at: string;
+  share_code?: string;
   started_at?: string | null;
   status?: 'scheduled' | 'active' | 'completed' | 'cancelled';
   timer_seconds?: number;
@@ -193,6 +195,7 @@ type SessionsUpdate = {
   leader_id?: string | null;
   meeting_link?: string | null;
   scheduled_at?: string;
+  share_code?: string;
   started_at?: string | null;
   status?: 'scheduled' | 'active' | 'completed' | 'cancelled';
   timer_seconds?: number;

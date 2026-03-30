@@ -24,6 +24,12 @@ export function generateInviteCode() {
   return Array.from({ length: 6 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('');
 }
 
+export function generateSessionShareCode() {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+  return Array.from({ length: 6 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('');
+}
+
 export function withFeedback(path: string, tone: 'success' | 'error', message: string) {
   const url = new URL(path, 'http://localhost');
   url.searchParams.set('feedbackTone', tone);

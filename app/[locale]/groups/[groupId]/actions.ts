@@ -6,7 +6,7 @@ import { getTranslations } from 'next-intl/server';
 
 import type { AppLocale } from '@/i18n/routing';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { normalizeEmail, withFeedback } from '@/lib/utils';
+import { generateSessionShareCode, normalizeEmail, withFeedback } from '@/lib/utils';
 
 async function getCurrentAuthUser() {
   const supabase = createSupabaseServerClient();
@@ -112,13 +112,31 @@ export async function scheduleSessionAction(formData: FormData) {
     .eq('user_id', user.id)
     .maybeSingle();
 
-  if (!membership || membership.role !== 'admin') {
+  if (!membership) {
     redirect(withFeedback(`/${locale}/groups/${groupId}`, 'error', t('notAuthorized')));
+  }
+
+  let shareCode = generateSessionShareCode();
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const { data: existingSession } = await supabase
+      .schema('public')
+      .from('sessions')
+      .select('id')
+      .eq('share_code', shareCode)
+      .maybeSingle();
+
+    if (!existingSession) {
+      break;
+    }
+
+    shareCode = generateSessionShareCode();
   }
 
   const { error } = await supabase.schema('public').from('sessions').insert({
     group_id: groupId,
     scheduled_at: scheduledAt.toISOString(),
+    share_code: shareCode,
     timer_seconds: timer,
     meeting_link: meetingLink,
     created_by: user.id,

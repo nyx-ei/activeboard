@@ -4,8 +4,12 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
 
 import { LanguageSwitcher } from '@/components/layout/language-switcher';
+import { ProfileMenu } from '@/components/layout/profile-menu';
 import { RegisterServiceWorker } from '@/components/pwa/register-service-worker';
+import { Link } from '@/i18n/navigation';
 import { routing, type AppLocale } from '@/i18n/routing';
+import { getCurrentUser } from '@/lib/auth';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -27,31 +31,87 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
   const messages = await getMessages();
   const t = await getTranslations('Common');
+  const dashboardT = await getTranslations('Dashboard');
+  const user = await getCurrentUser();
+  const displayName = user?.user_metadata.full_name ?? user?.email ?? 'ActiveBoard';
+  const initials =
+    displayName
+      ?.split(' ')
+      .map((part: string) => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() ??
+    'AB';
+  let primaryGroupHref = `/${locale}/dashboard`;
+  let primaryGroupLabel = dashboardT('groupSettings');
+  let primaryGroupHint: string | null = null;
+
+  if (user) {
+    const supabase = createSupabaseServerClient();
+    const { data: memberships } = await supabase
+      .schema('public')
+      .from('group_members')
+      .select('group_id')
+      .eq('user_id', user.id)
+      .limit(10);
+
+    const groupIds = [...new Set((memberships ?? []).map((membership) => membership.group_id))];
+
+    if (groupIds.length === 1) {
+      primaryGroupHref = `/${locale}/groups/${groupIds[0]}`;
+    } else if (groupIds.length > 1) {
+      primaryGroupHref = `/${locale}/dashboard#groups-list`;
+      primaryGroupLabel = dashboardT('groups');
+      primaryGroupHint = dashboardT('groupsMenuHint');
+    }
+  }
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <RegisterServiceWorker />
-      <div className="min-h-screen px-4 py-6 sm:px-6">
-        <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-6xl flex-col gap-6">
-          <header className="flex items-center justify-between gap-4 rounded-full border border-white/70 bg-white/60 px-4 py-3 shadow-sm backdrop-blur">
+      <div className="min-h-screen px-4 py-5 sm:px-6">
+        <div className="mx-auto flex min-h-[calc(100vh-2.5rem)] max-w-[1240px] flex-col gap-8">
+          <header className="flex items-center justify-between gap-4 border-b border-white/8 pb-4 pt-1">
+            <Link href="/" className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-base font-extrabold text-slate-950">
+                AB
+              </div>
+              <p className="text-2xl font-extrabold tracking-tight text-white">{t('appName')}</p>
+            </Link>
+
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-brand text-lg font-semibold text-white">
-                A
-              </div>
-              <div>
-                <p className="text-sm uppercase tracking-[0.22em] text-slate-500">ActiveBoard</p>
-                <p className="text-sm text-slate-600">{t('appTagline')}</p>
-              </div>
-            </div>
-            <Suspense
-              fallback={
-                <div className="inline-flex items-center gap-2 rounded-full border border-border bg-white/70 p-1 text-sm shadow-sm">
-                  <span className="px-3 text-slate-500">{t('language')}</span>
+              <Suspense
+                fallback={
+                  <div className="inline-flex items-center gap-2 rounded-full border border-border bg-white/[0.04] px-4 py-2 text-sm text-slate-400">
+                    {t('language')}
+                  </div>
+                }
+              >
+                <LanguageSwitcher />
+              </Suspense>
+
+              {user ? (
+                <div className="flex items-center gap-2">
+                  <ProfileMenu
+                    initials={initials}
+                    name={displayName}
+                    email={user.email ?? ''}
+                    groupHref={primaryGroupHref}
+                    groupLabel={primaryGroupLabel}
+                    groupHint={primaryGroupHint}
+                  />
                 </div>
-              }
-            >
-              <LanguageSwitcher />
-            </Suspense>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <Link href="/auth/login" className="button-ghost">
+                    {t('signIn')}
+                  </Link>
+                  <a href={`/${locale}/auth/login?mode=sign-up`} className="button-primary">
+                    {t('createAccount')}
+                  </a>
+                </div>
+              )}
+            </div>
           </header>
           {children}
         </div>

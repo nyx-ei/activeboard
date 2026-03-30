@@ -23,6 +23,46 @@ type JoinableGroupLookup = {
   max_members: number;
 };
 
+export async function joinSessionByCodeAction(formData: FormData) {
+  const locale = formData.get('locale') as AppLocale;
+  const code = (formData.get('sessionCode') as string | null)?.trim().toUpperCase() ?? '';
+  const t = await getTranslations({ locale, namespace: 'Feedback' });
+  const { supabase, user } = await getCurrentAuthUser();
+
+  if (!user) {
+    redirect(`/${locale}/auth/login`);
+  }
+
+  if (!code) {
+    redirect(withFeedback(`/${locale}/dashboard`, 'error', t('invalidSessionCode')));
+  }
+
+  const { data: session } = await supabase
+    .schema('public')
+    .from('sessions')
+    .select('id, group_id')
+    .eq('share_code', code)
+    .maybeSingle();
+
+  if (!session) {
+    redirect(withFeedback(`/${locale}/dashboard`, 'error', t('invalidSessionCode')));
+  }
+
+  const { data: membership } = await supabase
+    .schema('public')
+    .from('group_members')
+    .select('group_id')
+    .eq('group_id', session.group_id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (!membership) {
+    redirect(withFeedback(`/${locale}/dashboard`, 'error', t('notAuthorized')));
+  }
+
+  redirect(`/${locale}/sessions/${session.id}`);
+}
+
 export async function createGroupAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
   const groupName = (formData.get('groupName') as string | null)?.trim() ?? '';
