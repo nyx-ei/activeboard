@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
 import type { AppLocale } from '@/i18n/routing';
+import { APP_EVENTS } from '@/lib/logging/events';
+import { logAppEvent } from '@/lib/logging/logger';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { generateInviteCode, withFeedback } from '@/lib/utils';
 
@@ -60,6 +62,18 @@ export async function joinSessionByCodeAction(formData: FormData) {
     redirect(withFeedback(`/${locale}/dashboard`, 'error', t('notAuthorized')));
   }
 
+  await logAppEvent({
+    eventName: APP_EVENTS.sessionJoinedByCode,
+    locale,
+    userId: user.id,
+    groupId: session.group_id,
+    sessionId: session.id,
+    metadata: {
+      join_method: 'share_code',
+      share_code: code,
+    },
+  });
+
   redirect(`/${locale}/sessions/${session.id}`);
 }
 
@@ -114,6 +128,17 @@ export async function createGroupAction(formData: FormData) {
     group_id: group.id,
     user_id: user.id,
     role: 'admin',
+  });
+
+  await logAppEvent({
+    eventName: APP_EVENTS.groupCreated,
+    locale,
+    userId: user.id,
+    groupId: group.id,
+    metadata: {
+      group_name: groupName,
+      invite_code: inviteCode,
+    },
   });
 
   revalidatePath(`/${locale}/dashboard`);
@@ -179,6 +204,17 @@ export async function joinGroupAction(formData: FormData) {
     redirect(withFeedback(`/${locale}/dashboard`, 'error', t('actionFailed')));
   }
 
+  await logAppEvent({
+    eventName: APP_EVENTS.groupJoined,
+    locale,
+    userId: user.id,
+    groupId: group.id,
+    metadata: {
+      join_method: 'invite_code',
+      invite_code: code,
+    },
+  });
+
   revalidatePath(`/${locale}/dashboard`);
   redirect(withFeedback(`/${locale}/dashboard`, 'success', t('groupJoined')));
 }
@@ -232,6 +268,17 @@ export async function respondToInviteAction(formData: FormData) {
       responded_at: new Date().toISOString(),
     })
     .eq('id', inviteId);
+
+  await logAppEvent({
+    eventName: intent === 'accept' ? APP_EVENTS.groupInviteAccepted : APP_EVENTS.groupInviteDeclined,
+    locale,
+    userId: user.id,
+    groupId: invite.group_id,
+    metadata: {
+      invite_id: invite.id,
+      intent,
+    },
+  });
 
   revalidatePath(`/${locale}/dashboard`);
   redirect(

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 
 import { routing, type AppLocale } from '@/i18n/routing';
+import { APP_EVENTS } from '@/lib/logging/events';
+import { logAppEvent } from '@/lib/logging/logger';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/supabase/types';
 
@@ -49,6 +51,15 @@ export async function GET(request: Request, { params }: RouteContext) {
       profile,
       { onConflict: 'id' },
     );
+
+    await logAppEvent({
+      eventName: APP_EVENTS.authCallbackSucceeded,
+      locale,
+      userId: user.id,
+      metadata: {
+        provider: typeof user.app_metadata.provider === 'string' ? user.app_metadata.provider : null,
+      },
+    });
   }
 
   const redirectPath = next?.startsWith('/') ? next : `/${locale}/dashboard`;
