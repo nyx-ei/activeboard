@@ -63,7 +63,7 @@ The roadmap is organized into 6 delivery phases:
 - [#24: Activity heatmap (GitHub-style)](https://github.com/nyx-ei/activeboard/issues/24) - Not started
 - [#25: Accuracy by exam blueprint category](https://github.com/nyx-ei/activeboard/issues/25) - Not started
 - [#26: Confidence calibration chart](https://github.com/nyx-ei/activeboard/issues/26) - Not started
-- [#27: Profile statistics summary](https://github.com/nyx-ei/activeboard/issues/27) - Not started
+- [#27: Profile statistics summary](https://github.com/nyx-ei/activeboard/issues/27) - Partially implemented
 - [#28: Trend lines (improvement over time)](https://github.com/nyx-ei/activeboard/issues/28) - Not started
 
 ### Partner Discovery
@@ -100,7 +100,7 @@ The roadmap is organized into 6 delivery phases:
 ### PWA Onboarding & Mobile Experience
 - [#40: PWA install prompt (smart timing)](https://github.com/nyx-ei/activeboard/issues/40) - Not started
 - [#41: Mobile-optimized session UI](https://github.com/nyx-ei/activeboard/issues/41) - Partially implemented
-- [#42: Offline resilience](https://github.com/nyx-ei/activeboard/issues/42) - Not started
+- [#42: Offline resilience](https://github.com/nyx-ei/activeboard/issues/42) - Partially implemented
 
 ---
 
@@ -120,9 +120,9 @@ The roadmap is organized into 6 delivery phases:
 
 - Total issues tracked in this roadmap: 31
 - Fully implemented: 7 issues (`#18` to `#23`, `#50`)
-- Partially implemented: 1 issue (`#41`)
-- Work started overall: 8 issues
-- Not started: 23 issues
+- Partially implemented: 3 issues (`#41`, `#27`, `#42`)
+- Work started overall: 10 issues
+- Not started: 21 issues
 - Current focus: close the remaining Phase 1 gap, then move to analytics and realtime
 - Last updated: March 30, 2026
 
