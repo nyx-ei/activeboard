@@ -7,6 +7,8 @@ type BrowserEnv = {
 type StripeServerEnv = {
   stripeSecretKey: string;
   stripePublishableKey: string;
+  stripeMonthlyPriceId: string | null;
+  stripeYearlyPriceId: string | null;
 };
 
 function readOptionalEnv(value: string | undefined): string | undefined {
@@ -37,6 +39,14 @@ function getStripePublishableKey() {
   return readOptionalEnv(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 }
 
+function getStripeMonthlyPriceId() {
+  return readOptionalEnv(process.env.STRIPE_PRICE_ID_ACTIVEBOARD_MONTHLY) ?? null;
+}
+
+function getStripeYearlyPriceId() {
+  return readOptionalEnv(process.env.STRIPE_PRICE_ID_ACTIVEBOARD_YEARLY) ?? null;
+}
+
 export function hasStripeEnv(): boolean {
   return Boolean(getStripeSecretKey() && getStripePublishableKey());
 }
@@ -54,6 +64,8 @@ export function getStripeServerEnv(): StripeServerEnv {
   return {
     stripeSecretKey,
     stripePublishableKey,
+    stripeMonthlyPriceId: getStripeMonthlyPriceId(),
+    stripeYearlyPriceId: getStripeYearlyPriceId(),
   };
 }
 

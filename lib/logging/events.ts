@@ -14,6 +14,9 @@ export const APP_EVENTS = {
   answerRevealed: 'answer_revealed',
   billingSetupStarted: 'billing_setup_started',
   billingSetupCompleted: 'billing_setup_completed',
+  subscriptionCheckoutStarted: 'subscription_checkout_started',
+  subscriptionCheckoutCompleted: 'subscription_checkout_completed',
+  billingPortalOpened: 'billing_portal_opened',
   leaderPassed: 'leader_passed',
 } as const;
 

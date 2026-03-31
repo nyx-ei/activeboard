@@ -4,7 +4,7 @@ import { useMemo, useTransition } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 
-import type { AppLocale } from '@/i18n/routing';
+import { routing, type AppLocale } from '@/i18n/routing';
 
 export function LanguageSwitcher() {
   const t = useTranslations('Common');
@@ -13,6 +13,7 @@ export function LanguageSwitcher() {
   const [isPending, startTransition] = useTransition();
   const search = useMemo(() => searchParams.toString(), [searchParams]);
   const nextLocale = locale === 'en' ? 'fr' : 'en';
+  const displayedLocale = routing.locales.length === 2 ? nextLocale : locale;
 
   return (
     <button
@@ -35,7 +36,7 @@ export function LanguageSwitcher() {
           fill="currentColor"
         />
       </svg>
-      <span>{locale === 'en' ? t('english') : t('french')}</span>
+      <span>{displayedLocale === 'en' ? t('english') : t('french')}</span>
     </button>
   );
 }

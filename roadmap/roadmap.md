@@ -110,7 +110,7 @@ ActiveBoard distinguishes three user states, derived from credit card and subscr
 
 ### Stripe & Subscription
 - [#55: Stripe - credit card association (visitor -> certified)](https://github.com/nyx-ei/activeboard/issues/55) - Implemented
-- [#56: Stripe - subscription checkout & plan management](https://github.com/nyx-ei/activeboard/issues/56) - Not started
+- [#56: Stripe - subscription checkout & plan management](https://github.com/nyx-ei/activeboard/issues/56) - Implemented
 - [#57: Stripe webhooks - sync subscription events to user tier](https://github.com/nyx-ei/activeboard/issues/57) - Not started
 
 ### Access Gating
@@ -121,7 +121,7 @@ ActiveBoard distinguishes three user states, derived from credit card and subscr
 - `#53` defines `user_tier` (`visitor | certified_inactive | certified_active`) as the single source of truth consumed by every downstream issue.
 - `#54` is a user-agnostic deployment safety mechanism: flags gate code paths globally and are independent of user tier logic.
 - `#55` covers the card-on-file Stripe flow only (no subscription): the outcome is a stored payment method and a tier upgrade to `certified_inactive`.
-- `#56` covers subscription checkout, plan display, and cancellation/renewal management.
+- `#56` covers subscription checkout, plan display, success return sync, and customer-portal based plan management.
 - `#57` handles inbound Stripe webhook events and keeps `user_tier` in sync.
 - `#58` enforces limits at server-action level, UI level, and DB level.
 
@@ -154,11 +154,11 @@ ActiveBoard distinguishes three user states, derived from credit card and subscr
 ## Statistics
 
 - Total issues tracked in this roadmap: 35
-- Fully implemented: 11 issues (`#18` to `#23`, `#50`, `#53`, `#54`, `#55`, `#59`)
+- Fully implemented: 12 issues (`#18` to `#23`, `#50`, `#53`, `#54`, `#55`, `#56`, `#59`)
 - Partially implemented: 3 issues (`#27`, `#41`, `#42`)
-- Work started overall: 14 issues
-- Not started: 21 issues
-- Current focus: ship Stripe subscription checkout (`#56`) and webhook sync (`#57`) next, then access gating (`#58`)
+- Work started overall: 15 issues
+- Not started: 20 issues
+- Current focus: ship Stripe webhook sync (`#57`) next, then access gating (`#58`)
 - Last updated: March 31, 2026
 
 ---
