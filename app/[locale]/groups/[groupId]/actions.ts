@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
 import type { AppLocale } from '@/i18n/routing';
+import { APP_EVENTS } from '@/lib/logging/events';
+import { logAppEvent } from '@/lib/logging/logger';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { generateSessionShareCode, normalizeEmail, withFeedback } from '@/lib/utils';
 
@@ -79,6 +81,17 @@ export async function inviteMemberAction(formData: FormData) {
     redirect(withFeedback(`/${locale}/groups/${groupId}`, 'error', t('actionFailed')));
   }
 
+  await logAppEvent({
+    eventName: APP_EVENTS.groupInviteSent,
+    locale,
+    userId: user.id,
+    groupId,
+    metadata: {
+      invitee_email: email,
+      invitee_user_id: existingUser?.id ?? null,
+    },
+  });
+
   revalidatePath(`/${locale}/groups/${groupId}`);
   revalidatePath(`/${locale}/dashboard`);
   redirect(withFeedback(`/${locale}/groups/${groupId}`, 'success', t('inviteSent')));
@@ -147,6 +160,19 @@ export async function scheduleSessionAction(formData: FormData) {
   if (error) {
     redirect(withFeedback(`/${locale}/groups/${groupId}`, 'error', t('actionFailed')));
   }
+
+  await logAppEvent({
+    eventName: APP_EVENTS.sessionScheduled,
+    locale,
+    userId: user.id,
+    groupId,
+    metadata: {
+      scheduled_at: scheduledAt.toISOString(),
+      timer_seconds: timer,
+      share_code: shareCode,
+      has_meeting_link: Boolean(meetingLink),
+    },
+  });
 
   revalidatePath(`/${locale}/groups/${groupId}`);
   revalidatePath(`/${locale}/dashboard`);

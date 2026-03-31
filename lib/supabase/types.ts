@@ -36,6 +36,69 @@ type AnswersUpdate = {
   user_id?: string;
 };
 
+type AppLogsRow = {
+  created_at: string;
+  event_name: string;
+  feature_flag_key: string | null;
+  group_id: string | null;
+  id: string;
+  level: 'info' | 'warn' | 'error';
+  locale: 'en' | 'fr' | null;
+  metadata: Json;
+  session_id: string | null;
+  user_id: string | null;
+};
+
+type AppLogsInsert = {
+  created_at?: string;
+  event_name: string;
+  feature_flag_key?: string | null;
+  group_id?: string | null;
+  id?: string;
+  level?: 'info' | 'warn' | 'error';
+  locale?: 'en' | 'fr' | null;
+  metadata?: Json;
+  session_id?: string | null;
+  user_id?: string | null;
+};
+
+type AppLogsUpdate = {
+  created_at?: string;
+  event_name?: string;
+  feature_flag_key?: string | null;
+  group_id?: string | null;
+  id?: string;
+  level?: 'info' | 'warn' | 'error';
+  locale?: 'en' | 'fr' | null;
+  metadata?: Json;
+  session_id?: string | null;
+  user_id?: string | null;
+};
+
+type FeatureFlagsRow = {
+  created_at: string;
+  description: string | null;
+  enabled: boolean;
+  key: string;
+  updated_at: string;
+};
+
+type FeatureFlagsInsert = {
+  created_at?: string;
+  description?: string | null;
+  enabled?: boolean;
+  key: string;
+  updated_at?: string;
+};
+
+type FeatureFlagsUpdate = {
+  created_at?: string;
+  description?: string | null;
+  enabled?: boolean;
+  key?: string;
+  updated_at?: string;
+};
+
 type GroupMembersRow = {
   group_id: string;
   joined_at: string;
@@ -203,29 +266,77 @@ type SessionsUpdate = {
 
 type UsersRow = {
   avatar_url: string | null;
+  billing_updated_at: string;
   created_at: string;
   display_name: string | null;
   email: string;
+  has_valid_payment_method: boolean;
   id: string;
   locale: 'en' | 'fr';
+  stripe_customer_id: string | null;
+  stripe_default_payment_method_id: string | null;
+  subscription_current_period_ends_at: string | null;
+  subscription_status:
+    | 'none'
+    | 'trialing'
+    | 'active'
+    | 'past_due'
+    | 'canceled'
+    | 'unpaid'
+    | 'incomplete'
+    | 'incomplete_expired'
+    | 'paused';
+  user_tier: 'visitor' | 'certified_inactive' | 'certified_active';
 };
 
 type UsersInsert = {
   avatar_url?: string | null;
+  billing_updated_at?: string;
   created_at?: string;
   display_name?: string | null;
   email: string;
+  has_valid_payment_method?: boolean;
   id: string;
   locale?: 'en' | 'fr';
+  stripe_customer_id?: string | null;
+  stripe_default_payment_method_id?: string | null;
+  subscription_current_period_ends_at?: string | null;
+  subscription_status?:
+    | 'none'
+    | 'trialing'
+    | 'active'
+    | 'past_due'
+    | 'canceled'
+    | 'unpaid'
+    | 'incomplete'
+    | 'incomplete_expired'
+    | 'paused';
+  user_tier?: 'visitor' | 'certified_inactive' | 'certified_active';
 };
 
 type UsersUpdate = {
   avatar_url?: string | null;
+  billing_updated_at?: string;
   created_at?: string;
   display_name?: string | null;
   email?: string;
+  has_valid_payment_method?: boolean;
   id?: string;
   locale?: 'en' | 'fr';
+  stripe_customer_id?: string | null;
+  stripe_default_payment_method_id?: string | null;
+  subscription_current_period_ends_at?: string | null;
+  subscription_status?:
+    | 'none'
+    | 'trialing'
+    | 'active'
+    | 'past_due'
+    | 'canceled'
+    | 'unpaid'
+    | 'incomplete'
+    | 'incomplete_expired'
+    | 'paused';
+  user_tier?: 'visitor' | 'certified_inactive' | 'certified_active';
 };
 
 export type Database = {
@@ -235,6 +346,18 @@ export type Database = {
         Row: AnswersRow;
         Insert: AnswersInsert;
         Update: AnswersUpdate;
+        Relationships: [];
+      };
+      app_logs: {
+        Row: AppLogsRow;
+        Insert: AppLogsInsert;
+        Update: AppLogsUpdate;
+        Relationships: [];
+      };
+      feature_flags: {
+        Row: FeatureFlagsRow;
+        Insert: FeatureFlagsInsert;
+        Update: FeatureFlagsUpdate;
         Relationships: [];
       };
       group_members: {

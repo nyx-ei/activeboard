@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
 import type { AppLocale } from '@/i18n/routing';
+import { APP_EVENTS } from '@/lib/logging/events';
+import { logAppEvent } from '@/lib/logging/logger';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { ANSWER_OPTIONS } from '@/lib/types/demo';
 import { withFeedback } from '@/lib/utils';
@@ -74,6 +76,17 @@ export async function startSessionAction(formData: FormData) {
       started_at: safeSession.started_at ?? new Date().toISOString(),
     })
     .eq('id', sessionId);
+
+  await logAppEvent({
+    eventName: APP_EVENTS.sessionStarted,
+    locale,
+    userId: user.id,
+    groupId: safeSession.group_id,
+    sessionId,
+    metadata: {
+      member_count: memberCount ?? 0,
+    },
+  });
 
   revalidatePath(`/${locale}/sessions/${sessionId}`);
   redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'success', t('sessionStarted')));
@@ -170,6 +183,19 @@ export async function launchQuestionAction(formData: FormData) {
     })
     .eq('id', sessionId);
 
+  await logAppEvent({
+    eventName: APP_EVENTS.questionLaunched,
+    locale,
+    userId: user.id,
+    groupId: safeSession.group_id,
+    sessionId,
+    metadata: {
+      order_index: (latestQuestion?.order_index ?? -1) + 1,
+      timer_seconds: safeSession.timer_seconds,
+      has_body: Boolean(questionBody),
+    },
+  });
+
   revalidatePath(`/${locale}/sessions/${sessionId}`);
   redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'success', t('questionLaunched')));
 }
@@ -218,6 +244,18 @@ export async function submitAnswerAction(formData: FormData) {
     },
     { onConflict: 'question_id,user_id' },
   );
+
+  await logAppEvent({
+    eventName: APP_EVENTS.answerSubmitted,
+    locale,
+    userId: user.id,
+    sessionId,
+    metadata: {
+      question_id: questionId,
+      selected_option: selectedOption,
+      confidence,
+    },
+  });
 
   revalidatePath(`/${locale}/sessions/${sessionId}`);
   redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'success', t('answerSubmitted')));
@@ -311,6 +349,19 @@ export async function revealAnswerAction(formData: FormData) {
     ),
   );
 
+  await logAppEvent({
+    eventName: APP_EVENTS.answerRevealed,
+    locale,
+    userId: user.id,
+    groupId: safeSession.group_id,
+    sessionId,
+    metadata: {
+      question_id: questionId,
+      correct_option: correctOption,
+      answer_count: answers?.length ?? 0,
+    },
+  });
+
   revalidatePath(`/${locale}/sessions/${sessionId}`);
   redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'success', t('answerRevealed')));
 }
@@ -371,6 +422,18 @@ export async function passLeaderAction(formData: FormData) {
     .update({ leader_id: nextLeaderId })
     .eq('id', sessionId);
 
+  await logAppEvent({
+    eventName: APP_EVENTS.leaderPassed,
+    locale,
+    userId: user.id,
+    groupId: session.group_id,
+    sessionId,
+    metadata: {
+      next_leader_id: nextLeaderId,
+      previous_leader_id: session.leader_id,
+    },
+  });
+
   revalidatePath(`/${locale}/sessions/${sessionId}`);
   redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'success', t('leaderPassed')));
 }
@@ -427,6 +490,17 @@ export async function endSessionAction(formData: FormData) {
       ended_at: new Date().toISOString(),
     })
     .eq('id', sessionId);
+
+  await logAppEvent({
+    eventName: APP_EVENTS.sessionEnded,
+    locale,
+    userId: user.id,
+    groupId: session.group_id,
+    sessionId,
+    metadata: {
+      ended_by: user.id,
+    },
+  });
 
   revalidatePath(`/${locale}/sessions/${sessionId}`);
   redirect(withFeedback(`/${locale}/sessions/${sessionId}/summary`, 'success', t('sessionCompleted')));

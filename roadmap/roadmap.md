@@ -52,8 +52,8 @@ The roadmap is organized into 6 delivery phases:
   - auth screens redesigned
   - dashboard reorganized
   - group, session, and summary pages visually refactored
-- profile menu moved into the header
-- bilingual UX polish improved across the app
+  - profile menu moved into the header
+  - bilingual UX polish improved across the app
 
 ---
 
@@ -93,37 +93,37 @@ The roadmap is organized into 6 delivery phases:
 ActiveBoard distinguishes three user states, derived from credit card and subscription status:
 
 | State | Credit card | Subscription | Restricted features |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **Visitor** | None | N/A | Be captain · Create session · Join more than 1 group · Display/share heatmap · Be discoverable |
 | **Inactive certified** | Valid | Expired / cancelled | Be captain · Create session |
-| **Active certified** | Valid | Running | None — all features unlocked |
+| **Active certified** | Valid | Running | None - all features unlocked |
 
 - A user becomes **certified** by associating a valid credit card via Stripe.
 - A certified user becomes **active** by also holding a running subscription.
 - Downgrading from active to inactive preserves heatmap access, multi-group membership, and discoverability.
 
 ### User Tier & Database Schema
-- [#53: User tier model and database schema](https://github.com/nyx-ei/activeboard/issues/53) - Not started
+- [#53: User tier model and database schema](https://github.com/nyx-ei/activeboard/issues/53) - Implemented
 
 ### Feature Flag Infrastructure
-- [#54: Feature flag / switch system](https://github.com/nyx-ei/activeboard/issues/54) - Not started
+- [#54: Feature flag / switch system](https://github.com/nyx-ei/activeboard/issues/54) - Implemented
 
 ### Stripe & Subscription
-- [#55: Stripe — credit card association (visitor → certified)](https://github.com/nyx-ei/activeboard/issues/55) - Not started
-- [#56: Stripe — subscription checkout & plan management](https://github.com/nyx-ei/activeboard/issues/56) - Not started
-- [#57: Stripe webhooks — sync subscription events to user tier](https://github.com/nyx-ei/activeboard/issues/57) - Not started
+- [#55: Stripe - credit card association (visitor -> certified)](https://github.com/nyx-ei/activeboard/issues/55) - Not started
+- [#56: Stripe - subscription checkout & plan management](https://github.com/nyx-ei/activeboard/issues/56) - Not started
+- [#57: Stripe webhooks - sync subscription events to user tier](https://github.com/nyx-ei/activeboard/issues/57) - Not started
 
 ### Access Gating
-- [#58: Access gating — server actions, UI conditionals, and DB enforcement](https://github.com/nyx-ei/activeboard/issues/58) - Not started
+- [#58: Access gating - server actions, UI conditionals, and DB enforcement](https://github.com/nyx-ei/activeboard/issues/58) - Not started
 
 ### Phase 4 Delivery Notes
-- Mandatory sequencing: `#53 → #54 → #55 → #56 → #57 → #58`.
-- #53 defines `user_tier` (`visitor | certified_inactive | certified_active`) as the single source of truth consumed by every downstream issue.
-- #54 is a user-agnostic deployment safety mechanism — flags gate code paths globally and are independent of user tier logic.
-- #55 covers the card-on-file Stripe flow only (no subscription): the outcome is a stored payment method and a tier upgrade to `certified_inactive`.
-- #56 covers subscription checkout, plan display, and cancellation/renewal management (Stripe Customer Portal or custom UI).
-- #57 handles all inbound Stripe webhook events (`customer.subscription.created`, `updated`, `deleted`, `invoice.payment_failed`) and keeps `user_tier` in sync.
-- #58 enforces limits at server-action level, UI level, and DB level (RLS policy or trigger for the 1-group visitor cap).
+- Mandatory sequencing: `#53 -> #54 -> #55 -> #56 -> #57 -> #58`.
+- `#53` defines `user_tier` (`visitor | certified_inactive | certified_active`) as the single source of truth consumed by every downstream issue.
+- `#54` is a user-agnostic deployment safety mechanism: flags gate code paths globally and are independent of user tier logic.
+- `#55` covers the card-on-file Stripe flow only (no subscription): the outcome is a stored payment method and a tier upgrade to `certified_inactive`.
+- `#56` covers subscription checkout, plan display, and cancellation/renewal management.
+- `#57` handles inbound Stripe webhook events and keeps `user_tier` in sync.
+- `#58` enforces limits at server-action level, UI level, and DB level.
 
 ---
 
@@ -139,7 +139,7 @@ ActiveBoard distinguishes three user states, derived from credit card and subscr
 ## Phase 6: Observability & Operations
 
 ### Logging
-- [#59: Ubiquitous logging behind feature flag `canUseUbiquitousLogging`](https://github.com/nyx-ei/activeboard/issues/59) - Not started
+- [#59: Ubiquitous logging behind feature flag `canUseUbiquitousLogging`](https://github.com/nyx-ei/activeboard/issues/59) - Implemented
 
 ### Analytics & Error Tracking
 - [#43: PostHog integration](https://github.com/nyx-ei/activeboard/issues/43) - Not started
@@ -153,13 +153,13 @@ ActiveBoard distinguishes three user states, derived from credit card and subscr
 
 ## Statistics
 
-- Total issues tracked in this roadmap: 36
-- Fully implemented: 7 issues (`#18` to `#23`, `#50`)
+- Total issues tracked in this roadmap: 35
+- Fully implemented: 10 issues (`#18` to `#23`, `#50`, `#53`, `#54`, `#59`)
 - Partially implemented: 3 issues (`#27`, `#41`, `#42`)
-- Work started overall: 10 issues
-- Not started: 26 issues
-- Current focus: ship feature flag infrastructure (#54) and ubiquitous logging (#59) immediately to unblock issue reproduction, then user tier model (#53) and Stripe flows (#55–#57)
-- Last updated: March 30, 2026
+- Work started overall: 13 issues
+- Not started: 22 issues
+- Current focus: ship Stripe flows (`#55` to `#57`) next, then access gating (`#58`)
+- Last updated: March 31, 2026
 
 ---
 
