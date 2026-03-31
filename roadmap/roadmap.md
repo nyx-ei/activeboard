@@ -109,7 +109,7 @@ ActiveBoard distinguishes three user states, derived from credit card and subscr
 - [#54: Feature flag / switch system](https://github.com/nyx-ei/activeboard/issues/54) - Implemented
 
 ### Stripe & Subscription
-- [#55: Stripe - credit card association (visitor -> certified)](https://github.com/nyx-ei/activeboard/issues/55) - Not started
+- [#55: Stripe - credit card association (visitor -> certified)](https://github.com/nyx-ei/activeboard/issues/55) - Implemented
 - [#56: Stripe - subscription checkout & plan management](https://github.com/nyx-ei/activeboard/issues/56) - Not started
 - [#57: Stripe webhooks - sync subscription events to user tier](https://github.com/nyx-ei/activeboard/issues/57) - Not started
 
@@ -154,11 +154,11 @@ ActiveBoard distinguishes three user states, derived from credit card and subscr
 ## Statistics
 
 - Total issues tracked in this roadmap: 35
-- Fully implemented: 10 issues (`#18` to `#23`, `#50`, `#53`, `#54`, `#59`)
+- Fully implemented: 11 issues (`#18` to `#23`, `#50`, `#53`, `#54`, `#55`, `#59`)
 - Partially implemented: 3 issues (`#27`, `#41`, `#42`)
-- Work started overall: 13 issues
-- Not started: 22 issues
-- Current focus: ship Stripe flows (`#55` to `#57`) next, then access gating (`#58`)
+- Work started overall: 14 issues
+- Not started: 21 issues
+- Current focus: ship Stripe subscription checkout (`#56`) and webhook sync (`#57`) next, then access gating (`#58`)
 - Last updated: March 31, 2026
 
 ---

@@ -12,6 +12,8 @@ export const APP_EVENTS = {
   questionLaunched: 'question_launched',
   answerSubmitted: 'answer_submitted',
   answerRevealed: 'answer_revealed',
+  billingSetupStarted: 'billing_setup_started',
+  billingSetupCompleted: 'billing_setup_completed',
   leaderPassed: 'leader_passed',
 } as const;
 

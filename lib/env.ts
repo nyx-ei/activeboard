@@ -4,6 +4,11 @@ type BrowserEnv = {
   supabaseAnonKey: string;
 };
 
+type StripeServerEnv = {
+  stripeSecretKey: string;
+  stripePublishableKey: string;
+};
+
 function readOptionalEnv(value: string | undefined): string | undefined {
   return value && value.trim().length > 0 ? value : undefined;
 }
@@ -22,6 +27,34 @@ export function hasSupabaseEnv(): boolean {
 
 export function getAppUrl(): string {
   return readOptionalEnv(process.env.NEXT_PUBLIC_APP_URL) ?? 'http://localhost:3000';
+}
+
+function getStripeSecretKey() {
+  return readOptionalEnv(process.env.STRIPE_SECRET_KEY);
+}
+
+function getStripePublishableKey() {
+  return readOptionalEnv(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+}
+
+export function hasStripeEnv(): boolean {
+  return Boolean(getStripeSecretKey() && getStripePublishableKey());
+}
+
+export function getStripeServerEnv(): StripeServerEnv {
+  const stripeSecretKey = getStripeSecretKey();
+  const stripePublishableKey = getStripePublishableKey();
+
+  if (!stripeSecretKey || !stripePublishableKey) {
+    throw new Error(
+      'Missing Stripe configuration. Expected STRIPE_SECRET_KEY and NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.',
+    );
+  }
+
+  return {
+    stripeSecretKey,
+    stripePublishableKey,
+  };
 }
 
 export function getBrowserEnv(): BrowserEnv {

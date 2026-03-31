@@ -9,12 +9,23 @@ type ProfileMenuProps = {
   initials: string;
   name: string;
   email: string;
+  billingHref?: string | null;
+  billingLabel?: string | null;
   groupHref?: string | null;
   groupLabel: string;
   groupHint?: string | null;
 };
 
-export function ProfileMenu({ initials, name, email, groupHref, groupLabel, groupHint }: ProfileMenuProps) {
+export function ProfileMenu({
+  initials,
+  name,
+  email,
+  billingHref,
+  billingLabel,
+  groupHref,
+  groupLabel,
+  groupHint,
+}: ProfileMenuProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -68,6 +79,26 @@ export function ProfileMenu({ initials, name, email, groupHref, groupLabel, grou
           </div>
 
           <div className="mt-4 border-t border-white/8 pt-4">
+            {billingHref && billingLabel ? (
+              <a
+                href={billingHref}
+                className="flex items-center gap-3 rounded-[14px] px-3 py-3 text-base text-slate-300 transition hover:bg-white/[0.04] hover:text-white"
+                onClick={() => setOpen(false)}
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+                  <path
+                    d="M4 7.5h16M6 16.5h4M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5v11a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5v-11Z"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.6"
+                  />
+                </svg>
+                <span>{billingLabel}</span>
+              </a>
+            ) : null}
+
             {groupHref ? (
               <div>
                 <a
