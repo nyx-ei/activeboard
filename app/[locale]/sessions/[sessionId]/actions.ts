@@ -11,6 +11,11 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { ANSWER_OPTIONS } from '@/lib/types/demo';
 import { withFeedback } from '@/lib/utils';
 
+function getGlobalDeadline(startedAt: string | null, timerSeconds: number) {
+  const startedAtMs = startedAt ? new Date(startedAt).getTime() : Date.now();
+  return new Date(startedAtMs + timerSeconds * 1000);
+}
+
 async function getCurrentAuthUser() {
   const supabase = createSupabaseServerClient();
   const {
@@ -33,7 +38,7 @@ export async function startSessionAction(formData: FormData) {
   const { data: session } = await supabase
     .schema('public')
     .from('sessions')
-    .select('id, group_id, started_at, leader_id, status')
+    .select('id, group_id, started_at, leader_id, status, timer_mode, timer_seconds')
     .eq('id', sessionId)
     .maybeSingle();
 
@@ -106,7 +111,7 @@ export async function launchQuestionAction(formData: FormData) {
   const { data: session } = await supabase
     .schema('public')
     .from('sessions')
-    .select('id, group_id, timer_seconds, leader_id, status')
+    .select('id, group_id, timer_seconds, timer_mode, started_at, leader_id, status')
     .eq('id', sessionId)
     .maybeSingle();
 
@@ -160,7 +165,14 @@ export async function launchQuestionAction(formData: FormData) {
     .maybeSingle();
 
   const launchedAt = new Date();
-  const answerDeadlineAt = new Date(launchedAt.getTime() + safeSession.timer_seconds * 1000);
+  const answerDeadlineAt =
+    safeSession.timer_mode === 'global'
+      ? getGlobalDeadline(safeSession.started_at, safeSession.timer_seconds)
+      : new Date(launchedAt.getTime() + safeSession.timer_seconds * 1000);
+
+  if (safeSession.timer_mode === 'global' && answerDeadlineAt.getTime() <= Date.now()) {
+    redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('actionFailed')));
+  }
 
   await supabase.schema('public').from('questions').insert({
     session_id: sessionId,
@@ -192,6 +204,7 @@ export async function launchQuestionAction(formData: FormData) {
     metadata: {
       order_index: (latestQuestion?.order_index ?? -1) + 1,
       timer_seconds: safeSession.timer_seconds,
+      timer_mode: safeSession.timer_mode,
       has_body: Boolean(questionBody),
     },
   });

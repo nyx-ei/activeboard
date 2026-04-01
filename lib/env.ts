@@ -4,11 +4,17 @@ type BrowserEnv = {
   supabaseAnonKey: string;
 };
 
+type SupabaseAdminEnv = {
+  supabaseUrl: string;
+  supabaseServiceRoleKey: string;
+};
+
 type StripeServerEnv = {
   stripeSecretKey: string;
   stripePublishableKey: string;
   stripeMonthlyPriceId: string | null;
   stripeYearlyPriceId: string | null;
+  stripeWebhookSecret: string | null;
 };
 
 function readOptionalEnv(value: string | undefined): string | undefined {
@@ -21,6 +27,10 @@ function getPublicSupabaseUrl() {
 
 function getPublicSupabaseAnonKey() {
   return readOptionalEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+}
+
+function getSupabaseServiceRoleKey() {
+  return readOptionalEnv(process.env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
 export function hasSupabaseEnv(): boolean {
@@ -47,8 +57,32 @@ function getStripeYearlyPriceId() {
   return readOptionalEnv(process.env.STRIPE_PRICE_ID_ACTIVEBOARD_YEARLY) ?? null;
 }
 
+function getStripeWebhookSecret() {
+  return readOptionalEnv(process.env.STRIPE_WEBHOOK_SECRET) ?? null;
+}
+
 export function hasStripeEnv(): boolean {
   return Boolean(getStripeSecretKey() && getStripePublishableKey());
+}
+
+export function hasStripeWebhookEnv(): boolean {
+  return Boolean(getStripeSecretKey() && getStripeWebhookSecret());
+}
+
+export function getSupabaseAdminEnv(): SupabaseAdminEnv {
+  const supabaseUrl = getPublicSupabaseUrl();
+  const supabaseServiceRoleKey = getSupabaseServiceRoleKey();
+
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    throw new Error(
+      'Missing Supabase admin configuration. Expected NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.',
+    );
+  }
+
+  return {
+    supabaseUrl,
+    supabaseServiceRoleKey,
+  };
 }
 
 export function getStripeServerEnv(): StripeServerEnv {
@@ -66,6 +100,7 @@ export function getStripeServerEnv(): StripeServerEnv {
     stripePublishableKey,
     stripeMonthlyPriceId: getStripeMonthlyPriceId(),
     stripeYearlyPriceId: getStripeYearlyPriceId(),
+    stripeWebhookSecret: getStripeWebhookSecret(),
   };
 }
 

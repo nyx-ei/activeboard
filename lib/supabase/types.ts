@@ -180,6 +180,36 @@ type GroupInvitesUpdate = {
   status?: 'pending' | 'accepted' | 'declined' | 'cancelled';
 };
 
+type GroupWeeklySchedulesRow = {
+  created_at: string;
+  end_time: string;
+  group_id: string;
+  id: string;
+  question_goal: number;
+  start_time: string;
+  weekday: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+};
+
+type GroupWeeklySchedulesInsert = {
+  created_at?: string;
+  end_time: string;
+  group_id: string;
+  id?: string;
+  question_goal?: number;
+  start_time: string;
+  weekday: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+};
+
+type GroupWeeklySchedulesUpdate = {
+  created_at?: string;
+  end_time?: string;
+  group_id?: string;
+  id?: string;
+  question_goal?: number;
+  start_time?: string;
+  weekday?: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+};
+
 type QuestionsRow = {
   answer_deadline_at: string | null;
   asked_by: string;
@@ -229,10 +259,12 @@ type SessionsRow = {
   id: string;
   leader_id: string | null;
   meeting_link: string | null;
+  name: string | null;
   scheduled_at: string;
   share_code: string;
   started_at: string | null;
   status: 'scheduled' | 'active' | 'completed' | 'cancelled';
+  timer_mode: 'per_question' | 'global';
   timer_seconds: number;
 };
 
@@ -243,10 +275,12 @@ type SessionsInsert = {
   id?: string;
   leader_id?: string | null;
   meeting_link?: string | null;
+  name?: string | null;
   scheduled_at: string;
   share_code?: string;
   started_at?: string | null;
   status?: 'scheduled' | 'active' | 'completed' | 'cancelled';
+  timer_mode?: 'per_question' | 'global';
   timer_seconds?: number;
 };
 
@@ -257,10 +291,12 @@ type SessionsUpdate = {
   id?: string;
   leader_id?: string | null;
   meeting_link?: string | null;
+  name?: string | null;
   scheduled_at?: string;
   share_code?: string;
   started_at?: string | null;
   status?: 'scheduled' | 'active' | 'completed' | 'cancelled';
+  timer_mode?: 'per_question' | 'global';
   timer_seconds?: number;
 };
 
@@ -376,6 +412,12 @@ export type Database = {
         Row: GroupInvitesRow;
         Insert: GroupInvitesInsert;
         Update: GroupInvitesUpdate;
+        Relationships: [];
+      };
+      group_weekly_schedules: {
+        Row: GroupWeeklySchedulesRow;
+        Insert: GroupWeeklySchedulesInsert;
+        Update: GroupWeeklySchedulesUpdate;
         Relationships: [];
       };
       questions: {

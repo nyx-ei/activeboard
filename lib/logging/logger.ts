@@ -1,5 +1,6 @@
 import type { AppLocale } from '@/i18n/routing';
 import { isFeatureEnabled, type FeatureFlagKey } from '@/lib/features/flags';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { Json } from '@/lib/supabase/types';
 
@@ -16,6 +17,7 @@ type LogAppEventInput = {
   sessionId?: string | null;
   metadata?: LogMetadata;
   flagKey?: FeatureFlagKey;
+  useAdmin?: boolean;
 };
 
 function sanitizeMetadata(metadata: LogMetadata | undefined): Json {
@@ -35,6 +37,7 @@ export async function logAppEvent({
   sessionId = null,
   metadata,
   flagKey = 'canUseUbiquitousLogging',
+  useAdmin = false,
 }: LogAppEventInput) {
   const isEnabled = await isFeatureEnabled(flagKey);
 
@@ -42,7 +45,7 @@ export async function logAppEvent({
     return;
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = useAdmin ? createSupabaseAdminClient() : createSupabaseServerClient();
   const { error } = await supabase.schema('public').from('app_logs').insert({
     event_name: eventName,
     level,
