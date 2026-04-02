@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
+import { AlertIcon, CalendarIcon, SparkIcon, TargetIcon, UsersIcon } from '@/components/ui/dashboard-icons';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
@@ -17,10 +18,6 @@ type DashboardPageProps = {
     view?: string;
   };
 };
-
-function SectionAccent() {
-  return <span className="inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-brand" aria-hidden="true" />;
-}
 
 export default async function DashboardPage({ params, searchParams }: DashboardPageProps) {
   const locale = params.locale as AppLocale;
@@ -88,7 +85,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
           <section className="space-y-5">
             <article className="surface p-5">
               <div className="flex items-center gap-3">
-                <SectionAccent />
+                <CalendarIcon />
                 <div className="w-full">
                   <p className="text-[1.2rem] font-bold text-white">{t('groupScheduleTitle')}</p>
                   <div className="mt-4">
@@ -117,7 +114,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
 
             <article className="surface p-5">
               <div className="flex items-center gap-3">
-                <SectionAccent />
+                <TargetIcon />
                 <p className="text-[1.2rem] font-bold text-white">{t('groupProgressTitle')}</p>
               </div>
               <p className="mt-5 text-5xl font-extrabold tracking-tight text-white">
@@ -145,7 +142,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
 
             <article className="surface p-5">
               <div className="flex items-center gap-3">
-                <SectionAccent />
+                <UsersIcon />
                 <p className="text-[1.2rem] font-bold text-white">{t('memberPerformanceTitle')}</p>
               </div>
 
@@ -185,7 +182,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
             <div className="grid gap-4 md:grid-cols-3">
               <article className="surface p-5">
                 <div className="flex items-center gap-2">
-                  <SectionAccent />
+                  <SparkIcon />
                   <p className="text-sm font-semibold text-white">{t('activityTitle')}</p>
                 </div>
                 <p className="mt-4 text-4xl font-extrabold tracking-tight text-white">{data.metrics.answeredCount}</p>
@@ -197,7 +194,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
 
               <article className="surface p-5">
                 <div className="flex items-center gap-2">
-                  <SectionAccent />
+                  <TargetIcon />
                   <p className="text-sm font-semibold text-white">{t('certaintyTitle')}</p>
                 </div>
                 {data.metrics.successRate !== null ? (
@@ -219,7 +216,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
 
               <article className="surface p-5">
                 <div className="flex items-center gap-2">
-                  <SectionAccent />
+                  <AlertIcon />
                   <p className="text-sm font-semibold text-white">{t('errorTitle')}</p>
                 </div>
                 {data.metrics.errorRate !== null ? (

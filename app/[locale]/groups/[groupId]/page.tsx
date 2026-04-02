@@ -7,6 +7,7 @@ import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
 import { getGroupData } from '@/lib/demo/data';
+import { GroupNameForm, InviteMemberForm } from './group-settings-forms';
 
 import {
   addWeeklyScheduleAction,
@@ -81,25 +82,16 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
 
           <div className="mt-8 space-y-6">
             <div className="surface-soft p-5">
-              <form action={updateGroupNameAction}>
-                <input type="hidden" name="locale" value={locale} />
-                <input type="hidden" name="groupId" value={params.groupId} />
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-slate-300">{t('groupName')}</span>
-                  <div className="flex items-center gap-3">
-                    <input
-                      name="groupName"
-                      defaultValue={group.name}
-                      placeholder={t('groupNamePlaceholder')}
-                      autoComplete="off"
-                      className="field"
-                    />
-                    <SubmitButton pendingLabel={t('saveNamePending')} className="button-primary min-w-[52px] px-4">
-                      {t('saveShort')}
-                    </SubmitButton>
-                  </div>
-                </label>
-              </form>
+              <GroupNameForm
+                action={updateGroupNameAction}
+                locale={locale}
+                groupId={params.groupId}
+                initialName={group.name}
+                label={t('groupName')}
+                placeholder={t('groupNamePlaceholder')}
+                pendingLabel={t('saveNamePending')}
+                submitLabel={t('saveShort')}
+              />
             </div>
 
             <div className="surface-soft p-5">
@@ -181,7 +173,10 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
                                 <input type="hidden" name="locale" value={locale} />
                                 <input type="hidden" name="groupId" value={params.groupId} />
                                 <input type="hidden" name="scheduleId" value={schedule.id} />
-                                <button type="submit" className="button-ghost px-2 py-2 text-slate-500 hover:text-white">
+                                <SubmitButton
+                                  pendingLabel=""
+                                  className="button-ghost px-2 py-2 text-slate-500 hover:text-white"
+                                >
                                   <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
                                     <path
                                       d="M9 4.5h6M5.5 7.5h13M9 10.5v6M15 10.5v6M7.5 7.5l.6 10a2 2 0 0 0 2 1.8h3.8a2 2 0 0 0 2-1.8l.6-10"
@@ -192,7 +187,7 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
                                       strokeWidth="1.8"
                                     />
                                   </svg>
-                                </button>
+                                </SubmitButton>
                               </form>
                             ) : null}
                           </div>
@@ -211,26 +206,16 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
 
             {data.membership.role === 'admin' ? (
               <div className="surface-soft p-5">
-                <h2 className="text-xl font-bold text-white">{t('inviteMember')}</h2>
-                <form action={inviteMemberAction} className="mt-4 space-y-3">
-                  <input type="hidden" name="locale" value={locale} />
-                  <input type="hidden" name="groupId" value={params.groupId} />
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-medium text-slate-300">{t('email')}</span>
-                    <div className="flex items-center gap-3">
-                      <input
-                        name="email"
-                        type="email"
-                        placeholder={t('emailPlaceholder')}
-                        autoComplete="email"
-                        className="field"
-                      />
-                      <SubmitButton pendingLabel={t('sendInvitePending')} className="button-primary min-w-[70px]">
-                        {t('sendInviteShort')}
-                      </SubmitButton>
-                    </div>
-                  </label>
-                </form>
+                <InviteMemberForm
+                  action={inviteMemberAction}
+                  locale={locale}
+                  groupId={params.groupId}
+                  label={t('inviteMember')}
+                  emailLabel={t('email')}
+                  emailPlaceholder={t('emailPlaceholder')}
+                  pendingLabel={t('sendInvitePending')}
+                  submitLabel={t('sendInviteShort')}
+                />
               </div>
             ) : null}
 

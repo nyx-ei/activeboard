@@ -1,17 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-labelledby="title desc">
-  <title id="title">ActiveBoard Icon</title>
-  <desc id="desc">Teal rounded-square icon with an A in the center.</desc>
-  <defs>
-    <linearGradient id="bg" x1="0%" x2="100%" y1="0%" y2="100%">
-      <stop offset="0%" stop-color="#14b8a6" />
-      <stop offset="100%" stop-color="#0f766e" />
-    </linearGradient>
-  </defs>
-  <rect width="192" height="192" rx="48" fill="url(#bg)" />
-  <circle cx="96" cy="96" r="58" fill="#ecfeff" opacity="0.18" />
-  <path
-    d="M96 42 136 142H116l-8-21H84l-8 21H56L96 42Zm5 63-11-29-11 29h22Z"
+  <title id="title">ActiveBoard Favicon</title>
+  <desc id="desc">Purple rounded-square icon with the letters AB.</desc>
+  <rect width="192" height="192" rx="44" fill="#8b5cf6" />
+  <text
+    x="96"
+    y="114"
+    text-anchor="middle"
     fill="#ffffff"
-  />
+    font-family="Inter, Manrope, Arial, sans-serif"
+    font-size="72"
+    font-weight="800"
+    letter-spacing="-4"
+  >
+    AB
+  </text>
 </svg>
 

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
+import { SubmitButton } from '@/components/ui/submit-button';
 import type { AppLocale } from '@/i18n/routing';
 import { getCurrentUser } from '@/lib/auth';
 
@@ -39,9 +40,9 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
             placeholder={t('sessionCodePlaceholder')}
             className="field flex-1 px-6 py-4 text-center text-base uppercase tracking-[0.18em]"
           />
-          <button type="submit" className="button-primary min-w-[164px]">
+          <SubmitButton pendingLabel={t('joinPending')} className="button-primary min-w-[164px]">
             {t('joinSession')}
-          </button>
+          </SubmitButton>
         </form>
       </section>
     </main>
