@@ -19,7 +19,11 @@ export const metadata: Metadata = {
   applicationName: 'ActiveBoard',
   manifest: '/manifest.webmanifest',
   icons: {
-    icon: '/icons/icon-192.svg',
+    icon: [
+      { url: '/icons/icon-192.svg', type: 'image/svg+xml' },
+      { url: '/icons/icon-512.svg', type: 'image/svg+xml' },
+    ],
+    shortcut: '/icons/icon-192.svg',
     apple: '/icons/icon-192.svg',
   },
   appleWebApp: {

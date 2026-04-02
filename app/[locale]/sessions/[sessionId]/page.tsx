@@ -54,9 +54,19 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
   const canStartSession = data.members.length >= 3;
   const questionCount = data.questions.length;
   const timeRemaining =
-    data.currentQuestion?.answer_deadline_at && data.currentQuestion.phase === 'answering'
-      ? Math.max(0, Math.floor((new Date(data.currentQuestion.answer_deadline_at).getTime() - Date.now()) / 1000))
-      : 0;
+    data.session.timer_mode === 'global'
+      ? data.session.started_at
+        ? Math.max(
+            0,
+            Math.floor(
+              (new Date(data.session.started_at).getTime() + data.session.timer_seconds * 1000 - Date.now()) / 1000,
+            ),
+          )
+        : data.session.timer_seconds
+      : data.currentQuestion?.answer_deadline_at && data.currentQuestion.phase === 'answering'
+        ? Math.max(0, Math.floor((new Date(data.currentQuestion.answer_deadline_at).getTime() - Date.now()) / 1000))
+        : 0;
+  const timerModeLabel = data.session.timer_mode === 'global' ? t('globalShort') : t('perQuestionShort');
 
   if (data.session.status === 'scheduled') {
     return (
@@ -68,9 +78,9 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
             <div className="flex h-24 w-24 items-center justify-center rounded-full bg-brand/10">
               <div className="ml-1 h-0 w-0 border-y-[16px] border-y-transparent border-l-[24px] border-l-brand" />
             </div>
-            <h1 className="mt-8 text-5xl font-extrabold tracking-tight text-white">{data.group.name}</h1>
+            <h1 className="mt-8 text-5xl font-extrabold tracking-tight text-white">{data.session.name ?? data.group.name}</h1>
             <p className="mt-4 text-2xl text-slate-300">
-              {questionCount} {t('questionsUnit')} | {data.session.timer_seconds}s {t('perQuestionShort')}
+              {questionCount} {t('questionsUnit')} | {data.session.timer_seconds}s {timerModeLabel}
             </p>
             <p className="mt-3 text-lg text-slate-500">{t('shareCodeLabel', { code: data.session.share_code })}</p>
 
@@ -127,7 +137,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
                   <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
                     <path d="M15 6l-6 6l6 6" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
                   </svg>
-                  {data.group.name}
+                  {data.session.name ?? data.group.name}
                 </Link>
                 <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-white">{t('title')}</h1>
                 <p className="mt-3 text-sm leading-7 text-slate-400">
@@ -142,7 +152,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
                 </p>
                 <p className="text-xl font-bold text-white">{data.session.timer_seconds}s</p>
                 <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                  {t('shareCodeLabel', { code: data.session.share_code })}
+                  {timerModeLabel} | {t('shareCodeLabel', { code: data.session.share_code })}
                 </p>
               </div>
             </div>
@@ -368,7 +378,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
           </section>
 
           <section className="surface p-6 sm:p-8">
-            <h2 className="text-xl font-bold text-white">{data.group.name}</h2>
+            <h2 className="text-xl font-bold text-white">{data.session.name ?? data.group.name}</h2>
             <div className="mt-4 space-y-3">
               {data.members.map((member) => (
                 <div key={member.user_id} className="rounded-[18px] bg-white/[0.04] px-4 py-4">

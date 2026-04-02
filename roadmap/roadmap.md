@@ -54,6 +54,12 @@ The roadmap is organized into 6 delivery phases:
   - group, session, and summary pages visually refactored
   - profile menu moved into the header
   - bilingual UX polish improved across the app
+- Final UI polish delivered on top of `#50`:
+  - dashboard segmented views (`Individual` / `Group`) aligned with the final Replit direction
+  - group dashboard cards now surface real schedule, weekly progress, and member performance states
+  - group settings now include weekly schedule management with add/delete flows
+  - billing UI refined for card association and subscription management
+  - timer mode selector now supports both `per_question` and `global` session modes
 
 ---
 
@@ -111,7 +117,7 @@ ActiveBoard distinguishes three user states, derived from credit card and subscr
 ### Stripe & Subscription
 - [#55: Stripe - credit card association (visitor -> certified)](https://github.com/nyx-ei/activeboard/issues/55) - Implemented
 - [#56: Stripe - subscription checkout & plan management](https://github.com/nyx-ei/activeboard/issues/56) - Implemented
-- [#57: Stripe webhooks - sync subscription events to user tier](https://github.com/nyx-ei/activeboard/issues/57) - Not started
+- [#57: Stripe webhooks - sync subscription events to user tier](https://github.com/nyx-ei/activeboard/issues/57) - Implemented
 
 ### Access Gating
 - [#58: Access gating - server actions, UI conditionals, and DB enforcement](https://github.com/nyx-ei/activeboard/issues/58) - Not started
@@ -122,7 +128,7 @@ ActiveBoard distinguishes three user states, derived from credit card and subscr
 - `#54` is a user-agnostic deployment safety mechanism: flags gate code paths globally and are independent of user tier logic.
 - `#55` covers the card-on-file Stripe flow only (no subscription): the outcome is a stored payment method and a tier upgrade to `certified_inactive`.
 - `#56` covers subscription checkout, plan display, success return sync, and customer-portal based plan management.
-- `#57` handles inbound Stripe webhook events and keeps `user_tier` in sync.
+- `#57` handles inbound Stripe webhook events and keeps `user_tier` in sync for subscription lifecycle changes and payment failures.
 - `#58` enforces limits at server-action level, UI level, and DB level.
 
 ---
@@ -154,12 +160,12 @@ ActiveBoard distinguishes three user states, derived from credit card and subscr
 ## Statistics
 
 - Total issues tracked in this roadmap: 35
-- Fully implemented: 12 issues (`#18` to `#23`, `#50`, `#53`, `#54`, `#55`, `#56`, `#59`)
+- Fully implemented: 13 issues (`#18` to `#23`, `#50`, `#53`, `#54`, `#55`, `#56`, `#57`, `#59`)
 - Partially implemented: 3 issues (`#27`, `#41`, `#42`)
-- Work started overall: 15 issues
-- Not started: 20 issues
-- Current focus: ship Stripe webhook sync (`#57`) next, then access gating (`#58`)
-- Last updated: March 31, 2026
+- Work started overall: 16 issues
+- Not started: 19 issues
+- Current focus: ship access gating (`#58`) next
+- Last updated: April 1, 2026
 
 ---
 

@@ -17,6 +17,11 @@ export const APP_EVENTS = {
   subscriptionCheckoutStarted: 'subscription_checkout_started',
   subscriptionCheckoutCompleted: 'subscription_checkout_completed',
   billingPortalOpened: 'billing_portal_opened',
+  stripeWebhookReceived: 'stripe_webhook_received',
+  stripeWebhookSynced: 'stripe_webhook_synced',
+  stripeWebhookIgnored: 'stripe_webhook_ignored',
+  stripeWebhookSyncFailed: 'stripe_webhook_sync_failed',
+  stripeInvoicePaymentFailed: 'stripe_invoice_payment_failed',
   leaderPassed: 'leader_passed',
 } as const;
 

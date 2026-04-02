@@ -10,6 +10,20 @@ import { cn } from '@/lib/utils';
 
 type Mode = 'sign-in' | 'sign-up';
 
+function PendingInlineLabel({ pending, label, pendingLabel }: { pending: boolean; label: string; pendingLabel: string }) {
+  return (
+    <span className="relative inline-flex items-center justify-center">
+      <span className={cn('inline-flex items-center justify-center transition', pending && 'text-transparent')}>{label}</span>
+      {pending ? (
+        <span className="absolute inset-0 inline-flex items-center justify-center gap-2">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true" />
+          <span>{pendingLabel}</span>
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 export function AuthForm() {
   const t = useTranslations('Auth');
   const locale = useLocale() as AppLocale;
@@ -186,7 +200,11 @@ export function AuthForm() {
           className="button-primary w-full"
           disabled={isPending}
         >
-          {isPending ? (mode === 'sign-in' ? t('signInPending') : t('signUpPending')) : mode === 'sign-in' ? t('signIn') : t('signUp')}
+          <PendingInlineLabel
+            pending={isPending}
+            label={mode === 'sign-in' ? t('signIn') : t('signUp')}
+            pendingLabel={mode === 'sign-in' ? t('signInPending') : t('signUpPending')}
+          />
         </button>
         <button
           type="button"
@@ -194,7 +212,7 @@ export function AuthForm() {
           className="button-secondary w-full"
           disabled={isPending}
         >
-          {isPending ? t('magicLinkPending') : t('magicLink')}
+          <PendingInlineLabel pending={isPending} label={t('magicLink')} pendingLabel={t('magicLinkPending')} />
         </button>
         <button
           type="button"
@@ -202,7 +220,7 @@ export function AuthForm() {
           className="w-full rounded-[16px] border border-white/10 bg-[#0f1530] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#131a39]"
           disabled={isPending}
         >
-          {isPending ? t('googlePending') : t('google')}
+          <PendingInlineLabel pending={isPending} label={t('google')} pendingLabel={t('googlePending')} />
         </button>
       </div>
 

@@ -74,10 +74,15 @@ export default async function LocaleLayout({
         <div className="mx-auto flex min-h-[calc(100vh-2.5rem)] max-w-[1240px] flex-col gap-8">
           <header className="flex items-center justify-between gap-4 border-b border-white/8 pb-4 pt-1">
             <Link href="/" className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-base font-extrabold text-slate-950">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-base font-extrabold text-white">
                 AB
               </div>
-              <p className="text-2xl font-extrabold tracking-tight text-white">{t('appName')}</p>
+              <div className="flex items-center gap-3">
+                <p className="text-2xl font-extrabold tracking-tight text-white">{t('appName')}</p>
+                <span className="rounded-full border border-brand/20 bg-brand/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand">
+                  PRE-QUAL
+                </span>
+              </div>
             </Link>
 
             <div className="flex items-center gap-3">
