@@ -4,9 +4,12 @@ import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import type { Database } from '@/lib/supabase/types';
-import { createStripeServerClient } from '@/lib/stripe/server';
 
 type BillingSubscriptionStatus = Database['public']['Tables']['users']['Row']['subscription_status'];
+type UserBillingTarget = Pick<
+  Database['public']['Tables']['users']['Row'],
+  'id' | 'stripe_default_payment_method_id'
+>;
 
 function mapStripeSubscriptionStatus(status: Stripe.Subscription.Status): BillingSubscriptionStatus {
   switch (status) {
@@ -31,7 +34,7 @@ function mapStripeSubscriptionStatus(status: Stripe.Subscription.Status): Billin
   }
 }
 
-async function resolveDefaultPaymentMethodId(subscription: Stripe.Subscription): Promise<string | null> {
+function extractSubscriptionDefaultPaymentMethodId(subscription: Stripe.Subscription): string | null {
   const defaultPaymentMethod = subscription.default_payment_method;
 
   if (typeof defaultPaymentMethod === 'string') {
@@ -42,23 +45,38 @@ async function resolveDefaultPaymentMethodId(subscription: Stripe.Subscription):
     return defaultPaymentMethod.id;
   }
 
+  return null;
+}
+
+function extractStripeCustomerId(resource: { customer: string | Stripe.Customer | Stripe.DeletedCustomer | null }) {
+  if (resource.customer && typeof resource.customer !== 'string' && 'deleted' in resource.customer && resource.customer.deleted) {
+    throw new Error('Unexpected deleted Stripe customer in webhook payload.');
+  }
+
   const customerId =
-    typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id ?? null;
+    typeof resource.customer === 'string' ? resource.customer : resource.customer?.id ?? null;
 
   if (!customerId) {
-    return null;
+    throw new Error('Missing Stripe customer id on webhook payload.');
   }
 
-  const stripe = createStripeServerClient();
-  const customer = await stripe.customers.retrieve(customerId);
-  const customerDefaultPaymentMethod =
-    customer.deleted === true ? null : customer.invoice_settings.default_payment_method;
+  return customerId;
+}
 
-  if (typeof customerDefaultPaymentMethod === 'string') {
-    return customerDefaultPaymentMethod;
+async function requireUserBillingTargetByCustomerId(customerId: string): Promise<UserBillingTarget> {
+  const supabaseAdmin = createSupabaseAdminClient();
+  const { data: user, error } = await supabaseAdmin
+    .schema('public')
+    .from('users')
+    .select('id, stripe_default_payment_method_id')
+    .eq('stripe_customer_id', customerId)
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to resolve user for Stripe customer ${customerId}: ${error.message}`);
   }
 
-  return customerDefaultPaymentMethod?.id ?? null;
+  return user;
 }
 
 export async function syncUserBillingFromStripeSubscription({
@@ -68,49 +86,13 @@ export async function syncUserBillingFromStripeSubscription({
   subscription: Stripe.Subscription;
   eventName: string;
 }) {
-  const customerId =
-    typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id ?? null;
-
-  if (!customerId) {
-    await logAppEvent({
-      eventName: APP_EVENTS.stripeWebhookIgnored,
-      level: 'warn',
-      metadata: {
-        reason: 'missing_customer_id',
-        stripe_event_name: eventName,
-        subscription_id: subscription.id,
-      },
-      useAdmin: true,
-    });
-    return;
-  }
-
+  const customerId = extractStripeCustomerId(subscription);
+  const user = await requireUserBillingTargetByCustomerId(customerId);
   const supabaseAdmin = createSupabaseAdminClient();
-  const { data: user, error: userLookupError } = await supabaseAdmin
-    .schema('public')
-    .from('users')
-    .select('id, stripe_customer_id')
-    .eq('stripe_customer_id', customerId)
-    .maybeSingle();
-
-  if (userLookupError || !user) {
-    await logAppEvent({
-      eventName: APP_EVENTS.stripeWebhookIgnored,
-      level: 'warn',
-      metadata: {
-        reason: userLookupError ? 'user_lookup_failed' : 'user_not_found_for_customer',
-        stripe_event_name: eventName,
-        stripe_customer_id: customerId,
-        subscription_id: subscription.id,
-        error_message: userLookupError?.message,
-      },
-      useAdmin: true,
-    });
-    return;
-  }
 
   const currentPeriodEnd = subscription.items.data[0]?.current_period_end ?? null;
-  const paymentMethodId = await resolveDefaultPaymentMethodId(subscription);
+  const paymentMethodId =
+    extractSubscriptionDefaultPaymentMethodId(subscription) ?? user.stripe_default_payment_method_id;
 
   const { error: updateError } = await supabaseAdmin
     .schema('public')
@@ -149,46 +131,9 @@ export async function syncUserBillingFromInvoiceFailure({
   invoice: Stripe.Invoice;
   eventName: string;
 }) {
-  const customerId =
-    typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id ?? null;
-
-  if (!customerId) {
-    await logAppEvent({
-      eventName: APP_EVENTS.stripeWebhookIgnored,
-      level: 'warn',
-      metadata: {
-        reason: 'missing_customer_id',
-        stripe_event_name: eventName,
-        invoice_id: invoice.id,
-      },
-      useAdmin: true,
-    });
-    return;
-  }
-
+  const customerId = extractStripeCustomerId(invoice);
+  const user = await requireUserBillingTargetByCustomerId(customerId);
   const supabaseAdmin = createSupabaseAdminClient();
-  const { data: user, error: userLookupError } = await supabaseAdmin
-    .schema('public')
-    .from('users')
-    .select('id')
-    .eq('stripe_customer_id', customerId)
-    .maybeSingle();
-
-  if (userLookupError || !user) {
-    await logAppEvent({
-      eventName: APP_EVENTS.stripeWebhookIgnored,
-      level: 'warn',
-      metadata: {
-        reason: userLookupError ? 'user_lookup_failed' : 'user_not_found_for_customer',
-        stripe_event_name: eventName,
-        stripe_customer_id: customerId,
-        invoice_id: invoice.id,
-        error_message: userLookupError?.message,
-      },
-      useAdmin: true,
-    });
-    return;
-  }
 
   const { error: updateError } = await supabaseAdmin
     .schema('public')

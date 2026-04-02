@@ -29,7 +29,6 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
   const user = await requireUser(locale);
   const t = await getTranslations('Group');
   const data = await getGroupData(params.groupId, user);
-  const groupNameLabel = locale === 'fr' ? 'Nom du groupe' : 'Group name';
 
   if (!data?.group) {
     notFound();
@@ -86,7 +85,7 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
                 <input type="hidden" name="locale" value={locale} />
                 <input type="hidden" name="groupId" value={params.groupId} />
                 <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-slate-300">{groupNameLabel}</span>
+                  <span className="mb-2 block text-sm font-medium text-slate-300">{t('groupName')}</span>
                   <div className="flex items-center gap-3">
                     <input
                       name="groupName"

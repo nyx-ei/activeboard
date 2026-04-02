@@ -18,74 +18,8 @@ type DashboardPageProps = {
   };
 };
 
-function IconSpark() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 text-brand" aria-hidden="true">
-      <path
-        d="M13.2 2.7L6.8 12h4.1L10.8 21.3L17.2 12h-4.1l.1-9.3Z"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function IconTarget() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 text-brand" aria-hidden="true">
-      <circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" strokeWidth="1.8" />
-      <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="1.8" />
-    </svg>
-  );
-}
-
-function IconAlert() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 text-brand" aria-hidden="true">
-      <path
-        d="M12 4.5L20 18.5H4L12 4.5Z"
-        fill="none"
-        stroke="currentColor"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-      <path d="M12 9v4.5" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
-      <circle cx="12" cy="16.5" r="1" fill="currentColor" />
-    </svg>
-  );
-}
-
-function IconCalendar() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 text-brand" aria-hidden="true">
-      <path
-        d="M7 3.5v3M17 3.5v3M4.5 8.5h15M6.5 5.5h11a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-10a2 2 0 0 1 2-2Z"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function IconUsers() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 text-brand" aria-hidden="true">
-      <path
-        d="M15.5 18.5v-1a3.5 3.5 0 0 0-3.5-3.5h-3a3.5 3.5 0 0 0-3.5 3.5v1M10.5 10.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM18 11a2.5 2.5 0 1 0-1.5-4.5M20 18.5v-.6a3 3 0 0 0-2.2-2.9"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
+function SectionAccent() {
+  return <span className="inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-brand" aria-hidden="true" />;
 }
 
 export default async function DashboardPage({ params, searchParams }: DashboardPageProps) {
@@ -154,7 +88,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
           <section className="space-y-5">
             <article className="surface p-5">
               <div className="flex items-center gap-3">
-                <IconCalendar />
+                <SectionAccent />
                 <div className="w-full">
                   <p className="text-[1.2rem] font-bold text-white">{t('groupScheduleTitle')}</p>
                   <div className="mt-4">
@@ -183,7 +117,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
 
             <article className="surface p-5">
               <div className="flex items-center gap-3">
-                <IconTarget />
+                <SectionAccent />
                 <p className="text-[1.2rem] font-bold text-white">{t('groupProgressTitle')}</p>
               </div>
               <p className="mt-5 text-5xl font-extrabold tracking-tight text-white">
@@ -211,7 +145,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
 
             <article className="surface p-5">
               <div className="flex items-center gap-3">
-                <IconUsers />
+                <SectionAccent />
                 <p className="text-[1.2rem] font-bold text-white">{t('memberPerformanceTitle')}</p>
               </div>
 
@@ -251,7 +185,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
             <div className="grid gap-4 md:grid-cols-3">
               <article className="surface p-5">
                 <div className="flex items-center gap-2">
-                  <IconSpark />
+                  <SectionAccent />
                   <p className="text-sm font-semibold text-white">{t('activityTitle')}</p>
                 </div>
                 <p className="mt-4 text-4xl font-extrabold tracking-tight text-white">{data.metrics.answeredCount}</p>
@@ -263,7 +197,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
 
               <article className="surface p-5">
                 <div className="flex items-center gap-2">
-                  <IconTarget />
+                  <SectionAccent />
                   <p className="text-sm font-semibold text-white">{t('certaintyTitle')}</p>
                 </div>
                 {data.metrics.successRate !== null ? (
@@ -285,7 +219,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
 
               <article className="surface p-5">
                 <div className="flex items-center gap-2">
-                  <IconAlert />
+                  <SectionAccent />
                   <p className="text-sm font-semibold text-white">{t('errorTitle')}</p>
                 </div>
                 {data.metrics.errorRate !== null ? (
