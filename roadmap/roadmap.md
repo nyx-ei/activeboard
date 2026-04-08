@@ -227,10 +227,10 @@ The following shipped issues conflict with v8 and need partial or full rework be
 
 The following v8 protocol elements are not yet implemented and need dedicated work:
 
-- `NEW` **Phase 3 — QuestionClassification entity**: Captain classifies each question via Physician activity + Dimension of care dropdowns. Shared with all members. Defines the exam blueprint entry. — Not started (needs new issue)
-- `NEW` **Phase 3 — PersonalReflection entity**: Each participant selects error type from dropdown (if incorrect) and writes a private note. Invisible to all others including captain. — Not started (needs new issue)
-- `NEW` **Confidence enum migration**: Change confidence from 1–5 scale to Low / Medium / High enum. — Not started (needs new issue)
-- `NEW` **Group size minimum**: Update group validation from 3-member minimum to 2-member minimum per v8. — Not started (needs new issue)
+- [#69: QuestionClassification entity — captain Phase 3 classification](https://github.com/nyx-ei/activeboard/issues/69) — Not started
+- [#70: PersonalReflection entity — private Phase 3 error type & notes](https://github.com/nyx-ei/activeboard/issues/70) — Not started
+- [#66: Confidence enum migration (integer 1–5 → low/medium/high)](https://github.com/nyx-ei/activeboard/issues/66) — Not started (v8 rework milestone)
+- [#68: Group qualifying size minimum from 3 to 2 members](https://github.com/nyx-ei/activeboard/issues/68) — Not started (v8 rework milestone)
 
 ### Delivery Notes
 
@@ -249,8 +249,7 @@ Group creation, 6-char invite codes, email invites, invite accept/decline, and m
 
 ### v8 Alignment Gaps
 
-- `NEW` **Founder as group attribute**: Ensure `is_founder` is a bool on `GroupMember`, not a user-level role. The Founder attribute carries no extra permissions — informational flag only. — Needs verification
-- `NEW` **Member-only model**: Remove any UI or logic that distinguishes "Founder" as a user type. All members have identical capabilities. — Needs verification
+- [#67: Replace group member role with is_founder boolean](https://github.com/nyx-ei/activeboard/issues/67) — Not started (v8 rework milestone)
 
 No dedicated GitHub issues were tracked for this work — it was delivered as part of the core session and frontend refactor efforts.
 
@@ -262,8 +261,8 @@ No dedicated GitHub issues were tracked for this work — it was delivered as pa
 - `meeting_link` field on sessions — Implemented
 - Weekly recurring schedules (group-level) — Implemented
 - [#17: Session reminders via email](https://github.com/nyx-ei/activeboard/issues/17) — Not started
-- `NEW` Calendar invite generation via Resend (meeting link + session URL) — Not started (needs new issue)
-- `NEW` UserSchedule entity: personal availability grid (day × hour bitmask per user, timezone). Collected at onboarding for future compatibility matching. — Not started (needs new issue)
+- [#71: Calendar invite generation via Resend](https://github.com/nyx-ei/activeboard/issues/71) — Not started
+- [#72: UserSchedule entity — personal availability grid for matching](https://github.com/nyx-ei/activeboard/issues/72) — Not started
 
 ---
 
@@ -274,10 +273,9 @@ No dedicated GitHub issues were tracked for this work — it was delivered as pa
 - [#26: Confidence calibration chart](https://github.com/nyx-ei/activeboard/issues/26) — Not started (data model: confidence is Low/Medium/High vs actual correctness)
 - [#27: Profile statistics summary](https://github.com/nyx-ei/activeboard/issues/27) — Partially implemented
 - [#28: Trend lines (improvement over time)](https://github.com/nyx-ei/activeboard/issues/28) — Not started
-- `NEW` 100-question progress counter: "47 / 100 — unlock partner discovery at 100" — Not started (needs new issue)
-- `NEW` 85-question warning banner: "N questions remaining — subscribe to unlock partner discovery" + associated email nudge via Resend — Not started (needs new issue)
-- `NEW` Accuracy by Physician activity × Dimension of care grid (exam blueprint built from QuestionClassification data) — Not started (needs new issue)
-- `NEW` Most frequent error types display (from PersonalReflection data) — Not started (needs new issue)
+- [#73: 100-question progress counter & 85-question warning banner](https://github.com/nyx-ei/activeboard/issues/73) — Not started
+- [#74: Accuracy by Physician activity × Dimension of care grid](https://github.com/nyx-ei/activeboard/issues/74) — Not started
+- [#75: Most frequent error types display](https://github.com/nyx-ei/activeboard/issues/75) — Not started
 
 ---
 
@@ -299,10 +297,10 @@ No dedicated GitHub issues were tracked for this work — it was delivered as pa
 
 ### v8 Rework Items (prerequisite for #58)
 
-- `REWORK` **#53 — Four-state tier model**: Rewrite DB schema, trigger, and TypeScript to use trial/locked/active/dormant. Add `questions_answered` counter to Users table. — Needs new issue
-- `REWORK` **#53 + #55 — Remove visitor capability restrictions**: Trial users get full access from question 1. Restrictions only at locked/dormant. — Needs new issue
-- `NEW` **Dormant state**: Users whose subscription expires become Dormant — profile, heatmap, and group memberships preserved for return. — Needs new issue
-- `NEW` **Hard block at 100**: Absolute lockout at question 100 without subscription. No grace period. — Part of #58
+- [#64: Rework — Four-state user tier model (trial/locked/active/dormant)](https://github.com/nyx-ei/activeboard/issues/64) — Not started (v8 rework milestone, **blocks #58**)
+- [#65: Rework — Remove visitor capability restrictions](https://github.com/nyx-ei/activeboard/issues/65) — Not started (v8 rework milestone, **blocks #58**)
+- Dormant state handling — covered by #64 (tier model includes dormant)
+- Hard block at 100 — covered by #58 (depends on #64)
 
 ### Delivery Notes
 Original sequencing was `#53 → #54 → #55 → #56 → #57 → #58`. Issues #53–#57 are implemented, but #53, #55, and #57 need rework to align with the v8 four-state model before #58 can proceed. The rework is additive — Stripe plumbing is preserved, only the tier derivation logic changes.
@@ -311,8 +309,8 @@ Original sequencing was `#53 → #54 → #55 → #56 → #57 → #58`. Issues #5
 
 ## Milestone 6: Closed Beta & UX Iteration — NOT STARTED
 
-- `NEW` Closed beta with 2–3 existing WhatsApp study groups — Not started (needs new issue)
-- `NEW` UX iteration pass based on beta feedback — Not started (needs new issue)
+- [#79: Closed beta with 2–3 WhatsApp study groups](https://github.com/nyx-ei/activeboard/issues/79) — Not started
+- [#80: UX iteration pass based on beta feedback](https://github.com/nyx-ei/activeboard/issues/80) — Not started
 
 Key metrics to track during beta: questions-per-session, return rate, mobile vs. desktop split, session completion rate, 85→100-question funnel (warning to payment).
 
@@ -323,9 +321,9 @@ Key metrics to track during beta: questions-per-session, return rate, mobile vs.
 - [#29: Public activity card](https://github.com/nyx-ei/activeboard/issues/29) — Not started
 - [#30: Partner search/browse](https://github.com/nyx-ei/activeboard/issues/30) — Not started
 - [#31: Send group invite from discovery](https://github.com/nyx-ei/activeboard/issues/31) — Not started
-- `NEW` Compatibility matching: target exam (hard filter), study language (hard filter), schedule overlap (soft signal), commitment level (soft signal) — Not started (needs new issue)
-- `NEW` Live session linelist: Incomplete groups (status = incomplete) with sessions today and seats_available > 0. Active members can spot an active session and join within minutes. Highest-urgency hook. — Not started (needs new issue)
-- `NEW` Public profile visibility: heatmap, accuracy trends, exam track, session frequency become visible to other Active members at 100 questions + subscription — Not started (needs new issue)
+- [#76: Compatibility matching for Lookup Layer](https://github.com/nyx-ei/activeboard/issues/76) — Not started
+- [#77: Live session linelist — Incomplete groups with open seats today](https://github.com/nyx-ei/activeboard/issues/77) — Not started
+- [#78: Public profile visibility at 100 questions + subscription](https://github.com/nyx-ei/activeboard/issues/78) — Not started
 
 Domain gap matching (complementary profiles) is deferred to v2.
 
@@ -348,7 +346,7 @@ The phone is the intended primary ActiveBoard device (BYOM two-device pattern: l
 - [#41: Mobile-optimized session UI](https://github.com/nyx-ei/activeboard/issues/41) — Partially implemented
 - [#42: Offline resilience](https://github.com/nyx-ei/activeboard/issues/42) — Partially implemented
 - [#40: PWA install prompt (smart timing)](https://github.com/nyx-ei/activeboard/issues/40) — Not started
-- `NEW` Monitor PWA install funnel & adoption rates — Not started (needs new issue)
+- [#81: Monitor PWA install funnel & adoption rates](https://github.com/nyx-ei/activeboard/issues/81) — Not started
 
 ---
 
