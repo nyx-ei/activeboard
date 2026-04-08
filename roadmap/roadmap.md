@@ -22,7 +22,7 @@ Entry paths:
 
 ### Groups
 
-A group comprises **2 to 5 members**. A session is valid with as few as 2 members. Groups below their maximum capacity are labeled **Incomplete** and appear in the live session linelist with their seats-available count. Groups are formed either by creating one and inviting study partners, or — once unlocked — by recruiting from the Lookup Layer.
+A group comprises **2 to 5 members**. A session is valid with as few as 2 members. Groups below their maximum capacity are labeled **Incomplete** and appear in the live session linelist with their seats-available count. Groups are formed either by creating one and inviting study partners, or — once unlocked — by recruiting from the Lookup Layer (name to be changed).
 
 ### Captain Role
 
