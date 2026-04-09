@@ -28,7 +28,34 @@ type UserScheduleFormProps = {
   initialGrid: AvailabilityGrid;
 };
 
-const FALLBACK_TIMEZONES = ['UTC', 'Africa/Lagos', 'America/Toronto', 'America/Montreal', 'Europe/Paris'];
+const CURATED_TIMEZONES = [
+  'UTC',
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Phoenix',
+  'America/Los_Angeles',
+  'America/Toronto',
+  'America/Vancouver',
+  'America/Halifax',
+  'America/St_Johns',
+  'Europe/London',
+  'Europe/Paris',
+  'Europe/Brussels',
+  'Europe/Amsterdam',
+  'Europe/Berlin',
+  'Europe/Madrid',
+  'Europe/Rome',
+  'Europe/Zurich',
+  'Europe/Vienna',
+  'Europe/Stockholm',
+  'Europe/Copenhagen',
+  'Europe/Oslo',
+  'Europe/Helsinki',
+  'Europe/Warsaw',
+  'Europe/Prague',
+  'Europe/Lisbon',
+];
 
 function formatHourLabel(hour: number) {
   return `${String(hour).padStart(2, '0')}:00`;
@@ -45,16 +72,12 @@ export function UserScheduleForm({
   const [grid, setGrid] = useState<AvailabilityGrid>(initialGrid ?? DEFAULT_AVAILABILITY_GRID);
 
   const timezoneOptions = useMemo(() => {
-    if (typeof Intl !== 'undefined' && 'supportedValuesOf' in Intl) {
-      try {
-        return Intl.supportedValuesOf('timeZone');
-      } catch {
-        return FALLBACK_TIMEZONES;
-      }
+    if (initialTimezone && !CURATED_TIMEZONES.includes(initialTimezone)) {
+      return [initialTimezone, ...CURATED_TIMEZONES];
     }
 
-    return FALLBACK_TIMEZONES;
-  }, []);
+    return CURATED_TIMEZONES;
+  }, [initialTimezone]);
 
   const slotCount = AVAILABILITY_WEEKDAYS.reduce((sum, weekday) => sum + grid[weekday].length, 0);
 
