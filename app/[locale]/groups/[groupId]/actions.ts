@@ -49,7 +49,7 @@ export async function inviteMemberAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
   const groupId = formData.get('groupId') as string;
   const email = normalizeEmail((formData.get('email') as string | null) ?? '');
-  const { supabase, t } = await requireFounderGroupMembership(groupId, locale);
+  const { supabase, user, t } = await requireFounderGroupMembership(groupId, locale);
 
   if (!groupId || !email) {
     redirect(withFeedback(`/${locale}/groups/${groupId}`, 'error', t('missingFields')));
