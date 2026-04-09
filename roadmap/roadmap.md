@@ -227,10 +227,10 @@ The following shipped issues conflict with v8 and need partial or full rework be
 
 The following v8 protocol elements are not yet implemented and need dedicated work:
 
-- [#69: QuestionClassification entity — captain Phase 3 classification](https://github.com/nyx-ei/activeboard/issues/69) — Not started
-- [#70: PersonalReflection entity — private Phase 3 error type & notes](https://github.com/nyx-ei/activeboard/issues/70) — Not started
-- [#66: Confidence enum migration (integer 1–5 → low/medium/high)](https://github.com/nyx-ei/activeboard/issues/66) — Not started (v8 rework milestone)
-- [#68: Group qualifying size minimum from 3 to 2 members](https://github.com/nyx-ei/activeboard/issues/68) — Not started (v8 rework milestone)
+- [#69: QuestionClassification entity — captain Phase 3 classification](https://github.com/nyx-ei/activeboard/issues/69) — Implemented ✓
+- [#70: PersonalReflection entity — private Phase 3 error type & notes](https://github.com/nyx-ei/activeboard/issues/70) — Implemented ✓
+- [#66: Confidence enum migration (integer 1–5 → low/medium/high)](https://github.com/nyx-ei/activeboard/issues/66) — Implemented ✓
+- [#68: Group qualifying size minimum from 3 to 2 members](https://github.com/nyx-ei/activeboard/issues/68) — Implemented ✓
 
 ### Delivery Notes
 
@@ -249,7 +249,7 @@ Group creation, 6-char invite codes, email invites, invite accept/decline, and m
 
 ### v8 Alignment Gaps
 
-- [#67: Replace group member role with is_founder boolean](https://github.com/nyx-ei/activeboard/issues/67) — Not started (v8 rework milestone)
+- [#67: Replace group member role with is_founder boolean](https://github.com/nyx-ei/activeboard/issues/67) — Implemented ✓
 
 No dedicated GitHub issues were tracked for this work — it was delivered as part of the core session and frontend refactor efforts.
 
@@ -260,9 +260,9 @@ No dedicated GitHub issues were tracked for this work — it was delivered as pa
 - Session scheduling with datetime — Implemented
 - `meeting_link` field on sessions — Implemented
 - Weekly recurring schedules (group-level) — Implemented
-- [#17: Session reminders via email](https://github.com/nyx-ei/activeboard/issues/17) — Not started
-- [#71: Calendar invite generation via Resend](https://github.com/nyx-ei/activeboard/issues/71) — Not started
-- [#72: UserSchedule entity — personal availability grid for matching](https://github.com/nyx-ei/activeboard/issues/72) — Not started
+- [#17: Session reminders via email](https://github.com/nyx-ei/activeboard/issues/17) — Implemented ✓
+- [#71: Calendar invite generation via Resend](https://github.com/nyx-ei/activeboard/issues/71) — Implemented ✓
+- [#72: UserSchedule entity — personal availability grid for matching](https://github.com/nyx-ei/activeboard/issues/72) — Implemented ✓
 
 ---
 
@@ -282,28 +282,28 @@ No dedicated GitHub issues were tracked for this work — it was delivered as pa
 ## Milestone 5: Monetization & Access Gating — PARTIAL
 
 ### User Tier & Database Schema
-- [#53: User tier model and database schema](https://github.com/nyx-ei/activeboard/issues/53) — ⚠️ **REWORK REQUIRED** (see Rework section above). Current: visitor/certified_inactive/certified_active. Must become: trial/locked/active/dormant driven by question count + subscription.
+- [#53: User tier model and database schema](https://github.com/nyx-ei/activeboard/issues/53) — Implemented ✓ (aligned to v8 via four-state tier model and persisted question count)
 
 ### Feature Flag Infrastructure
 - [#54: Feature flag / switch system](https://github.com/nyx-ei/activeboard/issues/54) — Implemented ✓ (no rework needed)
 
 ### Stripe & Subscription
-- [#55: Stripe - credit card association](https://github.com/nyx-ei/activeboard/issues/55) — ⚠️ **REWORK REQUIRED**. Plumbing is reusable but the "visitor → certified" tier transition it triggers is wrong. Payment method alone no longer changes tier.
+- [#55: Stripe - credit card association](https://github.com/nyx-ei/activeboard/issues/55) — Implemented ✓ (now compatible with trial/locked/active/dormant)
 - [#56: Stripe - subscription checkout & plan management](https://github.com/nyx-ei/activeboard/issues/56) — Implemented ✓ (checkout flow reusable as-is)
-- [#57: Stripe webhooks - sync subscription events to user tier](https://github.com/nyx-ei/activeboard/issues/57) — ⚠️ **PARTIAL REWORK**. Webhook plumbing is fine. Tier derivation logic it triggers must use new four-state model.
+- [#57: Stripe webhooks - sync subscription events to user tier](https://github.com/nyx-ei/activeboard/issues/57) — Implemented ✓ (sync now feeds the v8 four-state tier model)
 
 ### Access Gating
-- [#58: Access gating - server actions, UI conditionals, and DB enforcement](https://github.com/nyx-ei/activeboard/issues/58) — Not started. **Blocked** by #53 rework — must implement against the new four-state model, not the old visitor model.
+- [#58: Access gating - server actions, UI conditionals, and DB enforcement](https://github.com/nyx-ei/activeboard/issues/58) — Implemented ✓ (server actions, UI conditionals, and RLS entry-point enforcement now use the v8 model behind `canEnforceUserTierGating`)
 
 ### v8 Rework Items (prerequisite for #58)
 
-- [#64: Rework — Four-state user tier model (trial/locked/active/dormant)](https://github.com/nyx-ei/activeboard/issues/64) — Not started (v8 rework milestone, **blocks #58**)
-- [#65: Rework — Remove visitor capability restrictions](https://github.com/nyx-ei/activeboard/issues/65) — Not started (v8 rework milestone, **blocks #58**)
+- [#64: Rework — Four-state user tier model (trial/locked/active/dormant)](https://github.com/nyx-ei/activeboard/issues/64) — Implemented ✓ (**#58 now unblocked on tier model side**)
+- [#65: Rework — Remove visitor capability restrictions](https://github.com/nyx-ei/activeboard/issues/65) — Implemented ✓
 - Dormant state handling — covered by #64 (tier model includes dormant)
 - Hard block at 100 — covered by #58 (depends on #64)
 
 ### Delivery Notes
-Original sequencing was `#53 → #54 → #55 → #56 → #57 → #58`. Issues #53–#57 are implemented, but #53, #55, and #57 need rework to align with the v8 four-state model before #58 can proceed. The rework is additive — Stripe plumbing is preserved, only the tier derivation logic changes.
+Original sequencing was `#53 → #54 → #55 → #56 → #57 → #58`. The v8 rework of tiers, founder model, qualifying group size, confidence model, and access gating is now in place. The next major product block is Milestone 4 profile/heatmap work or Milestone 7 Lookup Layer, depending on product priority.
 
 ---
 
@@ -397,14 +397,14 @@ Target weekly cadence from the v8 spec:
 ## Statistics
 
 - Total issues on active roadmap: ~38 (25 existing + ~13 new/rework items needing GitHub issues)
-- Fully implemented (no rework): 10 issues (#18–#23, #50, #54, #56, #59)
-- Implemented but needs v8 rework: 3 issues (#53, #55, #57) — tier model, visitor restrictions, webhook tier logic
+- Fully implemented (no rework): 15 issues (#18–#23, #50, #53–#57, #59, #64, #65, #67)
+- Implemented but needs v8 rework: 0 issues
 - Partially implemented: 3 issues (#27, #41, #42)
-- Not started (existing issues): 9 (#17, #24–#26, #28–#31, #40, #43–#46, #58)
+- Not started (existing issues): 8 (#17, #24–#26, #28–#31, #40, #43–#46)
 - New v8 items needing GitHub issues: ~13 (including rework issues, QuestionClassification, PersonalReflection, confidence migration, group role simplification, etc.)
 - Deferred: 5 issues (#32–#36) + v2 question types
-- **Current focus: v8 rework (#53 tier model → visitor undo → group role) BEFORE proceeding to #58 access gating**
-- Last updated: April 8, 2026
+- **Current focus: choose the next block after the v8 foundation — Milestone 4 profile/heatmap work or Milestone 7 Lookup Layer**
+- Last updated: April 10, 2026
 
 ---
 

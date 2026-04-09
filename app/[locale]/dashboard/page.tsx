@@ -1,14 +1,23 @@
 import { getTranslations } from 'next-intl/server';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
+import { UserScheduleForm } from '@/components/dashboard/user-schedule-form';
 import { AlertIcon, CalendarIcon, SparkIcon, TargetIcon, UsersIcon } from '@/components/ui/dashboard-icons';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
+import { getUserAccessState, hasUserTierCapability } from '@/lib/billing/gating';
 import { getDashboardData } from '@/lib/demo/data';
+import { DEFAULT_AVAILABILITY_GRID } from '@/lib/schedule/availability';
 
-import { createGroupAction, joinGroupAction, joinSessionByCodeAction, respondToInviteAction } from './actions';
+import {
+  createGroupAction,
+  joinGroupAction,
+  joinSessionByCodeAction,
+  respondToInviteAction,
+  updateUserScheduleAction,
+} from './actions';
 
 type DashboardPageProps = {
   params: { locale: string };
@@ -23,9 +32,14 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   const locale = params.locale as AppLocale;
   const user = await requireUser(locale);
   const t = await getTranslations('Dashboard');
+  const feedbackT = await getTranslations('Feedback');
   const view = searchParams.view === 'group' ? 'group' : 'individual';
   const isGroupView = view === 'group';
   const data = await getDashboardData(user, isGroupView);
+  const accessState = await getUserAccessState(user.id);
+  const canCreateGroups = hasUserTierCapability(accessState, 'canBeCaptain');
+  const canJoinGroups = hasUserTierCapability(accessState, 'canJoinMultipleGroups');
+  const canJoinSessions = hasUserTierCapability(accessState, 'canJoinSessions');
   const weekdayLabels = {
     monday: t('weekdayMonday'),
     tuesday: t('weekdayTuesday'),
@@ -153,7 +167,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand/20 text-sm font-extrabold text-brand">
                           {member.initials}
-                          {member.role === 'admin' ? (
+                          {member.is_founder ? (
                             <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[9px] font-black text-slate-950">
                               C
                             </span>
@@ -203,9 +217,13 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                     <p className="mt-2 text-sm text-slate-400">
                       {t('confidenceValue', {
                         value:
-                          data.metrics.averageConfidence !== null
-                            ? data.metrics.averageConfidence.toFixed(1)
-                            : t('noData'),
+                          data.metrics.averageConfidence === 'low'
+                            ? t('confidenceLow')
+                            : data.metrics.averageConfidence === 'medium'
+                              ? t('confidenceMedium')
+                              : data.metrics.averageConfidence === 'high'
+                                ? t('confidenceHigh')
+                                : t('noData'),
                       })}
                     </p>
                   </>
@@ -255,11 +273,12 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                     autoComplete="off"
                     className="field h-9 w-[188px] rounded-[12px] px-4 py-2 uppercase"
                   />
-                  <SubmitButton pendingLabel={t('goPending')} className="button-primary h-9 min-w-[54px] rounded-[12px] px-4 py-2">
+                  <SubmitButton pendingLabel={t('goPending')} className="button-primary h-9 min-w-[54px] rounded-[12px] px-4 py-2" disabled={!canJoinSessions}>
                     {t('go')}
                   </SubmitButton>
                 </form>
               </div>
+              {!canJoinSessions ? <p className="text-sm text-amber-300">{feedbackT('upgradeRequiredToJoinSession')}</p> : null}
 
               {data.sessions.length > 0 ? (
                 <div className="space-y-3">
@@ -312,10 +331,11 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
             <form action={createGroupAction} className="mt-4 space-y-3">
               <input type="hidden" name="locale" value={locale} />
               <input name="groupName" placeholder={t('groupNamePlaceholder')} autoComplete="off" className="field" />
-              <SubmitButton pendingLabel={t('createGroupPending')} className="button-primary w-full">
+              <SubmitButton pendingLabel={t('createGroupPending')} className="button-primary w-full" disabled={!canCreateGroups}>
                 {t('createGroup')}
               </SubmitButton>
             </form>
+            {!canCreateGroups ? <p className="mt-3 text-sm text-amber-300">{feedbackT('upgradeRequiredToCreateGroup')}</p> : null}
           </div>
 
           <div className="space-y-4">
@@ -331,10 +351,11 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                   autoComplete="off"
                   className="field uppercase"
                 />
-                <SubmitButton pendingLabel={t('goPending')} className="button-primary min-w-[62px] rounded-[12px] px-4 py-3">
+                <SubmitButton pendingLabel={t('goPending')} className="button-primary min-w-[62px] rounded-[12px] px-4 py-3" disabled={!canJoinGroups}>
                   {t('go')}
                 </SubmitButton>
               </form>
+              {!canJoinGroups ? <p className="mt-3 text-sm text-amber-300">{feedbackT('upgradeRequiredToJoinGroups')}</p> : null}
             </div>
 
             {data.pendingInvites.length > 0 ? (
@@ -345,14 +366,14 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                     <div key={invite.id} className="surface-soft p-4">
                       <p className="text-sm font-semibold text-white">{invite.groupName ?? t('unknownGroup')}</p>
                       <p className="mt-1 text-sm text-slate-400">
-                        {t('invitedBy', { name: invite.invitedByName ?? t('captainLabel') })}
+                        {t('invitedBy', { name: invite.invitedByName ?? t('founderLabel') })}
                       </p>
                       <div className="mt-3 flex gap-2">
                         <form action={respondToInviteAction} className="flex-1">
                           <input type="hidden" name="locale" value={locale} />
                           <input type="hidden" name="inviteId" value={invite.id} />
                           <input type="hidden" name="intent" value="accept" />
-                          <SubmitButton pendingLabel={t('acceptPending')} className="button-primary w-full rounded-[12px] px-4 py-2.5">
+                          <SubmitButton pendingLabel={t('acceptPending')} className="button-primary w-full rounded-[12px] px-4 py-2.5" disabled={!canJoinGroups}>
                             {t('accept')}
                           </SubmitButton>
                         </form>
@@ -373,6 +394,31 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
           </div>
         </section>
 
+        <UserScheduleForm
+          action={updateUserScheduleAction}
+          locale={locale}
+          initialTimezone={data.userSchedule?.timezone ?? 'UTC'}
+          initialGrid={data.userSchedule?.availability_grid ?? DEFAULT_AVAILABILITY_GRID}
+          labels={{
+            title: t('availabilityTitle'),
+            description: t('availabilityDescription'),
+            timezone: t('availabilityTimezone'),
+            save: t('availabilitySave'),
+            savePending: t('availabilitySavePending'),
+            empty: t('availabilityEmpty'),
+            slotsCount: t('availabilitySlotsCount', { count: '{count}' }),
+            weekdays: {
+              monday: t('weekdayMonday'),
+              tuesday: t('weekdayTuesday'),
+              wednesday: t('weekdayWednesday'),
+              thursday: t('weekdayThursday'),
+              friday: t('weekdayFriday'),
+              saturday: t('weekdaySaturday'),
+              sunday: t('weekdaySunday'),
+            },
+          }}
+        />
+
         {data.groups.length > 0 ? (
           <section id="groups-list" className="space-y-4">
             <div className="flex items-center justify-between gap-4">
@@ -387,7 +433,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                       <h3 className="truncate text-lg font-bold text-white">{group.name}</h3>
                       <p className="mt-1 text-sm text-slate-400">{t('members', { count: group.memberCount })}</p>
                       <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">
-                        {group.role === 'admin' ? t('captainLabel') : t('memberLabel')}
+                        {group.is_founder ? t('founderLabel') : t('memberLabel')}
                       </p>
                       <p className="mt-2 text-xs uppercase tracking-[0.18em] text-brand">
                         {t('inviteCodeValue', { code: group.invite_code })}

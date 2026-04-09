@@ -1,3 +1,7 @@
+import type { ConfidenceLevel } from '@/lib/demo/confidence';
+import type { AvailabilityGrid } from '@/lib/schedule/availability';
+import type { DimensionOfCare, ErrorType, PhysicianActivity } from '@/lib/types/demo';
+
 export type Json =
   | string
   | number
@@ -8,7 +12,7 @@ export type Json =
 
 type AnswersRow = {
   answered_at: string;
-  confidence: number | null;
+  confidence: ConfidenceLevel | null;
   id: string;
   is_correct: boolean | null;
   question_id: string;
@@ -18,7 +22,7 @@ type AnswersRow = {
 
 type AnswersInsert = {
   answered_at?: string;
-  confidence?: number | null;
+  confidence?: ConfidenceLevel | null;
   id?: string;
   is_correct?: boolean | null;
   question_id: string;
@@ -28,7 +32,7 @@ type AnswersInsert = {
 
 type AnswersUpdate = {
   answered_at?: string;
-  confidence?: number | null;
+  confidence?: ConfidenceLevel | null;
   id?: string;
   is_correct?: boolean | null;
   question_id?: string;
@@ -101,22 +105,22 @@ type FeatureFlagsUpdate = {
 
 type GroupMembersRow = {
   group_id: string;
+  is_founder: boolean;
   joined_at: string;
-  role: 'admin' | 'member';
   user_id: string;
 };
 
 type GroupMembersInsert = {
   group_id: string;
+  is_founder?: boolean;
   joined_at?: string;
-  role?: 'admin' | 'member';
   user_id: string;
 };
 
 type GroupMembersUpdate = {
   group_id?: string;
+  is_founder?: boolean;
   joined_at?: string;
-  role?: 'admin' | 'member';
   user_id?: string;
 };
 
@@ -252,6 +256,69 @@ type QuestionsUpdate = {
   session_id?: string;
 };
 
+type QuestionClassificationsRow = {
+  classified_at: string;
+  classified_by: string;
+  correct_answer: string | null;
+  dimension_of_care: DimensionOfCare;
+  id: string;
+  physician_activity: PhysicianActivity;
+  question_id: string;
+  session_id: string;
+};
+
+type QuestionClassificationsInsert = {
+  classified_at?: string;
+  classified_by: string;
+  correct_answer?: string | null;
+  dimension_of_care: DimensionOfCare;
+  id?: string;
+  physician_activity: PhysicianActivity;
+  question_id: string;
+  session_id: string;
+};
+
+type QuestionClassificationsUpdate = {
+  classified_at?: string;
+  classified_by?: string;
+  correct_answer?: string | null;
+  dimension_of_care?: DimensionOfCare;
+  id?: string;
+  physician_activity?: PhysicianActivity;
+  question_id?: string;
+  session_id?: string;
+};
+
+type PersonalReflectionsRow = {
+  created_at: string;
+  error_type: ErrorType | null;
+  id: string;
+  private_note: string | null;
+  question_id: string;
+  updated_at: string;
+  user_id: string;
+};
+
+type PersonalReflectionsInsert = {
+  created_at?: string;
+  error_type?: ErrorType | null;
+  id?: string;
+  private_note?: string | null;
+  question_id: string;
+  updated_at?: string;
+  user_id: string;
+};
+
+type PersonalReflectionsUpdate = {
+  created_at?: string;
+  error_type?: ErrorType | null;
+  id?: string;
+  private_note?: string | null;
+  question_id?: string;
+  updated_at?: string;
+  user_id?: string;
+};
+
 type SessionsRow = {
   created_by: string | null;
   ended_at: string | null;
@@ -300,6 +367,57 @@ type SessionsUpdate = {
   timer_seconds?: number;
 };
 
+type SessionEmailRemindersRow = {
+  id: string;
+  provider_message_id: string | null;
+  reminder_key: '24h' | '1h';
+  sent_at: string;
+  session_id: string;
+  user_id: string;
+};
+
+type SessionEmailRemindersInsert = {
+  id?: string;
+  provider_message_id?: string | null;
+  reminder_key: '24h' | '1h';
+  sent_at?: string;
+  session_id: string;
+  user_id: string;
+};
+
+type SessionEmailRemindersUpdate = {
+  id?: string;
+  provider_message_id?: string | null;
+  reminder_key?: '24h' | '1h';
+  sent_at?: string;
+  session_id?: string;
+  user_id?: string;
+};
+
+type SessionCalendarInvitesRow = {
+  id: string;
+  provider_message_id: string | null;
+  sent_at: string;
+  session_id: string;
+  user_id: string;
+};
+
+type SessionCalendarInvitesInsert = {
+  id?: string;
+  provider_message_id?: string | null;
+  sent_at?: string;
+  session_id: string;
+  user_id: string;
+};
+
+type SessionCalendarInvitesUpdate = {
+  id?: string;
+  provider_message_id?: string | null;
+  sent_at?: string;
+  session_id?: string;
+  user_id?: string;
+};
+
 type UsersRow = {
   avatar_url: string | null;
   billing_updated_at: string;
@@ -309,6 +427,7 @@ type UsersRow = {
   has_valid_payment_method: boolean;
   id: string;
   locale: 'en' | 'fr';
+  questions_answered: number;
   stripe_customer_id: string | null;
   stripe_default_payment_method_id: string | null;
   subscription_current_period_ends_at: string | null;
@@ -322,7 +441,7 @@ type UsersRow = {
     | 'incomplete'
     | 'incomplete_expired'
     | 'paused';
-  user_tier: 'visitor' | 'certified_inactive' | 'certified_active';
+  user_tier: 'trial' | 'locked' | 'active' | 'dormant';
 };
 
 type UsersInsert = {
@@ -334,6 +453,7 @@ type UsersInsert = {
   has_valid_payment_method?: boolean;
   id: string;
   locale?: 'en' | 'fr';
+  questions_answered?: number;
   stripe_customer_id?: string | null;
   stripe_default_payment_method_id?: string | null;
   subscription_current_period_ends_at?: string | null;
@@ -347,7 +467,7 @@ type UsersInsert = {
     | 'incomplete'
     | 'incomplete_expired'
     | 'paused';
-  user_tier?: 'visitor' | 'certified_inactive' | 'certified_active';
+  user_tier?: 'trial' | 'locked' | 'active' | 'dormant';
 };
 
 type UsersUpdate = {
@@ -359,6 +479,7 @@ type UsersUpdate = {
   has_valid_payment_method?: boolean;
   id?: string;
   locale?: 'en' | 'fr';
+  questions_answered?: number;
   stripe_customer_id?: string | null;
   stripe_default_payment_method_id?: string | null;
   subscription_current_period_ends_at?: string | null;
@@ -372,7 +493,28 @@ type UsersUpdate = {
     | 'incomplete'
     | 'incomplete_expired'
     | 'paused';
-  user_tier?: 'visitor' | 'certified_inactive' | 'certified_active';
+  user_tier?: 'trial' | 'locked' | 'active' | 'dormant';
+};
+
+type UserSchedulesRow = {
+  availability_grid: AvailabilityGrid;
+  timezone: string;
+  updated_at: string;
+  user_id: string;
+};
+
+type UserSchedulesInsert = {
+  availability_grid?: AvailabilityGrid;
+  timezone?: string;
+  updated_at?: string;
+  user_id: string;
+};
+
+type UserSchedulesUpdate = {
+  availability_grid?: AvailabilityGrid;
+  timezone?: string;
+  updated_at?: string;
+  user_id?: string;
 };
 
 export type Database = {
@@ -426,16 +568,46 @@ export type Database = {
         Update: QuestionsUpdate;
         Relationships: [];
       };
+      question_classifications: {
+        Row: QuestionClassificationsRow;
+        Insert: QuestionClassificationsInsert;
+        Update: QuestionClassificationsUpdate;
+        Relationships: [];
+      };
+      personal_reflections: {
+        Row: PersonalReflectionsRow;
+        Insert: PersonalReflectionsInsert;
+        Update: PersonalReflectionsUpdate;
+        Relationships: [];
+      };
       sessions: {
         Row: SessionsRow;
         Insert: SessionsInsert;
         Update: SessionsUpdate;
         Relationships: [];
       };
+      session_email_reminders: {
+        Row: SessionEmailRemindersRow;
+        Insert: SessionEmailRemindersInsert;
+        Update: SessionEmailRemindersUpdate;
+        Relationships: [];
+      };
+      session_calendar_invites: {
+        Row: SessionCalendarInvitesRow;
+        Insert: SessionCalendarInvitesInsert;
+        Update: SessionCalendarInvitesUpdate;
+        Relationships: [];
+      };
       users: {
         Row: UsersRow;
         Insert: UsersInsert;
         Update: UsersUpdate;
+        Relationships: [];
+      };
+      user_schedules: {
+        Row: UserSchedulesRow;
+        Insert: UserSchedulesInsert;
+        Update: UserSchedulesUpdate;
         Relationships: [];
       };
     };

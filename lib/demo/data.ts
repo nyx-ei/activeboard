@@ -4,7 +4,9 @@ import type { User } from '@supabase/supabase-js';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { computeAnswerDistribution } from '@/lib/demo/distribution';
+import { confidenceToScore, scoreToConfidenceLevel } from '@/lib/demo/confidence';
 import { createPerfTracker } from '@/lib/observability/perf';
+import { getAvailabilitySlotCount, normalizeAvailabilityGrid } from '@/lib/schedule/availability';
 
 type PublicClient = ReturnType<typeof createSupabaseServerClient>;
 type DashboardSession = {
@@ -32,7 +34,7 @@ type DashboardGroup = {
   invite_code: string;
   created_by: string | null;
   created_at: string;
-  role: 'admin' | 'member';
+  is_founder: boolean;
   memberCount: number;
   nextSession: DashboardSession | null;
 };
@@ -42,7 +44,7 @@ type GroupMemberPerformance = {
   name: string;
   email: string;
   initials: string;
-  role: 'admin' | 'member';
+  is_founder: boolean;
   presenceRate: number;
   completionRate: number;
   status: 'setup' | 'active';
@@ -85,14 +87,20 @@ export const getDashboardData = cache(async (user: User, includeGroupDashboard =
   const perf = createPerfTracker(`getDashboardData:${user.id}`);
   const supabase = createSupabaseServerClient();
 
-  const [{ data: memberships }, { data: invites }] = await Promise.all([
-    supabase.schema('public').from('group_members').select('group_id, role').eq('user_id', user.id),
+  const [{ data: memberships }, { data: invites }, { data: userSchedule }] = await Promise.all([
+    supabase.schema('public').from('group_members').select('group_id, is_founder').eq('user_id', user.id),
     supabase
       .schema('public')
       .from('group_invites')
       .select('id, group_id, invited_by, invitee_email, status, created_at')
       .eq('status', 'pending')
       .or(`invitee_user_id.eq.${user.id},invitee_email.eq.${user.email?.toLowerCase() ?? ''}`),
+    supabase
+      .schema('public')
+      .from('user_schedules')
+      .select('user_id, timezone, availability_grid, updated_at')
+      .eq('user_id', user.id)
+      .maybeSingle(),
   ]);
 
   const groupIds = (memberships ?? []).map((membership) => membership.group_id);
@@ -189,7 +197,7 @@ export const getDashboardData = cache(async (user: User, includeGroupDashboard =
 
       acc.push({
         ...group,
-        role: membership.role,
+        is_founder: membership.is_founder,
         memberCount: countsByGroup.get(group.id) ?? 0,
         nextSession: upcomingByGroup.get(group.id) ?? null,
       });
@@ -209,7 +217,9 @@ export const getDashboardData = cache(async (user: User, includeGroupDashboard =
   const incorrectCount = myAnswers.filter((answer) => answer.is_correct === false).length;
   const averageConfidence =
     answeredCount > 0
-      ? myAnswers.reduce((sum, answer) => sum + (answer.confidence ?? 0), 0) / answeredCount
+      ? scoreToConfidenceLevel(
+          myAnswers.reduce((sum, answer) => sum + confidenceToScore(answer.confidence), 0) / answeredCount,
+        )
       : null;
   const successRate = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : null;
   const errorRate = answeredCount > 0 ? Math.round((incorrectCount / answeredCount) * 100) : null;
@@ -222,7 +232,7 @@ export const getDashboardData = cache(async (user: User, includeGroupDashboard =
   const nextSession = enrichedSessions.find((session) => session.status !== 'completed' && session.status !== 'cancelled') ?? null;
 
   const primaryGroup =
-    dashboardGroups.find((group) => group.role === 'admin') ??
+    dashboardGroups.find((group) => group.is_founder) ??
     dashboardGroups[0] ??
     null;
 
@@ -251,7 +261,7 @@ export const getDashboardData = cache(async (user: User, includeGroupDashboard =
       supabase
         .schema('public')
         .from('group_members')
-        .select('group_id, user_id, role')
+        .select('group_id, user_id, is_founder')
         .eq('group_id', primaryGroup.id),
       primaryGroupSessionIds.length > 0
         ? supabase
@@ -295,7 +305,7 @@ export const getDashboardData = cache(async (user: User, includeGroupDashboard =
     const weeklyQuestionIds = new Set(weeklyQuestions.map((question) => question.id));
     const weeklyAnswers = (primaryGroupAnswers ?? []).filter((answer) => weeklyQuestionIds.has(answer.question_id));
 
-    const qualifyingGroupSize = primaryGroup.memberCount >= 3 && primaryGroup.memberCount <= 5;
+    const qualifyingGroupSize = primaryGroup.memberCount >= 2 && primaryGroup.memberCount <= 5;
     const weeklyTargetQuestions = primaryGroupSchedules.reduce((sum, schedule) => sum + schedule.question_goal, 0);
     const questionAnswerCounts = new Map<string, number>();
     for (const answer of weeklyAnswers) {
@@ -349,7 +359,7 @@ export const getDashboardData = cache(async (user: User, includeGroupDashboard =
               .join('')
               .slice(0, 2)
               .toUpperCase() || 'AB',
-          role: member.role,
+          is_founder: member.is_founder,
           presenceRate,
           completionRate,
           status:
@@ -369,6 +379,13 @@ export const getDashboardData = cache(async (user: User, includeGroupDashboard =
   return {
     groups: dashboardGroups,
     pendingInvites,
+    userSchedule: userSchedule
+      ? {
+          ...userSchedule,
+          availability_grid: normalizeAvailabilityGrid(userSchedule.availability_grid),
+          slotCount: getAvailabilitySlotCount(normalizeAvailabilityGrid(userSchedule.availability_grid)),
+        }
+      : null,
     metrics: {
       answeredCount,
       completedSessionsCount: completedSessions.length,
@@ -391,7 +408,7 @@ export const getGroupData = cache(async (groupId: string, user: User) => {
   const { data: membership } = await supabase
     .schema('public')
     .from('group_members')
-    .select('group_id, role')
+    .select('group_id, is_founder')
     .eq('group_id', groupId)
     .eq('user_id', user.id)
     .maybeSingle();
@@ -407,7 +424,7 @@ export const getGroupData = cache(async (groupId: string, user: User) => {
       .select('id, name, invite_code, created_by, created_at')
       .eq('id', groupId)
       .single(),
-    supabase.schema('public').from('group_members').select('user_id, role, joined_at').eq('group_id', groupId),
+    supabase.schema('public').from('group_members').select('user_id, is_founder, joined_at').eq('group_id', groupId),
     supabase
       .schema('public')
       .from('group_invites')
@@ -471,7 +488,7 @@ export const getSessionData = cache(async (sessionId: string, user: User) => {
   const { data: membership } = await supabase
     .schema('public')
     .from('group_members')
-    .select('group_id, role')
+    .select('group_id, is_founder')
     .eq('group_id', session.group_id)
     .eq('user_id', user.id)
     .maybeSingle();
@@ -487,7 +504,7 @@ export const getSessionData = cache(async (sessionId: string, user: User) => {
       .select('id, name, invite_code')
       .eq('id', session.group_id)
       .single(),
-    supabase.schema('public').from('group_members').select('user_id, role').eq('group_id', session.group_id),
+    supabase.schema('public').from('group_members').select('user_id, is_founder').eq('group_id', session.group_id),
     supabase
       .schema('public')
       .from('questions')
@@ -511,6 +528,33 @@ export const getSessionData = cache(async (sessionId: string, user: User) => {
         ).data ?? []
       : [];
 
+  const sharedClassification =
+    currentQuestion
+      ? (
+          await supabase
+            .schema('public')
+            .from('question_classifications')
+            .select(
+              'id, question_id, session_id, classified_by, correct_answer, physician_activity, dimension_of_care, classified_at',
+            )
+            .eq('question_id', currentQuestion.id)
+            .maybeSingle()
+        ).data ?? null
+      : null;
+
+  const myReflection =
+    currentQuestion
+      ? (
+          await supabase
+            .schema('public')
+            .from('personal_reflections')
+            .select('id, question_id, user_id, error_type, private_note, created_at, updated_at')
+            .eq('question_id', currentQuestion.id)
+            .eq('user_id', user.id)
+            .maybeSingle()
+        ).data ?? null
+      : null;
+
   const userIds = [...new Set([...(members ?? []).map((member) => member.user_id), session.leader_id].filter(Boolean) as string[])];
   const usersMap = await getUsersMap(supabase, userIds);
   const myAnswer = answers.find((answer) => answer.user_id === user.id) ?? null;
@@ -529,6 +573,8 @@ export const getSessionData = cache(async (sessionId: string, user: User) => {
     currentQuestion,
     answers,
     myAnswer,
+    sharedClassification,
+    myReflection,
     distribution: currentQuestion ? computeAnswerDistribution(answers, memberCount) : null,
   };
 });
@@ -550,7 +596,7 @@ export const getSessionSummaryData = cache(async (sessionId: string, user: User)
   const { data: membership } = await supabase
     .schema('public')
     .from('group_members')
-    .select('group_id, role')
+    .select('group_id, is_founder')
     .eq('group_id', session.group_id)
     .eq('user_id', user.id)
     .maybeSingle();
@@ -582,6 +628,31 @@ export const getSessionSummaryData = cache(async (sessionId: string, user: User)
         ).data ?? []
       : [];
 
+  const classifications =
+    questionIds.length > 0
+      ? (
+          await supabase
+            .schema('public')
+            .from('question_classifications')
+            .select(
+              'id, question_id, session_id, classified_by, correct_answer, physician_activity, dimension_of_care, classified_at',
+            )
+            .in('question_id', questionIds)
+        ).data ?? []
+      : [];
+
+  const reflections =
+    questionIds.length > 0
+      ? (
+          await supabase
+            .schema('public')
+            .from('personal_reflections')
+            .select('id, question_id, user_id, error_type, private_note, created_at, updated_at')
+            .in('question_id', questionIds)
+            .eq('user_id', user.id)
+        ).data ?? []
+      : [];
+
   const memberCount = members?.length ?? 0;
   const myAnswers = answers.filter((answer) => answer.user_id === user.id);
   const correctCount = myAnswers.filter((answer) => answer.is_correct).length;
@@ -589,8 +660,10 @@ export const getSessionSummaryData = cache(async (sessionId: string, user: User)
   const answeredCount = myAnswers.length;
   const averageConfidence =
     myAnswers.length > 0
-      ? myAnswers.reduce((sum, answer) => sum + (answer.confidence ?? 0), 0) / myAnswers.length
-      : 0;
+      ? scoreToConfidenceLevel(
+          myAnswers.reduce((sum, answer) => sum + confidenceToScore(answer.confidence), 0) / myAnswers.length,
+        )
+      : null;
   const totalDurationMinutes =
     session.started_at && session.ended_at
       ? Math.max(
@@ -603,9 +676,13 @@ export const getSessionSummaryData = cache(async (sessionId: string, user: User)
     const questionAnswers = answers.filter((answer) => answer.question_id === question.id);
     const myAnswer = questionAnswers.find((answer) => answer.user_id === user.id) ?? null;
     const groupCorrectCount = questionAnswers.filter((answer) => answer.is_correct).length;
+    const classification = classifications.find((item) => item.question_id === question.id) ?? null;
+    const reflection = reflections.find((item) => item.question_id === question.id) ?? null;
 
     return {
       ...question,
+      classification,
+      reflection,
       myAnswer,
       groupAverage:
         memberCount > 0 ? Math.round((groupCorrectCount / memberCount) * 100) : 0,

@@ -4,10 +4,13 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/supabase/types';
 
 export const USER_TIERS = {
-  visitor: 'visitor',
-  certifiedInactive: 'certified_inactive',
-  certifiedActive: 'certified_active',
+  trial: 'trial',
+  locked: 'locked',
+  active: 'active',
+  dormant: 'dormant',
 } as const;
+
+export const TRIAL_QUESTION_LIMIT = 100;
 
 export const SUBSCRIPTION_STATUSES = {
   none: 'none',
@@ -29,6 +32,7 @@ type BillingSnapshot = Pick<
   | 'id'
   | 'email'
   | 'user_tier'
+  | 'questions_answered'
   | 'has_valid_payment_method'
   | 'subscription_status'
   | 'subscription_current_period_ends_at'
@@ -38,34 +42,46 @@ type BillingSnapshot = Pick<
 >;
 
 export function deriveUserTier({
+  questionsAnswered,
   hasValidPaymentMethod,
   subscriptionStatus,
 }: {
+  questionsAnswered: number;
   hasValidPaymentMethod: boolean;
   subscriptionStatus: SubscriptionStatus;
 }): UserTier {
-  if (!hasValidPaymentMethod) {
-    return USER_TIERS.visitor;
+  if (questionsAnswered < TRIAL_QUESTION_LIMIT) {
+    return USER_TIERS.trial;
   }
 
   if (subscriptionStatus === SUBSCRIPTION_STATUSES.active || subscriptionStatus === SUBSCRIPTION_STATUSES.trialing) {
-    return USER_TIERS.certifiedActive;
+    return USER_TIERS.active;
   }
 
-  return USER_TIERS.certifiedInactive;
+  if (hasValidPaymentMethod) {
+    return USER_TIERS.dormant;
+  }
+
+  return USER_TIERS.locked;
 }
 
 export function getUserTierCapabilities(userTier: UserTier) {
-  const isVisitor = userTier === USER_TIERS.visitor;
-  const isCertifiedInactive = userTier === USER_TIERS.certifiedInactive;
+  const isTrial = userTier === USER_TIERS.trial;
+  const isActive = userTier === USER_TIERS.active;
+  const canRunCoreStudyFlows = isTrial || isActive;
+  const canUseLookupLayer = isActive;
 
   return {
-    canBeCaptain: !isVisitor && !isCertifiedInactive ? true : false,
-    canCreateSession: !isVisitor && !isCertifiedInactive ? true : false,
-    canJoinMultipleGroups: !isVisitor,
-    canDisplayHeatmap: !isVisitor,
-    canShareHeatmap: !isVisitor,
-    canBeDiscoverable: !isVisitor,
+    canBeCaptain: canRunCoreStudyFlows,
+    canCreateSession: canRunCoreStudyFlows,
+    canJoinSessions: canRunCoreStudyFlows,
+    canJoinMultipleGroups: canRunCoreStudyFlows,
+    canDisplayHeatmap: true,
+    canShareHeatmap: true,
+    canBrowseLookupLayer: canUseLookupLayer,
+    canBeDiscoverable: canUseLookupLayer,
+    canViewLiveSessionLinelist: canUseLookupLayer,
+    canSendLookupInvites: canUseLookupLayer,
   };
 }
 
@@ -75,7 +91,7 @@ export const getUserBillingSnapshot = cache(async (userId: string): Promise<Bill
     .schema('public')
     .from('users')
     .select(
-      'id, email, user_tier, has_valid_payment_method, subscription_status, subscription_current_period_ends_at, stripe_customer_id, stripe_default_payment_method_id, billing_updated_at',
+      'id, email, user_tier, questions_answered, has_valid_payment_method, subscription_status, subscription_current_period_ends_at, stripe_customer_id, stripe_default_payment_method_id, billing_updated_at',
     )
     .eq('id', userId)
     .maybeSingle();

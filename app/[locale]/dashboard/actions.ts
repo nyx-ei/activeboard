@@ -5,8 +5,10 @@ import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
 import type { AppLocale } from '@/i18n/routing';
+import { requireUserTierCapability } from '@/lib/billing/gating';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
+import { parseAvailabilityGrid } from '@/lib/schedule/availability';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { generateInviteCode, withFeedback } from '@/lib/utils';
 
@@ -34,6 +36,13 @@ export async function joinSessionByCodeAction(formData: FormData) {
   if (!user) {
     redirect(`/${locale}/auth/login`);
   }
+
+  await requireUserTierCapability({
+    userId: user.id,
+    capability: 'canJoinSessions',
+    locale,
+    redirectTo: `/${locale}/dashboard`,
+  });
 
   if (!code) {
     redirect(withFeedback(`/${locale}/dashboard`, 'error', t('invalidSessionCode')));
@@ -92,6 +101,14 @@ export async function createGroupAction(formData: FormData) {
     redirect(`/${locale}/auth/login`);
   }
 
+  await requireUserTierCapability({
+    userId: user.id,
+    capability: 'canBeCaptain',
+    locale,
+    redirectTo: `/${locale}/dashboard`,
+    feedbackKey: 'upgradeRequiredToCreateGroup',
+  });
+
   let inviteCode = generateInviteCode();
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -126,8 +143,8 @@ export async function createGroupAction(formData: FormData) {
 
   await supabase.schema('public').from('group_members').insert({
     group_id: group.id,
+    is_founder: true,
     user_id: user.id,
-    role: 'admin',
   });
 
   await logAppEvent({
@@ -190,14 +207,21 @@ export async function joinGroupAction(formData: FormData) {
     redirect(withFeedback(`/${locale}/dashboard`, 'success', t('groupJoined')));
   }
 
+  await requireUserTierCapability({
+    userId: user.id,
+    capability: 'canJoinMultipleGroups',
+    locale,
+    redirectTo: `/${locale}/dashboard`,
+  });
+
   if (group.member_count >= group.max_members) {
     redirect(withFeedback(`/${locale}/dashboard`, 'error', t('groupFull')));
   }
 
   const { error } = await supabase.schema('public').from('group_members').insert({
     group_id: group.id,
+    is_founder: false,
     user_id: user.id,
-    role: 'member',
   });
 
   if (error) {
@@ -242,6 +266,13 @@ export async function respondToInviteAction(formData: FormData) {
   }
 
   if (intent === 'accept') {
+    await requireUserTierCapability({
+      userId: user.id,
+      capability: 'canJoinMultipleGroups',
+      locale,
+      redirectTo: `/${locale}/dashboard`,
+    });
+
     const { data: members } = await supabase
       .schema('public')
       .from('group_members')
@@ -254,8 +285,8 @@ export async function respondToInviteAction(formData: FormData) {
 
     await supabase.schema('public').from('group_members').insert({
       group_id: invite.group_id,
+      is_founder: false,
       user_id: user.id,
-      role: 'member',
     });
   }
 
@@ -288,4 +319,41 @@ export async function respondToInviteAction(formData: FormData) {
       intent === 'accept' ? t('inviteAccepted') : t('inviteDeclined'),
     ),
   );
+}
+
+export async function updateUserScheduleAction(formData: FormData) {
+  const locale = formData.get('locale') as AppLocale;
+  const timezone = ((formData.get('timezone') as string | null) ?? '').trim() || 'UTC';
+  const availabilityGridRaw = (formData.get('availabilityGrid') as string | null) ?? '{}';
+  const t = await getTranslations({ locale, namespace: 'Feedback' });
+  const { supabase, user } = await getCurrentAuthUser();
+
+  if (!user) {
+    redirect(`/${locale}/auth/login`);
+  }
+
+  const availabilityGrid = parseAvailabilityGrid(availabilityGridRaw);
+
+  const { error } = await supabase.schema('public').from('user_schedules').upsert({
+    user_id: user.id,
+    timezone,
+    availability_grid: availabilityGrid,
+  });
+
+  if (error) {
+    redirect(withFeedback(`/${locale}/dashboard`, 'error', t('actionFailed')));
+  }
+
+  await logAppEvent({
+    eventName: APP_EVENTS.userScheduleUpdated,
+    locale,
+    userId: user.id,
+    metadata: {
+      timezone,
+      availability_slot_count: Object.values(availabilityGrid).reduce((sum, hours) => sum + hours.length, 0),
+    },
+  });
+
+  revalidatePath(`/${locale}/dashboard`);
+  redirect(withFeedback(`/${locale}/dashboard`, 'success', t('actionSucceeded')));
 }
