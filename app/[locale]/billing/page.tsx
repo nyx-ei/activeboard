@@ -7,7 +7,7 @@ import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
 import { hasStripeEnv } from '@/lib/env';
 import { isFeatureEnabled } from '@/lib/features/flags';
-import { getUserBillingSnapshot, getUserTierCapabilities, USER_TIERS } from '@/lib/billing/user-tier';
+import { getUserBillingSnapshot, getUserTierCapabilities, TRIAL_QUESTION_LIMIT } from '@/lib/billing/user-tier';
 import { getBillingPlans } from '@/lib/stripe/pricing';
 
 import {
@@ -56,12 +56,13 @@ function CapabilityRow({
 }
 
 function getTierLabel(
-  userTier: 'visitor' | 'certified_inactive' | 'certified_active',
-  t: (key: 'tier.visitor' | 'tier.certified_inactive' | 'tier.certified_active') => string,
+  userTier: 'trial' | 'locked' | 'active' | 'dormant',
+  t: (key: 'tier.trial' | 'tier.locked' | 'tier.active' | 'tier.dormant') => string,
 ) {
-  if (userTier === 'certified_active') return t('tier.certified_active');
-  if (userTier === 'certified_inactive') return t('tier.certified_inactive');
-  return t('tier.visitor');
+  if (userTier === 'active') return t('tier.active');
+  if (userTier === 'dormant') return t('tier.dormant');
+  if (userTier === 'locked') return t('tier.locked');
+  return t('tier.trial');
 }
 
 function getSubscriptionLabel(
@@ -124,7 +125,8 @@ export default async function BillingPage({ params, searchParams }: BillingPageP
   }
 
   const capabilities = getUserTierCapabilities(snapshot.user_tier);
-  const isVisitor = snapshot.user_tier === USER_TIERS.visitor;
+  const questionProgress = Math.min(snapshot.questions_answered, TRIAL_QUESTION_LIMIT);
+  const remainingTrialQuestions = Math.max(TRIAL_QUESTION_LIMIT - snapshot.questions_answered, 0);
 
   return (
     <main className="mx-auto flex w-full max-w-[980px] flex-1 flex-col gap-6">
@@ -141,6 +143,13 @@ export default async function BillingPage({ params, searchParams }: BillingPageP
             </Link>
             <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-white">{t('title')}</h1>
             <p className="mt-3 max-w-2xl text-base leading-7 text-slate-400">{t('description')}</p>
+            <p className="mt-3 text-sm font-medium text-slate-500">
+              {t('trialProgress', {
+                current: questionProgress,
+                total: TRIAL_QUESTION_LIMIT,
+                remaining: remainingTrialQuestions,
+              })}
+            </p>
           </div>
           <StatusBadge>{getTierLabel(snapshot.user_tier, t)}</StatusBadge>
         </div>
@@ -180,6 +189,11 @@ export default async function BillingPage({ params, searchParams }: BillingPageP
           <p className="mt-2 text-sm text-slate-500">{t('capabilitiesDescription')}</p>
           <ul className="mt-4 space-y-2">
             <CapabilityRow
+              label={t('capabilities.beCaptain')}
+              statusLabel={capabilities.canBeCaptain ? t('capabilityAvailable') : t('capabilityLockedShort')}
+              unlocked={capabilities.canBeCaptain}
+            />
+            <CapabilityRow
               label={t('capabilities.joinMultipleGroups')}
               statusLabel={capabilities.canJoinMultipleGroups ? t('capabilityAvailable') : t('capabilityLockedShort')}
               unlocked={capabilities.canJoinMultipleGroups}
@@ -208,7 +222,7 @@ export default async function BillingPage({ params, searchParams }: BillingPageP
           <p className="mt-5 text-sm text-amber-300">{t('billingConfigMissing')}</p>
         ) : snapshot.has_valid_payment_method ? (
           <div className="mt-5 rounded-[18px] border border-brand/20 bg-brand/10 px-4 py-4 text-sm text-brand">
-            {isVisitor ? t('cardAssociatedButAwaitingSync') : t('cardAssociationComplete')}
+            {snapshot.user_tier === 'trial' ? t('cardAssociatedDuringTrial') : t('cardAssociationComplete')}
           </div>
         ) : (
           <form action={createBillingSetupSessionAction} className="mt-5">

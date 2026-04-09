@@ -7,6 +7,8 @@ import { SessionCountdown } from '@/components/session/session-countdown';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Link } from '@/i18n/navigation';
 import { requireUser } from '@/lib/auth';
+import { getUserAccessState, hasUserTierCapability } from '@/lib/billing/gating';
+import type { ConfidenceLevel } from '@/lib/demo/confidence';
 import { getSessionData } from '@/lib/demo/data';
 import { ANSWER_OPTIONS } from '@/lib/types/demo';
 import type { AppLocale } from '@/i18n/routing';
@@ -29,12 +31,12 @@ type SessionPageProps = {
 };
 
 function getConfidenceTone(
-  confidence: number | null | undefined,
+  confidence: ConfidenceLevel | null | undefined,
   t: (key: 'confidenceLow' | 'confidenceMedium' | 'confidenceHigh' | 'blank') => string,
 ) {
-  if (confidence === 1) return t('confidenceLow');
-  if (confidence === 2) return t('confidenceMedium');
-  if (typeof confidence === 'number' && confidence >= 3) return t('confidenceHigh');
+  if (confidence === 'low') return t('confidenceLow');
+  if (confidence === 'medium') return t('confidenceMedium');
+  if (confidence === 'high') return t('confidenceHigh');
   return t('blank');
 }
 
@@ -42,16 +44,19 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
   const locale = params.locale as AppLocale;
   const user = await requireUser(locale);
   const t = await getTranslations('Session');
+  const feedbackT = await getTranslations('Feedback');
   const data = await getSessionData(params.sessionId, user);
+  const accessState = await getUserAccessState(user.id);
+  const canCaptain = hasUserTierCapability(accessState, 'canBeCaptain');
 
   if (!data?.session || !data.group) {
     notFound();
   }
 
-  const isLeader = data.session.leader_id === user.id || data.membership.role === 'admin';
+  const isLeader = data.session.leader_id === user.id || data.membership.is_founder;
   const isSessionActive = data.session.status === 'active';
   const isSessionCompleted = data.session.status === 'completed';
-  const canStartSession = data.members.length >= 3;
+  const canStartSession = data.members.length >= 2;
   const questionCount = data.questions.length;
   const timeRemaining =
     data.session.timer_mode === 'global'
@@ -102,7 +107,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
                 <SubmitButton
                   pendingLabel={t('startSessionPending')}
                   className="button-primary min-w-[180px]"
-                  disabled={!canStartSession}
+                  disabled={!canStartSession || !canCaptain}
                 >
                   {t('startSession')}
                 </SubmitButton>
@@ -117,6 +122,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
             </Link>
 
             <p className="mt-5 text-sm text-slate-500">{t('minimumMembersHint', { count: data.members.length })}</p>
+            {!canCaptain ? <p className="mt-3 text-sm text-amber-300">{feedbackT('upgradeRequiredToCaptain')}</p> : null}
           </div>
         </section>
       </main>
@@ -216,9 +222,9 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
                   <span className="mb-3 block text-sm font-medium text-slate-300">{t('yourConfidence')}</span>
                   <div className="grid grid-cols-3 gap-2 rounded-[18px] border border-border bg-white/[0.03] p-1">
                     {[
-                      { value: '1', label: t('confidenceLow') },
-                      { value: '2', label: t('confidenceMedium') },
-                      { value: '3', label: t('confidenceHigh') },
+                      { value: 'low', label: t('confidenceLow') },
+                      { value: 'medium', label: t('confidenceMedium') },
+                      { value: 'high', label: t('confidenceHigh') },
                     ].map((item) => (
                       <label
                         key={item.value}
@@ -386,7 +392,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
                     {member.profile?.display_name ?? member.profile?.email ?? member.user_id}
                   </p>
                   <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">
-                    {member.role === 'admin' ? t('captainLabel') : t('memberLabel')}
+                    {member.is_founder ? t('captainLabel') : t('memberLabel')}
                   </p>
                 </div>
               ))}

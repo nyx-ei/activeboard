@@ -1,6 +1,6 @@
 export type Locale = 'en' | 'fr';
 
-export type GroupRole = 'admin' | 'member';
+export type GroupMembershipKind = 'founder' | 'member';
 
 export type GroupInviteStatus = 'pending' | 'accepted' | 'declined' | 'cancelled';
 

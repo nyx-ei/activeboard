@@ -5,6 +5,7 @@ import { FeedbackBanner } from '@/components/app/feedback-banner';
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
+import type { ConfidenceLevel } from '@/lib/demo/confidence';
 import { getSessionSummaryData } from '@/lib/demo/data';
 
 type SessionSummaryPageProps = {
@@ -16,12 +17,12 @@ type SessionSummaryPageProps = {
 };
 
 function formatConfidence(
-  confidence: number | null | undefined,
+  confidence: ConfidenceLevel | null | undefined,
   t: (key: 'confidenceLow' | 'confidenceMedium' | 'confidenceHigh' | 'blank') => string,
 ) {
-  if (confidence === 1) return t('confidenceLow');
-  if (confidence === 2) return t('confidenceMedium');
-  if (typeof confidence === 'number' && confidence >= 3) return t('confidenceHigh');
+  if (confidence === 'low') return t('confidenceLow');
+  if (confidence === 'medium') return t('confidenceMedium');
+  if (confidence === 'high') return t('confidenceHigh');
   return t('blank');
 }
 
@@ -84,8 +85,7 @@ export default async function SessionSummaryPage({ params, searchParams }: Sessi
             <h2 className="text-xl font-bold text-white">{t('breakdownTitle')}</h2>
             <p className="mt-1 text-sm leading-6 text-slate-400">
               {t('confidenceSummary', {
-                confidence:
-                  data.answeredCount > 0 ? data.averageConfidence.toFixed(1) : t('noConfidenceData'),
+                confidence: data.answeredCount > 0 ? formatConfidence(data.averageConfidence, t) : t('noConfidenceData'),
               })}
             </p>
           </div>

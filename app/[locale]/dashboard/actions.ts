@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
 import type { AppLocale } from '@/i18n/routing';
+import { requireUserTierCapability } from '@/lib/billing/gating';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -34,6 +35,13 @@ export async function joinSessionByCodeAction(formData: FormData) {
   if (!user) {
     redirect(`/${locale}/auth/login`);
   }
+
+  await requireUserTierCapability({
+    userId: user.id,
+    capability: 'canJoinSessions',
+    locale,
+    redirectTo: `/${locale}/dashboard`,
+  });
 
   if (!code) {
     redirect(withFeedback(`/${locale}/dashboard`, 'error', t('invalidSessionCode')));
@@ -92,6 +100,13 @@ export async function createGroupAction(formData: FormData) {
     redirect(`/${locale}/auth/login`);
   }
 
+  await requireUserTierCapability({
+    userId: user.id,
+    capability: 'canBeCaptain',
+    locale,
+    redirectTo: `/${locale}/dashboard`,
+  });
+
   let inviteCode = generateInviteCode();
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -126,8 +141,8 @@ export async function createGroupAction(formData: FormData) {
 
   await supabase.schema('public').from('group_members').insert({
     group_id: group.id,
+    is_founder: true,
     user_id: user.id,
-    role: 'admin',
   });
 
   await logAppEvent({
@@ -190,14 +205,21 @@ export async function joinGroupAction(formData: FormData) {
     redirect(withFeedback(`/${locale}/dashboard`, 'success', t('groupJoined')));
   }
 
+  await requireUserTierCapability({
+    userId: user.id,
+    capability: 'canJoinMultipleGroups',
+    locale,
+    redirectTo: `/${locale}/dashboard`,
+  });
+
   if (group.member_count >= group.max_members) {
     redirect(withFeedback(`/${locale}/dashboard`, 'error', t('groupFull')));
   }
 
   const { error } = await supabase.schema('public').from('group_members').insert({
     group_id: group.id,
+    is_founder: false,
     user_id: user.id,
-    role: 'member',
   });
 
   if (error) {
@@ -242,6 +264,13 @@ export async function respondToInviteAction(formData: FormData) {
   }
 
   if (intent === 'accept') {
+    await requireUserTierCapability({
+      userId: user.id,
+      capability: 'canJoinMultipleGroups',
+      locale,
+      redirectTo: `/${locale}/dashboard`,
+    });
+
     const { data: members } = await supabase
       .schema('public')
       .from('group_members')
@@ -254,8 +283,8 @@ export async function respondToInviteAction(formData: FormData) {
 
     await supabase.schema('public').from('group_members').insert({
       group_id: invite.group_id,
+      is_founder: false,
       user_id: user.id,
-      role: 'member',
     });
   }
 

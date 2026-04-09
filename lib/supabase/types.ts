@@ -1,3 +1,5 @@
+import type { ConfidenceLevel } from '@/lib/demo/confidence';
+
 export type Json =
   | string
   | number
@@ -8,7 +10,7 @@ export type Json =
 
 type AnswersRow = {
   answered_at: string;
-  confidence: number | null;
+  confidence: ConfidenceLevel | null;
   id: string;
   is_correct: boolean | null;
   question_id: string;
@@ -18,7 +20,7 @@ type AnswersRow = {
 
 type AnswersInsert = {
   answered_at?: string;
-  confidence?: number | null;
+  confidence?: ConfidenceLevel | null;
   id?: string;
   is_correct?: boolean | null;
   question_id: string;
@@ -28,7 +30,7 @@ type AnswersInsert = {
 
 type AnswersUpdate = {
   answered_at?: string;
-  confidence?: number | null;
+  confidence?: ConfidenceLevel | null;
   id?: string;
   is_correct?: boolean | null;
   question_id?: string;
@@ -101,22 +103,22 @@ type FeatureFlagsUpdate = {
 
 type GroupMembersRow = {
   group_id: string;
+  is_founder: boolean;
   joined_at: string;
-  role: 'admin' | 'member';
   user_id: string;
 };
 
 type GroupMembersInsert = {
   group_id: string;
+  is_founder?: boolean;
   joined_at?: string;
-  role?: 'admin' | 'member';
   user_id: string;
 };
 
 type GroupMembersUpdate = {
   group_id?: string;
+  is_founder?: boolean;
   joined_at?: string;
-  role?: 'admin' | 'member';
   user_id?: string;
 };
 
@@ -309,6 +311,7 @@ type UsersRow = {
   has_valid_payment_method: boolean;
   id: string;
   locale: 'en' | 'fr';
+  questions_answered: number;
   stripe_customer_id: string | null;
   stripe_default_payment_method_id: string | null;
   subscription_current_period_ends_at: string | null;
@@ -322,7 +325,7 @@ type UsersRow = {
     | 'incomplete'
     | 'incomplete_expired'
     | 'paused';
-  user_tier: 'visitor' | 'certified_inactive' | 'certified_active';
+  user_tier: 'trial' | 'locked' | 'active' | 'dormant';
 };
 
 type UsersInsert = {
@@ -334,6 +337,7 @@ type UsersInsert = {
   has_valid_payment_method?: boolean;
   id: string;
   locale?: 'en' | 'fr';
+  questions_answered?: number;
   stripe_customer_id?: string | null;
   stripe_default_payment_method_id?: string | null;
   subscription_current_period_ends_at?: string | null;
@@ -347,7 +351,7 @@ type UsersInsert = {
     | 'incomplete'
     | 'incomplete_expired'
     | 'paused';
-  user_tier?: 'visitor' | 'certified_inactive' | 'certified_active';
+  user_tier?: 'trial' | 'locked' | 'active' | 'dormant';
 };
 
 type UsersUpdate = {
@@ -359,6 +363,7 @@ type UsersUpdate = {
   has_valid_payment_method?: boolean;
   id?: string;
   locale?: 'en' | 'fr';
+  questions_answered?: number;
   stripe_customer_id?: string | null;
   stripe_default_payment_method_id?: string | null;
   subscription_current_period_ends_at?: string | null;
@@ -372,7 +377,7 @@ type UsersUpdate = {
     | 'incomplete'
     | 'incomplete_expired'
     | 'paused';
-  user_tier?: 'visitor' | 'certified_inactive' | 'certified_active';
+  user_tier?: 'trial' | 'locked' | 'active' | 'dormant';
 };
 
 export type Database = {

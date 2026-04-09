@@ -5,9 +5,11 @@ import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
 import type { AppLocale } from '@/i18n/routing';
+import { requireUserTierCapability } from '@/lib/billing/gating';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { isConfidenceLevel } from '@/lib/demo/confidence';
 import { ANSWER_OPTIONS } from '@/lib/types/demo';
 import { withFeedback } from '@/lib/utils';
 
@@ -50,14 +52,21 @@ export async function startSessionAction(formData: FormData) {
   const { data: membership } = await supabase
     .schema('public')
     .from('group_members')
-    .select('role')
+    .select('is_founder')
     .eq('group_id', safeSession.group_id)
     .eq('user_id', user.id)
     .maybeSingle();
 
-  if (!membership || (membership.role !== 'admin' && safeSession.leader_id !== user.id)) {
+  if (!membership || (!membership.is_founder && safeSession.leader_id !== user.id)) {
     redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('notAuthorized')));
   }
+
+  await requireUserTierCapability({
+    userId: user.id,
+    capability: 'canBeCaptain',
+    locale,
+    redirectTo: `/${locale}/sessions/${sessionId}`,
+  });
 
   if (safeSession.status !== 'scheduled') {
     redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('actionFailed')));
@@ -69,7 +78,7 @@ export async function startSessionAction(formData: FormData) {
     .select('*', { count: 'exact', head: true })
     .eq('group_id', safeSession.group_id);
 
-  if ((memberCount ?? 0) < 3) {
+  if ((memberCount ?? 0) < 2) {
     redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('minimumMembers')));
   }
 
@@ -123,12 +132,12 @@ export async function launchQuestionAction(formData: FormData) {
   const { data: membership } = await supabase
     .schema('public')
     .from('group_members')
-    .select('role')
+    .select('is_founder')
     .eq('group_id', safeSession.group_id)
     .eq('user_id', user.id)
     .maybeSingle();
 
-  if (!membership || (membership.role !== 'admin' && safeSession.leader_id !== user.id)) {
+  if (!membership || (!membership.is_founder && safeSession.leader_id !== user.id)) {
     redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('notAuthorized')));
   }
 
@@ -220,7 +229,7 @@ export async function submitAnswerAction(formData: FormData) {
   const selectedOption = (formData.get('selectedOption') as string | null)?.toUpperCase() ?? null;
   const confidenceValue = formData.get('confidence');
   const confidence =
-    typeof confidenceValue === 'string' && confidenceValue.length > 0 ? Number(confidenceValue) : null;
+    typeof confidenceValue === 'string' && isConfidenceLevel(confidenceValue) ? confidenceValue : null;
   const t = await getTranslations({ locale, namespace: 'Feedback' });
   const { supabase, user } = await getCurrentAuthUser();
 
@@ -253,7 +262,7 @@ export async function submitAnswerAction(formData: FormData) {
       question_id: questionId,
       user_id: user.id,
       selected_option: selectedOption,
-      confidence: confidence !== null && Number.isFinite(confidence) ? confidence : null,
+      confidence,
     },
     { onConflict: 'question_id,user_id' },
   );
@@ -313,14 +322,14 @@ export async function revealAnswerAction(formData: FormData) {
   const { data: membership } = await supabase
     .schema('public')
     .from('group_members')
-    .select('role')
+    .select('is_founder')
     .eq('group_id', safeSession.group_id)
     .eq('user_id', user.id)
     .maybeSingle();
 
   if (
     !membership ||
-    (membership.role !== 'admin' &&
+    (!membership.is_founder &&
       safeSession.leader_id !== user.id &&
       safeQuestion.asked_by !== user.id)
   ) {
@@ -404,12 +413,12 @@ export async function passLeaderAction(formData: FormData) {
   const { data: membership } = await supabase
     .schema('public')
     .from('group_members')
-    .select('role')
+    .select('is_founder')
     .eq('group_id', session.group_id)
     .eq('user_id', user.id)
     .maybeSingle();
 
-  if (!membership || (membership.role !== 'admin' && session.leader_id !== user.id)) {
+  if (!membership || (!membership.is_founder && session.leader_id !== user.id)) {
     redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('notAuthorized')));
   }
 
@@ -475,12 +484,12 @@ export async function endSessionAction(formData: FormData) {
   const { data: membership } = await supabase
     .schema('public')
     .from('group_members')
-    .select('role')
+    .select('is_founder')
     .eq('group_id', session.group_id)
     .eq('user_id', user.id)
     .maybeSingle();
 
-  if (!membership || (membership.role !== 'admin' && session.leader_id !== user.id)) {
+  if (!membership || (!membership.is_founder && session.leader_id !== user.id)) {
     redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('notAuthorized')));
   }
 

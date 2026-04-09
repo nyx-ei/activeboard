@@ -6,6 +6,7 @@ import { SubmitButton } from '@/components/ui/submit-button';
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
+import { getUserAccessState, hasUserTierCapability } from '@/lib/billing/gating';
 import { getGroupData } from '@/lib/demo/data';
 import { GroupNameForm, InviteMemberForm } from './group-settings-forms';
 
@@ -29,7 +30,11 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
   const locale = params.locale as AppLocale;
   const user = await requireUser(locale);
   const t = await getTranslations('Group');
+  const feedbackT = await getTranslations('Feedback');
   const data = await getGroupData(params.groupId, user);
+  const accessState = await getUserAccessState(user.id);
+  const canCaptain = hasUserTierCapability(accessState, 'canBeCaptain');
+  const canCreateSession = hasUserTierCapability(accessState, 'canCreateSession');
 
   if (!data?.group) {
     notFound();
@@ -76,7 +81,7 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
               <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-white">{t('settingsTitle')}</h1>
             </div>
             <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand">
-              {data.membership.role === 'admin' ? t('captain') : t('member')}
+              {data.membership.is_founder ? t('captain') : t('member')}
             </span>
           </div>
 
@@ -105,7 +110,7 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
                   </div>
                 </div>
 
-                {data.membership.role === 'admin' ? (
+                {data.membership.is_founder && canCaptain ? (
                   <details className="group rounded-[18px] border border-white/[0.04] bg-white/[0.025] p-4 transition open:bg-white/[0.045]">
                     <summary className="inline-flex cursor-pointer list-none items-center rounded-[14px] px-3 py-2 text-sm font-semibold text-brand transition hover:bg-brand/10 hover:text-emerald-300">
                       + {t('addDay')}
@@ -150,6 +155,7 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
                     </form>
                   </details>
                 ) : null}
+                {data.membership.is_founder && !canCaptain ? <p className="text-sm text-amber-300">{feedbackT('upgradeRequiredToCaptain')}</p> : null}
 
                 {data.weeklySchedules.length > 0 ? (
                   <div className="space-y-3">
@@ -168,7 +174,7 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
                             <span className="text-sm font-semibold text-slate-400">
                               {t('questionGoalValue', { count: schedule.question_goal })}
                             </span>
-                            {data.membership.role === 'admin' ? (
+                            {data.membership.is_founder ? (
                               <form action={deleteWeeklyScheduleAction}>
                                 <input type="hidden" name="locale" value={locale} />
                                 <input type="hidden" name="groupId" value={params.groupId} />
@@ -204,7 +210,7 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
               <p className="mt-2 text-sm text-slate-500">{t('createdCode', { code: group.invite_code })}</p>
             </div>
 
-            {data.membership.role === 'admin' ? (
+            {data.membership.is_founder && canCaptain ? (
               <div className="surface-soft p-5">
                 <InviteMemberForm
                   action={inviteMemberAction}
@@ -240,7 +246,7 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
                         <div>
                           <p className="text-sm font-semibold text-white">{label}</p>
                           <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand">
-                            {member.role === 'admin' ? t('captain') : t('member')}
+                            {member.is_founder ? t('captain') : t('member')}
                           </p>
                         </div>
                       </div>
@@ -318,10 +324,11 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
                 />
               </label>
 
-              <SubmitButton pendingLabel={t('scheduleSessionPending')} className="button-primary mt-2 w-full">
+              <SubmitButton pendingLabel={t('scheduleSessionPending')} className="button-primary mt-2 w-full" disabled={!canCreateSession}>
                 {t('createSession')}
               </SubmitButton>
             </form>
+            {!canCreateSession ? <p className="mt-4 text-sm text-amber-300">{feedbackT('upgradeRequiredToCaptain')}</p> : null}
           </section>
 
           <section className="surface p-6 sm:p-8">

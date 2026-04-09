@@ -61,6 +61,10 @@
     "invalidCredentials": "The sign-in details are invalid or incomplete.",
     "googleError": "Google sign-in could not be started.",
     "missingFields": "Please complete all required fields.",
+    "upgradeRequiredGeneric": "Billing is required to continue with this action.",
+    "upgradeRequiredToCaptain": "Your free trial is complete. Activate billing to captain groups and launch new sessions.",
+    "upgradeRequiredToJoinGroups": "Your free trial is complete. Activate billing to join new groups.",
+    "upgradeRequiredToJoinSession": "Your free trial is complete. Activate billing to join or start new sessions.",
     "unexpectedError": "Something went wrong. Please try again."
   },
   "Dashboard": {
@@ -75,10 +79,13 @@
     "sessionsFinished": "{count, plural, one {# session completed} other {# sessions completed}}",
     "certaintyTitle": "Confidence x Success",
     "confidenceValue": "Average confidence {value}",
+    "confidenceLow": "Low",
+    "confidenceMedium": "Medium",
+    "confidenceHigh": "High",
     "errorTitle": "Error frequency",
     "errorFrequencyHint": "Wrong answers over submitted answers",
     "leagueTitle": "Reach 300 questions to join The League",
-    "leagueDescription": "0/300 - Only sessions with 3 to 5 members count.",
+    "leagueDescription": "0/300 - Only sessions with 2 to 5 members count.",
     "noData": "No data",
     "sessions": "Sessions",
     "noActiveSessions": "No active session right now.",
@@ -128,7 +135,7 @@
     "groupScheduleHint": "Times are displayed in your local timezone.",
     "groupProgressTitle": "Weekly progress",
     "groupProgressSummary": "{completed} / {total} questions this week",
-    "groupProgressHint": "Only sessions with 3 to 5 members count toward completion.",
+    "groupProgressHint": "Only sessions with 2 to 5 members count toward completion.",
     "memberPerformanceTitle": "Member performance",
     "memberPresence": "Presence: {value}%",
     "memberCompletion": "Completion: {value}%",
@@ -252,7 +259,7 @@
     "questionWithoutPrompt": "Question shared outside ActiveBoard",
     "sessionNotStarted": "Start the session to begin asking timed questions.",
     "sessionCompletedHint": "This session is complete. Open the summary to review results.",
-    "minimumMembersHint": "{count, plural, one {# member ready} other {# members ready}} - at least 3 needed to start.",
+    "minimumMembersHint": "{count, plural, one {# member ready} other {# members ready}} - at least 2 needed to start.",
     "reviewHint": "Once the answer is revealed, the structured review shows the exact distribution across A/B/C/D/E and blank.",
     "viewSummary": "View summary"
   },
@@ -287,11 +294,12 @@
     "menuLabel": "Billing",
     "backToDashboard": "Back to dashboard",
     "title": "Billing",
-    "description": "Add a payment method, then activate a subscription to move from visitor to certified active.",
+    "description": "ActiveBoard gives every member 100 free answered questions. After that, a subscription is required to keep running sessions and unlock discovery.",
+    "trialProgress": "{current} / {total} free questions used - {remaining} remaining before payment is required",
     "paymentMethodTitle": "Payment method",
     "paymentMethodPresent": "Card on file",
     "paymentMethodMissing": "No saved card",
-    "paymentMethodHint": "Attach a valid card to unlock the certified tier.",
+    "paymentMethodHint": "Attach a valid card so the account can move from locked to active once the subscription starts.",
     "paymentMethodId": "Default payment method {id}",
     "subscriptionTitle": "Subscription",
     "subscriptionHint": "No running subscription yet.",
@@ -308,13 +316,15 @@
       "paused": "Paused"
     },
     "tier": {
-      "visitor": "Visitor",
-      "certified_inactive": "Certified inactive",
-      "certified_active": "Certified active"
+      "trial": "Trial",
+      "locked": "Locked",
+      "active": "Active",
+      "dormant": "Dormant"
     },
     "capabilitiesTitle": "Current capabilities",
     "capabilitiesDescription": "These are the product abilities currently available to this account.",
     "capabilities": {
+      "beCaptain": "Be captain and launch sessions",
       "joinMultipleGroups": "Join more than one group",
       "displayHeatmap": "Display and share heatmap",
       "beDiscoverable": "Be discoverable"
@@ -324,9 +334,9 @@
     "capabilityUnlocked": "Unlocked in your current tier",
     "capabilityLocked": "{capability} is still locked",
     "cardAssociationTitle": "Card association",
-    "cardAssociationDescription": "This first Stripe flow only stores a valid payment method. It upgrades the account to certified inactive until a subscription is purchased.",
+    "cardAssociationDescription": "This Stripe step stores a valid payment method only. During the free trial it does not change your tier. After 100 answered questions, it helps the account move from locked to dormant until a subscription is activated.",
     "cardAssociationComplete": "A valid payment method is already attached to this account.",
-    "cardAssociatedButAwaitingSync": "A card is attached. The account will behave as certified inactive.",
+    "cardAssociatedDuringTrial": "A card is attached. Your account remains in trial until you reach 100 answered questions.",
     "addCard": "Add payment method",
     "addCardPending": "Redirecting to Stripe...",
     "plansTitle": "Subscription plans",
@@ -386,6 +396,6 @@
     "questionActive": "Finish the current question before launching a new one.",
     "questionClosed": "This question is no longer accepting answers.",
     "answerWindowClosed": "The answer timer has expired for this question.",
-    "minimumMembers": "At least 3 group members are required to start a session."
+    "minimumMembers": "At least 2 group members are required to start a session."
   }
 }

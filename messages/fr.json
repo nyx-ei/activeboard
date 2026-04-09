@@ -61,6 +61,10 @@
     "invalidCredentials": "Les informations de connexion sont invalides ou incompletes.",
     "googleError": "La connexion Google n'a pas pu demarrer.",
     "missingFields": "Merci de renseigner tous les champs requis.",
+    "upgradeRequiredGeneric": "La facturation est requise pour continuer cette action.",
+    "upgradeRequiredToCaptain": "Ton essai gratuit est termine. Active la facturation pour etre capitaine et lancer de nouvelles sessions.",
+    "upgradeRequiredToJoinGroups": "Ton essai gratuit est termine. Active la facturation pour rejoindre de nouveaux groupes.",
+    "upgradeRequiredToJoinSession": "Ton essai gratuit est termine. Active la facturation pour rejoindre ou demarrer de nouvelles sessions.",
     "unexpectedError": "Une erreur est survenue. Reessaie."
   },
   "Dashboard": {
@@ -75,10 +79,13 @@
     "sessionsFinished": "{count, plural, one {# session terminée} other {# sessions terminées}}",
     "certaintyTitle": "Certitude x Succès",
     "confidenceValue": "Confiance moyenne {value}",
+    "confidenceLow": "Faible",
+    "confidenceMedium": "Moyen",
+    "confidenceHigh": "Élevé",
     "errorTitle": "Fréquence d'erreurs",
     "errorFrequencyHint": "Réponses fausses sur réponses envoyées",
     "leagueTitle": "Atteignez 300 questions pour rejoindre The League",
-    "leagueDescription": "0/300 - Seules les sessions de 3 a 5 membres comptent.",
+    "leagueDescription": "0/300 - Seules les sessions de 2 a 5 membres comptent.",
     "noData": "Aucune donnée",
     "sessions": "Sessions",
     "noActiveSessions": "Aucune session active pour l'instant.",
@@ -128,7 +135,7 @@
     "groupScheduleHint": "Heures affichées dans votre fuseau horaire local.",
     "groupProgressTitle": "Progression hebdomadaire",
     "groupProgressSummary": "{completed} / {total} questions cette semaine",
-    "groupProgressHint": "Seules les sessions de 3 à 5 membres comptent pour le taux de complétion.",
+    "groupProgressHint": "Seules les sessions de 2 à 5 membres comptent pour le taux de complétion.",
     "memberPerformanceTitle": "Performance des membres",
     "memberPresence": "Présence: {value}%",
     "memberCompletion": "Complétion: {value}%",
@@ -252,7 +259,7 @@
     "questionWithoutPrompt": "Question partagee en dehors d'ActiveBoard",
     "sessionNotStarted": "Demarre la session pour commencer les questions chronometrees.",
     "sessionCompletedHint": "Cette session est terminee. Ouvre le resume pour revoir les resultats.",
-    "minimumMembersHint": "{count, plural, one {# membre pret} other {# membres prets}} - au moins 3 necessaires pour demarrer.",
+    "minimumMembersHint": "{count, plural, one {# membre pret} other {# membres prets}} - au moins 2 necessaires pour demarrer.",
     "reviewHint": "Une fois la reponse revelee, la revue structuree affiche la distribution exacte A/B/C/D/E et vide.",
     "viewSummary": "Voir le resume"
   },
@@ -287,11 +294,12 @@
     "menuLabel": "Facturation",
     "backToDashboard": "Retour au tableau de bord",
     "title": "Facturation",
-    "description": "Ajoute un moyen de paiement, puis active un abonnement pour passer de visiteur a certifie actif.",
+    "description": "ActiveBoard donne a chaque membre 100 questions repondues gratuites. Apres ce seuil, un abonnement est necessaire pour continuer les sessions et debloquer la decouverte.",
+    "trialProgress": "{current} / {total} questions gratuites utilisees - {remaining} restantes avant paiement obligatoire",
     "paymentMethodTitle": "Moyen de paiement",
     "paymentMethodPresent": "Carte enregistree",
     "paymentMethodMissing": "Aucune carte enregistree",
-    "paymentMethodHint": "Associe une carte valide pour debloquer le statut certifie.",
+    "paymentMethodHint": "Associe une carte valide pour permettre au compte de passer de bloque a actif une fois l'abonnement lance.",
     "paymentMethodId": "Moyen de paiement par defaut {id}",
     "subscriptionTitle": "Abonnement",
     "subscriptionHint": "Aucun abonnement actif pour le moment.",
@@ -308,13 +316,15 @@
       "paused": "En pause"
     },
     "tier": {
-      "visitor": "Visiteur",
-      "certified_inactive": "Certifie inactif",
-      "certified_active": "Certifie actif"
+      "trial": "Essai",
+      "locked": "Bloque",
+      "active": "Actif",
+      "dormant": "Dormant"
     },
     "capabilitiesTitle": "Capacites actuelles",
     "capabilitiesDescription": "Voici les fonctionnalites produit actuellement disponibles pour ce compte.",
     "capabilities": {
+      "beCaptain": "Etre capitaine et lancer des sessions",
       "joinMultipleGroups": "Rejoindre plus d'un groupe",
       "displayHeatmap": "Afficher et partager la heatmap",
       "beDiscoverable": "Etre visible dans la decouverte"
@@ -324,9 +334,9 @@
     "capabilityUnlocked": "Disponible avec ton statut actuel",
     "capabilityLocked": "{capability} est encore bloque",
     "cardAssociationTitle": "Association de carte",
-    "cardAssociationDescription": "Ce premier flow Stripe enregistre uniquement un moyen de paiement valide. Le compte passe ensuite en certifie inactif tant qu'aucun abonnement n'est actif.",
+    "cardAssociationDescription": "Cette etape Stripe enregistre uniquement un moyen de paiement valide. Pendant l'essai gratuit, elle ne change pas ton statut. Apres 100 questions repondues, elle permet au compte de passer de bloque a dormant tant qu'aucun abonnement n'est actif.",
     "cardAssociationComplete": "Un moyen de paiement valide est deja associe a ce compte.",
-    "cardAssociatedButAwaitingSync": "Une carte est deja associee. Le compte doit se comporter comme certifie inactif.",
+    "cardAssociatedDuringTrial": "Une carte est associee. Ton compte reste en essai jusqu'a 100 questions repondues.",
     "addCard": "Ajouter un moyen de paiement",
     "addCardPending": "Redirection vers Stripe...",
     "plansTitle": "Plans d'abonnement",
@@ -386,6 +396,6 @@
     "questionActive": "Termine la question en cours avant d'en lancer une autre.",
     "questionClosed": "Cette question n'accepte plus de reponses.",
     "answerWindowClosed": "Le temps de reponse est ecoule pour cette question.",
-    "minimumMembers": "Au moins 3 membres du groupe sont necessaires pour demarrer une session."
+    "minimumMembers": "Au moins 2 membres du groupe sont necessaires pour demarrer une session."
   }
 }
