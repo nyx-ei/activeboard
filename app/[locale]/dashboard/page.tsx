@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
+import { UserScheduleForm } from '@/components/dashboard/user-schedule-form';
 import { AlertIcon, CalendarIcon, SparkIcon, TargetIcon, UsersIcon } from '@/components/ui/dashboard-icons';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Link } from '@/i18n/navigation';
@@ -392,6 +393,31 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
             ) : null}
           </div>
         </section>
+
+        <UserScheduleForm
+          action={updateUserScheduleAction}
+          locale={locale}
+          initialTimezone={data.userSchedule?.timezone ?? 'UTC'}
+          initialGrid={data.userSchedule?.availability_grid ?? DEFAULT_AVAILABILITY_GRID}
+          labels={{
+            title: t('availabilityTitle'),
+            description: t('availabilityDescription'),
+            timezone: t('availabilityTimezone'),
+            save: t('availabilitySave'),
+            savePending: t('availabilitySavePending'),
+            empty: t('availabilityEmpty'),
+            slotsCount: t('availabilitySlotsCount', { count: '{count}' }),
+            weekdays: {
+              monday: t('weekdayMonday'),
+              tuesday: t('weekdayTuesday'),
+              wednesday: t('weekdayWednesday'),
+              thursday: t('weekdayThursday'),
+              friday: t('weekdayFriday'),
+              saturday: t('weekdaySaturday'),
+              sunday: t('weekdaySunday'),
+            },
+          }}
+        />
 
         {data.groups.length > 0 ? (
           <section id="groups-list" className="space-y-4">

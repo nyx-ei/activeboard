@@ -227,8 +227,8 @@ The following shipped issues conflict with v8 and need partial or full rework be
 
 The following v8 protocol elements are not yet implemented and need dedicated work:
 
-- [#69: QuestionClassification entity — captain Phase 3 classification](https://github.com/nyx-ei/activeboard/issues/69) — Not started
-- [#70: PersonalReflection entity — private Phase 3 error type & notes](https://github.com/nyx-ei/activeboard/issues/70) — Not started
+- [#69: QuestionClassification entity — captain Phase 3 classification](https://github.com/nyx-ei/activeboard/issues/69) — Implemented ✓
+- [#70: PersonalReflection entity — private Phase 3 error type & notes](https://github.com/nyx-ei/activeboard/issues/70) — Implemented ✓
 - [#66: Confidence enum migration (integer 1–5 → low/medium/high)](https://github.com/nyx-ei/activeboard/issues/66) — Implemented ✓
 - [#68: Group qualifying size minimum from 3 to 2 members](https://github.com/nyx-ei/activeboard/issues/68) — Implemented ✓
 
@@ -260,9 +260,9 @@ No dedicated GitHub issues were tracked for this work — it was delivered as pa
 - Session scheduling with datetime — Implemented
 - `meeting_link` field on sessions — Implemented
 - Weekly recurring schedules (group-level) — Implemented
-- [#17: Session reminders via email](https://github.com/nyx-ei/activeboard/issues/17) — Not started
-- [#71: Calendar invite generation via Resend](https://github.com/nyx-ei/activeboard/issues/71) — Not started
-- [#72: UserSchedule entity — personal availability grid for matching](https://github.com/nyx-ei/activeboard/issues/72) — Not started
+- [#17: Session reminders via email](https://github.com/nyx-ei/activeboard/issues/17) — Implemented ✓
+- [#71: Calendar invite generation via Resend](https://github.com/nyx-ei/activeboard/issues/71) — Implemented ✓
+- [#72: UserSchedule entity — personal availability grid for matching](https://github.com/nyx-ei/activeboard/issues/72) — Implemented ✓
 
 ---
 

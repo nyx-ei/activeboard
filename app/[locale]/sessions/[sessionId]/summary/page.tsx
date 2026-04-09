@@ -7,6 +7,7 @@ import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
 import { getSessionSummaryData } from '@/lib/demo/data';
+import type { DimensionOfCare, ErrorType, PhysicianActivity } from '@/lib/types/demo';
 
 type SessionSummaryPageProps = {
   params: { locale: string; sessionId: string };
@@ -24,6 +25,18 @@ function formatConfidence(
   if (confidence === 'medium') return t('confidenceMedium');
   if (confidence === 'high') return t('confidenceHigh');
   return t('blank');
+}
+
+function formatPhysicianActivity(value: PhysicianActivity | null | undefined, t: (key: string) => string) {
+  return value ? t(`physicianActivity.${value}`) : t('blank');
+}
+
+function formatDimensionOfCare(value: DimensionOfCare | null | undefined, t: (key: string) => string) {
+  return value ? t(`dimensionOfCare.${value}`) : t('blank');
+}
+
+function formatErrorType(value: ErrorType | null | undefined, t: (key: string) => string) {
+  return value ? t(`errorType.${value}`) : t('blank');
 }
 
 export default async function SessionSummaryPage({ params, searchParams }: SessionSummaryPageProps) {
@@ -108,7 +121,7 @@ export default async function SessionSummaryPage({ params, searchParams }: Sessi
                 </span>
               </div>
 
-              <div className="mt-4 grid gap-3 md:grid-cols-4">
+              <div className="mt-4 grid gap-3 md:grid-cols-4 xl:grid-cols-6">
                 <div className="rounded-[18px] bg-white/[0.04] px-4 py-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{t('yourAnswer')}</p>
                   <p className="mt-2 text-sm font-semibold text-white">
@@ -137,7 +150,33 @@ export default async function SessionSummaryPage({ params, searchParams }: Sessi
                       : t('missed')}
                   </p>
                 </div>
+                <div className="rounded-[18px] bg-white/[0.04] px-4 py-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{t('physicianActivityLabel')}</p>
+                  <p className="mt-2 text-sm font-semibold text-white">
+                    {formatPhysicianActivity(question.classification?.physician_activity, t)}
+                  </p>
+                </div>
+                <div className="rounded-[18px] bg-white/[0.04] px-4 py-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{t('dimensionOfCareLabel')}</p>
+                  <p className="mt-2 text-sm font-semibold text-white">
+                    {formatDimensionOfCare(question.classification?.dimension_of_care, t)}
+                  </p>
+                </div>
               </div>
+
+              {question.reflection ? (
+                <div className="mt-4 rounded-[18px] bg-white/[0.04] px-4 py-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{t('privateReflectionLabel')}</p>
+                    <p className="text-xs font-semibold text-brand">
+                      {formatErrorType(question.reflection.error_type, t)}
+                    </p>
+                  </div>
+                  {question.reflection.private_note ? (
+                    <p className="mt-3 text-sm leading-7 text-slate-300">{question.reflection.private_note}</p>
+                  ) : null}
+                </div>
+              ) : null}
             </article>
           ))}
         </div>

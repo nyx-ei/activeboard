@@ -17,6 +17,12 @@ type StripeServerEnv = {
   stripeWebhookSecret: string | null;
 };
 
+type EmailServerEnv = {
+  resendApiKey: string;
+  resendFromEmail: string;
+  sessionReminderCronSecret: string | null;
+};
+
 function readOptionalEnv(value: string | undefined): string | undefined {
   return value && value.trim().length > 0 ? value : undefined;
 }
@@ -61,12 +67,28 @@ function getStripeWebhookSecret() {
   return readOptionalEnv(process.env.STRIPE_WEBHOOK_SECRET) ?? null;
 }
 
+function getResendApiKey() {
+  return readOptionalEnv(process.env.RESEND_API_KEY);
+}
+
+function getResendFromEmail() {
+  return readOptionalEnv(process.env.RESEND_FROM_EMAIL);
+}
+
+function getSessionReminderCronSecret() {
+  return readOptionalEnv(process.env.SESSION_REMINDER_CRON_SECRET) ?? null;
+}
+
 export function hasStripeEnv(): boolean {
   return Boolean(getStripeSecretKey() && getStripePublishableKey());
 }
 
 export function hasStripeWebhookEnv(): boolean {
   return Boolean(getStripeSecretKey() && getStripeWebhookSecret());
+}
+
+export function hasEmailEnv(): boolean {
+  return Boolean(getResendApiKey() && getResendFromEmail());
 }
 
 export function getSupabaseAdminEnv(): SupabaseAdminEnv {
@@ -101,6 +123,23 @@ export function getStripeServerEnv(): StripeServerEnv {
     stripeMonthlyPriceId: getStripeMonthlyPriceId(),
     stripeYearlyPriceId: getStripeYearlyPriceId(),
     stripeWebhookSecret: getStripeWebhookSecret(),
+  };
+}
+
+export function getEmailServerEnv(): EmailServerEnv {
+  const resendApiKey = getResendApiKey();
+  const resendFromEmail = getResendFromEmail();
+
+  if (!resendApiKey || !resendFromEmail) {
+    throw new Error(
+      'Missing email configuration. Expected RESEND_API_KEY and RESEND_FROM_EMAIL.',
+    );
+  }
+
+  return {
+    resendApiKey,
+    resendFromEmail,
+    sessionReminderCronSecret: getSessionReminderCronSecret(),
   };
 }
 
