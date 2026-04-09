@@ -8,8 +8,15 @@ import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
 import { getUserAccessState, hasUserTierCapability } from '@/lib/billing/gating';
 import { getDashboardData } from '@/lib/demo/data';
+import { DEFAULT_AVAILABILITY_GRID } from '@/lib/schedule/availability';
 
-import { createGroupAction, joinGroupAction, joinSessionByCodeAction, respondToInviteAction } from './actions';
+import {
+  createGroupAction,
+  joinGroupAction,
+  joinSessionByCodeAction,
+  respondToInviteAction,
+  updateUserScheduleAction,
+} from './actions';
 
 type DashboardPageProps = {
   params: { locale: string };
@@ -327,7 +334,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                 {t('createGroup')}
               </SubmitButton>
             </form>
-            {!canCreateGroups ? <p className="mt-3 text-sm text-amber-300">{feedbackT('upgradeRequiredToCaptain')}</p> : null}
+            {!canCreateGroups ? <p className="mt-3 text-sm text-amber-300">{feedbackT('upgradeRequiredToCreateGroup')}</p> : null}
           </div>
 
           <div className="space-y-4">
@@ -358,7 +365,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                     <div key={invite.id} className="surface-soft p-4">
                       <p className="text-sm font-semibold text-white">{invite.groupName ?? t('unknownGroup')}</p>
                       <p className="mt-1 text-sm text-slate-400">
-                        {t('invitedBy', { name: invite.invitedByName ?? t('captainLabel') })}
+                        {t('invitedBy', { name: invite.invitedByName ?? t('founderLabel') })}
                       </p>
                       <div className="mt-3 flex gap-2">
                         <form action={respondToInviteAction} className="flex-1">
@@ -400,7 +407,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                       <h3 className="truncate text-lg font-bold text-white">{group.name}</h3>
                       <p className="mt-1 text-sm text-slate-400">{t('members', { count: group.memberCount })}</p>
                       <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">
-                        {group.is_founder ? t('captainLabel') : t('memberLabel')}
+                        {group.is_founder ? t('founderLabel') : t('memberLabel')}
                       </p>
                       <p className="mt-2 text-xs uppercase tracking-[0.18em] text-brand">
                         {t('inviteCodeValue', { code: group.invite_code })}

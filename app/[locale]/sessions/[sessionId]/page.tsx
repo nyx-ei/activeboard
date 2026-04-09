@@ -10,14 +10,24 @@ import { requireUser } from '@/lib/auth';
 import { getUserAccessState, hasUserTierCapability } from '@/lib/billing/gating';
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
 import { getSessionData } from '@/lib/demo/data';
-import { ANSWER_OPTIONS } from '@/lib/types/demo';
+import {
+  ANSWER_OPTIONS,
+  DIMENSION_OF_CARE_OPTIONS,
+  ERROR_TYPE_OPTIONS,
+  PHYSICIAN_ACTIVITY_OPTIONS,
+  type DimensionOfCare,
+  type ErrorType,
+  type PhysicianActivity,
+} from '@/lib/types/demo';
 import type { AppLocale } from '@/i18n/routing';
 
 import {
+  classifyQuestionAction,
   endSessionAction,
   launchQuestionAction,
   passLeaderAction,
   revealAnswerAction,
+  savePersonalReflectionAction,
   startSessionAction,
   submitAnswerAction,
 } from './actions';
@@ -40,6 +50,24 @@ function getConfidenceTone(
   return t('blank');
 }
 
+function getPhysicianActivityLabel(
+  value: PhysicianActivity,
+  t: (key: string) => string,
+) {
+  return t(`physicianActivity.${value}`);
+}
+
+function getDimensionOfCareLabel(
+  value: DimensionOfCare,
+  t: (key: string) => string,
+) {
+  return t(`dimensionOfCare.${value}`);
+}
+
+function getErrorTypeLabel(value: ErrorType, t: (key: string) => string) {
+  return t(`errorType.${value}`);
+}
+
 export default async function SessionPage({ params, searchParams }: SessionPageProps) {
   const locale = params.locale as AppLocale;
   const user = await requireUser(locale);
@@ -47,7 +75,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
   const feedbackT = await getTranslations('Feedback');
   const data = await getSessionData(params.sessionId, user);
   const accessState = await getUserAccessState(user.id);
-  const canCaptain = hasUserTierCapability(accessState, 'canBeCaptain');
+  const canLeadSession = hasUserTierCapability(accessState, 'canBeCaptain');
 
   if (!data?.session || !data.group) {
     notFound();
@@ -107,7 +135,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
                 <SubmitButton
                   pendingLabel={t('startSessionPending')}
                   className="button-primary min-w-[180px]"
-                  disabled={!canStartSession || !canCaptain}
+                  disabled={!canStartSession || !canLeadSession}
                 >
                   {t('startSession')}
                 </SubmitButton>
@@ -122,7 +150,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
             </Link>
 
             <p className="mt-5 text-sm text-slate-500">{t('minimumMembersHint', { count: data.members.length })}</p>
-            {!canCaptain ? <p className="mt-3 text-sm text-amber-300">{feedbackT('upgradeRequiredToCaptain')}</p> : null}
+            {!canLeadSession ? <p className="mt-3 text-sm text-amber-300">{feedbackT('upgradeRequiredToLeadSession')}</p> : null}
           </div>
         </section>
       </main>
@@ -377,6 +405,133 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
                     ))}
                   </div>
                 ) : null}
+
+                {data.currentQuestion.phase === 'review' ? (
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <h3 className="text-sm font-semibold text-white">{t('sharedClassificationTitle')}</h3>
+                          <p className="mt-1 text-xs leading-6 text-slate-500">{t('sharedClassificationHint')}</p>
+                        </div>
+                        {data.sharedClassification ? (
+                          <span className="rounded-full bg-brand/12 px-3 py-1 text-xs font-semibold text-brand">
+                            {t('savedBadge')}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {isLeader ? (
+                        <form action={classifyQuestionAction} className="mt-4 space-y-4">
+                          <input type="hidden" name="locale" value={locale} />
+                          <input type="hidden" name="sessionId" value={params.sessionId} />
+                          <input type="hidden" name="questionId" value={data.currentQuestion.id} />
+                          <label className="block">
+                            <span className="mb-2 block text-sm font-medium text-slate-300">{t('physicianActivityLabel')}</span>
+                            <select
+                              name="physicianActivity"
+                              className="field"
+                              defaultValue={data.sharedClassification?.physician_activity ?? PHYSICIAN_ACTIVITY_OPTIONS[0]}
+                            >
+                              {PHYSICIAN_ACTIVITY_OPTIONS.map((item) => (
+                                <option key={item} value={item}>
+                                  {getPhysicianActivityLabel(item, t)}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="block">
+                            <span className="mb-2 block text-sm font-medium text-slate-300">{t('dimensionOfCareLabel')}</span>
+                            <select
+                              name="dimensionOfCare"
+                              className="field"
+                              defaultValue={data.sharedClassification?.dimension_of_care ?? DIMENSION_OF_CARE_OPTIONS[0]}
+                            >
+                              {DIMENSION_OF_CARE_OPTIONS.map((item) => (
+                                <option key={item} value={item}>
+                                  {getDimensionOfCareLabel(item, t)}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <SubmitButton pendingLabel={t('saveClassificationPending')} className="button-secondary w-full">
+                            {t('saveClassification')}
+                          </SubmitButton>
+                        </form>
+                      ) : data.sharedClassification ? (
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          <div className="rounded-[18px] bg-white/[0.04] px-4 py-4">
+                            <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{t('physicianActivityLabel')}</p>
+                            <p className="mt-2 text-sm font-semibold text-white">
+                              {getPhysicianActivityLabel(data.sharedClassification.physician_activity, t)}
+                            </p>
+                          </div>
+                          <div className="rounded-[18px] bg-white/[0.04] px-4 py-4">
+                            <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{t('dimensionOfCareLabel')}</p>
+                            <p className="mt-2 text-sm font-semibold text-white">
+                              {getDimensionOfCareLabel(data.sharedClassification.dimension_of_care, t)}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="mt-4 text-sm leading-7 text-slate-400">{t('classificationWaiting')}</p>
+                      )}
+                    </div>
+
+                    <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <h3 className="text-sm font-semibold text-white">{t('privateReflectionTitle')}</h3>
+                          <p className="mt-1 text-xs leading-6 text-slate-500">{t('privateReflectionHint')}</p>
+                        </div>
+                        {data.myReflection ? (
+                          <span className="rounded-full bg-brand/12 px-3 py-1 text-xs font-semibold text-brand">
+                            {t('savedBadge')}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {data.myAnswer?.is_correct === false ? (
+                        <form action={savePersonalReflectionAction} className="mt-4 space-y-4">
+                          <input type="hidden" name="locale" value={locale} />
+                          <input type="hidden" name="sessionId" value={params.sessionId} />
+                          <input type="hidden" name="questionId" value={data.currentQuestion.id} />
+                          <label className="block">
+                            <span className="mb-2 block text-sm font-medium text-slate-300">{t('errorTypeLabel')}</span>
+                            <select
+                              name="errorType"
+                              className="field"
+                              defaultValue={data.myReflection?.error_type ?? ERROR_TYPE_OPTIONS[0]}
+                            >
+                              {ERROR_TYPE_OPTIONS.map((item) => (
+                                <option key={item} value={item}>
+                                  {getErrorTypeLabel(item, t)}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="block">
+                            <span className="mb-2 block text-sm font-medium text-slate-300">{t('privateNoteLabel')}</span>
+                            <textarea
+                              name="privateNote"
+                              rows={4}
+                              defaultValue={data.myReflection?.private_note ?? ''}
+                              placeholder={t('privateNotePlaceholder')}
+                              className="field resize-none"
+                            />
+                          </label>
+                          <SubmitButton pendingLabel={t('saveReflectionPending')} className="button-secondary w-full">
+                            {t('saveReflection')}
+                          </SubmitButton>
+                        </form>
+                      ) : data.myAnswer ? (
+                        <p className="mt-4 text-sm leading-7 text-slate-400">{t('reflectionOnlyIfIncorrect')}</p>
+                      ) : (
+                        <p className="mt-4 text-sm leading-7 text-slate-400">{t('reflectionAfterAnswer')}</p>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : (
               <p className="mt-5 text-sm leading-7 text-slate-400">{t('sessionNotStarted')}</p>
@@ -392,7 +547,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
                     {member.profile?.display_name ?? member.profile?.email ?? member.user_id}
                   </p>
                   <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">
-                    {member.is_founder ? t('captainLabel') : t('memberLabel')}
+                    {member.is_founder ? t('founderLabel') : t('memberLabel')}
                   </p>
                 </div>
               ))}

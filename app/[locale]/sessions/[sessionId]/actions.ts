@@ -10,7 +10,12 @@ import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { isConfidenceLevel } from '@/lib/demo/confidence';
-import { ANSWER_OPTIONS } from '@/lib/types/demo';
+import {
+  ANSWER_OPTIONS,
+  DIMENSION_OF_CARE_OPTIONS,
+  ERROR_TYPE_OPTIONS,
+  PHYSICIAN_ACTIVITY_OPTIONS,
+} from '@/lib/types/demo';
 import { withFeedback } from '@/lib/utils';
 
 function getGlobalDeadline(startedAt: string | null, timerSeconds: number) {
@@ -66,6 +71,7 @@ export async function startSessionAction(formData: FormData) {
     capability: 'canBeCaptain',
     locale,
     redirectTo: `/${locale}/sessions/${sessionId}`,
+    feedbackKey: 'upgradeRequiredToLeadSession',
   });
 
   if (safeSession.status !== 'scheduled') {
@@ -386,6 +392,154 @@ export async function revealAnswerAction(formData: FormData) {
 
   revalidatePath(`/${locale}/sessions/${sessionId}`);
   redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'success', t('answerRevealed')));
+}
+
+export async function classifyQuestionAction(formData: FormData) {
+  const locale = formData.get('locale') as AppLocale;
+  const sessionId = formData.get('sessionId') as string;
+  const questionId = formData.get('questionId') as string;
+  const physicianActivity = (formData.get('physicianActivity') as string | null) ?? '';
+  const dimensionOfCare = (formData.get('dimensionOfCare') as string | null) ?? '';
+  const t = await getTranslations({ locale, namespace: 'Feedback' });
+  const { supabase, user } = await getCurrentAuthUser();
+
+  if (!user) {
+    redirect(`/${locale}/auth/login`);
+  }
+
+  const { data: question } = await supabase
+    .schema('public')
+    .from('questions')
+    .select('id, session_id, correct_option')
+    .eq('id', questionId)
+    .maybeSingle();
+
+  if (!question || question.session_id !== sessionId) {
+    redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('notAuthorized')));
+  }
+
+  const { data: session } = await supabase
+    .schema('public')
+    .from('sessions')
+    .select('group_id, leader_id, status')
+    .eq('id', sessionId)
+    .maybeSingle();
+
+  if (!session) {
+    redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('notAuthorized')));
+  }
+
+  const { data: membership } = await supabase
+    .schema('public')
+    .from('group_members')
+    .select('is_founder')
+    .eq('group_id', session.group_id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (!membership || (!membership.is_founder && session.leader_id !== user.id)) {
+    redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('notAuthorized')));
+  }
+
+  if (session.status !== 'active') {
+    redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('actionFailed')));
+  }
+
+  if (
+    !PHYSICIAN_ACTIVITY_OPTIONS.includes(physicianActivity as (typeof PHYSICIAN_ACTIVITY_OPTIONS)[number]) ||
+    !DIMENSION_OF_CARE_OPTIONS.includes(dimensionOfCare as (typeof DIMENSION_OF_CARE_OPTIONS)[number])
+  ) {
+    redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('missingFields')));
+  }
+
+  await supabase.schema('public').from('question_classifications').upsert(
+    {
+      question_id: questionId,
+      session_id: sessionId,
+      classified_by: user.id,
+      correct_answer: question.correct_option,
+      physician_activity: physicianActivity as (typeof PHYSICIAN_ACTIVITY_OPTIONS)[number],
+      dimension_of_care: dimensionOfCare as (typeof DIMENSION_OF_CARE_OPTIONS)[number],
+    },
+    { onConflict: 'question_id' },
+  );
+
+  await logAppEvent({
+    eventName: APP_EVENTS.questionClassified,
+    locale,
+    userId: user.id,
+    groupId: session.group_id,
+    sessionId,
+    metadata: {
+      question_id: questionId,
+      physician_activity: physicianActivity,
+      dimension_of_care: dimensionOfCare,
+    },
+  });
+
+  revalidatePath(`/${locale}/sessions/${sessionId}`);
+  redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'success', t('actionSucceeded')));
+}
+
+export async function savePersonalReflectionAction(formData: FormData) {
+  const locale = formData.get('locale') as AppLocale;
+  const sessionId = formData.get('sessionId') as string;
+  const questionId = formData.get('questionId') as string;
+  const errorTypeValue = (formData.get('errorType') as string | null) ?? '';
+  const privateNote = ((formData.get('privateNote') as string | null) ?? '').trim();
+  const t = await getTranslations({ locale, namespace: 'Feedback' });
+  const { supabase, user } = await getCurrentAuthUser();
+
+  if (!user) {
+    redirect(`/${locale}/auth/login`);
+  }
+
+  const { data: question } = await supabase
+    .schema('public')
+    .from('questions')
+    .select('id, session_id, phase')
+    .eq('id', questionId)
+    .maybeSingle();
+
+  if (!question || question.session_id !== sessionId) {
+    redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('notAuthorized')));
+  }
+
+  if (question.phase !== 'review' && question.phase !== 'closed') {
+    redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('actionFailed')));
+  }
+
+  if (
+    errorTypeValue &&
+    !ERROR_TYPE_OPTIONS.includes(errorTypeValue as (typeof ERROR_TYPE_OPTIONS)[number])
+  ) {
+    redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('missingFields')));
+  }
+
+  await supabase.schema('public').from('personal_reflections').upsert(
+    {
+      question_id: questionId,
+      user_id: user.id,
+      error_type: errorTypeValue ? (errorTypeValue as (typeof ERROR_TYPE_OPTIONS)[number]) : null,
+      private_note: privateNote || null,
+    },
+    { onConflict: 'question_id,user_id' },
+  );
+
+  await logAppEvent({
+    eventName: APP_EVENTS.personalReflectionSaved,
+    locale,
+    userId: user.id,
+    sessionId,
+    metadata: {
+      question_id: questionId,
+      error_type: errorTypeValue || null,
+      has_note: Boolean(privateNote),
+    },
+  });
+
+  revalidatePath(`/${locale}/sessions/${sessionId}`);
+  redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'success', t('actionSucceeded')));
 }
 
 export async function passLeaderAction(formData: FormData) {

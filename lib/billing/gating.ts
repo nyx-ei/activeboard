@@ -33,9 +33,8 @@ export function hasUserTierCapability(
 
 function getCapabilityFeedbackKey(capability: UserTierCapability) {
   switch (capability) {
-    case 'canBeCaptain':
     case 'canCreateSession':
-      return 'upgradeRequiredToCaptain' as const;
+      return 'upgradeRequiredToScheduleSession' as const;
     case 'canJoinMultipleGroups':
       return 'upgradeRequiredToJoinGroups' as const;
     case 'canJoinSessions':
@@ -50,17 +49,19 @@ export async function requireUserTierCapability({
   capability,
   locale,
   redirectTo,
+  feedbackKey,
 }: {
   userId: string;
   capability: UserTierCapability;
   locale: AppLocale;
   redirectTo: string;
+  feedbackKey?: string;
 }) {
   const accessState = await getUserAccessState(userId);
 
   if (!hasUserTierCapability(accessState, capability)) {
     const t = await getTranslations({ locale, namespace: 'Feedback' });
-    redirect(withFeedback(redirectTo, 'error', t(getCapabilityFeedbackKey(capability))));
+    redirect(withFeedback(redirectTo, 'error', t(feedbackKey ?? getCapabilityFeedbackKey(capability))));
   }
 
   return accessState;

@@ -8,6 +8,8 @@ import type { AppLocale } from '@/i18n/routing';
 import { requireUserTierCapability } from '@/lib/billing/gating';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
+import { hasEmailEnv } from '@/lib/env';
+import { sendSessionCalendarInvites } from '@/lib/notifications/calendar-invites';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { generateSessionShareCode, normalizeEmail, withFeedback } from '@/lib/utils';
 
@@ -47,14 +49,7 @@ export async function inviteMemberAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
   const groupId = formData.get('groupId') as string;
   const email = normalizeEmail((formData.get('email') as string | null) ?? '');
-  const { supabase, user, t } = await requireFounderGroupMembership(groupId, locale);
-
-  await requireUserTierCapability({
-    userId: user.id,
-    capability: 'canBeCaptain',
-    locale,
-    redirectTo: `/${locale}/groups/${groupId}`,
-  });
+  const { supabase, t } = await requireFounderGroupMembership(groupId, locale);
 
   if (!groupId || !email) {
     redirect(withFeedback(`/${locale}/groups/${groupId}`, 'error', t('missingFields')));
@@ -132,6 +127,7 @@ export async function scheduleSessionAction(formData: FormData) {
     capability: 'canCreateSession',
     locale,
     redirectTo: `/${locale}/groups/${groupId}`,
+    feedbackKey: 'upgradeRequiredToScheduleSession',
   });
 
   if (!groupId || !sessionName || !date || !time || !timer) {
@@ -148,7 +144,7 @@ export async function scheduleSessionAction(formData: FormData) {
     .eq('user_id', user.id)
     .maybeSingle();
 
-  if (!membership) {
+  if (!membership || !membership.is_founder) {
     redirect(withFeedback(`/${locale}/groups/${groupId}`, 'error', t('notAuthorized')));
   }
 
@@ -169,7 +165,10 @@ export async function scheduleSessionAction(formData: FormData) {
     shareCode = generateSessionShareCode();
   }
 
-  const { error } = await supabase.schema('public').from('sessions').insert({
+  const { data: createdSession, error } = await supabase
+    .schema('public')
+    .from('sessions')
+    .insert({
     group_id: groupId,
     name: sessionName,
     scheduled_at: scheduledAt.toISOString(),
@@ -180,7 +179,9 @@ export async function scheduleSessionAction(formData: FormData) {
     created_by: user.id,
     leader_id: user.id,
     status: 'scheduled',
-  });
+    })
+    .select('id, group_id, name, scheduled_at, share_code, meeting_link, timer_seconds')
+    .single();
 
   if (error) {
     redirect(withFeedback(`/${locale}/groups/${groupId}`, 'error', t('actionFailed')));
@@ -201,6 +202,10 @@ export async function scheduleSessionAction(formData: FormData) {
     },
   });
 
+  if (createdSession && hasEmailEnv()) {
+    await sendSessionCalendarInvites(createdSession);
+  }
+
   revalidatePath(`/${locale}/groups/${groupId}`);
   revalidatePath(`/${locale}/dashboard`);
   redirect(withFeedback(`/${locale}/groups/${groupId}`, 'success', t('sessionScheduled')));
@@ -210,14 +215,7 @@ export async function updateGroupNameAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
   const groupId = formData.get('groupId') as string;
   const groupName = ((formData.get('groupName') as string | null) ?? '').trim();
-  const { supabase, user, t } = await requireFounderGroupMembership(groupId, locale);
-
-  await requireUserTierCapability({
-    userId: user.id,
-    capability: 'canBeCaptain',
-    locale,
-    redirectTo: `/${locale}/groups/${groupId}`,
-  });
+  const { supabase, t } = await requireFounderGroupMembership(groupId, locale);
 
   if (!groupName) {
     redirect(withFeedback(`/${locale}/groups/${groupId}`, 'error', t('missingFields')));
@@ -241,14 +239,7 @@ export async function addWeeklyScheduleAction(formData: FormData) {
   const startTime = (formData.get('startTime') as string | null) ?? '';
   const endTime = (formData.get('endTime') as string | null) ?? '';
   const questionGoal = Number(formData.get('questionGoal'));
-  const { supabase, user, t } = await requireFounderGroupMembership(groupId, locale);
-
-  await requireUserTierCapability({
-    userId: user.id,
-    capability: 'canBeCaptain',
-    locale,
-    redirectTo: `/${locale}/groups/${groupId}`,
-  });
+  const { supabase, t } = await requireFounderGroupMembership(groupId, locale);
 
   if (!weekday || !startTime || !endTime || !questionGoal) {
     redirect(withFeedback(`/${locale}/groups/${groupId}`, 'error', t('missingFields')));

@@ -105,6 +105,7 @@ export async function createGroupAction(formData: FormData) {
     capability: 'canBeCaptain',
     locale,
     redirectTo: `/${locale}/dashboard`,
+    feedbackKey: 'upgradeRequiredToCreateGroup',
   });
 
   let inviteCode = generateInviteCode();
@@ -317,4 +318,41 @@ export async function respondToInviteAction(formData: FormData) {
       intent === 'accept' ? t('inviteAccepted') : t('inviteDeclined'),
     ),
   );
+}
+
+export async function updateUserScheduleAction(formData: FormData) {
+  const locale = formData.get('locale') as AppLocale;
+  const timezone = ((formData.get('timezone') as string | null) ?? '').trim() || 'UTC';
+  const availabilityGridRaw = (formData.get('availabilityGrid') as string | null) ?? '{}';
+  const t = await getTranslations({ locale, namespace: 'Feedback' });
+  const { supabase, user } = await getCurrentAuthUser();
+
+  if (!user) {
+    redirect(`/${locale}/auth/login`);
+  }
+
+  const availabilityGrid = parseAvailabilityGrid(availabilityGridRaw);
+
+  const { error } = await supabase.schema('public').from('user_schedules').upsert({
+    user_id: user.id,
+    timezone,
+    availability_grid: availabilityGrid,
+  });
+
+  if (error) {
+    redirect(withFeedback(`/${locale}/dashboard`, 'error', t('actionFailed')));
+  }
+
+  await logAppEvent({
+    eventName: APP_EVENTS.userScheduleUpdated,
+    locale,
+    userId: user.id,
+    metadata: {
+      timezone,
+      availability_slot_count: Object.values(availabilityGrid).reduce((sum, hours) => sum + hours.length, 0),
+    },
+  });
+
+  revalidatePath(`/${locale}/dashboard`);
+  redirect(withFeedback(`/${locale}/dashboard`, 'success', t('actionSucceeded')));
 }
