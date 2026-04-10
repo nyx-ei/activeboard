@@ -35,7 +35,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   const feedbackT = await getTranslations('Feedback');
   const view = searchParams.view === 'group' ? 'group' : 'individual';
   const isGroupView = view === 'group';
-  const data = await getDashboardData(user, isGroupView);
+  const data = await getDashboardData(user, isGroupView, false);
   const accessState = await getUserAccessState(user.id);
   const canCreateGroups = hasUserTierCapability(accessState, 'canBeCaptain');
   const canJoinGroups = hasUserTierCapability(accessState, 'canJoinMultipleGroups');

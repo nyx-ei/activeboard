@@ -33,6 +33,7 @@ export default async function LocaleLayout({
   const t = await getTranslations('Common');
   const dashboardT = await getTranslations('Dashboard');
   const billingT = await getTranslations('Billing');
+  const profileT = await getTranslations('Profile');
   const user = await getCurrentUser();
   const displayName = user?.user_metadata.full_name ?? user?.email ?? 'ActiveBoard';
   const initials =
@@ -102,6 +103,8 @@ export default async function LocaleLayout({
                     initials={initials}
                     name={displayName}
                     email={user.email ?? ''}
+                    profileHref={`/${locale}/profile`}
+                    profileLabel={profileT('menuLabel')}
                     billingHref={`/${locale}/billing`}
                     billingLabel={billingT('menuLabel')}
                     groupHref={primaryGroupHref}
