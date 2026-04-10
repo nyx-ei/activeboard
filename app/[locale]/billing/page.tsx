@@ -127,6 +127,8 @@ export default async function BillingPage({ params, searchParams }: BillingPageP
   const capabilities = getUserTierCapabilities(snapshot.user_tier);
   const questionProgress = Math.min(snapshot.questions_answered, TRIAL_QUESTION_LIMIT);
   const remainingTrialQuestions = Math.max(TRIAL_QUESTION_LIMIT - snapshot.questions_answered, 0);
+  const showTrialWarning = snapshot.questions_answered >= 85 && snapshot.questions_answered < TRIAL_QUESTION_LIMIT;
+  const trialComplete = snapshot.questions_answered >= TRIAL_QUESTION_LIMIT;
 
   return (
     <main className="mx-auto flex w-full max-w-[980px] flex-1 flex-col gap-6">
@@ -152,6 +154,21 @@ export default async function BillingPage({ params, searchParams }: BillingPageP
             </p>
           </div>
           <StatusBadge>{getTierLabel(snapshot.user_tier, t)}</StatusBadge>
+        </div>
+        <div
+          className={`mt-5 rounded-[18px] border px-4 py-4 text-sm ${
+            trialComplete
+              ? 'border-amber-400/30 bg-amber-400/10 text-amber-200'
+              : showTrialWarning
+                ? 'border-amber-300/25 bg-amber-300/10 text-amber-100'
+                : 'border-white/8 bg-white/[0.03] text-slate-300'
+          }`}
+        >
+          {trialComplete
+            ? t('trialCompleteBanner')
+            : showTrialWarning
+              ? t('trialWarningBanner', { remaining: remainingTrialQuestions })
+              : t('trialProgressBanner', { remaining: remainingTrialQuestions })}
         </div>
       </section>
 

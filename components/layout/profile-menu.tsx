@@ -9,6 +9,8 @@ type ProfileMenuProps = {
   initials: string;
   name: string;
   email: string;
+  profileHref?: string | null;
+  profileLabel?: string | null;
   billingHref?: string | null;
   billingLabel?: string | null;
   groupHref?: string | null;
@@ -20,6 +22,8 @@ export function ProfileMenu({
   initials,
   name,
   email,
+  profileHref,
+  profileLabel,
   billingHref,
   billingLabel,
   groupHref,
@@ -79,6 +83,26 @@ export function ProfileMenu({
           </div>
 
           <div className="mt-4 border-t border-white/8 pt-4">
+            {profileHref && profileLabel ? (
+              <a
+                href={profileHref}
+                className="flex items-center gap-3 rounded-[14px] px-3 py-3 text-base text-slate-300 transition hover:bg-white/[0.04] hover:text-white"
+                onClick={() => setOpen(false)}
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+                  <path
+                    d="M12 12a3.5 3.5 0 1 0 0-7a3.5 3.5 0 0 0 0 7ZM5.5 19.5a6.5 6.5 0 0 1 13 0"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.6"
+                  />
+                </svg>
+                <span>{profileLabel}</span>
+              </a>
+            ) : null}
+
             {billingHref && billingLabel ? (
               <a
                 href={billingHref}

@@ -255,7 +255,7 @@ No dedicated GitHub issues were tracked for this work — it was delivered as pa
 
 ---
 
-## Milestone 3: Scheduling, Calendar & BYOM Integration — PARTIAL
+## Milestone 3: Scheduling, Calendar & BYOM Integration — DONE
 
 - Session scheduling with datetime — Implemented
 - `meeting_link` field on sessions — Implemented
@@ -266,16 +266,28 @@ No dedicated GitHub issues were tracked for this work — it was delivered as pa
 
 ---
 
-## Milestone 4: Heatmap, Profile & Inert-to-Lookup Progress — NOT STARTED
+## Milestone 4: Heatmap, Profile & Inert-to-Lookup Progress — DONE
 
-- [#24: Activity heatmap (GitHub-style)](https://github.com/nyx-ei/activeboard/issues/24) — Not started
-- [#25: Accuracy by exam blueprint category](https://github.com/nyx-ei/activeboard/issues/25) — Not started
-- [#26: Confidence calibration chart](https://github.com/nyx-ei/activeboard/issues/26) — Not started (data model: confidence is Low/Medium/High vs actual correctness)
-- [#27: Profile statistics summary](https://github.com/nyx-ei/activeboard/issues/27) — Partially implemented
-- [#28: Trend lines (improvement over time)](https://github.com/nyx-ei/activeboard/issues/28) — Not started
-- [#73: 100-question progress counter & 85-question warning banner](https://github.com/nyx-ei/activeboard/issues/73) — Not started
-- [#74: Accuracy by Physician activity × Dimension of care grid](https://github.com/nyx-ei/activeboard/issues/74) — Not started
-- [#75: Most frequent error types display](https://github.com/nyx-ei/activeboard/issues/75) — Not started
+- [#24: Activity heatmap (GitHub-style)](https://github.com/nyx-ei/activeboard/issues/24) — Implemented ✓
+- [#25: Accuracy by exam blueprint category](https://github.com/nyx-ei/activeboard/issues/25) — Implemented ✓
+- [#26: Confidence calibration chart](https://github.com/nyx-ei/activeboard/issues/26) — Implemented ✓
+- [#27: Profile statistics summary](https://github.com/nyx-ei/activeboard/issues/27) — Implemented ✓
+- [#28: Trend lines (improvement over time)](https://github.com/nyx-ei/activeboard/issues/28) — Implemented ✓
+- [#73: 100-question progress counter & 85-question warning banner](https://github.com/nyx-ei/activeboard/issues/73) — Implemented ✓
+- [#74: Accuracy by Physician activity × Dimension of care grid](https://github.com/nyx-ei/activeboard/issues/74) — Implemented ✓
+
+### Delivery Notes
+
+Milestone 4 analytics are now surfaced in a dedicated profile page, with trial progress messaging also available in billing:
+- 100-question progress counter with 85-question warning and 100-question hard-stop messaging
+- 12-week activity heatmap
+- profile summary metrics
+- confidence calibration by low / medium / high
+- accuracy by physician activity and dimension of care
+- physician activity × dimension of care blueprint grid
+- frequent private error types
+- weekly improvement trend
+- [#75: Most frequent error types display](https://github.com/nyx-ei/activeboard/issues/75) — Implemented ✓
 
 ---
 
@@ -377,8 +389,8 @@ Target weekly cadence from the v8 spec:
 | --- | --- | --- |
 | 1–2 | Core QCM session flow (timer, answer, confidence, captain reveals, scoring) | Milestone 1 — **DONE** |
 | 3 | Group creation + invite flow (Founder attribute, exam/language, 1–4 invites) | Milestone 2 — **DONE** |
-| 4 | Session scheduling + group management (meeting_link, calendar invites, UserSchedule) | Milestone 3 — **PARTIAL** |
-| 5 | Heatmap + profile views (accuracy by category, confidence calibration, 100-question counter, 85-question warning) | Milestone 4 — NOT STARTED |
+| 4 | Session scheduling + group management (meeting_link, calendar invites, UserSchedule) | Milestone 3 — **DONE** |
+| 5 | Heatmap + profile views (accuracy by category, confidence calibration, 100-question counter, 85-question warning) | Milestone 4 — **DONE** |
 | 6 | Closed beta with 2–3 WhatsApp study groups | Milestone 6 — NOT STARTED |
 | 7–8 | Lookup Layer (profile discovery, compatibility matching, invite flow, live session linelist) | Milestone 7 — NOT STARTED |
 | Ongoing | Monitor PWA install, session completion, 85→100 funnel, Lookup invite acceptance, linelist join rate | Milestones 8 & 9 |
@@ -403,7 +415,7 @@ Target weekly cadence from the v8 spec:
 - Not started (existing issues): 8 (#17, #24–#26, #28–#31, #40, #43–#46)
 - New v8 items needing GitHub issues: ~13 (including rework issues, QuestionClassification, PersonalReflection, confidence migration, group role simplification, etc.)
 - Deferred: 5 issues (#32–#36) + v2 question types
-- **Current focus: choose the next block after the v8 foundation — Milestone 4 profile/heatmap work or Milestone 7 Lookup Layer**
+- **Current focus: Milestone 6 beta validation and/or Milestone 7 Lookup Layer**
 - Last updated: April 10, 2026
 
 ---

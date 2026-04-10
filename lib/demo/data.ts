@@ -3,10 +3,19 @@ import { cache } from 'react';
 import type { User } from '@supabase/supabase-js';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { TRIAL_QUESTION_LIMIT } from '@/lib/billing/user-tier';
 import { computeAnswerDistribution } from '@/lib/demo/distribution';
-import { confidenceToScore, scoreToConfidenceLevel } from '@/lib/demo/confidence';
+import { confidenceToScore, scoreToConfidenceLevel, type ConfidenceLevel } from '@/lib/demo/confidence';
 import { createPerfTracker } from '@/lib/observability/perf';
 import { getAvailabilitySlotCount, normalizeAvailabilityGrid } from '@/lib/schedule/availability';
+import {
+  DIMENSION_OF_CARE_OPTIONS,
+  ERROR_TYPE_OPTIONS,
+  PHYSICIAN_ACTIVITY_OPTIONS,
+  type DimensionOfCare,
+  type ErrorType,
+  type PhysicianActivity,
+} from '@/lib/types/demo';
 
 type PublicClient = ReturnType<typeof createSupabaseServerClient>;
 type DashboardSession = {
@@ -59,6 +68,67 @@ type GroupDashboardData = {
   memberPerformance: GroupMemberPerformance[];
 };
 
+type TrialProgressData = {
+  current: number;
+  total: number;
+  remaining: number;
+  warningThreshold: number;
+  showWarning: boolean;
+  isComplete: boolean;
+};
+
+type HeatmapDay = {
+  date: string;
+  count: number;
+  intensity: 0 | 1 | 2 | 3 | 4;
+};
+
+type CategoryAccuracyItem<TCategory extends string> = {
+  category: TCategory;
+  total: number;
+  correct: number;
+  accuracy: number;
+};
+
+type BlueprintGridCell = {
+  physicianActivity: PhysicianActivity;
+  dimensionOfCare: DimensionOfCare;
+  total: number;
+  correct: number;
+  accuracy: number | null;
+};
+
+type ConfidenceCalibrationItem = {
+  confidence: ConfidenceLevel;
+  total: number;
+  correct: number;
+  accuracy: number;
+};
+
+type ErrorTypeBreakdownItem = {
+  errorType: ErrorType;
+  count: number;
+};
+
+type TrendPoint = {
+  label: string;
+  total: number;
+  accuracy: number | null;
+};
+
+type ProfileAnalyticsData = {
+  trialProgress: TrialProgressData;
+  heatmap: HeatmapDay[];
+  physicianActivityAccuracy: CategoryAccuracyItem<PhysicianActivity>[];
+  dimensionOfCareAccuracy: CategoryAccuracyItem<DimensionOfCare>[];
+  blueprintGrid: BlueprintGridCell[];
+  confidenceCalibration: ConfidenceCalibrationItem[];
+  errorTypeBreakdown: ErrorTypeBreakdownItem[];
+  weeklyTrend: TrendPoint[];
+};
+
+const TRIAL_WARNING_THRESHOLD = 85;
+
 async function getUsersMap(supabase: PublicClient, userIds: string[]) {
   if (userIds.length === 0) {
     return new Map<string, { id: string; display_name: string | null; email: string; avatar_url: string | null }>();
@@ -83,7 +153,114 @@ function sortWeeklySchedules<T extends { weekday: (typeof WEEKDAY_ORDER)[number]
   });
 }
 
-export const getDashboardData = cache(async (user: User, includeGroupDashboard = false) => {
+function toIsoDay(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function startOfWeek(date: Date) {
+  const next = new Date(date);
+  const currentDay = next.getUTCDay();
+  const offsetToMonday = currentDay === 0 ? 6 : currentDay - 1;
+  next.setUTCDate(next.getUTCDate() - offsetToMonday);
+  next.setUTCHours(0, 0, 0, 0);
+  return next;
+}
+
+function computeHeatmap(answers: { answered_at: string | null }[]): HeatmapDay[] {
+  const countsByDay = new Map<string, number>();
+
+  for (const answer of answers) {
+    if (!answer.answered_at) continue;
+    const dayKey = answer.answered_at.slice(0, 10);
+    countsByDay.set(dayKey, (countsByDay.get(dayKey) ?? 0) + 1);
+  }
+
+  const days: HeatmapDay[] = [];
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  const range = 112;
+  let maxCount = 0;
+
+  for (let offset = range - 1; offset >= 0; offset -= 1) {
+    const current = new Date(today);
+    current.setUTCDate(today.getUTCDate() - offset);
+    const date = toIsoDay(current);
+    const count = countsByDay.get(date) ?? 0;
+    maxCount = Math.max(maxCount, count);
+    days.push({ date, count, intensity: 0 });
+  }
+
+  return days.map((day) => {
+    if (day.count === 0 || maxCount === 0) {
+      return day;
+    }
+
+    const ratio = day.count / maxCount;
+    const intensity = ratio >= 0.75 ? 4 : ratio >= 0.5 ? 3 : ratio >= 0.25 ? 2 : 1;
+    return { ...day, intensity };
+  });
+}
+
+function buildCategoryAccuracy<TCategory extends string>(
+  categories: readonly TCategory[],
+  rows: Array<{ category: TCategory; isCorrect: boolean | null }>,
+): CategoryAccuracyItem<TCategory>[] {
+  return categories.map((category) => {
+    const matching = rows.filter((row) => row.category === category);
+    const total = matching.length;
+    const correct = matching.filter((row) => row.isCorrect === true).length;
+    return {
+      category,
+      total,
+      correct,
+      accuracy: total > 0 ? Math.round((correct / total) * 100) : 0,
+    };
+  });
+}
+
+function buildWeeklyTrend(
+  answers: { answered_at: string | null; is_correct: boolean | null }[],
+  weeks = 8,
+): TrendPoint[] {
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const currentWeekStart = startOfWeek(today);
+  const weeklyBuckets = new Map<string, { total: number; correct: number }>();
+
+  for (let index = weeks - 1; index >= 0; index -= 1) {
+    const weekStart = new Date(currentWeekStart);
+    weekStart.setUTCDate(currentWeekStart.getUTCDate() - index * 7);
+    weeklyBuckets.set(toIsoDay(weekStart), { total: 0, correct: 0 });
+  }
+
+  for (const answer of answers) {
+    if (!answer.answered_at) continue;
+    const answeredAt = new Date(answer.answered_at);
+    const bucketKey = toIsoDay(startOfWeek(answeredAt));
+    const bucket = weeklyBuckets.get(bucketKey);
+    if (!bucket) continue;
+    bucket.total += 1;
+    if (answer.is_correct === true) {
+      bucket.correct += 1;
+    }
+  }
+
+  return Array.from(weeklyBuckets.entries()).map(([weekStart, bucket]) => {
+    const label = new Intl.DateTimeFormat('en-CA', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(
+      new Date(weekStart),
+    );
+
+    return {
+      label,
+      total: bucket.total,
+      accuracy: bucket.total > 0 ? Math.round((bucket.correct / bucket.total) * 100) : null,
+    };
+  });
+}
+
+export const getDashboardData = cache(
+  async (user: User, includeGroupDashboard = false, includeProfileAnalytics = false) => {
   const perf = createPerfTracker(`getDashboardData:${user.id}`);
   const supabase = createSupabaseServerClient();
 
@@ -142,30 +319,35 @@ export const getDashboardData = cache(async (user: User, includeGroupDashboard =
       : [[], [], [], [] as DashboardSession[]];
   perf.step('dashboard_core_loaded');
 
-  const sessionIds = sessions.map((session) => session.id);
-  const questions =
-    sessionIds.length > 0
-      ? (
-          await supabase
-            .schema('public')
-            .from('questions')
-            .select('id, session_id')
-            .in('session_id', sessionIds)
-        ).data ?? []
-      : [];
-
-  const questionIds = questions.map((question) => question.id);
   const myAnswers =
-    questionIds.length > 0
-      ? (
-          await supabase
+    (
+      await supabase
+        .schema('public')
+        .from('answers')
+        .select('question_id, confidence, is_correct, answered_at')
+        .eq('user_id', user.id)
+        .order('answered_at', { ascending: true })
+    ).data ?? [];
+  const answeredQuestionIds = myAnswers.map((answer) => answer.question_id);
+  const [classifications, reflections] =
+    includeProfileAnalytics && answeredQuestionIds.length > 0
+      ? await Promise.all([
+          supabase
             .schema('public')
-            .from('answers')
-            .select('question_id, confidence, is_correct')
+            .from('question_classifications')
+            .select('question_id, physician_activity, dimension_of_care')
+            .in('question_id', answeredQuestionIds)
+            .then((result) => result.data ?? []),
+          supabase
+            .schema('public')
+            .from('personal_reflections')
+            .select('question_id, error_type')
             .eq('user_id', user.id)
-            .in('question_id', questionIds)
-        ).data ?? []
-      : [];
+            .in('question_id', answeredQuestionIds)
+            .then((result) => result.data ?? []),
+        ])
+      : [[], []];
+  perf.step('profile_analytics_loaded');
 
   const groupsById = new Map(groups.map((group) => [group.id, group]));
   const weeklySchedulesByGroup = new Map<string, typeof weeklySchedules>();
@@ -223,6 +405,98 @@ export const getDashboardData = cache(async (user: User, includeGroupDashboard =
       : null;
   const successRate = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : null;
   const errorRate = answeredCount > 0 ? Math.round((incorrectCount / answeredCount) * 100) : null;
+  const classificationByQuestionId = new Map(
+    classifications.map((classification) => [classification.question_id, classification]),
+  );
+  const profileAnalytics: ProfileAnalyticsData = includeProfileAnalytics
+    ? (() => {
+        const activityRows = myAnswers.flatMap((answer) => {
+          const classification = classificationByQuestionId.get(answer.question_id);
+          return classification
+            ? [{ category: classification.physician_activity, isCorrect: answer.is_correct }]
+            : [];
+        });
+        const dimensionRows = myAnswers.flatMap((answer) => {
+          const classification = classificationByQuestionId.get(answer.question_id);
+          return classification
+            ? [{ category: classification.dimension_of_care, isCorrect: answer.is_correct }]
+            : [];
+        });
+        const confidenceCalibration: ConfidenceCalibrationItem[] = (['low', 'medium', 'high'] as const).map(
+          (confidence) => {
+            const matching = myAnswers.filter((answer) => answer.confidence === confidence);
+            const total = matching.length;
+            const correct = matching.filter((answer) => answer.is_correct === true).length;
+            return {
+              confidence,
+              total,
+              correct,
+              accuracy: total > 0 ? Math.round((correct / total) * 100) : 0,
+            };
+          },
+        );
+        const errorTypeBreakdown = ERROR_TYPE_OPTIONS.map((errorType) => ({
+          errorType,
+          count: reflections.filter((reflection) => reflection.error_type === errorType).length,
+        })).filter((item) => item.count > 0);
+        const trialProgress: TrialProgressData = {
+          current: Math.min(answeredCount, TRIAL_QUESTION_LIMIT),
+          total: TRIAL_QUESTION_LIMIT,
+          remaining: Math.max(TRIAL_QUESTION_LIMIT - answeredCount, 0),
+          warningThreshold: TRIAL_WARNING_THRESHOLD,
+          showWarning: answeredCount >= TRIAL_WARNING_THRESHOLD && answeredCount < TRIAL_QUESTION_LIMIT,
+          isComplete: answeredCount >= TRIAL_QUESTION_LIMIT,
+        };
+        const blueprintGrid: BlueprintGridCell[] = PHYSICIAN_ACTIVITY_OPTIONS.flatMap((physicianActivity) =>
+          DIMENSION_OF_CARE_OPTIONS.map((dimensionOfCare) => {
+            const matchingAnswers = myAnswers.filter((answer) => {
+              const classification = classificationByQuestionId.get(answer.question_id);
+              return (
+                classification?.physician_activity === physicianActivity &&
+                classification.dimension_of_care === dimensionOfCare
+              );
+            });
+            const total = matchingAnswers.length;
+            const correct = matchingAnswers.filter((answer) => answer.is_correct === true).length;
+
+            return {
+              physicianActivity,
+              dimensionOfCare,
+              total,
+              correct,
+              accuracy: total > 0 ? Math.round((correct / total) * 100) : null,
+            };
+          }),
+        );
+
+        return {
+          trialProgress,
+          heatmap: computeHeatmap(myAnswers),
+          physicianActivityAccuracy: buildCategoryAccuracy(PHYSICIAN_ACTIVITY_OPTIONS, activityRows),
+          dimensionOfCareAccuracy: buildCategoryAccuracy(DIMENSION_OF_CARE_OPTIONS, dimensionRows),
+          blueprintGrid,
+          confidenceCalibration,
+          errorTypeBreakdown,
+          weeklyTrend: buildWeeklyTrend(myAnswers),
+        };
+      })()
+    : {
+        trialProgress: {
+          current: Math.min(answeredCount, TRIAL_QUESTION_LIMIT),
+          total: TRIAL_QUESTION_LIMIT,
+          remaining: Math.max(TRIAL_QUESTION_LIMIT - answeredCount, 0),
+          warningThreshold: TRIAL_WARNING_THRESHOLD,
+          showWarning: false,
+          isComplete: answeredCount >= TRIAL_QUESTION_LIMIT,
+        },
+        heatmap: [],
+        physicianActivityAccuracy: [],
+        dimensionOfCareAccuracy: [],
+        blueprintGrid: [],
+        confidenceCalibration: [],
+        errorTypeBreakdown: [],
+        weeklyTrend: [],
+      };
 
   const enrichedSessions = sessions.map((session) => ({
     ...session,
@@ -394,12 +668,14 @@ export const getDashboardData = cache(async (user: User, includeGroupDashboard =
       averageConfidence,
       leagueProgress: Math.min(100, Math.round((answeredCount / 300) * 100)),
     },
+    profileAnalytics,
     sessions: enrichedSessions,
     activeSessions,
     nextSession,
     groupDashboard,
   };
-});
+  },
+);
 
 export const getGroupData = cache(async (groupId: string, user: User) => {
   const perf = createPerfTracker(`getGroupData:${groupId}`);
