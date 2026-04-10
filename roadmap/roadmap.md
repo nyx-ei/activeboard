@@ -291,7 +291,7 @@ Milestone 4 analytics are now surfaced in a dedicated profile page, with trial p
 
 ---
 
-## Milestone 5: Monetization & Access Gating — PARTIAL
+## Milestone 5: Monetization & Access Gating — DONE
 
 ### User Tier & Database Schema
 - [#53: User tier model and database schema](https://github.com/nyx-ei/activeboard/issues/53) — Implemented ✓ (aligned to v8 via four-state tier model and persisted question count)
@@ -315,7 +315,7 @@ Milestone 4 analytics are now surfaced in a dedicated profile page, with trial p
 - Hard block at 100 — covered by #58 (depends on #64)
 
 ### Delivery Notes
-Original sequencing was `#53 → #54 → #55 → #56 → #57 → #58`. The v8 rework of tiers, founder model, qualifying group size, confidence model, and access gating is now in place. The next major product block is Milestone 4 profile/heatmap work or Milestone 7 Lookup Layer, depending on product priority.
+Original sequencing was `#53 → #54 → #55 → #56 → #57 → #58`. The v8 rework of tiers, founder model, qualifying group size, confidence model, and access gating is now in place, and the monetization block is complete. The next major product block is Milestone 6 beta validation, followed by Milestone 7 Lookup Layer.
 
 ---
 
