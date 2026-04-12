@@ -9,8 +9,10 @@ import { withFeedback } from '@/lib/utils';
 export type UserTierCapability = keyof ReturnType<typeof getUserTierCapabilities>;
 
 export async function getUserAccessState(userId: string) {
-  const gatingEnabled = await isFeatureEnabled('canEnforceUserTierGating');
-  const snapshot = await getUserBillingSnapshot(userId);
+  const [gatingEnabled, snapshot] = await Promise.all([
+    isFeatureEnabled('canEnforceUserTierGating'),
+    getUserBillingSnapshot(userId),
+  ]);
   const capabilities = snapshot ? getUserTierCapabilities(snapshot.user_tier) : null;
 
   return {

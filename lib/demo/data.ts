@@ -24,9 +24,13 @@ type DashboardSession = {
   name: string | null;
   scheduled_at: string;
   share_code: string;
-  status: 'scheduled' | 'active' | 'completed' | 'cancelled';
+  status: 'scheduled' | 'active' | 'incomplete' | 'completed' | 'cancelled';
   timer_mode: 'per_question' | 'global';
   timer_seconds: number;
+  leader_id: string | null;
+  question_goal: number;
+  answeredQuestionCount?: number;
+  questionCount?: number;
 };
 
 type GroupWeeklySchedule = {
@@ -66,6 +70,17 @@ type GroupDashboardData = {
   weeklyCompletedQuestions: number;
   weeklyTargetQuestions: number;
   memberPerformance: GroupMemberPerformance[];
+};
+
+type PendingInvite = {
+  id: string;
+  group_id: string;
+  invited_by: string;
+  invitee_email: string;
+  status: string;
+  created_at: string;
+  groupName: string | null;
+  invitedByName: string | null;
 };
 
 type TrialProgressData = {
@@ -151,6 +166,41 @@ function sortWeeklySchedules<T extends { weekday: (typeof WEEKDAY_ORDER)[number]
     if (weekdayDelta !== 0) return weekdayDelta;
     return left.start_time.localeCompare(right.start_time);
   });
+}
+
+function dedupeDashboardSessions<T extends DashboardSession & { groupName: string | null }>(sessions: T[]) {
+  const byLogicalSession = new Map<string, T>();
+  const statusWeight: Record<DashboardSession['status'], number> = {
+    active: 5,
+    incomplete: 4,
+    scheduled: 3,
+    completed: 2,
+    cancelled: 1,
+  };
+
+  for (const session of sessions) {
+    const logicalName = (session.name ?? session.groupName ?? session.id).trim().toLowerCase();
+    const key = `${session.group_id}:${logicalName}`;
+    const current = byLogicalSession.get(key);
+
+    if (!current) {
+      byLogicalSession.set(key, session);
+      continue;
+    }
+
+    const currentWeight = statusWeight[current.status];
+    const nextWeight = statusWeight[session.status];
+    const currentTime = new Date(current.scheduled_at).getTime();
+    const nextTime = new Date(session.scheduled_at).getTime();
+
+    if (nextWeight > currentWeight || (nextWeight === currentWeight && nextTime >= currentTime)) {
+      byLogicalSession.set(key, session);
+    }
+  }
+
+  return Array.from(byLogicalSession.values()).sort(
+    (left, right) => new Date(right.scheduled_at).getTime() - new Date(left.scheduled_at).getTime(),
+  );
 }
 
 function toIsoDay(date: Date) {
@@ -260,24 +310,30 @@ function buildWeeklyTrend(
 }
 
 export const getDashboardData = cache(
-  async (user: User, includeGroupDashboard = false, includeProfileAnalytics = false) => {
+  async (
+    user: User,
+    includeGroupDashboard = false,
+    includeProfileAnalytics = false,
+    includeMemberPerformance = includeGroupDashboard,
+    includeUserSchedule = true,
+  ) => {
   const perf = createPerfTracker(`getDashboardData:${user.id}`);
   const supabase = createSupabaseServerClient();
 
-  const [{ data: memberships }, { data: invites }, { data: userSchedule }] = await Promise.all([
-    supabase.schema('public').from('group_members').select('group_id, is_founder').eq('user_id', user.id),
+  const [{ data: memberships }, { data: userSchedule }] = await Promise.all([
     supabase
       .schema('public')
-      .from('group_invites')
-      .select('id, group_id, invited_by, invitee_email, status, created_at')
-      .eq('status', 'pending')
-      .or(`invitee_user_id.eq.${user.id},invitee_email.eq.${user.email?.toLowerCase() ?? ''}`),
-    supabase
-      .schema('public')
-      .from('user_schedules')
-      .select('user_id, timezone, availability_grid, updated_at')
-      .eq('user_id', user.id)
-      .maybeSingle(),
+      .from('group_members')
+      .select('group_id, is_founder')
+      .eq('user_id', user.id),
+    includeUserSchedule
+      ? supabase
+          .schema('public')
+          .from('user_schedules')
+          .select('user_id, timezone, availability_grid, updated_at')
+          .eq('user_id', user.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
 
   const groupIds = (memberships ?? []).map((membership) => membership.group_id);
@@ -311,7 +367,7 @@ export const getDashboardData = cache(
           supabase
             .schema('public')
             .from('sessions')
-            .select('id, group_id, name, scheduled_at, share_code, status, timer_mode, timer_seconds')
+            .select('id, group_id, name, scheduled_at, share_code, status, timer_mode, timer_seconds, leader_id, question_goal')
             .in('group_id', groupIds)
             .order('scheduled_at', { ascending: true })
             .then((result) => (result.data ?? []) as DashboardSession[]),
@@ -328,6 +384,17 @@ export const getDashboardData = cache(
         .eq('user_id', user.id)
         .order('answered_at', { ascending: true })
     ).data ?? [];
+  const sessionIds = sessions.map((session) => session.id);
+  const sessionQuestions =
+    sessionIds.length > 0
+      ? (
+          await supabase
+            .schema('public')
+            .from('questions')
+            .select('id, session_id')
+            .in('session_id', sessionIds)
+        ).data ?? []
+      : [];
   const answeredQuestionIds = myAnswers.map((answer) => answer.question_id);
   const [classifications, reflections] =
     includeProfileAnalytics && answeredQuestionIds.length > 0
@@ -369,8 +436,6 @@ export const getDashboardData = cache(
   const activeSessions = sessions.filter((session) => session.status === 'active');
   const completedSessions = sessions.filter((session) => session.status === 'completed');
 
-  const inviterIds = [...new Set((invites ?? []).map((invite) => invite.invited_by))];
-  const inviteUsers = await getUsersMap(supabase, inviterIds);
   perf.step('invite_users_loaded');
 
   const dashboardGroups = (memberships ?? []).reduce<DashboardGroup[]>((acc, membership) => {
@@ -387,12 +452,7 @@ export const getDashboardData = cache(
       return acc;
     }, []);
 
-  const pendingInvites = (invites ?? []).map((invite) => ({
-    ...invite,
-    groupName: groupsById.get(invite.group_id)?.name ?? null,
-    invitedByName:
-      inviteUsers.get(invite.invited_by)?.display_name ?? inviteUsers.get(invite.invited_by)?.email ?? null,
-  }));
+  const pendingInvites: PendingInvite[] = [];
 
   const answeredCount = myAnswers.length;
   const correctCount = myAnswers.filter((answer) => answer.is_correct).length;
@@ -498,9 +558,25 @@ export const getDashboardData = cache(
         weeklyTrend: [],
       };
 
+  const sessionByQuestionId = new Map(sessionQuestions.map((question) => [question.id, question.session_id]));
+  const questionCountBySession = new Map<string, number>();
+  const answeredQuestionCountBySession = new Map<string, number>();
+
+  for (const question of sessionQuestions) {
+    questionCountBySession.set(question.session_id, (questionCountBySession.get(question.session_id) ?? 0) + 1);
+  }
+
+  for (const answer of myAnswers) {
+    const sessionId = sessionByQuestionId.get(answer.question_id);
+    if (!sessionId) continue;
+    answeredQuestionCountBySession.set(sessionId, (answeredQuestionCountBySession.get(sessionId) ?? 0) + 1);
+  }
+
   const enrichedSessions = sessions.map((session) => ({
     ...session,
     groupName: groupsById.get(session.group_id)?.name ?? null,
+    answeredQuestionCount: answeredQuestionCountBySession.get(session.id) ?? 0,
+    questionCount: questionCountBySession.get(session.id) ?? 0,
   }));
 
   const nextSession = enrichedSessions.find((session) => session.status !== 'completed' && session.status !== 'cancelled') ?? null;
@@ -531,18 +607,32 @@ export const getDashboardData = cache(
     );
     const primaryGroupSessions = sessions.filter((session) => session.group_id === primaryGroup.id);
     const primaryGroupSessionIds = primaryGroupSessions.map((session) => session.id);
+    const startOfWeek = new Date();
+    const currentDay = startOfWeek.getDay();
+    const offsetToMonday = currentDay === 0 ? 6 : currentDay - 1;
+    startOfWeek.setDate(startOfWeek.getDate() - offsetToMonday);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const weeklySessions = primaryGroupSessions.filter((session) => {
+      if (session.status === 'cancelled') return false;
+      return new Date(session.scheduled_at).getTime() >= startOfWeek.getTime();
+    });
+    const weeklySessionIds = new Set(weeklySessions.map((session) => session.id));
+    const questionSessionIds = includeMemberPerformance ? primaryGroupSessionIds : Array.from(weeklySessionIds);
     const [{ data: groupMembers }, { data: groupQuestions }] = await Promise.all([
-      supabase
-        .schema('public')
-        .from('group_members')
-        .select('group_id, user_id, is_founder')
-        .eq('group_id', primaryGroup.id),
-      primaryGroupSessionIds.length > 0
+      includeMemberPerformance
+        ? supabase
+            .schema('public')
+            .from('group_members')
+            .select('group_id, user_id, is_founder')
+            .eq('group_id', primaryGroup.id)
+        : Promise.resolve({ data: [] as { group_id: string; user_id: string; is_founder: boolean }[] }),
+      questionSessionIds.length > 0
         ? supabase
             .schema('public')
             .from('questions')
             .select('id, session_id')
-            .in('session_id', primaryGroupSessionIds)
+            .in('session_id', questionSessionIds)
         : Promise.resolve({ data: [] as { id: string; session_id: string }[] }),
     ]);
 
@@ -560,21 +650,10 @@ export const getDashboardData = cache(
             .in('question_id', primaryGroupQuestionIds)
         : { data: [] as { question_id: string; user_id: string; is_correct: boolean | null }[] };
 
-    const memberIds = [...new Set((groupMembers ?? []).map((member) => member.user_id))];
-    const groupUsers = await getUsersMap(supabase, memberIds);
+    const memberIds = includeMemberPerformance ? [...new Set((groupMembers ?? []).map((member) => member.user_id))] : [];
+    const groupUsers = includeMemberPerformance ? await getUsersMap(supabase, memberIds) : new Map();
     const questionSessionById = new Map(primaryGroupQuestions.map((question) => [question.id, question.session_id]));
 
-    const startOfWeek = new Date();
-    const currentDay = startOfWeek.getDay();
-    const offsetToMonday = currentDay === 0 ? 6 : currentDay - 1;
-    startOfWeek.setDate(startOfWeek.getDate() - offsetToMonday);
-    startOfWeek.setHours(0, 0, 0, 0);
-
-    const weeklySessions = primaryGroupSessions.filter((session) => {
-      if (session.status === 'cancelled') return false;
-      return new Date(session.scheduled_at).getTime() >= startOfWeek.getTime();
-    });
-    const weeklySessionIds = new Set(weeklySessions.map((session) => session.id));
     const weeklyQuestions = primaryGroupQuestions.filter((question) => weeklySessionIds.has(question.session_id));
     const weeklyQuestionIds = new Set(weeklyQuestions.map((question) => question.id));
     const weeklyAnswers = (primaryGroupAnswers ?? []).filter((answer) => weeklyQuestionIds.has(answer.question_id));
@@ -609,7 +688,7 @@ export const getDashboardData = cache(
         weeklyTargetQuestions > 0 ? Math.min(100, Math.round((weeklyCompletedQuestions / weeklyTargetQuestions) * 100)) : 0,
       weeklyCompletedQuestions,
       weeklyTargetQuestions,
-      memberPerformance: (groupMembers ?? []).map((member) => {
+      memberPerformance: includeMemberPerformance ? (groupMembers ?? []).map((member) => {
         const profile = groupUsers.get(member.user_id);
         const name = profile?.display_name ?? profile?.email ?? user.email ?? 'Member';
         const answerStats = answersByUser.get(member.user_id);
@@ -629,7 +708,7 @@ export const getDashboardData = cache(
           initials:
             name
               .split(' ')
-              .map((part) => part[0])
+              .map((part: string) => part[0])
               .join('')
               .slice(0, 2)
               .toUpperCase() || 'AB',
@@ -639,7 +718,7 @@ export const getDashboardData = cache(
           status:
             (answerStats?.sessionIds.size ?? 0) === 0 && (answerStats?.questionIds.size ?? 0) === 0 ? 'setup' : 'active',
         };
-      }),
+      }) : [],
     };
   }
 
@@ -669,7 +748,7 @@ export const getDashboardData = cache(
       leagueProgress: Math.min(100, Math.round((answeredCount / 300) * 100)),
     },
     profileAnalytics,
-    sessions: enrichedSessions,
+    sessions: dedupeDashboardSessions(enrichedSessions.filter((session) => session.status !== 'cancelled')),
     activeSessions,
     nextSession,
     groupDashboard,
@@ -753,7 +832,7 @@ export const getSessionData = cache(async (sessionId: string, user: User) => {
   const { data: session } = await supabase
     .schema('public')
     .from('sessions')
-    .select('id, group_id, name, scheduled_at, share_code, started_at, ended_at, timer_mode, timer_seconds, status, meeting_link, leader_id')
+    .select('id, group_id, name, scheduled_at, share_code, started_at, ended_at, timer_mode, timer_seconds, status, meeting_link, leader_id, question_goal')
     .eq('id', sessionId)
     .single();
 
@@ -788,10 +867,11 @@ export const getSessionData = cache(async (sessionId: string, user: User) => {
         'id, body, options, order_index, phase, launched_at, answer_deadline_at, correct_option, asked_by',
       )
       .eq('session_id', sessionId)
-      .order('order_index', { ascending: false }),
+      .order('order_index', { ascending: true }),
   ]);
 
   const currentQuestion = (questions ?? []).find((question) => question.phase === 'answering' || question.phase === 'review') ?? (questions ?? [])[0] ?? null;
+  const questionIds = (questions ?? []).map((question) => question.id);
 
   const answers =
     currentQuestion
@@ -803,6 +883,41 @@ export const getSessionData = cache(async (sessionId: string, user: User) => {
             .eq('question_id', currentQuestion.id)
         ).data ?? []
       : [];
+  const allAnswers =
+    questionIds.length > 0
+      ? (
+          await supabase
+            .schema('public')
+            .from('answers')
+            .select('id, question_id, user_id, selected_option, confidence, is_correct, answered_at')
+            .in('question_id', questionIds)
+        ).data ?? []
+      : [];
+
+  const allClassifications =
+    questionIds.length > 0
+      ? (
+          await supabase
+            .schema('public')
+            .from('question_classifications')
+            .select(
+              'id, question_id, session_id, classified_by, correct_answer, physician_activity, dimension_of_care, frequent_error_type, classified_at',
+            )
+            .in('question_id', questionIds)
+        ).data ?? []
+      : [];
+
+  const allReflections =
+    questionIds.length > 0
+      ? (
+          await supabase
+            .schema('public')
+            .from('personal_reflections')
+            .select('id, question_id, user_id, error_type, private_note, created_at, updated_at')
+            .in('question_id', questionIds)
+            .eq('user_id', user.id)
+        ).data ?? []
+      : [];
 
   const sharedClassification =
     currentQuestion
@@ -811,7 +926,7 @@ export const getSessionData = cache(async (sessionId: string, user: User) => {
             .schema('public')
             .from('question_classifications')
             .select(
-              'id, question_id, session_id, classified_by, correct_answer, physician_activity, dimension_of_care, classified_at',
+              'id, question_id, session_id, classified_by, correct_answer, physician_activity, dimension_of_care, frequent_error_type, classified_at',
             )
             .eq('question_id', currentQuestion.id)
             .maybeSingle()
@@ -848,6 +963,9 @@ export const getSessionData = cache(async (sessionId: string, user: User) => {
     questions: questions ?? [],
     currentQuestion,
     answers,
+    allAnswers,
+    allClassifications,
+    allReflections,
     myAnswer,
     sharedClassification,
     myReflection,

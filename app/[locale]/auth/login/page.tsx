@@ -20,11 +20,11 @@ export default async function LoginPage({ params }: LoginPageProps) {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 items-center justify-center py-10">
+    <main className="mx-auto flex w-full max-w-6xl flex-1 items-center justify-center px-4 py-10">
       <div className="flex w-full items-center justify-center">
           <Suspense
             fallback={
-              <div className="surface w-full max-w-xl p-8 sm:p-10">
+              <div className="w-full max-w-[410px] text-center">
                 <h1 className="mt-1 text-3xl font-extrabold text-white">{t('title')}</h1>
               </div>
             }

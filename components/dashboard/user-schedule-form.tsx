@@ -14,6 +14,7 @@ import {
 type UserScheduleFormProps = {
   action: (formData: FormData) => void;
   locale: string;
+  compact?: boolean;
   labels: {
     title: string;
     description: string;
@@ -64,6 +65,7 @@ function formatHourLabel(hour: number) {
 export function UserScheduleForm({
   action,
   locale,
+  compact = false,
   labels,
   initialTimezone,
   initialGrid,
@@ -96,24 +98,31 @@ export function UserScheduleForm({
   }
 
   return (
-    <form action={action} className="surface p-5">
+    <form action={action} className={compact ? 'surface-mockup p-4' : 'surface p-5'}>
       <input type="hidden" name="locale" value={locale} />
       <input type="hidden" name="availabilityGrid" value={JSON.stringify(grid)} />
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-base font-bold text-white">{labels.title}</h2>
-          <p className="mt-1 text-sm text-slate-400">{labels.description}</p>
+          <h2 className={compact ? 'text-sm font-bold text-white' : 'text-base font-bold text-white'}>
+            {labels.title}
+          </h2>
+          {compact ? null : <p className="mt-1 text-sm text-slate-400">{labels.description}</p>}
         </div>
-        <span className="rounded-full bg-white/[0.05] px-3 py-1 text-xs font-semibold text-slate-300">
+        <span className="rounded-full bg-white/[0.05] px-2.5 py-1 text-[11px] font-semibold text-slate-300">
           {labels.slotsCount.replace('{count}', String(slotCount))}
         </span>
       </div>
 
-      <div className="mt-5">
+      <div className={compact ? 'mt-3' : 'mt-5'}>
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-slate-300">{labels.timezone}</span>
-          <select name="timezone" className="field" value={timezone} onChange={(event) => setTimezone(event.target.value)}>
+          <select
+            name="timezone"
+            className={compact ? 'field h-10 rounded-[8px] px-3 py-2 text-sm' : 'field'}
+            value={timezone}
+            onChange={(event) => setTimezone(event.target.value)}
+          >
             {timezoneOptions.map((option) => (
               <option key={option} value={option}>
                 {option}
@@ -123,18 +132,27 @@ export function UserScheduleForm({
         </label>
       </div>
 
-      <div className="mt-5 overflow-x-auto">
-        <div className="min-w-[980px]">
-          <div className="grid grid-cols-[120px_repeat(17,minmax(44px,1fr))] gap-2">
+      <div className={compact ? 'mt-3 overflow-x-auto' : 'mt-5 overflow-x-auto'}>
+        <div className={compact ? 'min-w-[760px]' : 'min-w-[980px]'}>
+          <div
+            className={
+              compact
+                ? 'grid grid-cols-[84px_repeat(17,minmax(34px,1fr))] gap-1.5'
+                : 'grid grid-cols-[120px_repeat(17,minmax(44px,1fr))] gap-2'
+            }
+          >
             <div />
             {AVAILABILITY_HOURS.map((hour) => (
-              <div key={hour} className="text-center text-xs font-semibold text-slate-500">
+              <div key={hour} className="text-center text-[10px] font-semibold text-slate-500">
                 {formatHourLabel(hour)}
               </div>
             ))}
             {AVAILABILITY_WEEKDAYS.map((weekday) => (
               <Fragment key={weekday}>
-                <div key={`${weekday}-label`} className="flex items-center text-sm font-semibold text-white">
+                <div
+                  key={`${weekday}-label`}
+                  className={compact ? 'flex items-center text-xs font-semibold text-white' : 'flex items-center text-sm font-semibold text-white'}
+                >
                   {labels.weekdays[weekday]}
                 </div>
                 {AVAILABILITY_HOURS.map((hour) => {
@@ -145,7 +163,9 @@ export function UserScheduleForm({
                       type="button"
                       onClick={() => toggleSlot(weekday, hour)}
                       className={[
-                        'h-11 rounded-[12px] border text-xs font-semibold transition',
+                        compact
+                          ? 'h-8 rounded-[8px] border text-[10px] font-semibold transition'
+                          : 'h-11 rounded-[12px] border text-xs font-semibold transition',
                         isActive
                           ? 'border-brand bg-brand/20 text-brand'
                           : 'border-border bg-white/[0.03] text-slate-500 hover:border-white/20 hover:bg-white/[0.05] hover:text-white',
@@ -162,10 +182,10 @@ export function UserScheduleForm({
         </div>
       </div>
 
-      {slotCount === 0 ? <p className="mt-4 text-sm text-slate-500">{labels.empty}</p> : null}
+      {slotCount === 0 ? <p className="mt-3 text-xs text-slate-500">{labels.empty}</p> : null}
 
-      <div className="mt-5">
-        <SubmitButton pendingLabel={labels.savePending} className="button-primary w-full sm:w-auto">
+      <div className={compact ? 'mt-4' : 'mt-5'}>
+        <SubmitButton pendingLabel={labels.savePending} className={compact ? 'button-primary w-full rounded-[8px] py-2.5 text-sm' : 'button-primary w-full sm:w-auto'}>
           {labels.save}
         </SubmitButton>
       </div>

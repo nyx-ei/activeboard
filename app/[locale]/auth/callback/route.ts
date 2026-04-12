@@ -44,6 +44,13 @@ export async function GET(request: Request, { params }: RouteContext) {
       display_name:
         user.user_metadata.full_name ?? user.user_metadata.name ?? user.email?.split('@')[0] ?? null,
       avatar_url: user.user_metadata.avatar_url ?? null,
+      exam_session:
+        typeof user.user_metadata.exam_session === 'string'
+          ? (user.user_metadata.exam_session as 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead')
+          : null,
+      question_banks: Array.isArray(user.user_metadata.question_banks)
+        ? user.user_metadata.question_banks.filter((value): value is string => typeof value === 'string')
+        : [],
       locale,
     };
 
