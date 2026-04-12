@@ -1,10 +1,19 @@
 import { getTranslations } from 'next-intl/server';
+import Image from 'next/image';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
+import { LogoutButton } from '@/components/auth/logout-button';
+import { UserScheduleForm } from '@/components/dashboard/user-schedule-form';
+import { PasswordUpdateForm, ProfileDetailsForm } from '@/components/profile/profile-settings-forms';
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
 import { getDashboardData } from '@/lib/demo/data';
+import { DEFAULT_AVAILABILITY_GRID } from '@/lib/schedule/availability';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+
+import { updateUserScheduleAction } from '../dashboard/actions';
+import { updatePasswordAction, updateProfileAction } from './actions';
 
 type ProfilePageProps = {
   params: { locale: string };
@@ -14,292 +23,144 @@ type ProfilePageProps = {
   };
 };
 
-function getHeatmapCellClass(intensity: 0 | 1 | 2 | 3 | 4) {
-  switch (intensity) {
-    case 4:
-      return 'bg-brand';
-    case 3:
-      return 'bg-emerald-400/80';
-    case 2:
-      return 'bg-emerald-400/55';
-    case 1:
-      return 'bg-emerald-400/25';
-    default:
-      return 'bg-white/[0.05]';
-  }
-}
-
 export default async function ProfilePage({ params, searchParams }: ProfilePageProps) {
   const locale = params.locale as AppLocale;
   const user = await requireUser(locale);
   const t = await getTranslations('Profile');
   const dashboardT = await getTranslations('Dashboard');
-  const sessionT = await getTranslations('Session');
-  const data = await getDashboardData(user, false, true);
+  const supabase = createSupabaseServerClient();
+  const { data: profile } = await supabase
+    .schema('public')
+    .from('users')
+    .select('display_name, exam_session, question_banks')
+    .eq('id', user.id)
+    .maybeSingle();
+  const data = await getDashboardData(user, false, false);
+  const displayName = profile?.display_name ?? user.user_metadata.full_name ?? user.email?.split('@')[0] ?? 'ActiveBoard';
+  const examSession = profile?.exam_session ?? (typeof user.user_metadata.exam_session === 'string' ? user.user_metadata.exam_session : '');
+  const questionBanks = profile?.question_banks ?? (Array.isArray(user.user_metadata.question_banks)
+    ? user.user_metadata.question_banks.filter((value): value is string => typeof value === 'string')
+    : []);
+  const avatarUrl = typeof user.user_metadata.avatar_url === 'string' ? user.user_metadata.avatar_url : null;
+  const initials = displayName
+    .split(' ')
+    .map((part: string) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
-    <main className="mx-auto flex w-full max-w-[980px] flex-1 flex-col gap-6">
-      <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
+    <main className="fixed inset-0 z-50 flex min-h-screen items-center justify-center overflow-y-auto bg-black/72 px-4 py-6 backdrop-blur-[2px]">
+      <div className="w-full max-w-[480px]">
+        <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
 
-      <section className="surface p-6 sm:p-8">
-        <Link href="/dashboard" className="button-ghost -ml-4 px-4">
-          <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-            <path
-              d="M15 6l-6 6l6 6"
-              fill="none"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="1.8"
-            />
-          </svg>
-          {t('backToDashboard')}
-        </Link>
-        <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">{t('title')}</h1>
-            <p className="mt-3 max-w-3xl text-base leading-7 text-slate-400">{t('description')}</p>
+        <section className="max-h-[78vh] overflow-y-auto rounded-[15px] border border-white/[0.06] bg-[#11192c] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.55)]">
+          <div className="flex items-center justify-between gap-4">
+            <h1 className="text-xl font-extrabold tracking-tight text-white">{t('title')}</h1>
+            <Link href="/dashboard?view=sessions" className="text-2xl leading-none text-slate-400 transition hover:text-white" aria-label={t('close')}>
+              &times;
+            </Link>
           </div>
-          <span className="shrink-0 rounded-full bg-white/[0.05] px-4 py-2 text-sm font-semibold text-slate-200">
-            {dashboardT('questionsAnsweredValue', { count: data.metrics.answeredCount })}
-          </span>
-        </div>
-      </section>
 
-      <section className="surface p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand">
-              {dashboardT('trialProgressTitle')}
-            </p>
-            <p className="mt-2 text-lg font-bold text-white">
-              {dashboardT('trialProgressSummary', {
-                current: data.profileAnalytics.trialProgress.current,
-                total: data.profileAnalytics.trialProgress.total,
-              })}
-            </p>
-            <p className="mt-2 text-sm text-slate-400">
-              {data.profileAnalytics.trialProgress.isComplete
-                ? dashboardT('trialProgressComplete')
-                : data.profileAnalytics.trialProgress.showWarning
-                  ? dashboardT('trialProgressWarning', {
-                      remaining: data.profileAnalytics.trialProgress.remaining,
-                    })
-                  : dashboardT('trialProgressDescription', {
-                      remaining: data.profileAnalytics.trialProgress.remaining,
-                    })}
-            </p>
+          <div className="mt-5 flex items-center gap-4">
+            <div className="relative">
+              <div className="flex h-[68px] w-[68px] items-center justify-center overflow-hidden rounded-full bg-brand/18 text-xl font-extrabold text-brand">
+                {avatarUrl ? (
+                  <Image src={avatarUrl} alt="" width={68} height={68} unoptimized className="h-full w-full object-cover" />
+                ) : (
+                  initials
+                )}
+              </div>
+              <label className="absolute -bottom-1 -right-1 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-brand text-slate-950 shadow-lg transition hover:bg-brand-strong">
+                <input type="file" accept="image/*" className="sr-only" />
+                <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+                  <path
+                    d="M8.5 7.5l1.2-2h4.6l1.2 2H18a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h2.5Z"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinejoin="round"
+                    strokeWidth="1.8"
+                  />
+                  <path d="M12 15a3 3 0 1 0 0-6a3 3 0 0 0 0 6Z" fill="none" stroke="currentColor" strokeWidth="1.8" />
+                </svg>
+              </label>
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-base font-extrabold text-white">{displayName}</p>
+              <p className="truncate text-sm font-medium text-slate-400">{user.email}</p>
+            </div>
           </div>
-          <span className="shrink-0 rounded-full bg-white/[0.05] px-4 py-2 text-sm font-semibold text-slate-200">
-            {t('sessionsCompletedValue', { count: data.metrics.completedSessionsCount })}
-          </span>
-        </div>
-        <div className="mt-5 h-3 overflow-hidden rounded-full bg-white/[0.06]">
-          <div
-            className={`h-full rounded-full transition-[width] ${
-              data.profileAnalytics.trialProgress.isComplete
-                ? 'bg-amber-400'
-                : data.profileAnalytics.trialProgress.showWarning
-                  ? 'bg-amber-300'
-                  : 'bg-brand'
-            }`}
-            style={{
-              width: `${Math.min(
-                100,
-                Math.round(
-                  (data.profileAnalytics.trialProgress.current / data.profileAnalytics.trialProgress.total) * 100,
-                ),
-              )}%`,
+
+          <ProfileDetailsForm
+            action={updateProfileAction}
+            locale={locale}
+            displayName={displayName}
+            initialExamSession={examSession}
+            initialQuestionBanks={questionBanks}
+            labels={{
+              displayName: t('displayName'),
+              examSession: t('examSession'),
+              selectPlaceholder: t('selectPlaceholder'),
+              examAprilMay2026: t('examAprilMay2026'),
+              examAugustSeptember2026: t('examAugustSeptember2026'),
+              examOctober2026: t('examOctober2026'),
+              examPlanningAhead: t('examPlanningAhead'),
+              questionBanks: t('questionBanks'),
+              bankCmcPrep: t('bankCmcPrep'),
+              otherBank: t('otherBank'),
+              saveProfile: t('saveProfile'),
+              saveProfilePending: t('saveProfilePending'),
             }}
           />
-        </div>
-      </section>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <article className="surface p-5">
-          <p className="text-sm font-medium text-slate-400">{t('summaryQuestions')}</p>
-          <p className="mt-3 text-4xl font-extrabold tracking-tight text-white">{data.metrics.answeredCount}</p>
-        </article>
-        <article className="surface p-5">
-          <p className="text-sm font-medium text-slate-400">{t('summarySessions')}</p>
-          <p className="mt-3 text-4xl font-extrabold tracking-tight text-white">{data.metrics.completedSessionsCount}</p>
-        </article>
-        <article className="surface p-5">
-          <p className="text-sm font-medium text-slate-400">{t('summaryAccuracy')}</p>
-          <p className="mt-3 text-4xl font-extrabold tracking-tight text-white">
-            {data.metrics.successRate !== null ? `${data.metrics.successRate}%` : dashboardT('noData')}
-          </p>
-        </article>
+          <PasswordUpdateForm
+            action={updatePasswordAction}
+            locale={locale}
+            labels={{
+              securityTitle: t('securityTitle'),
+              passwordPlaceholder: t('passwordPlaceholder'),
+              passwordHint: t('passwordHint'),
+              savePasswordPending: t('savePasswordPending'),
+              togglePassword: t('togglePassword'),
+            }}
+          />
+
+          <div className="mt-4 border-t border-white/[0.06] pt-4">
+            <UserScheduleForm
+              compact
+              action={updateUserScheduleAction}
+              locale={locale}
+              initialTimezone={data.userSchedule?.timezone ?? 'UTC'}
+              initialGrid={data.userSchedule?.availability_grid ?? DEFAULT_AVAILABILITY_GRID}
+              labels={{
+                title: dashboardT('availabilityTitle'),
+                description: dashboardT('availabilityShortDescription'),
+                timezone: dashboardT('availabilityTimezone'),
+                save: dashboardT('availabilitySave'),
+                savePending: dashboardT('availabilitySavePending'),
+                empty: dashboardT('availabilityEmpty'),
+                slotsCount: dashboardT('availabilitySlotsCount', { count: '{count}' }),
+                weekdays: {
+                  monday: dashboardT('weekdayMonday'),
+                  tuesday: dashboardT('weekdayTuesday'),
+                  wednesday: dashboardT('weekdayWednesday'),
+                  thursday: dashboardT('weekdayThursday'),
+                  friday: dashboardT('weekdayFriday'),
+                  saturday: dashboardT('weekdaySaturday'),
+                  sunday: dashboardT('weekdaySunday'),
+                },
+              }}
+            />
+          </div>
+
+          <div className="mt-4 flex justify-center border-t border-white/[0.06] pt-4">
+            <LogoutButton
+              showIcon
+              className="min-h-0 border-none bg-transparent px-3 py-1 text-sm font-bold text-[#ff4d5e] shadow-none hover:bg-transparent hover:text-[#ff7a86]"
+            />
+          </div>
+        </section>
       </div>
-
-      <section className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
-        <article className="surface p-5">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-lg font-bold text-white">{dashboardT('heatmapTitle')}</p>
-              <p className="mt-1 text-sm text-slate-400">{dashboardT('heatmapDescription')}</p>
-            </div>
-            <span className="text-sm font-semibold text-slate-500">{dashboardT('last12Weeks')}</span>
-          </div>
-          <div className="mt-5 grid grid-cols-7 gap-1.5 sm:grid-cols-14 md:grid-cols-16">
-            {data.profileAnalytics.heatmap.map((day) => (
-              <div
-                key={day.date}
-                className={`aspect-square rounded-[6px] border border-white/5 ${getHeatmapCellClass(day.intensity)}`}
-                title={`${day.date} - ${day.count}`}
-              />
-            ))}
-          </div>
-        </article>
-
-        <article className="surface p-5">
-          <p className="text-lg font-bold text-white">{dashboardT('trendTitle')}</p>
-          <p className="mt-1 text-sm text-slate-400">{dashboardT('trendDescription')}</p>
-          <div className="mt-5 space-y-3">
-            {data.profileAnalytics.weeklyTrend.map((point) => (
-              <div key={point.label} className="space-y-1.5">
-                <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="font-medium text-white">{point.label}</span>
-                  <span className="text-slate-400">
-                    {point.total > 0
-                      ? dashboardT('trendAccuracyValue', { accuracy: point.accuracy ?? 0, count: point.total })
-                      : dashboardT('trendEmpty')}
-                  </span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
-                  <div className="h-full rounded-full bg-brand transition-[width]" style={{ width: `${point.accuracy ?? 0}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </article>
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-3">
-        <article className="surface p-5">
-          <p className="text-lg font-bold text-white">{dashboardT('physicianActivityTitle')}</p>
-          <div className="mt-4 space-y-3">
-            {data.profileAnalytics.physicianActivityAccuracy.map((item) => (
-              <div key={item.category} className="space-y-1.5">
-                <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="font-medium text-white">{sessionT(`physicianActivity.${item.category}` as never)}</span>
-                  <span className="text-slate-400">
-                    {item.total > 0
-                      ? dashboardT('accuracyValue', { accuracy: item.accuracy, count: item.total })
-                      : dashboardT('noData')}
-                  </span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
-                  <div className="h-full rounded-full bg-brand transition-[width]" style={{ width: `${item.accuracy}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="surface p-5">
-          <p className="text-lg font-bold text-white">{dashboardT('dimensionOfCareTitle')}</p>
-          <div className="mt-4 space-y-3">
-            {data.profileAnalytics.dimensionOfCareAccuracy.map((item) => (
-              <div key={item.category} className="space-y-1.5">
-                <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="font-medium text-white">{sessionT(`dimensionOfCare.${item.category}` as never)}</span>
-                  <span className="text-slate-400">
-                    {item.total > 0
-                      ? dashboardT('accuracyValue', { accuracy: item.accuracy, count: item.total })
-                      : dashboardT('noData')}
-                  </span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
-                  <div className="h-full rounded-full bg-brand transition-[width]" style={{ width: `${item.accuracy}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="surface p-5">
-          <p className="text-lg font-bold text-white">{dashboardT('confidenceCalibrationTitle')}</p>
-          <div className="mt-4 space-y-3">
-            {data.profileAnalytics.confidenceCalibration.map((item) => (
-              <div key={item.confidence} className="rounded-[16px] border border-white/8 bg-white/[0.03] px-3 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-semibold text-white">
-                    {item.confidence === 'low'
-                      ? dashboardT('confidenceLow')
-                      : item.confidence === 'medium'
-                        ? dashboardT('confidenceMedium')
-                        : dashboardT('confidenceHigh')}
-                  </span>
-                  <span className="text-sm text-slate-400">
-                    {item.total > 0
-                      ? dashboardT('accuracyValue', { accuracy: item.accuracy, count: item.total })
-                      : dashboardT('noData')}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </article>
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-        <article className="surface p-5">
-          <p className="text-lg font-bold text-white">{dashboardT('errorTypesTitle')}</p>
-          {data.profileAnalytics.errorTypeBreakdown.length > 0 ? (
-            <div className="mt-4 space-y-3">
-              {data.profileAnalytics.errorTypeBreakdown.map((item) => (
-                <div
-                  key={item.errorType}
-                  className="flex items-center justify-between gap-3 rounded-[16px] border border-white/8 bg-white/[0.03] px-3 py-3"
-                >
-                  <span className="font-medium text-white">{sessionT(`errorType.${item.errorType}` as never)}</span>
-                  <span className="rounded-full bg-white/[0.05] px-3 py-1 text-sm font-semibold text-slate-300">
-                    {dashboardT('errorTypeCount', { count: item.count })}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="mt-4 text-sm text-slate-400">{dashboardT('errorTypesEmpty')}</p>
-          )}
-        </article>
-
-        <article className="surface p-5">
-          <p className="text-lg font-bold text-white">{dashboardT('blueprintGridTitle')}</p>
-          <p className="mt-1 text-sm text-slate-400">{dashboardT('blueprintGridDescription')}</p>
-          <div className="mt-5 overflow-x-auto">
-            <div className="min-w-[860px]">
-              <div className="grid grid-cols-[180px_repeat(6,minmax(88px,1fr))] gap-2">
-                <div />
-                {data.profileAnalytics.dimensionOfCareAccuracy.map((item) => (
-                  <div key={item.category} className="text-center text-xs font-semibold text-slate-400">
-                    {sessionT(`dimensionOfCare.${item.category}` as never)}
-                  </div>
-                ))}
-                {data.profileAnalytics.physicianActivityAccuracy.map((activity) => (
-                  <div key={activity.category} className="contents">
-                    <div className="flex items-center text-sm font-semibold text-white">
-                      {sessionT(`physicianActivity.${activity.category}` as never)}
-                    </div>
-                    {data.profileAnalytics.blueprintGrid
-                      .filter((cell) => cell.physicianActivity === activity.category)
-                      .map((cell) => (
-                        <div
-                          key={`${cell.physicianActivity}-${cell.dimensionOfCare}`}
-                          className="rounded-[14px] border border-white/8 bg-white/[0.03] px-2 py-3 text-center text-xs"
-                        >
-                          <p className="font-bold text-white">{cell.accuracy !== null ? `${cell.accuracy}%` : '--'}</p>
-                          <p className="mt-1 text-slate-500">{cell.total > 0 ? `${cell.total}Q` : dashboardT('noData')}</p>
-                        </div>
-                      ))}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </article>
-      </section>
     </main>
   );
 }

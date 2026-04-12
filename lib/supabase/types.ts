@@ -261,6 +261,7 @@ type QuestionClassificationsRow = {
   classified_by: string;
   correct_answer: string | null;
   dimension_of_care: DimensionOfCare;
+  frequent_error_type: ErrorType | null;
   id: string;
   physician_activity: PhysicianActivity;
   question_id: string;
@@ -272,6 +273,7 @@ type QuestionClassificationsInsert = {
   classified_by: string;
   correct_answer?: string | null;
   dimension_of_care: DimensionOfCare;
+  frequent_error_type?: ErrorType | null;
   id?: string;
   physician_activity: PhysicianActivity;
   question_id: string;
@@ -283,6 +285,7 @@ type QuestionClassificationsUpdate = {
   classified_by?: string;
   correct_answer?: string | null;
   dimension_of_care?: DimensionOfCare;
+  frequent_error_type?: ErrorType | null;
   id?: string;
   physician_activity?: PhysicianActivity;
   question_id?: string;
@@ -327,10 +330,11 @@ type SessionsRow = {
   leader_id: string | null;
   meeting_link: string | null;
   name: string | null;
+  question_goal: number;
   scheduled_at: string;
   share_code: string;
   started_at: string | null;
-  status: 'scheduled' | 'active' | 'completed' | 'cancelled';
+  status: 'scheduled' | 'active' | 'incomplete' | 'completed' | 'cancelled';
   timer_mode: 'per_question' | 'global';
   timer_seconds: number;
 };
@@ -343,10 +347,11 @@ type SessionsInsert = {
   leader_id?: string | null;
   meeting_link?: string | null;
   name?: string | null;
+  question_goal?: number;
   scheduled_at: string;
   share_code?: string;
   started_at?: string | null;
-  status?: 'scheduled' | 'active' | 'completed' | 'cancelled';
+  status?: 'scheduled' | 'active' | 'incomplete' | 'completed' | 'cancelled';
   timer_mode?: 'per_question' | 'global';
   timer_seconds?: number;
 };
@@ -359,10 +364,11 @@ type SessionsUpdate = {
   leader_id?: string | null;
   meeting_link?: string | null;
   name?: string | null;
+  question_goal?: number;
   scheduled_at?: string;
   share_code?: string;
   started_at?: string | null;
-  status?: 'scheduled' | 'active' | 'completed' | 'cancelled';
+  status?: 'scheduled' | 'active' | 'incomplete' | 'completed' | 'cancelled';
   timer_mode?: 'per_question' | 'global';
   timer_seconds?: number;
 };
@@ -424,9 +430,11 @@ type UsersRow = {
   created_at: string;
   display_name: string | null;
   email: string;
+  exam_session: 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead' | null;
   has_valid_payment_method: boolean;
   id: string;
   locale: 'en' | 'fr';
+  question_banks: string[];
   questions_answered: number;
   stripe_customer_id: string | null;
   stripe_default_payment_method_id: string | null;
@@ -450,9 +458,11 @@ type UsersInsert = {
   created_at?: string;
   display_name?: string | null;
   email: string;
+  exam_session?: 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead' | null;
   has_valid_payment_method?: boolean;
   id: string;
   locale?: 'en' | 'fr';
+  question_banks?: string[];
   questions_answered?: number;
   stripe_customer_id?: string | null;
   stripe_default_payment_method_id?: string | null;
@@ -476,9 +486,11 @@ type UsersUpdate = {
   created_at?: string;
   display_name?: string | null;
   email?: string;
+  exam_session?: 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead' | null;
   has_valid_payment_method?: boolean;
   id?: string;
   locale?: 'en' | 'fr';
+  question_banks?: string[];
   questions_answered?: number;
   stripe_customer_id?: string | null;
   stripe_default_payment_method_id?: string | null;

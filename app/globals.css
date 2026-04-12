@@ -70,6 +70,10 @@ select optgroup {
     @apply rounded-[28px] border border-border bg-card shadow-panel backdrop-blur;
   }
 
+  .surface-mockup {
+    @apply rounded-[10px] border border-white/[0.06] bg-[#10182b]/90 shadow-panel backdrop-blur;
+  }
+
   .surface-soft {
     @apply rounded-[24px] border border-border bg-white/[0.04] backdrop-blur;
   }

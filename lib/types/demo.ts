@@ -4,7 +4,7 @@ export type GroupMembershipKind = 'founder' | 'member';
 
 export type GroupInviteStatus = 'pending' | 'accepted' | 'declined' | 'cancelled';
 
-export type SessionStatus = 'scheduled' | 'active' | 'completed' | 'cancelled';
+export type SessionStatus = 'scheduled' | 'active' | 'incomplete' | 'completed' | 'cancelled';
 
 export type QuestionPhase = 'draft' | 'answering' | 'review' | 'closed';
 

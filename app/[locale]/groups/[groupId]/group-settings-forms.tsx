@@ -26,6 +26,7 @@ type InviteMemberFormProps = {
   emailPlaceholder: string;
   pendingLabel: string;
   submitLabel: string;
+  compact?: boolean;
 };
 
 function CheckIcon() {
@@ -110,18 +111,19 @@ export function InviteMemberForm({
   emailPlaceholder,
   pendingLabel,
   submitLabel,
+  compact = false,
 }: InviteMemberFormProps) {
   const [email, setEmail] = useState('');
   const isValid = email.trim().length > 0;
 
   return (
     <>
-      <h2 className="text-xl font-bold text-white">{label}</h2>
-      <form action={action} className="mt-4 space-y-3">
+      <h2 className={compact ? 'text-sm font-semibold text-slate-400' : 'text-xl font-bold text-white'}>{label}</h2>
+      <form action={action} className={compact ? 'mt-2 space-y-2' : 'mt-4 space-y-3'}>
         <input type="hidden" name="locale" value={locale} />
         <input type="hidden" name="groupId" value={groupId} />
         <label className="block">
-          <span className="mb-2 block text-sm font-medium text-slate-300">{emailLabel}</span>
+          <span className={compact ? 'sr-only' : 'mb-2 block text-sm font-medium text-slate-300'}>{emailLabel}</span>
           <div className="flex items-center gap-3">
             <input
               name="email"
@@ -130,12 +132,12 @@ export function InviteMemberForm({
               onChange={(event) => setEmail(event.target.value)}
               placeholder={emailPlaceholder}
               autoComplete="email"
-              className="field"
+              className={compact ? 'field h-10 rounded-[7px] px-3 py-2 text-sm' : 'field'}
             />
             <SubmitButton
               pendingLabel={pendingLabel}
               disabled={!isValid}
-              className="button-primary min-w-[52px] px-4 text-white disabled:bg-white/[0.08] disabled:text-slate-500 disabled:hover:bg-white/[0.08]"
+              className="button-primary min-w-[44px] px-4 text-white disabled:bg-white/[0.08] disabled:text-slate-500 disabled:hover:bg-white/[0.08]"
             >
               <span aria-label={submitLabel}>
                 <SendIcon />

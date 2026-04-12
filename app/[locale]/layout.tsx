@@ -3,13 +3,13 @@ import { notFound } from 'next/navigation';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
 
+import { AppBottomNav } from '@/components/layout/app-bottom-nav';
 import { LanguageSwitcher } from '@/components/layout/language-switcher';
 import { ProfileMenu } from '@/components/layout/profile-menu';
 import { RegisterServiceWorker } from '@/components/pwa/register-service-worker';
 import { Link } from '@/i18n/navigation';
 import { routing, type AppLocale } from '@/i18n/routing';
 import { getCurrentUser } from '@/lib/auth';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -44,46 +44,20 @@ export default async function LocaleLayout({
       .slice(0, 2)
       .toUpperCase() ??
     'AB';
-  let primaryGroupHref = `/${locale}/dashboard`;
-  let primaryGroupLabel = dashboardT('groupSettings');
-  let primaryGroupHint: string | null = null;
-
-  if (user) {
-    const supabase = createSupabaseServerClient();
-    const { data: memberships } = await supabase
-      .schema('public')
-      .from('group_members')
-      .select('group_id')
-      .eq('user_id', user.id)
-      .limit(10);
-
-    const groupIds = [...new Set((memberships ?? []).map((membership) => membership.group_id))];
-
-    if (groupIds.length === 1) {
-      primaryGroupHref = `/${locale}/groups/${groupIds[0]}`;
-    } else if (groupIds.length > 1) {
-      primaryGroupHref = `/${locale}/dashboard#groups-list`;
-      primaryGroupLabel = dashboardT('groups');
-      primaryGroupHint = dashboardT('groupsMenuHint');
-    }
-  }
+  const primaryGroupHref = `/${locale}/dashboard?view=settings`;
+  const primaryGroupLabel = dashboardT('groupSettings');
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <RegisterServiceWorker />
-      <div className="min-h-screen px-4 py-5 sm:px-6">
-        <div className="mx-auto flex min-h-[calc(100vh-2.5rem)] max-w-[1240px] flex-col gap-8">
-          <header className="flex items-center justify-between gap-4 border-b border-white/8 pb-4 pt-1">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-base font-extrabold text-white">
+      <div className="min-h-screen px-3 pb-24 pt-2 sm:px-6 sm:pt-4">
+        <div className="mx-auto flex min-h-[calc(100vh-2.5rem)] max-w-[1240px] flex-col gap-5">
+          <header className="flex items-center justify-between gap-4 border-b border-white/8 pb-2 pt-1">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-[5px] bg-brand text-xs font-extrabold text-white">
                 AB
               </div>
-              <div className="flex items-center gap-3">
-                <p className="text-2xl font-extrabold tracking-tight text-white">{t('appName')}</p>
-                <span className="rounded-full border border-brand/20 bg-brand/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand">
-                  PRE-QUAL
-                </span>
-              </div>
+              <p className="text-base font-extrabold tracking-tight text-white sm:text-lg">{t('appName')}</p>
             </Link>
 
             <div className="flex items-center gap-3">
@@ -109,7 +83,7 @@ export default async function LocaleLayout({
                     billingLabel={billingT('menuLabel')}
                     groupHref={primaryGroupHref}
                     groupLabel={primaryGroupLabel}
-                    groupHint={primaryGroupHint}
+                    groupHint={null}
                   />
                 </div>
               ) : (
@@ -117,15 +91,23 @@ export default async function LocaleLayout({
                   <Link href="/auth/login" className="button-ghost">
                     {t('signIn')}
                   </Link>
-                  <a href={`/${locale}/auth/login?mode=sign-up`} className="button-primary">
-                    {t('createAccount')}
-                  </a>
                 </div>
               )}
             </div>
           </header>
           {children}
         </div>
+        {user ? (
+          <AppBottomNav
+            locale={locale}
+            labels={{
+              sessions: t('navSessions'),
+              performance: t('navPerformance'),
+              group: t('navGroup'),
+              settings: t('navSettings'),
+            }}
+          />
+        ) : null}
       </div>
     </NextIntlClientProvider>
   );

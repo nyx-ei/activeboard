@@ -2,34 +2,23 @@ import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
-import { SessionAutoRefresh } from '@/components/session/session-auto-refresh';
-import { SessionCountdown } from '@/components/session/session-countdown';
+import { ReviewAnswerForm, SessionAnswerForm, SessionHeaderMeta } from '@/components/session/session-flow-client';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Link } from '@/i18n/navigation';
-import { requireUser } from '@/lib/auth';
-import { getUserAccessState, hasUserTierCapability } from '@/lib/billing/gating';
-import type { ConfidenceLevel } from '@/lib/demo/confidence';
-import { getSessionData } from '@/lib/demo/data';
-import {
-  ANSWER_OPTIONS,
-  DIMENSION_OF_CARE_OPTIONS,
-  ERROR_TYPE_OPTIONS,
-  PHYSICIAN_ACTIVITY_OPTIONS,
-  type DimensionOfCare,
-  type ErrorType,
-  type PhysicianActivity,
-} from '@/lib/types/demo';
 import type { AppLocale } from '@/i18n/routing';
+import { requireUser } from '@/lib/auth';
+import { getSessionData } from '@/lib/demo/data';
+import { ANSWER_OPTIONS, ERROR_TYPE_OPTIONS } from '@/lib/types/demo';
 
 import {
-  classifyQuestionAction,
-  endSessionAction,
-  launchQuestionAction,
-  passLeaderAction,
-  revealAnswerAction,
-  savePersonalReflectionAction,
-  startSessionAction,
-  submitAnswerAction,
+  finishReviewSessionAction,
+  initializeSessionFlowAction,
+  advanceSessionStepAction,
+  quitIncompleteSessionAction,
+  saveCaptainFrequentErrorAction,
+  saveReviewAnswerAction,
+  submitSessionStepAction,
+  timeoutSessionStepAction,
 } from './actions';
 
 type SessionPageProps = {
@@ -37,523 +26,312 @@ type SessionPageProps = {
   searchParams: {
     feedbackMessage?: string;
     feedbackTone?: string;
+    q?: string;
+    stage?: string;
   };
 };
 
-function getConfidenceTone(
-  confidence: ConfidenceLevel | null | undefined,
-  t: (key: 'confidenceLow' | 'confidenceMedium' | 'confidenceHigh' | 'blank') => string,
-) {
-  if (confidence === 'low') return t('confidenceLow');
-  if (confidence === 'medium') return t('confidenceMedium');
-  if (confidence === 'high') return t('confidenceHigh');
-  return t('blank');
+function getDistribution(answers: Array<{ selected_option: string | null; confidence: string | null }>, memberCount: number) {
+  const distribution = new Map<string, number>();
+  for (const option of [...ANSWER_OPTIONS, '?']) {
+    distribution.set(option, 0);
+  }
+
+  for (const answer of answers) {
+    const option = answer.selected_option ?? '?';
+    distribution.set(option, (distribution.get(option) ?? 0) + 1);
+  }
+
+  const submitted = answers.length;
+  distribution.set('?', Math.max(distribution.get('?') ?? 0, Math.max(0, memberCount - submitted)));
+  return distribution;
 }
 
-function getPhysicianActivityLabel(
-  value: PhysicianActivity,
-  t: (key: string) => string,
-) {
-  return t(`physicianActivity.${value}`);
-}
-
-function getDimensionOfCareLabel(
-  value: DimensionOfCare,
-  t: (key: string) => string,
-) {
-  return t(`dimensionOfCare.${value}`);
-}
-
-function getErrorTypeLabel(value: ErrorType, t: (key: string) => string) {
-  return t(`errorType.${value}`);
+function getStabilityLabel(correctOption: string | null, distribution: Map<string, number>, t: (key: string) => string) {
+  if (!correctOption) return t('stabilityUnstable');
+  const correctCount = distribution.get(correctOption) ?? 0;
+  const maxCount = Math.max(...Array.from(distribution.values()));
+  return correctCount > 0 && correctCount === maxCount ? t('stabilityAlmostSolid') : t('stabilityUnstable');
 }
 
 export default async function SessionPage({ params, searchParams }: SessionPageProps) {
   const locale = params.locale as AppLocale;
   const user = await requireUser(locale);
   const t = await getTranslations('Session');
-  const feedbackT = await getTranslations('Feedback');
   const data = await getSessionData(params.sessionId, user);
-  const accessState = await getUserAccessState(user.id);
-  const canLeadSession = hasUserTierCapability(accessState, 'canBeCaptain');
 
   if (!data?.session || !data.group) {
     notFound();
   }
 
-  const isLeader = data.session.leader_id === user.id || data.membership.is_founder;
-  const isSessionActive = data.session.status === 'active';
-  const isSessionCompleted = data.session.status === 'completed';
-  const canStartSession = data.members.length >= 2;
-  const questionCount = data.questions.length;
-  const timeRemaining =
-    data.session.timer_mode === 'global'
-      ? data.session.started_at
-        ? Math.max(
-            0,
-            Math.floor(
-              (new Date(data.session.started_at).getTime() + data.session.timer_seconds * 1000 - Date.now()) / 1000,
-            ),
-          )
-        : data.session.timer_seconds
-      : data.currentQuestion?.answer_deadline_at && data.currentQuestion.phase === 'answering'
-        ? Math.max(0, Math.floor((new Date(data.currentQuestion.answer_deadline_at).getTime() - Date.now()) / 1000))
-        : 0;
-  const timerModeLabel = data.session.timer_mode === 'global' ? t('globalShort') : t('perQuestionShort');
+  const questionGoal = data.session.question_goal ?? Math.max(data.questions.length, 10);
+  const currentIndex = Math.max(0, Math.min(Number(searchParams.q ?? 0) || 0, questionGoal - 1));
+  const questions = [...data.questions].sort((left, right) => left.order_index - right.order_index);
+  const question = questions.find((item) => item.order_index === currentIndex) ?? questions[currentIndex] ?? questions[0] ?? null;
+  const myAnswers = data.allAnswers.filter((answer) => answer.user_id === user.id);
+  const answeredCount = new Set(myAnswers.map((answer) => answer.question_id)).size;
+  const memberCount = Math.max(data.members.length, 1);
+  const shouldShowCompletion =
+    searchParams.stage === 'complete' ||
+    (data.session.status === 'incomplete' && searchParams.stage !== 'review') ||
+    (data.session.status === 'active' && answeredCount >= questionGoal && searchParams.stage !== 'review');
+  const isReview = searchParams.stage === 'review';
 
   if (data.session.status === 'scheduled') {
+    const timerLabel =
+      data.session.timer_mode === 'global'
+        ? `${data.session.timer_seconds}s ${t('globalShort')}`
+        : `${data.session.timer_seconds}s ${t('perQuestionShort')}`;
+
     return (
-      <main className="flex flex-1 flex-col gap-6">
+      <main className="flex flex-1 items-center justify-center px-4">
         <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
-        <section className="flex flex-1 items-center justify-center px-4 py-10">
-          <div className="mx-auto flex w-full max-w-xl flex-col items-center text-center">
-            <SessionAutoRefresh enabled={false} />
-            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-brand/10">
-              <div className="ml-1 h-0 w-0 border-y-[16px] border-y-transparent border-l-[24px] border-l-brand" />
-            </div>
-            <h1 className="mt-8 text-5xl font-extrabold tracking-tight text-white">{data.session.name ?? data.group.name}</h1>
-            <p className="mt-4 text-2xl text-slate-300">
-              {questionCount} {t('questionsUnit')} | {data.session.timer_seconds}s {timerModeLabel}
-            </p>
-            <p className="mt-3 text-lg text-slate-500">{t('shareCodeLabel', { code: data.session.share_code })}</p>
-
-            {data.session.meeting_link ? (
-              <a
-                href={data.session.meeting_link}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-4 text-sm font-semibold text-slate-400 transition hover:text-white"
-              >
-                {t('joinCall')}
-              </a>
-            ) : null}
-
-            {isLeader ? (
-              <form action={startSessionAction} className="mt-8">
-                <input type="hidden" name="locale" value={locale} />
-                <input type="hidden" name="sessionId" value={params.sessionId} />
-                <SubmitButton
-                  pendingLabel={t('startSessionPending')}
-                  className="button-primary min-w-[180px]"
-                  disabled={!canStartSession || !canLeadSession}
-                >
-                  {t('startSession')}
-                </SubmitButton>
-              </form>
-            ) : null}
-
-            <Link href={`/groups/${data.group.id}`} className="button-ghost mt-3">
-              <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-                <path d="M15 6l-6 6l6 6" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-              </svg>
-              {t('leaveSession')}
-            </Link>
-
-            <p className="mt-5 text-sm text-slate-500">{t('minimumMembersHint', { count: data.members.length })}</p>
-            {!canLeadSession ? <p className="mt-3 text-sm text-amber-300">{feedbackT('upgradeRequiredToLeadSession')}</p> : null}
+        <section className="flex w-full max-w-md flex-col items-center text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 text-brand">
+            <svg viewBox="0 0 24 24" className="ml-1 h-8 w-8" aria-hidden="true">
+              <path d="M8 5.5v13l10-6.5-10-6.5Z" fill="none" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.8" />
+            </svg>
           </div>
+          <h1 className="mt-8 text-2xl font-extrabold text-white">{data.session.name ?? data.group.name}</h1>
+          <p className="mt-3 text-lg font-medium text-slate-400">
+            {questionGoal} {t('questionsUnit')} | {timerLabel}
+          </p>
+          <p className="mt-4 text-sm font-bold text-slate-500">
+            {t('shareCodeLabel', { code: data.session.share_code })}
+          </p>
+          <form action={initializeSessionFlowAction} className="mt-7">
+            <input type="hidden" name="locale" value={locale} />
+            <input type="hidden" name="sessionId" value={params.sessionId} />
+            <SubmitButton pendingLabel={t('startSessionPending')} className="button-primary rounded-[7px] px-5 py-2.5 text-sm">
+              <span className="mr-2" aria-hidden="true">▷</span>
+              {t('startSession')}
+            </SubmitButton>
+          </form>
+          <Link href="/dashboard?view=sessions" className="button-ghost mt-4 px-4 py-2 text-sm text-slate-500">
+            {t('quitSession')}
+          </Link>
         </section>
       </main>
     );
   }
 
-  return (
-    <main className="flex flex-1 flex-col gap-6">
-      <SessionAutoRefresh enabled={data.session.status === 'active'} />
-      <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
+  if (shouldShowCompletion) {
+    return (
+      <main className="flex flex-1 items-center justify-center px-4">
+        <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
+        <section className="flex w-full max-w-md flex-col items-center text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 text-brand">
+            <svg viewBox="0 0 24 24" className="h-8 w-8" aria-hidden="true">
+              <path d="M7 12.5 10.5 16 17 8" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+            </svg>
+          </div>
+          <h1 className="mt-8 text-2xl font-extrabold text-white">{t('allAnswersSubmitted')}</h1>
+          <p className="mt-3 text-lg font-medium text-slate-400">{t('questionsCompletedValue', { current: questionGoal, total: questionGoal })}</p>
+          <Link href={`/sessions/${params.sessionId}?stage=review&q=0`} className="button-primary mt-7 rounded-[7px] px-5 py-2.5 text-sm">
+            {t('goToReview')} <span aria-hidden="true">›</span>
+          </Link>
+          <form action={quitIncompleteSessionAction} className="mt-4">
+            <input type="hidden" name="locale" value={locale} />
+            <input type="hidden" name="sessionId" value={params.sessionId} />
+            <SubmitButton pendingLabel={t('quitPending')} className="button-ghost px-4 py-2 text-sm text-slate-500">
+              {t('quitSession')}
+            </SubmitButton>
+          </form>
+        </section>
+      </main>
+    );
+  }
 
-      <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <div className="space-y-6">
-          <section className="surface p-6 sm:p-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <Link href={`/groups/${data.group.id}`} className="button-ghost -ml-4 justify-start px-4">
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-                    <path d="M15 6l-6 6l6 6" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-                  </svg>
-                  {data.session.name ?? data.group.name}
-                </Link>
-                <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-white">{t('title')}</h1>
-                <p className="mt-3 text-sm leading-7 text-slate-400">
-                  {new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(
-                    new Date(data.session.scheduled_at),
-                  )}
-                </p>
-              </div>
-              <div className="space-y-2 text-left sm:text-right">
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand">
-                  {isSessionCompleted ? t('statusCompleted') : t('statusActive')}
-                </p>
-                <p className="text-xl font-bold text-white">{data.session.timer_seconds}s</p>
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                  {timerModeLabel} | {t('shareCodeLabel', { code: data.session.share_code })}
-                </p>
-              </div>
+  if (isReview && question) {
+    const questionAnswers = data.allAnswers.filter((answer) => answer.question_id === question.id);
+    const distribution = getDistribution(questionAnswers, data.members.length);
+    const stabilityLabel = getStabilityLabel(question.correct_option, distribution, t);
+    const classification = data.allClassifications.find((item) => item.question_id === question.id) ?? null;
+    const canFinish = questions.filter((item) => item.correct_option).length >= questionGoal;
+    const isLeader = data.session.leader_id === user.id || data.membership.is_founder;
+
+    return (
+      <main className="flex flex-1 flex-col">
+        <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
+        <header className="sticky top-0 z-20 border-b border-white/[0.07] bg-background/95 backdrop-blur">
+          <div className="mx-auto flex h-16 w-full max-w-[700px] items-center justify-between px-4">
+            <Link href="/dashboard?view=sessions" className="text-sm font-bold text-slate-500 hover:text-white">
+              ← Dashboard
+            </Link>
+            <p className="text-lg font-extrabold text-white">{data.session.name ?? data.group.name} — {t('reviewShort')}</p>
+            <p className="text-sm font-bold text-slate-500">Q{currentIndex + 1}/{questionGoal}</p>
+          </div>
+        </header>
+
+        <section className="mx-auto w-full max-w-[700px] space-y-6 px-4 py-7">
+          <div className="flex items-center justify-between text-sm font-bold text-slate-500">
+            <Link href={`/sessions/${params.sessionId}?stage=review&q=${Math.max(0, currentIndex - 1)}`} className="hover:text-white">
+              ‹ {t('previous')}
+            </Link>
+            <h1 className="text-2xl font-extrabold text-white">{t('questionNumber', { number: currentIndex + 1 })}</h1>
+            <Link href={`/sessions/${params.sessionId}?stage=review&q=${Math.min(questionGoal - 1, currentIndex + 1)}`} className="hover:text-white">
+              {t('next')} ›
+            </Link>
+          </div>
+
+          <section className="surface-mockup p-5">
+            <div className="flex items-center gap-2">
+              <span className="text-brand">▥</span>
+              <h2 className="text-sm font-extrabold text-white">{t('distribution')}</h2>
             </div>
-
-            {data.currentQuestion ? (
-              <div className="mt-6 rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                  {t('questionNumber', { number: data.currentQuestion.order_index + 1 })}
-                </p>
-                <p className="mt-3 text-lg leading-8 text-white">
-                  {data.currentQuestion.body ?? t('questionWithoutPrompt')}
-                </p>
-              </div>
-            ) : (
-              <div className="mt-6 rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
-                <p className="text-sm leading-7 text-slate-400">{t('sessionNotStarted')}</p>
-              </div>
-            )}
-          </section>
-
-          <section className="surface p-6 sm:p-8">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white">{t('participantPanel')}</h2>
-              <div className="rounded-full bg-white/[0.04] px-4 py-2 text-sm font-semibold text-slate-300">
-                <SessionCountdown initialSeconds={timeRemaining} />
-              </div>
-            </div>
-
-            {isSessionCompleted ? (
-              <div className="mt-6 space-y-4">
-                <p className="text-sm leading-7 text-slate-400">{t('sessionCompletedHint')}</p>
-                <Link href={`/sessions/${params.sessionId}/summary`} className="button-primary">
-                  {t('viewSummary')}
-                </Link>
-              </div>
-            ) : data.currentQuestion && data.currentQuestion.phase === 'answering' ? (
-              <form action={submitAnswerAction} className="mt-6 space-y-6">
-                <input type="hidden" name="locale" value={locale} />
-                <input type="hidden" name="sessionId" value={params.sessionId} />
-                <input type="hidden" name="questionId" value={data.currentQuestion.id} />
-
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {ANSWER_OPTIONS.map((option) => (
-                    <label
-                      key={option}
-                      className="cursor-pointer rounded-[18px] border border-border bg-white/[0.04] px-4 py-5 text-center text-lg font-bold text-slate-200 transition hover:border-brand hover:bg-brand/10 has-[:checked]:border-brand has-[:checked]:bg-brand/12 has-[:checked]:text-white has-[:checked]:ring-2 has-[:checked]:ring-brand/25"
-                    >
-                      <input
-                        type="radio"
-                        name="selectedOption"
-                        value={option}
-                        defaultChecked={data.myAnswer?.selected_option === option}
-                        className="sr-only"
-                      />
-                      {option}
-                    </label>
-                  ))}
-                </div>
-
-                <div>
-                  <span className="mb-3 block text-sm font-medium text-slate-300">{t('yourConfidence')}</span>
-                  <div className="grid grid-cols-3 gap-2 rounded-[18px] border border-border bg-white/[0.03] p-1">
-                    {[
-                      { value: 'low', label: t('confidenceLow') },
-                      { value: 'medium', label: t('confidenceMedium') },
-                      { value: 'high', label: t('confidenceHigh') },
-                    ].map((item) => (
-                      <label
-                        key={item.value}
-                        className="cursor-pointer rounded-[14px] px-3 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/[0.04] has-[:checked]:bg-brand has-[:checked]:text-slate-950"
-                      >
-                        <input
-                          type="radio"
-                          name="confidence"
-                          value={item.value}
-                          defaultChecked={String(data.myAnswer?.confidence ?? '') === item.value}
-                          className="sr-only"
-                        />
-                        {item.label}
-                      </label>
-                    ))}
-                  </div>
-                  <p className="mt-2 text-xs text-slate-500">{t('confidenceHint')}</p>
-                </div>
-
-                <SubmitButton pendingLabel={t('submitAnswerPending')} className="button-primary w-full">
-                  {t('submitAnswer')}
-                </SubmitButton>
-              </form>
-            ) : (
-              <div className="mt-6 rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
-                <p className="text-sm leading-7 text-slate-400">{t('reviewHint')}</p>
-                {data.myAnswer ? (
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-[18px] bg-white/[0.04] px-4 py-4">
-                      <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{t('yourAnswer')}</p>
-                      <p className="mt-2 text-base font-semibold text-white">
-                        {data.myAnswer.selected_option ?? t('blank')}
-                      </p>
-                    </div>
-                    <div className="rounded-[18px] bg-white/[0.04] px-4 py-4">
-                      <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{t('yourConfidence')}</p>
-                      <p className="mt-2 text-base font-semibold text-white">
-                        {getConfidenceTone(data.myAnswer.confidence, t)}
-                      </p>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            )}
-          </section>
-        </div>
-
-        <div className="space-y-6">
-          {isLeader && isSessionActive ? (
-            <section className="surface p-6 sm:p-8">
-              <h2 className="text-xl font-bold text-white">{t('captainPanel')}</h2>
-              <form action={launchQuestionAction} className="mt-5 space-y-4">
-                <input type="hidden" name="locale" value={locale} />
-                <input type="hidden" name="sessionId" value={params.sessionId} />
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-slate-300">{t('questionBody')}</span>
-                  <textarea
-                    name="questionBody"
-                    rows={5}
-                    placeholder={t('questionPlaceholder')}
-                    className="field resize-none"
-                  />
-                </label>
-                <SubmitButton pendingLabel={t('launchQuestionPending')} className="button-primary w-full">
-                  {t('launchQuestion')}
-                </SubmitButton>
-              </form>
-
-              <div className="mt-5 grid gap-3">
-                <form action={passLeaderAction} className="grid gap-3">
-                  <input type="hidden" name="locale" value={locale} />
-                  <input type="hidden" name="sessionId" value={params.sessionId} />
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-medium text-slate-300">{t('passLeader')}</span>
-                    <select
-                      name="nextLeaderId"
-                      className="field"
-                      defaultValue={data.members.find((member) => member.user_id !== user.id)?.user_id ?? user.id}
-                    >
-                      {data.members.map((member) => (
-                        <option key={member.user_id} value={member.user_id}>
-                          {member.profile?.display_name ?? member.profile?.email ?? member.user_id}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <SubmitButton pendingLabel={t('passLeaderPending')} className="button-secondary w-full">
-                    {t('passLeader')}
-                  </SubmitButton>
-                </form>
-
-                <form action={endSessionAction}>
-                  <input type="hidden" name="locale" value={locale} />
-                  <input type="hidden" name="sessionId" value={params.sessionId} />
-                  <SubmitButton
-                    pendingLabel={t('endSessionPending')}
-                    className="w-full rounded-[16px] border border-rose-500/20 bg-rose-500/10 px-5 py-3 text-sm font-semibold text-rose-300 transition hover:bg-rose-500/15"
-                  >
-                    {t('endSession')}
-                  </SubmitButton>
-                </form>
-              </div>
-            </section>
-          ) : null}
-
-          <section className="surface p-6 sm:p-8">
-            <h2 className="text-xl font-bold text-white">{t('structuredReview')}</h2>
-
-            {data.currentQuestion ? (
-              <div className="mt-5 space-y-5">
-                <p className="text-sm leading-7 text-slate-400">
-                  {t('waitingAnswers', { submitted: data.answers.length, total: data.members.length })}
-                </p>
-
-                {isLeader && isSessionActive && data.currentQuestion.phase === 'answering' ? (
-                  <form action={revealAnswerAction} className="space-y-3">
-                    <input type="hidden" name="locale" value={locale} />
-                    <input type="hidden" name="sessionId" value={params.sessionId} />
-                    <input type="hidden" name="questionId" value={data.currentQuestion.id} />
-                    <label className="block">
-                      <span className="mb-2 block text-sm font-medium text-slate-300">{t('correctAnswer')}</span>
-                      <select name="correctOption" className="field" defaultValue="A">
-                        {ANSWER_OPTIONS.map((option) => (
-                          <option key={option} value={option}>
-                            {option}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <SubmitButton pendingLabel={t('revealAnswerPending')} className="button-secondary w-full">
-                      {t('revealAnswer')}
-                    </SubmitButton>
-                  </form>
-                ) : null}
-
-                {data.distribution ? (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {[
-                      { label: 'A', count: data.distribution.A },
-                      { label: 'B', count: data.distribution.B },
-                      { label: 'C', count: data.distribution.C },
-                      { label: 'D', count: data.distribution.D },
-                      { label: 'E', count: data.distribution.E },
-                      { label: t('blank'), count: data.distribution.blank },
-                    ].map((item) => (
-                      <div key={item.label} className="rounded-[18px] border border-white/8 bg-white/[0.04] px-4 py-4">
-                        <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{item.label}</p>
-                        <p className="mt-2 text-lg font-bold text-white">{item.count}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-
-                {data.currentQuestion.phase === 'review' ? (
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <h3 className="text-sm font-semibold text-white">{t('sharedClassificationTitle')}</h3>
-                          <p className="mt-1 text-xs leading-6 text-slate-500">{t('sharedClassificationHint')}</p>
-                        </div>
-                        {data.sharedClassification ? (
-                          <span className="rounded-full bg-brand/12 px-3 py-1 text-xs font-semibold text-brand">
-                            {t('savedBadge')}
-                          </span>
-                        ) : null}
-                      </div>
-
-                      {isLeader ? (
-                        <form action={classifyQuestionAction} className="mt-4 space-y-4">
-                          <input type="hidden" name="locale" value={locale} />
-                          <input type="hidden" name="sessionId" value={params.sessionId} />
-                          <input type="hidden" name="questionId" value={data.currentQuestion.id} />
-                          <label className="block">
-                            <span className="mb-2 block text-sm font-medium text-slate-300">{t('physicianActivityLabel')}</span>
-                            <select
-                              name="physicianActivity"
-                              className="field"
-                              defaultValue={data.sharedClassification?.physician_activity ?? PHYSICIAN_ACTIVITY_OPTIONS[0]}
-                            >
-                              {PHYSICIAN_ACTIVITY_OPTIONS.map((item) => (
-                                <option key={item} value={item}>
-                                  {getPhysicianActivityLabel(item, t)}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="block">
-                            <span className="mb-2 block text-sm font-medium text-slate-300">{t('dimensionOfCareLabel')}</span>
-                            <select
-                              name="dimensionOfCare"
-                              className="field"
-                              defaultValue={data.sharedClassification?.dimension_of_care ?? DIMENSION_OF_CARE_OPTIONS[0]}
-                            >
-                              {DIMENSION_OF_CARE_OPTIONS.map((item) => (
-                                <option key={item} value={item}>
-                                  {getDimensionOfCareLabel(item, t)}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <SubmitButton pendingLabel={t('saveClassificationPending')} className="button-secondary w-full">
-                            {t('saveClassification')}
-                          </SubmitButton>
-                        </form>
-                      ) : data.sharedClassification ? (
-                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                          <div className="rounded-[18px] bg-white/[0.04] px-4 py-4">
-                            <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{t('physicianActivityLabel')}</p>
-                            <p className="mt-2 text-sm font-semibold text-white">
-                              {getPhysicianActivityLabel(data.sharedClassification.physician_activity, t)}
-                            </p>
-                          </div>
-                          <div className="rounded-[18px] bg-white/[0.04] px-4 py-4">
-                            <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{t('dimensionOfCareLabel')}</p>
-                            <p className="mt-2 text-sm font-semibold text-white">
-                              {getDimensionOfCareLabel(data.sharedClassification.dimension_of_care, t)}
-                            </p>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="mt-4 text-sm leading-7 text-slate-400">{t('classificationWaiting')}</p>
-                      )}
-                    </div>
-
-                    <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <h3 className="text-sm font-semibold text-white">{t('privateReflectionTitle')}</h3>
-                          <p className="mt-1 text-xs leading-6 text-slate-500">{t('privateReflectionHint')}</p>
-                        </div>
-                        {data.myReflection ? (
-                          <span className="rounded-full bg-brand/12 px-3 py-1 text-xs font-semibold text-brand">
-                            {t('savedBadge')}
-                          </span>
-                        ) : null}
-                      </div>
-
-                      {data.myAnswer?.is_correct === false ? (
-                        <form action={savePersonalReflectionAction} className="mt-4 space-y-4">
-                          <input type="hidden" name="locale" value={locale} />
-                          <input type="hidden" name="sessionId" value={params.sessionId} />
-                          <input type="hidden" name="questionId" value={data.currentQuestion.id} />
-                          <label className="block">
-                            <span className="mb-2 block text-sm font-medium text-slate-300">{t('errorTypeLabel')}</span>
-                            <select
-                              name="errorType"
-                              className="field"
-                              defaultValue={data.myReflection?.error_type ?? ERROR_TYPE_OPTIONS[0]}
-                            >
-                              {ERROR_TYPE_OPTIONS.map((item) => (
-                                <option key={item} value={item}>
-                                  {getErrorTypeLabel(item, t)}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="block">
-                            <span className="mb-2 block text-sm font-medium text-slate-300">{t('privateNoteLabel')}</span>
-                            <textarea
-                              name="privateNote"
-                              rows={4}
-                              defaultValue={data.myReflection?.private_note ?? ''}
-                              placeholder={t('privateNotePlaceholder')}
-                              className="field resize-none"
-                            />
-                          </label>
-                          <SubmitButton pendingLabel={t('saveReflectionPending')} className="button-secondary w-full">
-                            {t('saveReflection')}
-                          </SubmitButton>
-                        </form>
-                      ) : data.myAnswer ? (
-                        <p className="mt-4 text-sm leading-7 text-slate-400">{t('reflectionOnlyIfIncorrect')}</p>
-                      ) : (
-                        <p className="mt-4 text-sm leading-7 text-slate-400">{t('reflectionAfterAnswer')}</p>
-                      )}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <p className="mt-5 text-sm leading-7 text-slate-400">{t('sessionNotStarted')}</p>
-            )}
-          </section>
-
-          <section className="surface p-6 sm:p-8">
-            <h2 className="text-xl font-bold text-white">{data.session.name ?? data.group.name}</h2>
-            <div className="mt-4 space-y-3">
-              {data.members.map((member) => (
-                <div key={member.user_id} className="rounded-[18px] bg-white/[0.04] px-4 py-4">
-                  <p className="text-sm font-semibold text-white">
-                    {member.profile?.display_name ?? member.profile?.email ?? member.user_id}
-                  </p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">
-                    {member.is_founder ? t('founderLabel') : t('memberLabel')}
-                  </p>
+            <div className="mt-8 flex items-end justify-center gap-8">
+              {[...ANSWER_OPTIONS, '?'].map((option) => (
+                <div key={option} className="flex min-w-7 flex-col items-center gap-1 text-center">
+                  <span className={question.correct_option === option ? 'text-sm font-extrabold text-brand' : 'text-sm font-bold text-slate-500'}>
+                    {option}{question.correct_option === option ? ' ✓' : ''}
+                  </span>
+                  <span className="text-xs font-bold text-slate-600">{distribution.get(option) ?? 0}</span>
                 </div>
               ))}
             </div>
+            <div className="mt-5 border-t border-white/[0.06] pt-5">
+              <ReviewAnswerForm
+                action={saveReviewAnswerAction}
+                locale={locale}
+                sessionId={params.sessionId}
+                questionId={question.id}
+                questionIndex={currentIndex}
+                initialCorrectOption={question.correct_option as never}
+                labels={{
+                  correctAnswer: t('correctAnswer'),
+                  save: t('saveReview'),
+                  update: t('updateReview'),
+                  savePending: t('saveReviewPending'),
+                }}
+              />
+            </div>
           </section>
+
+          <details className="surface-mockup p-4">
+            <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-extrabold text-slate-400">
+              <span><span className="mr-2 inline-block h-3 w-3 rounded-full bg-orange-400" />{stabilityLabel}</span>
+              <span className="text-slate-600">ⓘ</span>
+            </summary>
+            <div className="mt-4 rounded-[8px] border border-white/[0.10] p-4 text-sm text-slate-400">
+              <p className="font-bold text-white">{t('pointLegendTitle')}</p>
+              <p className="mt-3"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-brand" />{t('legendHighCorrect')}</p>
+              <p className="mt-2"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-red-400" />{t('legendHighWrong')}</p>
+              <p className="mt-2"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-yellow-400" />{t('legendMediumCorrect')}</p>
+              <p className="mt-2"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-orange-400" />{t('legendMediumWrong')}</p>
+              <p className="mt-2"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-sky-400" />{t('legendLowCorrect')}</p>
+              <p className="mt-2"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-slate-500" />{t('legendLowWrong')}</p>
+            </div>
+          </details>
+
+          {isLeader ? (
+            <section className="surface-mockup p-5">
+              <div className="flex items-center gap-2">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-yellow-400 text-xs font-extrabold text-slate-950">C</span>
+                <h2 className="text-sm font-extrabold text-white">{t('captainOnly')}</h2>
+              </div>
+              <form action={saveCaptainFrequentErrorAction} className="mt-6 space-y-4">
+                <input type="hidden" name="locale" value={locale} />
+                <input type="hidden" name="sessionId" value={params.sessionId} />
+                <input type="hidden" name="questionId" value={question.id} />
+                <input type="hidden" name="questionIndex" value={currentIndex} />
+                <label className="block">
+                  <span className="text-sm font-bold text-slate-300">{t('frequentErrorType')}</span>
+                  <select
+                    name="frequentErrorType"
+                    className="field mt-2 h-10 rounded-[7px] px-3 py-2 text-sm"
+                    defaultValue={classification?.frequent_error_type ?? ''}
+                  >
+                    <option value="">{t('selectPlaceholder')}</option>
+                    {ERROR_TYPE_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {t(`errorType.${option}`)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <SubmitButton pendingLabel={t('saveReviewPending')} className="button-primary h-10 w-full rounded-[7px] py-2 text-sm">
+                  {classification?.frequent_error_type ? t('updateReview') : t('saveReview')}
+                </SubmitButton>
+              </form>
+            </section>
+          ) : null}
+
+          {canFinish ? (
+            <form action={finishReviewSessionAction}>
+              <input type="hidden" name="locale" value={locale} />
+              <input type="hidden" name="sessionId" value={params.sessionId} />
+              <SubmitButton pendingLabel={t('finishSessionPending')} className="h-10 w-full rounded-[7px] border border-brand bg-transparent text-sm font-extrabold text-brand hover:bg-brand/10">
+                {t('finishSession')}
+              </SubmitButton>
+            </form>
+          ) : null}
+        </section>
+      </main>
+    );
+  }
+
+  if (!question) {
+    return (
+      <main className="flex flex-1 flex-col">
+        <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
+        <section className="flex flex-1 items-center justify-center px-4 text-center text-sm font-bold text-slate-500">
+          {t('loadingSession')}
+        </section>
+      </main>
+    );
+  }
+
+  const myAnswer = data.allAnswers.find((answer) => answer.question_id === question.id && answer.user_id === user.id) ?? null;
+  const questionAnswers = data.allAnswers.filter((answer) => answer.question_id === question.id);
+  const isQuestionExpired =
+    Boolean(question.answer_deadline_at) && new Date(question.answer_deadline_at ?? '').getTime() <= Date.now();
+  const submittedCount = isQuestionExpired ? memberCount : questionAnswers.length;
+
+  return (
+    <main className="flex flex-1 flex-col">
+      <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
+      <header className="border-b border-white/[0.07]">
+        <div className="mx-auto flex h-16 w-full max-w-[560px] items-center justify-between px-4">
+          <Link href="/dashboard?view=sessions" className="text-slate-500 hover:text-white">↩</Link>
+          <div className="text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">{t('questionUpper')}</p>
+            <p className="text-xl font-extrabold text-white">{currentIndex + 1}<span className="text-sm text-slate-500">/{questionGoal}</span></p>
+          </div>
+          <SessionHeaderMeta
+            submittedCount={submittedCount}
+            memberCount={memberCount}
+            answerDeadlineAt={question.answer_deadline_at}
+          />
         </div>
+      </header>
+
+      <section className="mx-auto w-full max-w-[560px] px-4 py-7">
+        <SessionAnswerForm
+          key={question.id}
+          action={submitSessionStepAction}
+          timeoutAction={timeoutSessionStepAction}
+          advanceAction={advanceSessionStepAction}
+          locale={locale}
+          sessionId={params.sessionId}
+          questionId={question.id}
+          questionIndex={currentIndex}
+          initialAnswer={myAnswer?.selected_option}
+          initialConfidence={myAnswer?.confidence}
+          answerDeadlineAt={question.answer_deadline_at}
+          submittedCount={submittedCount}
+          memberCount={memberCount}
+          labels={{
+            confidenceTitle: t('confidenceLevel'),
+            confidenceLow: t('confidenceLow'),
+            confidenceMedium: t('confidenceMedium'),
+            confidenceHigh: t('confidenceHigh'),
+            submit: t('submitAnswer'),
+            submitPending: t('submitAnswerPending'),
+            nextQuestion: t('nextQuestion'),
+            nextQuestionPending: t('nextQuestionPending'),
+            allAnswersReceived: t('allAnswersSubmitted'),
+          }}
+        />
       </section>
     </main>
   );

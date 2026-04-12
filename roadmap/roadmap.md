@@ -319,12 +319,16 @@ Original sequencing was `#53 → #54 → #55 → #56 → #57 → #58`. The v8 re
 
 ---
 
-## Milestone 6: Closed Beta & UX Iteration — NOT STARTED
+## Milestone 6: Closed Beta & UX Iteration — PARTIAL
 
 - [#79: Closed beta with 2–3 WhatsApp study groups](https://github.com/nyx-ei/activeboard/issues/79) — Not started
-- [#80: UX iteration pass based on beta feedback](https://github.com/nyx-ei/activeboard/issues/80) — Not started
+- [#80: UX iteration pass based on beta feedback](https://github.com/nyx-ei/activeboard/issues/80) — Partially implemented (client mockup alignment pass)
 
 Key metrics to track during beta: questions-per-session, return rate, mobile vs. desktop split, session completion rate, 85→100-question funnel (warning to payment).
+
+### Delivery Notes
+
+The first Milestone 6 readiness pass aligns the app shell with the client mockup: Sessions, Performance, Group, and Settings are now explicit primary navigation areas; billing has been simplified around the 100-question trial, Lookup activation, and reliable incomplete groups.
 
 ---
 

@@ -1,22 +1,28 @@
 import { getTranslations } from 'next-intl/server';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
-import { UserScheduleForm } from '@/components/dashboard/user-schedule-form';
-import { AlertIcon, CalendarIcon, SparkIcon, TargetIcon, UsersIcon } from '@/components/ui/dashboard-icons';
+import { LogoutButton } from '@/components/auth/logout-button';
+import { DashboardPerformanceView } from '@/components/dashboard/dashboard-performance-view';
+import { DashboardSessionsView } from '@/components/dashboard/dashboard-sessions-view';
+import { SettingsWeeklyScheduleForm } from '@/components/dashboard/settings-weekly-schedule-form';
+import { CalendarIcon, UsersIcon } from '@/components/ui/dashboard-icons';
 import { SubmitButton } from '@/components/ui/submit-button';
-import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
 import { getUserAccessState, hasUserTierCapability } from '@/lib/billing/gating';
 import { getDashboardData } from '@/lib/demo/data';
-import { DEFAULT_AVAILABILITY_GRID } from '@/lib/schedule/availability';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
+import { GroupNameForm, InviteMemberForm } from '../groups/[groupId]/group-settings-forms';
 import {
-  createGroupAction,
-  joinGroupAction,
+  addDashboardWeeklyScheduleAction,
+  cancelDashboardSessionAction,
+  createDashboardSessionAction,
+  deleteDashboardWeeklyScheduleAction,
+  inviteDashboardGroupMemberAction,
   joinSessionByCodeAction,
-  respondToInviteAction,
-  updateUserScheduleAction,
+  transferDashboardCaptainAction,
+  updateDashboardGroupNameAction,
 } from './actions';
 
 type DashboardPageProps = {
@@ -28,18 +34,65 @@ type DashboardPageProps = {
   };
 };
 
+function getHeatmapCellClass(intensity: 0 | 1 | 2 | 3 | 4) {
+  switch (intensity) {
+    case 4:
+      return 'bg-brand';
+    case 3:
+      return 'bg-emerald-400/80';
+    case 2:
+      return 'bg-emerald-400/55';
+    case 1:
+      return 'bg-emerald-400/25';
+    default:
+      return 'bg-white/[0.07]';
+  }
+}
+
 export default async function DashboardPage({ params, searchParams }: DashboardPageProps) {
   const locale = params.locale as AppLocale;
   const user = await requireUser(locale);
   const t = await getTranslations('Dashboard');
   const feedbackT = await getTranslations('Feedback');
-  const view = searchParams.view === 'group' ? 'group' : 'individual';
+  const sessionT = await getTranslations('Session');
+  const view =
+    searchParams.view === 'performance' || searchParams.view === 'group' || searchParams.view === 'settings'
+      ? searchParams.view
+      : 'sessions';
   const isGroupView = view === 'group';
-  const data = await getDashboardData(user, isGroupView, false);
-  const accessState = await getUserAccessState(user.id);
-  const canCreateGroups = hasUserTierCapability(accessState, 'canBeCaptain');
-  const canJoinGroups = hasUserTierCapability(accessState, 'canJoinMultipleGroups');
+  const isPerformanceView = view === 'performance';
+  const isSettingsView = view === 'settings';
+  const isSessionsView = view === 'sessions';
+  const [data, accessState, currentProfile] = await Promise.all([
+    getDashboardData(
+      user,
+      isSessionsView || isGroupView || isSettingsView,
+      isPerformanceView,
+      isGroupView || isSettingsView,
+      false,
+    ),
+    getUserAccessState(user.id),
+    isGroupView
+      ? createSupabaseServerClient()
+          .schema('public')
+          .from('users')
+          .select('exam_session')
+          .eq('id', user.id)
+          .maybeSingle()
+          .then((result) => result.data)
+      : Promise.resolve(null),
+  ]);
   const canJoinSessions = hasUserTierCapability(accessState, 'canJoinSessions');
+  const primaryGroup = data.groups.find((group) => group.is_founder) ?? data.groups[0] ?? null;
+  const isPrimaryGroupFounder = Boolean(primaryGroup?.is_founder);
+  const captainSession = primaryGroup
+    ? data.sessions.find((session) => session.group_id === primaryGroup.id && session.status === 'active') ??
+      data.sessions.find((session) => session.group_id === primaryGroup.id && session.status === 'scheduled') ??
+      null
+    : null;
+  const currentCaptainId = captainSession?.leader_id ?? null;
+  const canTransferCaptain = Boolean(captainSession && currentCaptainId === user.id);
+  const captainTransferCandidates = data.groupDashboard.memberPerformance.filter((member) => member.userId !== currentCaptainId);
   const weekdayLabels = {
     monday: t('weekdayMonday'),
     tuesday: t('weekdayTuesday'),
@@ -49,404 +102,484 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
     saturday: t('weekdaySaturday'),
     sunday: t('weekdaySunday'),
   };
-  const leadSchedule = data.groupDashboard.schedules[0] ?? null;
+  const examSession =
+    currentProfile?.exam_session ?? (typeof user.user_metadata.exam_session === 'string' ? user.user_metadata.exam_session : '');
+  const examSessionLabel =
+    examSession === 'april_may_2026'
+      ? t('examAprilMay2026')
+      : examSession === 'august_september_2026'
+        ? t('examAugustSeptember2026')
+        : examSession === 'october_2026'
+          ? t('examOctober2026')
+          : examSession === 'planning_ahead'
+            ? t('examPlanningAhead')
+            : t('examSessionUndefined');
 
   return (
     <main className="flex flex-1 flex-col gap-5">
       <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
 
-      <section className="mx-auto w-full max-w-[860px] space-y-6">
-        <div className="flex items-center justify-between gap-4">
-          <h1 className="text-3xl font-extrabold tracking-tight text-white">{t('title')}</h1>
-          <a href="#workspace-actions" className="button-primary gap-2 px-6">
-            <span className="text-lg leading-none">+</span>
-            {t('primaryAction')}
-          </a>
-        </div>
-
-        <section className="relative rounded-[20px] border border-border bg-white/[0.03] p-1.5">
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-y-3 left-1/2 hidden w-px -translate-x-1/2 bg-white/[0.08] md:block"
+      <section className="mx-auto w-full max-w-[620px] space-y-4">
+        {view === 'sessions' ? (
+          <DashboardSessionsView
+            locale={locale}
+            primaryGroupId={primaryGroup?.id ?? null}
+            sessions={data.sessions}
+            weeklyCompletedQuestions={data.groupDashboard.weeklyCompletedQuestions}
+            weeklyTargetQuestions={data.groupDashboard.weeklyTargetQuestions}
+            weeklyProgressPercentage={data.groupDashboard.weeklyProgressPercentage}
+            canCreateSession={hasUserTierCapability(accessState, 'canCreateSession')}
+            canJoinSessions={canJoinSessions}
+            createSessionAction={createDashboardSessionAction}
+            cancelSessionAction={cancelDashboardSessionAction}
+            joinSessionAction={joinSessionByCodeAction}
+            labels={{
+              newSession: t('newSession'),
+              weeklyProgressTitle: t('weeklyProgressTitle'),
+              prequalification: t('prequalificationBadge'),
+              classGoal: t('classGoal'),
+              sessions: t('sessions'),
+              noSessionCta: t('noSessionCta'),
+              sessionCodePlaceholder: t('sessionCodePlaceholder'),
+              go: t('go'),
+              goPending: t('goPending'),
+              upgradeRequiredToJoinSession: feedbackT('upgradeRequiredToJoinSession'),
+              createSession: t('createSession'),
+              createSessionPending: t('createSessionPending'),
+              sessionName: t('sessionName'),
+              sessionNamePlaceholder: t('sessionNamePlaceholder'),
+              questionCount: t('questionCount'),
+              timerMode: t('timerMode'),
+              perQuestionMode: t('perQuestionMode'),
+              globalMode: t('globalMode'),
+              timerSeconds: t('timerSeconds'),
+              totalTimerSeconds: t('totalTimerSeconds'),
+              modalHint: t('modalHint'),
+              close: t('close'),
+              share: t('shareSession'),
+              delete: t('deleteSession'),
+              copied: t('copied'),
+              statusScheduled: t('statusScheduled'),
+              statusActive: t('statusActive'),
+              statusCompleted: t('statusCompleted'),
+              statusIncomplete: t('statusIncomplete'),
+              statusCancelled: t('statusCancelled'),
+            }}
           />
-          <div className="grid grid-cols-2 gap-2">
-            <a
-              href={`/${locale}/dashboard?view=individual`}
-              className={[
-                'relative z-10 inline-flex items-center justify-center rounded-[14px] px-4 py-2.5 text-base font-semibold transition',
-                !isGroupView
-                  ? 'bg-emerald-500/18 text-brand shadow-[inset_0_0_0_1px_rgba(22,210,144,0.16)] hover:bg-emerald-500/28'
-                  : 'text-slate-400 hover:bg-emerald-500/10 hover:text-white',
-              ].join(' ')}
-            >
-              {t('individualTab')}
-            </a>
-            <a
-              href={`/${locale}/dashboard?view=group`}
-              className={[
-                'relative z-10 inline-flex items-center justify-center rounded-[14px] px-4 py-2.5 text-base font-semibold transition',
-                isGroupView
-                  ? 'bg-emerald-500/18 text-brand shadow-[inset_0_0_0_1px_rgba(22,210,144,0.16)] hover:bg-emerald-500/28'
-                  : 'text-slate-400 hover:bg-emerald-500/10 hover:text-white',
-              ].join(' ')}
-            >
-              {t('groupTab')}
-            </a>
-          </div>
-        </section>
+        ) : null}
+
+        {isPerformanceView ? (
+          <DashboardPerformanceView
+            answeredCount={data.metrics.answeredCount}
+            successRate={data.metrics.successRate}
+            errorRate={data.metrics.errorRate}
+            averageConfidence={data.metrics.averageConfidence}
+            heatmap={data.profileAnalytics.heatmap}
+            labels={{
+              sprintActivityTitle: t('sprintActivityTitle'),
+              questionsAnswered: t('questionsAnswered'),
+              sessionsFinished: t('sessionsFinished', { count: data.metrics.completedSessionsCount }),
+              heatmapAvailableAfterSessions: t('heatmapAvailableAfterSessions'),
+              certaintyTitle: t('certaintyTitle'),
+              confidenceLow: t('confidenceLow'),
+              confidenceMedium: t('confidenceMedium'),
+              confidenceHigh: t('confidenceHigh'),
+              confidenceAfterNextSession: t('confidenceAfterNextSession'),
+              errorTitle: t('errorTitle'),
+              errorAfterThreeSessions: t('errorAfterThreeSessions'),
+              noData: t('noData'),
+              weekdays: [
+                t('weekdayShortMonday'),
+                t('weekdayShortTuesday'),
+                t('weekdayShortWednesday'),
+                t('weekdayShortThursday'),
+                t('weekdayShortFriday'),
+                t('weekdayShortSaturday'),
+                t('weekdayShortSunday'),
+              ],
+            }}
+          />
+        ) : null}
+
+        {false && isPerformanceView ? (
+          <>
+            <section className="surface-mockup p-5">
+              <div className="flex items-center gap-2">
+                <span className="text-brand">↯</span>
+                <p className="text-sm font-bold text-white">{t('heatmapTitle')}</p>
+              </div>
+              <p className="mt-4 text-3xl font-extrabold text-white">{data.metrics.answeredCount}</p>
+              <p className="mt-1 text-sm text-slate-400">{t('questionsAnswered')}</p>
+              <div className="mt-4 grid grid-cols-12 gap-1">
+                {data.profileAnalytics.heatmap.slice(-84).map((day) => (
+                  <div
+                    key={day.date}
+                    className={`h-7 rounded-[2px] border border-white/5 ${getHeatmapCellClass(day.intensity)}`}
+                    title={`${day.date} - ${day.count}`}
+                  />
+                ))}
+              </div>
+              <p className="mt-3 text-xs text-slate-500">{t('heatmapReplacesSprint')}</p>
+            </section>
+
+            <section className="surface-mockup p-5">
+              <div className="flex items-center gap-2">
+                <span className="text-brand">◎</span>
+                <p className="text-sm font-bold text-white">{t('certaintyTitle')}</p>
+              </div>
+              <p className="mt-3 text-sm text-slate-400">
+                {data.metrics.successRate !== null
+                  ? `${data.metrics.successRate}% - ${
+                      data.metrics.averageConfidence === 'low'
+                        ? t('confidenceLow')
+                        : data.metrics.averageConfidence === 'medium'
+                          ? t('confidenceMedium')
+                          : data.metrics.averageConfidence === 'high'
+                            ? t('confidenceHigh')
+                            : t('noData')
+                    }`
+                  : t('confidenceAfterNextSession')}
+              </p>
+            </section>
+
+            <section className="surface-mockup p-5">
+              <div className="flex items-center gap-2">
+                <span className="text-brand">△</span>
+                <p className="text-sm font-bold text-white">{t('errorTitle')}</p>
+              </div>
+              <p className="mt-3 text-sm text-slate-400">
+                {data.metrics.errorRate !== null ? `${data.metrics.errorRate}%` : t('errorAfterThreeSessions')}
+              </p>
+            </section>
+
+            <section className="grid gap-3 md:grid-cols-2">
+              <article className="surface-mockup p-5">
+                <p className="text-sm font-bold text-white">{t('confidenceCalibrationTitle')}</p>
+                <div className="mt-4 space-y-3">
+                  {data.profileAnalytics.confidenceCalibration.map((item) => (
+                    <div key={item.confidence}>
+                      <div className="flex items-center justify-between text-xs text-slate-400">
+                        <span>
+                          {item.confidence === 'low'
+                            ? t('confidenceLow')
+                            : item.confidence === 'medium'
+                              ? t('confidenceMedium')
+                              : t('confidenceHigh')}
+                        </span>
+                        <span>{item.total > 0 ? t('accuracyValue', { accuracy: item.accuracy, count: item.total }) : t('noData')}</span>
+                      </div>
+                      <div className="mt-1 h-2 overflow-hidden rounded-full bg-white/[0.08]">
+                        <div className="h-full rounded-full bg-brand" style={{ width: `${item.accuracy}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </article>
+              <article className="surface-mockup p-5">
+                <p className="text-sm font-bold text-white">{t('errorTypesTitle')}</p>
+                <div className="mt-4 space-y-2">
+                  {data.profileAnalytics.errorTypeBreakdown.length > 0 ? (
+                    data.profileAnalytics.errorTypeBreakdown.slice(0, 4).map((item) => (
+                      <div key={item.errorType} className="flex items-center justify-between rounded-[10px] bg-white/[0.04] px-3 py-2 text-sm">
+                        <span className="text-white">{sessionT(`errorType.${item.errorType}` as never)}</span>
+                        <span className="text-slate-400">{item.count}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-slate-400">{t('errorTypesEmpty')}</p>
+                  )}
+                </div>
+              </article>
+            </section>
+          </>
+        ) : null}
 
         {isGroupView ? (
-          <section className="space-y-5">
-            <article className="surface p-5">
-              <div className="flex items-center gap-3">
-                <CalendarIcon />
-                <div className="w-full">
-                  <p className="text-[1.2rem] font-bold text-white">{t('groupScheduleTitle')}</p>
-                  <div className="mt-4">
-                    {leadSchedule ? (
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex flex-wrap items-center gap-3">
-                          <span className="rounded-full bg-brand/12 px-3 py-1 text-sm font-semibold text-brand">
-                            {weekdayLabels[leadSchedule.weekday]}
-                          </span>
-                          <span className="text-sm font-medium text-slate-300">
-                            {leadSchedule.start_time.slice(0, 5)} {'->'} {leadSchedule.end_time.slice(0, 5)}
-                          </span>
-                        </div>
-                        <span className="text-sm font-semibold text-slate-500">
-                          {t('questionGoalValue', { count: leadSchedule.question_goal })}
-                        </span>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-slate-400">{t('groupScheduleEmpty')}</p>
-                    )}
-                  </div>
-                  <p className="mt-4 text-xs italic text-slate-500">{t('groupScheduleHint')}</p>
+          <>
+            <section className="surface-mockup p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-white">{data.groupDashboard.group?.name ?? t('unknownGroup')}</p>
                 </div>
+                <span className="h-2 w-2 rounded-full bg-brand" />
               </div>
-            </article>
+            </section>
 
-            <article className="surface p-5">
-              <div className="flex items-center gap-3">
-                <TargetIcon />
-                <p className="text-[1.2rem] font-bold text-white">{t('groupProgressTitle')}</p>
+            <section className="surface-mockup p-5">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">{t('inviteCode')}</p>
+              <p className="mt-1 text-sm font-semibold text-white">{primaryGroup ? primaryGroup.invite_code : t('noData')}</p>
+              <p className="mt-3 text-sm text-slate-400">{examSessionLabel}</p>
+            </section>
+
+            <section className="surface-mockup p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-bold text-white">{t('weeklyObjective')}</p>
+                <p className="text-xl font-extrabold text-white">{data.groupDashboard.weeklyProgressPercentage}%</p>
               </div>
-              <p className="mt-5 text-5xl font-extrabold tracking-tight text-white">
-                {data.groupDashboard.weeklyProgressPercentage}%
-                {data.groupDashboard.weeklyTargetQuestions > 0 ? (
-                  <span className="ml-2 text-lg font-semibold text-slate-500">
-                    ({t('weeklyQuestionGoalShort', { count: data.groupDashboard.weeklyTargetQuestions })})
-                  </span>
-                ) : null}
-              </p>
-              <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/[0.08]">
-                <div
-                  className="h-full rounded-full bg-brand transition-[width]"
-                  style={{ width: `${data.groupDashboard.weeklyProgressPercentage}%` }}
-                />
+              <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/[0.08]">
+                <div className="h-full rounded-full bg-brand" style={{ width: `${data.groupDashboard.weeklyProgressPercentage}%` }} />
               </div>
-              <p className="mt-4 text-sm text-slate-300">
+              <p className="mt-3 text-sm text-slate-400">
                 {t('groupProgressSummary', {
                   completed: data.groupDashboard.weeklyCompletedQuestions,
                   total: data.groupDashboard.weeklyTargetQuestions,
                 })}
               </p>
-              <p className="mt-4 text-xs italic text-slate-500">{t('groupProgressHint')}</p>
-            </article>
+            </section>
 
-            <article className="surface p-5">
-              <div className="flex items-center gap-3">
-                <UsersIcon />
-                <p className="text-[1.2rem] font-bold text-white">{t('memberPerformanceTitle')}</p>
+            <section className="surface-mockup p-5">
+              <div className="flex items-center gap-2">
+                <CalendarIcon />
+                <p className="text-sm font-bold text-white">{t('groupScheduleTitle')}</p>
               </div>
+              <div className="mt-4 space-y-2">
+                {data.groupDashboard.schedules.length > 0 ? (
+                  data.groupDashboard.schedules.map((schedule) => (
+                  <div key={schedule.id} className="flex flex-wrap items-center gap-3">
+                    <span className="rounded-full bg-brand/12 px-3 py-1 text-xs font-semibold text-brand">
+                      {weekdayLabels[schedule.weekday]}
+                    </span>
+                    <span className="text-sm font-medium text-slate-300">
+                      {schedule.start_time.slice(0, 5)} → {schedule.end_time.slice(0, 5)}
+                    </span>
+                    <span className="ml-auto text-sm text-slate-500">
+                      {t('questionGoalValue', { count: schedule.question_goal })}
+                    </span>
+                  </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-400">{t('groupScheduleEmpty')}</p>
+                )}
+              </div>
+            </section>
 
-              {data.groupDashboard.memberPerformance.length > 0 ? (
-                <div className="mt-5 space-y-3">
-                  {data.groupDashboard.memberPerformance.map((member) => (
-                    <div key={member.userId} className="surface-soft flex items-center justify-between gap-4 px-4 py-3">
+            <section className="surface-mockup p-5">
+              <div className="flex items-center gap-2">
+                <UsersIcon />
+                <p className="text-sm font-bold text-white">{t('membersTitle')}</p>
+              </div>
+              <div className="mt-4 space-y-3">
+                {data.groupDashboard.memberPerformance.length > 0 ? (
+                  data.groupDashboard.memberPerformance.map((member) => (
+                    <div key={member.userId} className="rounded-[12px] bg-white/[0.04] px-3 py-3">
+                      <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
-                        <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand/20 text-sm font-extrabold text-brand">
+                        <span className="h-2 w-2 shrink-0 rounded-full bg-brand" />
+                        <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/20 text-xs font-bold text-brand">
                           {member.initials}
-                          {member.is_founder ? (
-                            <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[9px] font-black text-slate-950">
-                              C
+                          {member.userId === currentCaptainId ? (
+                            <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-400 text-[8px] font-extrabold uppercase leading-none text-[#3b2600]">
+                              c
                             </span>
                           ) : null}
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate text-lg font-bold text-white">{member.name}</p>
-                          <p className="mt-1 text-sm text-slate-400">
-                            {t('memberPresence', { value: member.presenceRate })} - {t('memberCompletion', { value: member.completionRate })}
+                          <p className="truncate text-sm font-bold text-white">{member.name}</p>
+                          <p className="text-xs text-slate-400">
+                            <span>{t('memberPresence', { value: member.presenceRate })}</span>
+                            <span className="px-2">·</span>
+                            <span>{t('memberCompletion', { value: member.completionRate })}</span>
+                          </p>
+                          <p className="hidden">
+                            {t('memberPresence', { value: member.presenceRate })} · {t('memberCompletion', { value: member.completionRate })}
                           </p>
                         </div>
                       </div>
-                      <span className="shrink-0 rounded-full border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold text-slate-300">
-                        {member.status === 'setup' ? t('memberStatusSetup') : t('memberStatusActive')}
+                      <span className="rounded-full border border-brand/25 bg-brand/10 px-3 py-1 text-[10px] font-bold text-brand">
+                        {member.userId === currentCaptainId ? t('captainLabel') : t('memberStatusActive')}
                       </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="mt-5 text-sm text-slate-400">{t('groupViewEmpty')}</p>
-              )}
-            </article>
-          </section>
-        ) : (
-          <>
-            <div className="grid gap-4 md:grid-cols-3">
-              <article className="surface p-5">
-                <div className="flex items-center gap-2">
-                  <SparkIcon />
-                  <p className="text-sm font-semibold text-white">{t('activityTitle')}</p>
-                </div>
-                <p className="mt-4 text-4xl font-extrabold tracking-tight text-white">{data.metrics.answeredCount}</p>
-                <p className="mt-2 text-sm text-slate-400">{t('questionsAnswered')}</p>
-                <p className="mt-3 text-sm text-slate-300">
-                  {t('sessionsFinished', { count: data.metrics.completedSessionsCount })}
-                </p>
-              </article>
-
-              <article className="surface p-5">
-                <div className="flex items-center gap-2">
-                  <TargetIcon />
-                  <p className="text-sm font-semibold text-white">{t('certaintyTitle')}</p>
-                </div>
-                {data.metrics.successRate !== null ? (
-                  <>
-                    <p className="mt-4 text-2xl font-extrabold tracking-tight text-white">{data.metrics.successRate}%</p>
-                    <p className="mt-2 text-sm text-slate-400">
-                      {t('confidenceValue', {
-                        value:
-                          data.metrics.averageConfidence === 'low'
-                            ? t('confidenceLow')
-                            : data.metrics.averageConfidence === 'medium'
-                              ? t('confidenceMedium')
-                              : data.metrics.averageConfidence === 'high'
-                                ? t('confidenceHigh')
-                                : t('noData'),
-                      })}
-                    </p>
-                  </>
-                ) : (
-                  <p className="mt-4 text-sm text-slate-400">{t('noData')}</p>
-                )}
-              </article>
-
-              <article className="surface p-5">
-                <div className="flex items-center gap-2">
-                  <AlertIcon />
-                  <p className="text-sm font-semibold text-white">{t('errorTitle')}</p>
-                </div>
-                {data.metrics.errorRate !== null ? (
-                  <>
-                    <p className="mt-4 text-2xl font-extrabold tracking-tight text-white">{data.metrics.errorRate}%</p>
-                    <p className="mt-2 text-sm text-slate-400">{t('errorFrequencyHint')}</p>
-                  </>
-                ) : (
-                  <p className="mt-4 text-sm text-slate-400">{t('noData')}</p>
-                )}
-              </article>
-            </div>
-
-            <section className="surface p-5">
-              <div className="flex items-center gap-4">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-sm font-bold text-white">
-                  {data.metrics.leagueProgress}%
-                </div>
-                <div>
-                  <p className="text-lg font-bold text-white">{t('leagueTitle')}</p>
-                  <p className="mt-1 text-sm text-slate-400">{t('leagueDescription')}</p>
-                </div>
-              </div>
-            </section>
-
-            <section className="space-y-4">
-              <div className="flex items-center justify-between gap-4">
-                <h2 className="text-2xl font-bold text-white">{t('sessions')}</h2>
-                <form action={joinSessionByCodeAction} className="flex items-center gap-2">
-                  <input type="hidden" name="locale" value={locale} />
-                  <input
-                    name="sessionCode"
-                    maxLength={6}
-                    placeholder={t('sessionCodePlaceholder')}
-                    autoCapitalize="characters"
-                    autoComplete="off"
-                    className="field h-9 w-[188px] rounded-[12px] px-4 py-2 uppercase"
-                  />
-                  <SubmitButton pendingLabel={t('goPending')} className="button-primary h-9 min-w-[54px] rounded-[12px] px-4 py-2" disabled={!canJoinSessions}>
-                    {t('go')}
-                  </SubmitButton>
-                </form>
-              </div>
-              {!canJoinSessions ? <p className="text-sm text-amber-300">{feedbackT('upgradeRequiredToJoinSession')}</p> : null}
-
-              {data.sessions.length > 0 ? (
-                <div className="space-y-3">
-                  {data.sessions.map((session) => (
-                    <article key={session.id} className="surface p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0">
-                          <h3 className="truncate text-lg font-bold text-white">
-                            {session.name ?? session.groupName ?? t('unknownGroup')}
-                          </h3>
-                          <p className="mt-2 text-sm text-slate-400">
-                            {new Intl.DateTimeFormat(locale, {
-                              dateStyle: 'medium',
-                              timeStyle: 'short',
-                            }).format(new Date(session.scheduled_at))}
-                          </p>
-                          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-brand">
-                            {t('sessionCodeValue', { code: session.share_code })}
-                          </p>
-                        </div>
-                        <div className="flex flex-col items-end gap-2">
-                          <span className="rounded-full bg-white/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand">
-                            {session.status === 'active'
-                              ? t('statusActive')
-                              : session.status === 'scheduled'
-                                ? t('statusScheduled')
-                                : t('statusCompleted')}
-                          </span>
-                          <Link href={`/sessions/${session.id}`} className="button-secondary rounded-[12px] px-4 py-2">
-                            {t('openSession')}
-                          </Link>
-                        </div>
                       </div>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-6 py-4">
-                  <p className="text-sm text-slate-400">{t('emptyGroups')}</p>
-                  <p className="text-sm text-slate-500">{t('noActiveSessions')}</p>
-                </div>
-              )}
+                      <div className="ml-[34px] mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.10]">
+                        <div className="h-full rounded-full bg-slate-500" style={{ width: `${member.completionRate}%` }} />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-400">{t('groupViewEmpty')}</p>
+                )}
+              </div>
             </section>
+
           </>
-        )}
+        ) : null}
 
-        <section id="workspace-actions" className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-          <div className="surface p-5">
-            <h2 className="text-base font-bold text-white">{t('createGroup')}</h2>
-            <form action={createGroupAction} className="mt-4 space-y-3">
-              <input type="hidden" name="locale" value={locale} />
-              <input name="groupName" placeholder={t('groupNamePlaceholder')} autoComplete="off" className="field" />
-              <SubmitButton pendingLabel={t('createGroupPending')} className="button-primary w-full" disabled={!canCreateGroups}>
-                {t('createGroup')}
-              </SubmitButton>
-            </form>
-            {!canCreateGroups ? <p className="mt-3 text-sm text-amber-300">{feedbackT('upgradeRequiredToCreateGroup')}</p> : null}
-          </div>
-
-          <div className="space-y-4">
-            <div className="surface p-5">
-              <h2 className="text-base font-bold text-white">{t('joinGroup')}</h2>
-              <form action={joinGroupAction} className="mt-4 flex items-center gap-2">
-                <input type="hidden" name="locale" value={locale} />
-                <input
-                  name="inviteCode"
-                  maxLength={6}
-                  placeholder={t('inviteCodePlaceholder')}
-                  autoCapitalize="characters"
-                  autoComplete="off"
-                  className="field uppercase"
-                />
-                <SubmitButton pendingLabel={t('goPending')} className="button-primary min-w-[62px] rounded-[12px] px-4 py-3" disabled={!canJoinGroups}>
-                  {t('go')}
-                </SubmitButton>
-              </form>
-              {!canJoinGroups ? <p className="mt-3 text-sm text-amber-300">{feedbackT('upgradeRequiredToJoinGroups')}</p> : null}
-            </div>
-
-            {data.pendingInvites.length > 0 ? (
-              <div className="surface p-5">
-                <h2 className="text-base font-bold text-white">{t('pendingInvites')}</h2>
-                <div className="mt-4 space-y-3">
-                  {data.pendingInvites.map((invite) => (
-                    <div key={invite.id} className="surface-soft p-4">
-                      <p className="text-sm font-semibold text-white">{invite.groupName ?? t('unknownGroup')}</p>
-                      <p className="mt-1 text-sm text-slate-400">
-                        {t('invitedBy', { name: invite.invitedByName ?? t('founderLabel') })}
-                      </p>
-                      <div className="mt-3 flex gap-2">
-                        <form action={respondToInviteAction} className="flex-1">
-                          <input type="hidden" name="locale" value={locale} />
-                          <input type="hidden" name="inviteId" value={invite.id} />
-                          <input type="hidden" name="intent" value="accept" />
-                          <SubmitButton pendingLabel={t('acceptPending')} className="button-primary w-full rounded-[12px] px-4 py-2.5" disabled={!canJoinGroups}>
-                            {t('accept')}
-                          </SubmitButton>
-                        </form>
-                        <form action={respondToInviteAction} className="flex-1">
-                          <input type="hidden" name="locale" value={locale} />
-                          <input type="hidden" name="inviteId" value={invite.id} />
-                          <input type="hidden" name="intent" value="decline" />
-                          <SubmitButton pendingLabel={t('declinePending')} className="button-secondary w-full rounded-[12px] px-4 py-2.5">
-                            {t('decline')}
-                          </SubmitButton>
-                        </form>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </section>
-
-        <UserScheduleForm
-          action={updateUserScheduleAction}
-          locale={locale}
-          initialTimezone={data.userSchedule?.timezone ?? 'UTC'}
-          initialGrid={data.userSchedule?.availability_grid ?? DEFAULT_AVAILABILITY_GRID}
-          labels={{
-            title: t('availabilityTitle'),
-            description: t('availabilityDescription'),
-            timezone: t('availabilityTimezone'),
-            save: t('availabilitySave'),
-            savePending: t('availabilitySavePending'),
-            empty: t('availabilityEmpty'),
-            slotsCount: t('availabilitySlotsCount', { count: '{count}' }),
-            weekdays: {
-              monday: t('weekdayMonday'),
-              tuesday: t('weekdayTuesday'),
-              wednesday: t('weekdayWednesday'),
-              thursday: t('weekdayThursday'),
-              friday: t('weekdayFriday'),
-              saturday: t('weekdaySaturday'),
-              sunday: t('weekdaySunday'),
-            },
-          }}
-        />
-
-        {data.groups.length > 0 ? (
-          <section id="groups-list" className="space-y-4">
-            <div className="flex items-center justify-between gap-4">
-              <h2 className="text-2xl font-bold text-white">{t('groups')}</h2>
-              <span className="text-sm text-slate-500">{t('membershipsCount', { count: data.groups.length })}</span>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              {data.groups.map((group) => (
-                <article key={group.id} className="surface p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <h3 className="truncate text-lg font-bold text-white">{group.name}</h3>
-                      <p className="mt-1 text-sm text-slate-400">{t('members', { count: group.memberCount })}</p>
-                      <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">
-                        {group.is_founder ? t('founderLabel') : t('memberLabel')}
-                      </p>
-                      <p className="mt-2 text-xs uppercase tracking-[0.18em] text-brand">
-                        {t('inviteCodeValue', { code: group.invite_code })}
-                      </p>
-                    </div>
-                    <Link href={`/groups/${group.id}`} className="button-secondary rounded-[12px] px-4 py-2">
-                      {t('openGroup')}
-                    </Link>
+        {isSettingsView ? (
+          <>
+            {primaryGroup ? (
+              <>
+                <section className="surface-mockup p-5">
+                  <div className="flex items-center gap-2">
+                    <svg viewBox="0 0 24 24" className="h-5 w-5 text-amber-400" aria-hidden="true">
+                      <path
+                        d="M12 3.8 18.5 6v5.2c0 4.1-2.4 7.2-6.5 9c-4.1-1.8-6.5-4.9-6.5-9V6L12 3.8Z"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeLinejoin="round"
+                        strokeWidth="1.7"
+                      />
+                    </svg>
+                    <h1 className="text-sm font-extrabold uppercase tracking-[0.16em] text-white">{t('groupManagementTitle')}</h1>
                   </div>
-                </article>
-              ))}
-            </div>
-          </section>
+
+                  <div className="mt-5 space-y-5">
+                    {isPrimaryGroupFounder ? (
+                      <GroupNameForm
+                        action={updateDashboardGroupNameAction}
+                        locale={locale}
+                        groupId={primaryGroup.id}
+                        initialName={primaryGroup.name}
+                        label={t('groupName')}
+                        placeholder={t('groupNamePlaceholder')}
+                        pendingLabel={t('saveNamePending')}
+                        submitLabel={t('saveShort')}
+                      />
+                    ) : (
+                      <div>
+                        <p className="text-sm font-semibold text-slate-400">{t('groupName')}</p>
+                        <p className="mt-2 rounded-[7px] bg-white/[0.06] px-3 py-2 text-sm font-semibold text-white">{primaryGroup.name}</p>
+                        <p className="mt-2 text-xs text-slate-500">{t('founderOnlySettingsHint')}</p>
+                      </div>
+                    )}
+
+                    {isPrimaryGroupFounder ? (
+                      <InviteMemberForm
+                        action={inviteDashboardGroupMemberAction}
+                        locale={locale}
+                        groupId={primaryGroup.id}
+                        label={t('inviteMember')}
+                        emailLabel={t('email')}
+                        emailPlaceholder={t('emailPlaceholder')}
+                        pendingLabel={t('sendInvitePending')}
+                        submitLabel={t('sendInviteShort')}
+                        compact
+                      />
+                    ) : null}
+                  </div>
+                </section>
+
+                <section className="surface-mockup p-5">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                      <CalendarIcon />
+                      <h2 className="text-sm font-bold text-slate-300">{t('weeklyScheduleTitle')}</h2>
+                    </div>
+                  </div>
+
+                  {isPrimaryGroupFounder ? (
+                    <SettingsWeeklyScheduleForm
+                      action={addDashboardWeeklyScheduleAction}
+                      locale={locale}
+                      groupId={primaryGroup.id}
+                      labels={{
+                        addDay: t('addDay'),
+                        saveSchedule: t('saveSchedule'),
+                        saveSchedulePending: t('saveSchedulePending'),
+                        questionGoal: t('questionGoalValue', { count: 50 }),
+                        removeDay: t('removeDay'),
+                        weekdays: weekdayLabels,
+                      }}
+                    />
+                  ) : null}
+
+                  <div className="mt-4 space-y-2">
+                    {data.groupDashboard.schedules.length > 0 ? (
+                      data.groupDashboard.schedules.map((schedule) => (
+                        <div key={schedule.id} className="flex items-center gap-3 rounded-[10px] bg-white/[0.035] px-3 py-2">
+                          <span className="rounded-full bg-brand/12 px-3 py-1 text-xs font-semibold text-brand">{weekdayLabels[schedule.weekday]}</span>
+                          <span className="text-sm font-medium text-slate-300">
+                            {schedule.start_time.slice(0, 5)} → {schedule.end_time.slice(0, 5)}
+                          </span>
+                          <span className="ml-auto text-xs font-semibold text-slate-500">{t('questionGoalValue', { count: schedule.question_goal })}</span>
+                          {isPrimaryGroupFounder ? (
+                            <form action={deleteDashboardWeeklyScheduleAction}>
+                              <input type="hidden" name="locale" value={locale} />
+                              <input type="hidden" name="groupId" value={primaryGroup.id} />
+                              <input type="hidden" name="scheduleId" value={schedule.id} />
+                              <SubmitButton pendingLabel="" className="button-ghost px-1.5 py-1.5 text-slate-500 hover:text-white">
+                                <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+                                  <path
+                                    d="M9 4.5h6M5.5 7.5h13M9 10.5v6M15 10.5v6M7.5 7.5l.6 10a2 2 0 0 0 2 1.8h3.8a2 2 0 0 0 2-1.8l.6-10"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="1.8"
+                                  />
+                                </svg>
+                              </SubmitButton>
+                            </form>
+                          ) : null}
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-slate-500">{t('weeklyScheduleEmpty')}</p>
+                    )}
+                  </div>
+                </section>
+
+                <section className="surface-mockup p-5">
+                  <h2 className="text-sm font-bold text-slate-300">{t('membersTitle')} ({data.groupDashboard.memberPerformance.length})</h2>
+                  <div className="mt-4 space-y-3">
+                    {data.groupDashboard.memberPerformance.map((member) => (
+                      <div key={member.userId} className="flex items-center gap-3 rounded-[12px] bg-white/[0.04] px-3 py-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand/20 text-xs font-bold text-brand">
+                          {member.initials}
+                        </div>
+                        <p className="truncate text-sm font-bold text-white">{member.name}</p>
+                        {member.userId === currentCaptainId ? (
+                          <span className="text-xs font-extrabold uppercase tracking-[0.12em] text-amber-400">{t('captainLabel')}</span>
+                        ) : member.is_founder ? (
+                          <span className="text-xs font-extrabold uppercase tracking-[0.12em] text-amber-400">{t('founder')}</span>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                {canTransferCaptain ? (
+                  <section className="surface-mockup border-amber-400/20 p-5">
+                    <div className="flex items-center gap-2 text-amber-400">
+                      <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+                        <path d="M7 7h10M17 7l-3-3M17 7l-3 3M17 17H7M7 17l3-3M7 17l3 3" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+                      </svg>
+                      <h2 className="text-sm font-bold">{t('transferCaptainTitle')}</h2>
+                    </div>
+                    <p className="mt-4 text-sm text-slate-500">{t('transferCaptainDescription')}</p>
+                    {captainTransferCandidates.length > 0 ? (
+                      <form action={transferDashboardCaptainAction} className="mt-4 flex items-center gap-2">
+                        <input type="hidden" name="locale" value={locale} />
+                        <input type="hidden" name="sessionId" value={captainSession?.id ?? ''} />
+                        <select name="targetUserId" className="field h-10 rounded-[7px] px-3 py-2 text-sm">
+                          {captainTransferCandidates.map((member) => (
+                            <option key={member.userId} value={member.userId}>
+                              {member.name}
+                            </option>
+                          ))}
+                        </select>
+                        <SubmitButton pendingLabel={t('transferCaptainPending')} className="button-secondary h-10 rounded-[7px] px-3 py-2 text-xs text-amber-300">
+                          {t('transferCaptainAction')}
+                        </SubmitButton>
+                      </form>
+                    ) : (
+                      <p className="mt-4 text-sm italic text-slate-500">{t('transferCaptainEmpty')}</p>
+                    )}
+                  </section>
+                ) : null}
+
+                <div className="flex justify-center py-4">
+                  <LogoutButton
+                    showIcon
+                    className="min-h-0 border-none bg-transparent px-3 py-1 text-sm font-bold text-[#ff4d5e] shadow-none hover:bg-transparent hover:text-[#ff7a86]"
+                  />
+                </div>
+              </>
+            ) : (
+              <section className="surface-mockup p-5 text-center">
+                <h1 className="text-sm font-extrabold uppercase tracking-[0.16em] text-white">{t('groupManagementTitle')}</h1>
+                <p className="mt-3 text-sm text-slate-400">{t('groupViewEmpty')}</p>
+              </section>
+            )}
+          </>
         ) : null}
       </section>
     </main>
