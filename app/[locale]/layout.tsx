@@ -4,12 +4,14 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
 
 import { AppBottomNav } from '@/components/layout/app-bottom-nav';
+import { GroupSwitcherMenu } from '@/components/layout/group-switcher-menu';
+import { HomeHeaderNav } from '@/components/layout/home-header-nav';
 import { LanguageSwitcher } from '@/components/layout/language-switcher';
-import { ProfileMenu } from '@/components/layout/profile-menu';
 import { RegisterServiceWorker } from '@/components/pwa/register-service-worker';
 import { Link } from '@/i18n/navigation';
 import { routing, type AppLocale } from '@/i18n/routing';
 import { getCurrentUser } from '@/lib/auth';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -35,6 +37,33 @@ export default async function LocaleLayout({
   const billingT = await getTranslations('Billing');
   const profileT = await getTranslations('Profile');
   const user = await getCurrentUser();
+  const shellData = user
+    ? await (async () => {
+        const supabase = createSupabaseServerClient();
+        const { data: memberships } = await supabase
+          .schema('public')
+          .from('group_members')
+          .select('group_id')
+          .eq('user_id', user.id);
+        const groupIds = [...new Set((memberships ?? []).map((membership) => membership.group_id))];
+        if (groupIds.length === 0) return { groups: [], isCaptain: false };
+        const { data: groups } = await supabase
+          .schema('public')
+          .from('groups')
+          .select('id, name')
+          .in('id', groupIds)
+          .order('created_at', { ascending: true });
+        const { data: captainSession } = await supabase
+          .schema('public')
+          .from('sessions')
+          .select('id')
+          .eq('leader_id', user.id)
+          .in('status', ['scheduled', 'active', 'incomplete'])
+          .limit(1)
+          .maybeSingle();
+        return { groups: groups ?? [], isCaptain: Boolean(captainSession) };
+      })()
+    : { groups: [], isCaptain: false };
   const displayName = user?.user_metadata.full_name ?? user?.email ?? 'ActiveBoard';
   const initials =
     displayName
@@ -44,9 +73,6 @@ export default async function LocaleLayout({
       .slice(0, 2)
       .toUpperCase() ??
     'AB';
-  const primaryGroupHref = `/${locale}/dashboard?view=settings`;
-  const primaryGroupLabel = dashboardT('groupSettings');
-
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <RegisterServiceWorker />
@@ -73,24 +99,31 @@ export default async function LocaleLayout({
 
               {user ? (
                 <div className="flex items-center gap-2">
-                  <ProfileMenu
-                    initials={initials}
-                    name={displayName}
-                    email={user.email ?? ''}
-                    profileHref={`/${locale}/profile`}
-                    profileLabel={profileT('menuLabel')}
-                    billingHref={`/${locale}/billing`}
-                    billingLabel={billingT('menuLabel')}
-                    groupHref={primaryGroupHref}
-                    groupLabel={primaryGroupLabel}
-                    groupHint={null}
+                  <Link
+                    href="/profile"
+                    className="relative flex h-8 w-8 items-center justify-center rounded-full border border-brand/35 bg-brand/20 text-xs font-extrabold text-brand shadow-[0_0_0_2px_rgba(16,185,129,0.05)] transition hover:bg-brand/30"
+                    aria-label={profileT('menuLabel')}
+                  >
+                    {initials}
+                    <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-brand" />
+                    {shellData.isCaptain ? (
+                      <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-400 text-[8px] font-extrabold uppercase leading-none text-[#3b2600]">
+                        c
+                      </span>
+                    ) : null}
+                  </Link>
+                  <GroupSwitcherMenu
+                    groups={shellData.groups}
+                    labels={{
+                      group: dashboardT('groupTab'),
+                      profile: profileT('menuLabel'),
+                      billing: billingT('menuLabel'),
+                    }}
                   />
                 </div>
               ) : (
                 <div className="flex items-center gap-3">
-                  <Link href="/auth/login" className="button-ghost">
-                    {t('signIn')}
-                  </Link>
+                  <HomeHeaderNav />
                 </div>
               )}
             </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { Check, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 
 import { SubmitButton } from '@/components/ui/submit-button';
@@ -149,35 +150,11 @@ export function PasswordUpdateForm({ action, locale, labels }: PasswordFormProps
             className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-slate-500 transition hover:text-white"
             aria-label={labels.togglePassword}
           >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-              {visible ? (
-                <path
-                  d="M5 5l14 14M9.7 9.7A3 3 0 0 0 14.3 14.3M7.4 7.8C5.6 8.9 4.2 10.4 3.3 12c1.8 3.2 5.1 5.2 8.7 5.2c1.3 0 2.6-.3 3.7-.8M10.5 6.9c.5-.1 1-.1 1.5-.1c3.6 0 6.9 2 8.7 5.2c-.5.9-1.1 1.7-1.9 2.4"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="1.8"
-                />
-              ) : (
-                <>
-                  <path
-                    d="M3.3 12c1.8-3.2 5.1-5.2 8.7-5.2s6.9 2 8.7 5.2c-1.8 3.2-5.1 5.2-8.7 5.2s-6.9-2-8.7-5.2Z"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeLinejoin="round"
-                    strokeWidth="1.8"
-                  />
-                  <path d="M12 15a3 3 0 1 0 0-6a3 3 0 0 0 0 6Z" fill="none" stroke="currentColor" strokeWidth="1.8" />
-                </>
-              )}
-            </svg>
+            {visible ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
           </button>
         </div>
         <SubmitButton pendingLabel={labels.savePasswordPending} className="button-primary h-10 rounded-[7px] px-4 py-2 text-sm">
-          <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-            <path d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" />
-          </svg>
+          <Check className="h-4 w-4" aria-hidden="true" />
         </SubmitButton>
       </div>
       <p className="mt-1 text-xs text-slate-500">{labels.passwordHint}</p>

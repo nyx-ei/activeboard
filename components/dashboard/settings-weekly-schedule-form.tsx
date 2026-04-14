@@ -1,5 +1,6 @@
 'use client';
 
+import { Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { SubmitButton } from '@/components/ui/submit-button';
@@ -27,21 +28,6 @@ type SettingsWeeklyScheduleFormProps = {
 };
 
 const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-
-function TrashIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-      <path
-        d="M9 4.5h6M5.5 7.5h13M9 10.5v6M15 10.5v6M7.5 7.5l.6 10a2 2 0 0 0 2 1.8h3.8a2 2 0 0 0 2-1.8l.6-10"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
 
 function createDraft(index: number): ScheduleDraft {
   return {
@@ -131,7 +117,7 @@ export function SettingsWeeklyScheduleForm({ action, locale, groupId, labels }: 
               disabled={drafts.length === 1}
               aria-label={labels.removeDay}
             >
-              <TrashIcon />
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         ))}

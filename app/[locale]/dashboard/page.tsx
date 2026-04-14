@@ -1,10 +1,13 @@
 import { getTranslations } from 'next-intl/server';
+import { ArrowLeftRight, Shield, Trash2 } from 'lucide-react';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
 import { LogoutButton } from '@/components/auth/logout-button';
 import { DashboardPerformanceView } from '@/components/dashboard/dashboard-performance-view';
 import { DashboardSessionsView } from '@/components/dashboard/dashboard-sessions-view';
+import { LiveGroupsModal } from '@/components/dashboard/live-groups-modal';
 import { SettingsWeeklyScheduleForm } from '@/components/dashboard/settings-weekly-schedule-form';
+import { PendingGroupDraftSync } from '@/components/onboarding/pending-group-draft-sync';
 import { CalendarIcon, UsersIcon } from '@/components/ui/dashboard-icons';
 import { SubmitButton } from '@/components/ui/submit-button';
 import type { AppLocale } from '@/i18n/routing';
@@ -13,15 +16,17 @@ import { getUserAccessState, hasUserTierCapability } from '@/lib/billing/gating'
 import { getDashboardData } from '@/lib/demo/data';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
-import { GroupNameForm, InviteMemberForm } from '../groups/[groupId]/group-settings-forms';
+import { GroupMeetingLinkForm, GroupNameForm, InviteMemberForm } from '../groups/[groupId]/group-settings-forms';
 import {
   addDashboardWeeklyScheduleAction,
   cancelDashboardSessionAction,
   createDashboardSessionAction,
   deleteDashboardWeeklyScheduleAction,
   inviteDashboardGroupMemberAction,
+  joinGroupAction,
   joinSessionByCodeAction,
   transferDashboardCaptainAction,
+  updateDashboardGroupMeetingLinkAction,
   updateDashboardGroupNameAction,
 } from './actions';
 
@@ -31,6 +36,7 @@ type DashboardPageProps = {
     feedbackMessage?: string;
     feedbackTone?: string;
     view?: string;
+    groupId?: string;
   };
 };
 
@@ -49,6 +55,17 @@ function getHeatmapCellClass(intensity: 0 | 1 | 2 | 3 | 4) {
   }
 }
 
+function getInitials(value: string) {
+  return (
+    value
+      .split(' ')
+      .map((part) => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || 'AB'
+  );
+}
+
 export default async function DashboardPage({ params, searchParams }: DashboardPageProps) {
   const locale = params.locale as AppLocale;
   const user = await requireUser(locale);
@@ -63,6 +80,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   const isPerformanceView = view === 'performance';
   const isSettingsView = view === 'settings';
   const isSessionsView = view === 'sessions';
+  const requestedGroupId = typeof searchParams.groupId === 'string' ? searchParams.groupId : null;
   const [data, accessState, currentProfile] = await Promise.all([
     getDashboardData(
       user,
@@ -70,6 +88,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
       isPerformanceView,
       isGroupView || isSettingsView,
       false,
+      requestedGroupId,
     ),
     getUserAccessState(user.id),
     isGroupView
@@ -83,7 +102,10 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
       : Promise.resolve(null),
   ]);
   const canJoinSessions = hasUserTierCapability(accessState, 'canJoinSessions');
-  const primaryGroup = data.groups.find((group) => group.is_founder) ?? data.groups[0] ?? null;
+  const canBrowseLookupLayer = hasUserTierCapability(accessState, 'canBrowseLookupLayer');
+  const primaryGroup = data.groupDashboard.group ?? data.groups.find((group) => group.is_founder) ?? data.groups[0] ?? null;
+  const activeGroupId = primaryGroup?.id ?? null;
+  const activeGroupSessions = activeGroupId ? data.sessions.filter((session) => session.group_id === activeGroupId) : data.sessions;
   const isPrimaryGroupFounder = Boolean(primaryGroup?.is_founder);
   const captainSession = primaryGroup
     ? data.sessions.find((session) => session.group_id === primaryGroup.id && session.status === 'active') ??
@@ -114,22 +136,101 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
           : examSession === 'planning_ahead'
             ? t('examPlanningAhead')
             : t('examSessionUndefined');
+  const liveGroups =
+    isGroupView || isSettingsView
+      ? await (async () => {
+          const currentGroupIds = new Set(data.groups.map((group) => group.id));
+          const { data: candidateGroups } = await createSupabaseServerClient()
+            .schema('public')
+            .from('groups')
+            .select('id, name, invite_code, max_members, created_at')
+            .order('created_at', { ascending: false })
+            .limit(20);
+          const availableGroups = (candidateGroups ?? []).filter((group) => !currentGroupIds.has(group.id));
+          const availableGroupIds = availableGroups.map((group) => group.id);
+          if (availableGroupIds.length === 0) return [];
+
+          const [{ data: memberships }, { data: schedules }] = await Promise.all([
+            createSupabaseServerClient()
+              .schema('public')
+              .from('group_members')
+              .select('group_id, user_id')
+              .in('group_id', availableGroupIds),
+            createSupabaseServerClient()
+              .schema('public')
+              .from('group_weekly_schedules')
+              .select('group_id, question_goal')
+              .in('group_id', availableGroupIds),
+          ]);
+          const usersMap = await (async () => {
+            const ids = [...new Set((memberships ?? []).map((membership) => membership.user_id))];
+            if (ids.length === 0) return new Map<string, { id: string; display_name: string | null; email: string }>();
+            const { data: users } = await createSupabaseServerClient()
+              .schema('public')
+              .from('users')
+              .select('id, display_name, email')
+              .in('id', ids);
+            return new Map((users ?? []).map((profile) => [profile.id, profile]));
+          })();
+          const membersByGroup = new Map<string, Array<{ user_id: string }>>();
+          for (const membership of memberships ?? []) {
+            const current = membersByGroup.get(membership.group_id) ?? [];
+            current.push({ user_id: membership.user_id });
+            membersByGroup.set(membership.group_id, current);
+          }
+          const weeklyByGroup = new Map<string, number>();
+          for (const schedule of schedules ?? []) {
+            weeklyByGroup.set(schedule.group_id, (weeklyByGroup.get(schedule.group_id) ?? 0) + schedule.question_goal);
+          }
+
+          return availableGroups
+            .map((group) => {
+              const members = membersByGroup.get(group.id) ?? [];
+              return {
+                id: group.id,
+                name: group.name,
+                inviteCode: group.invite_code,
+                memberCount: members.length,
+                maxMembers: group.max_members,
+                language: locale.toUpperCase(),
+                timezone: locale === 'fr' ? 'GMT+1' : 'GMT-5',
+                weeklyQuestions: weeklyByGroup.get(group.id) ?? 0,
+                minutesAgo: Math.max(1, Math.round((Date.now() - new Date(group.created_at).getTime()) / 60000)),
+                compatible: true,
+                members: members.slice(0, 5).map((member) => {
+                  const profile = usersMap.get(member.user_id);
+                  const label = profile?.display_name ?? profile?.email ?? 'AB';
+                  return { id: member.user_id, initials: getInitials(label) };
+                }),
+              };
+            })
+            .filter((group) => group.memberCount < group.maxMembers);
+        })()
+      : [];
 
   return (
     <main className="flex flex-1 flex-col gap-5">
+      <PendingGroupDraftSync
+        locale={locale}
+        successMessage={feedbackT('groupCreated')}
+        errorMessage={feedbackT('actionFailed')}
+        missingFieldsMessage={feedbackT('missingFields')}
+        billingRequiredMessage={feedbackT('upgradeRequiredToCreateGroup')}
+      />
       <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
 
       <section className="mx-auto w-full max-w-[620px] space-y-4">
         {view === 'sessions' ? (
           <DashboardSessionsView
             locale={locale}
-            primaryGroupId={primaryGroup?.id ?? null}
-            sessions={data.sessions}
+            primaryGroupId={activeGroupId}
+            sessions={activeGroupSessions}
             weeklyCompletedQuestions={data.groupDashboard.weeklyCompletedQuestions}
             weeklyTargetQuestions={data.groupDashboard.weeklyTargetQuestions}
             weeklyProgressPercentage={data.groupDashboard.weeklyProgressPercentage}
             canCreateSession={hasUserTierCapability(accessState, 'canCreateSession')}
             canJoinSessions={canJoinSessions}
+            memberCount={primaryGroup?.memberCount ?? 0}
             createSessionAction={createDashboardSessionAction}
             cancelSessionAction={cancelDashboardSessionAction}
             joinSessionAction={joinSessionByCodeAction}
@@ -164,6 +265,9 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
               statusCompleted: t('statusCompleted'),
               statusIncomplete: t('statusIncomplete'),
               statusCancelled: t('statusCancelled'),
+              questionCounter: '{completed} / {total}',
+              reliableGroupsGoal: t('reliableGroupsGoal'),
+              minimumMembersWarning: t('minimumMembersWarning'),
             }}
           />
         ) : null}
@@ -171,6 +275,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
         {isPerformanceView ? (
           <DashboardPerformanceView
             answeredCount={data.metrics.answeredCount}
+            completedSessionsCount={data.metrics.completedSessionsCount}
             successRate={data.metrics.successRate}
             errorRate={data.metrics.errorRate}
             averageConfidence={data.metrics.averageConfidence}
@@ -197,6 +302,26 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                 t('weekdayShortSaturday'),
                 t('weekdayShortSunday'),
               ],
+              monthLabels: [
+                t('monthJanuary'),
+                t('monthFebruary'),
+                t('monthMarch'),
+                t('monthApril'),
+                t('monthMay'),
+                t('monthJune'),
+                t('monthJuly'),
+                t('monthAugust'),
+                t('monthSeptember'),
+                t('monthOctober'),
+                t('monthNovember'),
+                t('monthDecember'),
+              ],
+              none: t('heatmapNone'),
+              less: t('heatmapLess'),
+              more: t('heatmapMore'),
+              averagePerWeek: t('averagePerWeek'),
+              completion: t('completion'),
+              share: t('shareSession'),
             }}
           />
         ) : null}
@@ -296,10 +421,32 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
 
         {isGroupView ? (
           <>
+            <LiveGroupsModal
+              locale={locale}
+              groups={liveGroups}
+              canJoinLiveGroups={canBrowseLookupLayer}
+              joinGroupAction={joinGroupAction}
+              labels={{
+                open: t('joinLiveGroups'),
+                title: t('liveGroupsTitle'),
+                close: t('close'),
+                join: t('joinGroup'),
+                joinPending: t('joinGroupPending'),
+                upgradeRequired: t('unlimitedPlanRequired'),
+                upgrade: t('upgrade'),
+                compatibleDays: t('compatibleDays'),
+                remainingPlaces: t('remainingPlaces'),
+                oneRemainingPlace: t('oneRemainingPlace'),
+                minutesAgo: t('minutesAgo'),
+              }}
+            />
             <section className="surface-mockup p-4">
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-bold text-white">{data.groupDashboard.group?.name ?? t('unknownGroup')}</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {primaryGroup ? `${locale.toUpperCase()} · ${primaryGroup.memberCount}/${primaryGroup.max_members ?? 5}` : t('noData')}
+                  </p>
                 </div>
                 <span className="h-2 w-2 rounded-full bg-brand" />
               </div>
@@ -312,37 +459,21 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
             </section>
 
             <section className="surface-mockup p-5">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-bold text-white">{t('weeklyObjective')}</p>
-                <p className="text-xl font-extrabold text-white">{data.groupDashboard.weeklyProgressPercentage}%</p>
-              </div>
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/[0.08]">
-                <div className="h-full rounded-full bg-brand" style={{ width: `${data.groupDashboard.weeklyProgressPercentage}%` }} />
-              </div>
-              <p className="mt-3 text-sm text-slate-400">
-                {t('groupProgressSummary', {
-                  completed: data.groupDashboard.weeklyCompletedQuestions,
-                  total: data.groupDashboard.weeklyTargetQuestions,
-                })}
-              </p>
-            </section>
-
-            <section className="surface-mockup p-5">
               <div className="flex items-center gap-2">
                 <CalendarIcon />
-                <p className="text-sm font-bold text-white">{t('groupScheduleTitle')}</p>
+                <p className="text-sm font-bold text-white">{t('scheduleAndGoalTitle')}</p>
               </div>
               <div className="mt-4 space-y-2">
                 {data.groupDashboard.schedules.length > 0 ? (
                   data.groupDashboard.schedules.map((schedule) => (
-                  <div key={schedule.id} className="flex flex-wrap items-center gap-3">
+                  <div key={schedule.id} className="grid grid-cols-[88px_1fr_auto] items-center gap-3 text-sm">
                     <span className="rounded-full bg-brand/12 px-3 py-1 text-xs font-semibold text-brand">
                       {weekdayLabels[schedule.weekday]}
                     </span>
-                    <span className="text-sm font-medium text-slate-300">
-                      {schedule.start_time.slice(0, 5)} → {schedule.end_time.slice(0, 5)}
+                    <span className="font-semibold text-slate-300">
+                      {schedule.start_time.slice(0, 5)} – {schedule.end_time.slice(0, 5)}
                     </span>
-                    <span className="ml-auto text-sm text-slate-500">
+                    <span className="rounded-[7px] bg-white/[0.05] px-3 py-1 text-xs font-extrabold text-white">
                       {t('questionGoalValue', { count: schedule.question_goal })}
                     </span>
                   </div>
@@ -350,6 +481,12 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                 ) : (
                   <p className="text-sm text-slate-400">{t('groupScheduleEmpty')}</p>
                 )}
+              </div>
+              <div className="mt-4 flex items-center justify-between border-t border-white/[0.06] pt-4 text-sm">
+                <span className="font-semibold text-slate-500">{t('weeklyTotal')}</span>
+                <span className="font-extrabold text-white">
+                  {data.groupDashboard.weeklyCompletedQuestions} / {data.groupDashboard.weeklyTargetQuestions || 100} Q
+                </span>
               </div>
             </section>
 
@@ -409,15 +546,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
               <>
                 <section className="surface-mockup p-5">
                   <div className="flex items-center gap-2">
-                    <svg viewBox="0 0 24 24" className="h-5 w-5 text-amber-400" aria-hidden="true">
-                      <path
-                        d="M12 3.8 18.5 6v5.2c0 4.1-2.4 7.2-6.5 9c-4.1-1.8-6.5-4.9-6.5-9V6L12 3.8Z"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeLinejoin="round"
-                        strokeWidth="1.7"
-                      />
-                    </svg>
+                    <Shield className="h-5 w-5 text-amber-400" aria-hidden="true" />
                     <h1 className="text-sm font-extrabold uppercase tracking-[0.16em] text-white">{t('groupManagementTitle')}</h1>
                   </div>
 
@@ -440,6 +569,27 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                         <p className="mt-2 text-xs text-slate-500">{t('founderOnlySettingsHint')}</p>
                       </div>
                     )}
+
+                    {isPrimaryGroupFounder ? (
+                      <GroupMeetingLinkForm
+                        action={updateDashboardGroupMeetingLinkAction}
+                        locale={locale}
+                        groupId={primaryGroup.id}
+                        initialMeetingLink={primaryGroup.meeting_link ?? ''}
+                        label={t('meetingLinkRequired')}
+                        placeholder={t('meetingLinkRequiredPlaceholder')}
+                        warning={t('meetingLinkRequiredWarning')}
+                        pendingLabel={t('saveNamePending')}
+                        submitLabel={t('saveShort')}
+                      />
+                    ) : primaryGroup.meeting_link ? (
+                      <div className="border-t border-white/[0.06] pt-4">
+                        <p className="text-sm font-semibold text-slate-400">{t('meetingLinkRequired')}</p>
+                        <a href={primaryGroup.meeting_link} target="_blank" rel="noreferrer" className="mt-2 block truncate rounded-[7px] bg-white/[0.06] px-3 py-2 text-sm font-semibold text-brand">
+                          {primaryGroup.meeting_link}
+                        </a>
+                      </div>
+                    ) : null}
 
                     {isPrimaryGroupFounder ? (
                       <InviteMemberForm
@@ -496,16 +646,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                               <input type="hidden" name="groupId" value={primaryGroup.id} />
                               <input type="hidden" name="scheduleId" value={schedule.id} />
                               <SubmitButton pendingLabel="" className="button-ghost px-1.5 py-1.5 text-slate-500 hover:text-white">
-                                <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-                                  <path
-                                    d="M9 4.5h6M5.5 7.5h13M9 10.5v6M15 10.5v6M7.5 7.5l.6 10a2 2 0 0 0 2 1.8h3.8a2 2 0 0 0 2-1.8l.6-10"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="1.8"
-                                  />
-                                </svg>
+                                <Trash2 className="h-4 w-4" aria-hidden="true" />
                               </SubmitButton>
                             </form>
                           ) : null}
@@ -519,6 +660,9 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
 
                 <section className="surface-mockup p-5">
                   <h2 className="text-sm font-bold text-slate-300">{t('membersTitle')} ({data.groupDashboard.memberPerformance.length})</h2>
+                  {data.groupDashboard.memberPerformance.length < 2 ? (
+                    <p className="mt-3 text-xs font-semibold text-amber-400">{t('minimumMembersWarning')}</p>
+                  ) : null}
                   <div className="mt-4 space-y-3">
                     {data.groupDashboard.memberPerformance.map((member) => (
                       <div key={member.userId} className="flex items-center gap-3 rounded-[12px] bg-white/[0.04] px-3 py-3">
@@ -539,9 +683,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                 {canTransferCaptain ? (
                   <section className="surface-mockup border-amber-400/20 p-5">
                     <div className="flex items-center gap-2 text-amber-400">
-                      <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
-                        <path d="M7 7h10M17 7l-3-3M17 7l-3 3M17 17H7M7 17l3-3M7 17l3 3" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-                      </svg>
+                      <ArrowLeftRight className="h-5 w-5" aria-hidden="true" />
                       <h2 className="text-sm font-bold">{t('transferCaptainTitle')}</h2>
                     </div>
                     <p className="mt-4 text-sm text-slate-500">{t('transferCaptainDescription')}</p>

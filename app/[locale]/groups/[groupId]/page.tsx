@@ -1,3 +1,4 @@
+import { ArrowLeft, Trash2 } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
@@ -67,16 +68,7 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
           <div className="flex items-start justify-between gap-4">
             <div>
               <Link href="/dashboard" className="button-ghost -ml-4 justify-start px-4">
-                <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-                  <path
-                    d="M15 6l-6 6l6 6"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="1.8"
-                  />
-                </svg>
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                 {t('backToDashboard')}
               </Link>
               <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-white">{t('settingsTitle')}</h1>
@@ -191,16 +183,7 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
                                   pendingLabel=""
                                   className="button-ghost px-2 py-2 text-slate-500 hover:text-white"
                                 >
-                                  <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-                                    <path
-                                      d="M9 4.5h6M5.5 7.5h13M9 10.5v6M15 10.5v6M7.5 7.5l.6 10a2 2 0 0 0 2 1.8h3.8a2 2 0 0 0 2-1.8l.6-10"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth="1.8"
-                                    />
-                                  </svg>
+                                  <Trash2 className="h-4 w-4" aria-hidden="true" />
                                 </SubmitButton>
                               </form>
                             ) : null}

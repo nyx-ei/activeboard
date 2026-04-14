@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 
@@ -38,6 +38,31 @@ export function AuthForm() {
   const [messageTone, setMessageTone] = useState<'error' | 'success'>('success');
   const [isPending, startTransition] = useTransition();
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+
+  useEffect(() => {
+    if (mode !== 'sign-up') {
+      return;
+    }
+
+    try {
+      const rawDraft = window.sessionStorage.getItem('activeboard:create-group-draft');
+      if (!rawDraft) {
+        return;
+      }
+
+      const draft = JSON.parse(rawDraft) as {
+        fullName?: string;
+        email?: string;
+        examSession?: string;
+      };
+
+      setDisplayName((current) => current || draft.fullName || '');
+      setEmail((current) => current || draft.email || '');
+      setExamSession((current) => current || draft.examSession || '');
+    } catch {
+      window.sessionStorage.removeItem('activeboard:create-group-draft');
+    }
+  }, [mode]);
 
   function resolveAuthError(message: string) {
     const normalizedMessage = message.toLowerCase();
