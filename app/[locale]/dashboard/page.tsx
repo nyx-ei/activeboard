@@ -2,6 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import { ArrowLeftRight, Shield, Trash2 } from 'lucide-react';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
+import { RealtimeRefresh } from '@/components/app/realtime-refresh';
 import { LogoutButton } from '@/components/auth/logout-button';
 import { DashboardPerformanceView } from '@/components/dashboard/dashboard-performance-view';
 import { DashboardSessionsView } from '@/components/dashboard/dashboard-sessions-view';
@@ -18,6 +19,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 import { GroupMeetingLinkForm, GroupNameForm, InviteMemberForm } from '../groups/[groupId]/group-settings-forms';
 import {
+  addDashboardExistingMemberAction,
   addDashboardWeeklyScheduleAction,
   cancelDashboardSessionAction,
   createDashboardSessionAction,
@@ -217,6 +219,17 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
         missingFieldsMessage={feedbackT('missingFields')}
         billingRequiredMessage={feedbackT('upgradeRequiredToCreateGroup')}
       />
+      {activeGroupId ? (
+        <RealtimeRefresh
+          channelName={`dashboard:${activeGroupId}`}
+          tables={[
+            { table: 'group_members', filter: `group_id=eq.${activeGroupId}` },
+            { table: 'group_weekly_schedules', filter: `group_id=eq.${activeGroupId}` },
+            { table: 'sessions', filter: `group_id=eq.${activeGroupId}` },
+          ]}
+          throttleMs={700}
+        />
+      ) : null}
       <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
 
       <section className="mx-auto w-full max-w-[620px] space-y-4">
@@ -491,10 +504,27 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
             </section>
 
             <section className="surface-mockup p-5">
-              <div className="flex items-center gap-2">
-                <UsersIcon />
-                <p className="text-sm font-bold text-white">{t('membersTitle')}</p>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <UsersIcon />
+                  <p className="text-sm font-bold text-white">{t('membersTitle')}</p>
+                </div>
               </div>
+              {isPrimaryGroupFounder && primaryGroup ? (
+                <div className="mt-4 rounded-[10px] bg-white/[0.025] p-3">
+                  <InviteMemberForm
+                    action={addDashboardExistingMemberAction}
+                    locale={locale}
+                    groupId={primaryGroup.id}
+                    label={t('addExistingMember')}
+                    emailLabel={t('email')}
+                    emailPlaceholder={t('existingMemberEmailPlaceholder')}
+                    pendingLabel={t('addMemberPending')}
+                    submitLabel={t('addMember')}
+                    compact
+                  />
+                </div>
+              ) : null}
               <div className="mt-4 space-y-3">
                 {data.groupDashboard.memberPerformance.length > 0 ? (
                   data.groupDashboard.memberPerformance.map((member) => (

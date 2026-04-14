@@ -3,20 +3,21 @@ import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
+import { RealtimeRefresh } from '@/components/app/realtime-refresh';
 import { ReviewAnswerForm, SessionAnswerForm, SessionHeaderMeta } from '@/components/session/session-flow-client';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
+import { getCertaintyCorrectnessStatus, getCertaintyCorrectnessTone, type ConfidenceLevel } from '@/lib/demo/confidence';
 import { getSessionData } from '@/lib/demo/data';
-import { ANSWER_OPTIONS, ERROR_TYPE_OPTIONS } from '@/lib/types/demo';
+import { ANSWER_OPTIONS } from '@/lib/types/demo';
 
 import {
   finishReviewSessionAction,
   initializeSessionFlowAction,
   advanceSessionStepAction,
   quitIncompleteSessionAction,
-  saveCaptainFrequentErrorAction,
   saveReviewAnswerAction,
   submitSessionStepAction,
   timeoutSessionStepAction,
@@ -48,13 +49,6 @@ function getDistribution(answers: Array<{ selected_option: string | null; confid
   return distribution;
 }
 
-function getStabilityLabel(correctOption: string | null, distribution: Map<string, number>, t: (key: string) => string) {
-  if (!correctOption) return t('stabilityUnstable');
-  const correctCount = distribution.get(correctOption) ?? 0;
-  const maxCount = Math.max(...Array.from(distribution.values()));
-  return correctCount > 0 && correctCount === maxCount ? t('stabilityAlmostSolid') : t('stabilityUnstable');
-}
-
 export default async function SessionPage({ params, searchParams }: SessionPageProps) {
   const locale = params.locale as AppLocale;
   const user = await requireUser(locale);
@@ -69,6 +63,12 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
   const currentIndex = Math.max(0, Math.min(Number(searchParams.q ?? 0) || 0, questionGoal - 1));
   const questions = [...data.questions].sort((left, right) => left.order_index - right.order_index);
   const question = questions.find((item) => item.order_index === currentIndex) ?? questions[currentIndex] ?? questions[0] ?? null;
+  const realtimeTables = [
+    { table: 'sessions', filter: `id=eq.${params.sessionId}` },
+    { table: 'questions', filter: `session_id=eq.${params.sessionId}` },
+    ...(question ? [{ table: 'answers', filter: `question_id=eq.${question.id}` }] : []),
+    { table: 'question_classifications', filter: `session_id=eq.${params.sessionId}` },
+  ];
   const myAnswers = data.allAnswers.filter((answer) => answer.user_id === user.id);
   const answeredCount = new Set(myAnswers.map((answer) => answer.question_id)).size;
   const memberCount = Math.max(data.members.length, 1);
@@ -86,6 +86,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
 
     return (
       <main className="flex flex-1 items-center justify-center px-4">
+        <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} />
         <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
         <section className="flex w-full max-w-md flex-col items-center text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 text-brand">
@@ -117,6 +118,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
   if (shouldShowCompletion) {
     return (
       <main className="flex flex-1 items-center justify-center px-4">
+        <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} />
         <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
         <section className="flex w-full max-w-md flex-col items-center text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 text-brand">
@@ -142,13 +144,18 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
   if (isReview && question) {
     const questionAnswers = data.allAnswers.filter((answer) => answer.question_id === question.id);
     const distribution = getDistribution(questionAnswers, data.members.length);
-    const stabilityLabel = getStabilityLabel(question.correct_option, distribution, t);
-    const classification = data.allClassifications.find((item) => item.question_id === question.id) ?? null;
+    const myReviewAnswer = questionAnswers.find((answer) => answer.user_id === user.id) ?? null;
+    const reviewStatus = getCertaintyCorrectnessStatus(
+      myReviewAnswer?.confidence as ConfidenceLevel | null | undefined,
+      myReviewAnswer?.is_correct,
+    );
+    const reviewStatusTone = getCertaintyCorrectnessTone(reviewStatus);
     const canFinish = questions.filter((item) => item.correct_option).length >= questionGoal;
-    const isLeader = data.session.leader_id === user.id || data.membership.is_founder;
+    const isLastQuestion = currentIndex >= questionGoal - 1;
 
     return (
       <main className="flex flex-1 flex-col">
+        <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} />
         <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
         <header className="sticky top-0 z-20 border-b border-white/[0.07] bg-background/95 backdrop-blur">
           <div className="mx-auto flex h-16 w-full max-w-[700px] items-center justify-between px-4">
@@ -196,11 +203,15 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
                 sessionId={params.sessionId}
                 questionId={question.id}
                 questionIndex={currentIndex}
+                nextQuestionIndex={Math.min(questionGoal - 1, currentIndex + 1)}
+                isLastQuestion={isLastQuestion}
                 initialCorrectOption={question.correct_option as never}
                 labels={{
                   correctAnswer: t('correctAnswer'),
                   save: t('saveReview'),
                   update: t('updateReview'),
+                  saveAndNext: t('saveAndNextReview'),
+                  updateAndNext: t('updateAndNextReview'),
                   savePending: t('saveReviewPending'),
                 }}
               />
@@ -209,7 +220,18 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
 
           <details className="surface-mockup p-4">
             <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-extrabold text-slate-400">
-              <span><span className="mr-2 inline-block h-3 w-3 rounded-full bg-orange-400" />{stabilityLabel}</span>
+              <span>
+                <span
+                  className={`mr-2 inline-block h-3 w-3 rounded-full ${
+                    reviewStatusTone === 'positive'
+                      ? 'bg-brand'
+                      : reviewStatusTone === 'warning'
+                        ? 'bg-orange-400'
+                        : 'bg-slate-500'
+                  }`}
+                />
+                {t(`reviewStatus.${reviewStatus}`)}
+              </span>
               <Info className="h-4 w-4 text-slate-600" aria-hidden="true" />
             </summary>
             <div className="mt-4 rounded-[8px] border border-white/[0.10] p-4 text-sm text-slate-400">
@@ -222,39 +244,6 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
               <p className="mt-2"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-slate-500" />{t('legendLowWrong')}</p>
             </div>
           </details>
-
-          {isLeader ? (
-            <section className="surface-mockup p-5">
-              <div className="flex items-center gap-2">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-yellow-400 text-xs font-extrabold text-slate-950">C</span>
-                <h2 className="text-sm font-extrabold text-white">{t('captainOnly')}</h2>
-              </div>
-              <form action={saveCaptainFrequentErrorAction} className="mt-6 space-y-4">
-                <input type="hidden" name="locale" value={locale} />
-                <input type="hidden" name="sessionId" value={params.sessionId} />
-                <input type="hidden" name="questionId" value={question.id} />
-                <input type="hidden" name="questionIndex" value={currentIndex} />
-                <label className="block">
-                  <span className="text-sm font-bold text-slate-300">{t('frequentErrorType')}</span>
-                  <select
-                    name="frequentErrorType"
-                    className="field mt-2 h-10 rounded-[7px] px-3 py-2 text-sm"
-                    defaultValue={classification?.frequent_error_type ?? ''}
-                  >
-                    <option value="">{t('selectPlaceholder')}</option>
-                    {ERROR_TYPE_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {t(`errorType.${option}`)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <SubmitButton pendingLabel={t('saveReviewPending')} className="button-primary h-10 w-full rounded-[7px] py-2 text-sm">
-                  {classification?.frequent_error_type ? t('updateReview') : t('saveReview')}
-                </SubmitButton>
-              </form>
-            </section>
-          ) : null}
 
           {canFinish ? (
             <form action={finishReviewSessionAction}>
@@ -273,6 +262,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
   if (!question) {
     return (
       <main className="flex flex-1 flex-col">
+        <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} />
         <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
         <section className="flex flex-1 items-center justify-center px-4 text-center text-sm font-bold text-slate-500">
           {t('loadingSession')}
@@ -289,6 +279,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
 
   return (
     <main className="flex flex-1 flex-col">
+      <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} />
       <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
       <header className="border-b border-white/[0.07]">
         <div className="mx-auto flex h-16 w-full max-w-[560px] items-center justify-between px-4">

@@ -243,6 +243,8 @@ export function ReviewAnswerForm({
   sessionId,
   questionId,
   questionIndex,
+  nextQuestionIndex,
+  isLastQuestion,
   initialCorrectOption,
   labels,
 }: {
@@ -251,11 +253,15 @@ export function ReviewAnswerForm({
   sessionId: string;
   questionId: string;
   questionIndex: number;
+  nextQuestionIndex: number;
+  isLastQuestion: boolean;
   initialCorrectOption?: AnswerOption | null;
   labels: {
     correctAnswer: string;
     save: string;
     update: string;
+    saveAndNext: string;
+    updateAndNext: string;
     savePending: string;
   };
 }) {
@@ -268,6 +274,8 @@ export function ReviewAnswerForm({
       <input type="hidden" name="sessionId" value={sessionId} />
       <input type="hidden" name="questionId" value={questionId} />
       <input type="hidden" name="questionIndex" value={questionIndex} />
+      <input type="hidden" name="nextQuestionIndex" value={nextQuestionIndex} />
+      <input type="hidden" name="advanceAfterSave" value={isLastQuestion ? 'false' : 'true'} />
       <input type="hidden" name="correctOption" value={correctOption} />
       <p className="text-sm font-bold text-slate-300">{labels.correctAnswer}</p>
       <div className="grid grid-cols-6 gap-2">
@@ -293,7 +301,13 @@ export function ReviewAnswerForm({
         className="button-primary h-10 w-full rounded-[7px] py-2 text-sm disabled:bg-brand/40 disabled:text-white/60"
         disabled={!canSubmit}
       >
-        {initialCorrectOption ? labels.update : labels.save}
+        {isLastQuestion
+          ? initialCorrectOption
+            ? labels.update
+            : labels.save
+          : initialCorrectOption
+            ? labels.updateAndNext
+            : labels.saveAndNext}
       </SubmitButton>
     </form>
   );
