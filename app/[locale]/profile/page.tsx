@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 import Image from 'next/image';
+import { Camera } from 'lucide-react';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
 import { LogoutButton } from '@/components/auth/logout-button';
@@ -73,16 +74,7 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
               </div>
               <label className="absolute -bottom-1 -right-1 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-brand text-slate-950 shadow-lg transition hover:bg-brand-strong">
                 <input type="file" accept="image/*" className="sr-only" />
-                <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-                  <path
-                    d="M8.5 7.5l1.2-2h4.6l1.2 2H18a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h2.5Z"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeLinejoin="round"
-                    strokeWidth="1.8"
-                  />
-                  <path d="M12 15a3 3 0 1 0 0-6a3 3 0 0 0 0 6Z" fill="none" stroke="currentColor" strokeWidth="1.8" />
-                </svg>
+                <Camera className="h-4 w-4" aria-hidden="true" />
               </label>
             </div>
             <div className="min-w-0">

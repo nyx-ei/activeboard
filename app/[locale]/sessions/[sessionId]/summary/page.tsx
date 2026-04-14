@@ -1,3 +1,4 @@
+import { ArrowLeft } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
@@ -61,9 +62,7 @@ export default async function SessionSummaryPage({ params, searchParams }: Sessi
             <p className="mt-3 text-base leading-7 text-slate-400">{data.group.name}</p>
           </div>
           <Link href={`/groups/${data.group.id}`} className="button-primary">
-            <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-              <path d="M15 6l-6 6l6 6" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-            </svg>
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             {t('backToGroup')}
           </Link>
         </div>

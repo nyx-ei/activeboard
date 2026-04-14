@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Clock, Share2, Trash2 } from 'lucide-react';
 
 import { useRouter } from '@/i18n/navigation';
 import { SubmitButton } from '@/components/ui/submit-button';
@@ -27,6 +28,7 @@ type DashboardSessionsViewProps = {
   weeklyProgressPercentage: number;
   canCreateSession: boolean;
   canJoinSessions: boolean;
+  memberCount: number;
   createSessionAction: (formData: FormData) => void | Promise<void>;
   cancelSessionAction: (formData: FormData) => void | Promise<void>;
   joinSessionAction: (formData: FormData) => void | Promise<void>;
@@ -61,6 +63,9 @@ type DashboardSessionsViewProps = {
     statusCompleted: string;
     statusIncomplete: string;
     statusCancelled: string;
+    questionCounter: string;
+    reliableGroupsGoal: string;
+    minimumMembersWarning: string;
   };
 };
 
@@ -80,36 +85,6 @@ function StatusBadge({ status, labels }: { status: DashboardSession['status']; l
     <span className="inline-flex min-h-6 items-center rounded-full border border-brand/20 bg-brand/12 px-2.5 py-1 text-[11px] font-bold text-brand shadow-[0_0_0_1px_rgba(16,185,129,0.08)]">
       {label}
     </span>
-  );
-}
-
-function ShareIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-      <path
-        d="M8.5 12.8 15.5 16.8M15.5 7.2 8.5 11.2M18 8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM6 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM18 20.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-      <path
-        d="M9 4.5h6M5.5 7.5h13M9 10.5v6M15 10.5v6M7.5 7.5l.6 10a2 2 0 0 0 2 1.8h3.8a2 2 0 0 0 2-1.8l.6-10"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
   );
 }
 
@@ -181,7 +156,7 @@ function SessionCard({
             onClick={shareSession}
             className="rounded-md p-1.5 transition hover:bg-white/[0.06] hover:text-brand"
           >
-            <ShareIcon />
+            <Share2 className="h-4 w-4" aria-hidden="true" strokeWidth={1.8} />
           </button>
           <form action={cancelSessionAction} onClick={(event) => event.stopPropagation()}>
             <input type="hidden" name="locale" value={locale} />
@@ -192,7 +167,7 @@ function SessionCard({
               disabled={session.status === 'completed' || session.status === 'cancelled'}
             >
               <span className="sr-only">{labels.delete}</span>
-              <TrashIcon />
+              <Trash2 className="h-4 w-4" aria-hidden="true" strokeWidth={1.8} />
             </SubmitButton>
           </form>
         </div>
@@ -204,6 +179,7 @@ function SessionCard({
 function NewSessionModal({
   locale,
   primaryGroupId,
+  memberCount,
   canCreateSession,
   action,
   labels,
@@ -211,6 +187,7 @@ function NewSessionModal({
 }: {
   locale: string;
   primaryGroupId: string | null;
+  memberCount: number;
   canCreateSession: boolean;
   action: DashboardSessionsViewProps['createSessionAction'];
   labels: DashboardSessionsViewProps['labels'];
@@ -227,6 +204,7 @@ function NewSessionModal({
   const isValid =
     Boolean(primaryGroupId) &&
     canCreateSession &&
+    memberCount >= 2 &&
     name.trim().length > 0 &&
     Number(questionGoal) > 0 &&
     Number(timerSeconds) > 0;
@@ -292,10 +270,7 @@ function NewSessionModal({
                     onChange={() => updateTimerMode(value as 'per_question' | 'global')}
                     className="sr-only"
                   />
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-                    <circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
-                    <path d="M12 7.5v4.8l3 2" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-                  </svg>
+                  <Clock className="h-4 w-4" aria-hidden="true" strokeWidth={1.8} />
                   {label}
                 </label>
               ))}
@@ -318,6 +293,7 @@ function NewSessionModal({
           </label>
 
           <p className="text-xs italic text-slate-500">{labels.modalHint}</p>
+          {memberCount < 2 ? <p className="text-xs font-bold text-red-300">{labels.minimumMembersWarning}</p> : null}
           <SubmitButton
             pendingLabel={labels.createSessionPending}
             className="button-primary h-10 w-full rounded-[7px] py-2 text-sm disabled:bg-brand/40 disabled:text-white/60"
@@ -340,13 +316,14 @@ export function DashboardSessionsView({
   weeklyProgressPercentage,
   canCreateSession,
   canJoinSessions,
+  memberCount,
   createSessionAction,
   cancelSessionAction,
   joinSessionAction,
   labels,
 }: DashboardSessionsViewProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const progressTotal = weeklyTargetQuestions > 0 ? weeklyTargetQuestions : 50;
+  const progressTotal = weeklyTargetQuestions > 0 ? weeklyTargetQuestions : 100;
 
   return (
     <>
@@ -376,9 +353,11 @@ export function DashboardSessionsView({
         </div>
         <div className="mt-3 flex items-center justify-between gap-3 text-xs text-slate-500">
           <span className="rounded-full border border-white/[0.08] bg-white/[0.05] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-300">
-            {labels.prequalification}
+            {labels.questionCounter
+              .replace('{completed}', String(weeklyCompletedQuestions))
+              .replace('{total}', String(progressTotal))}
           </span>
-          <span>{labels.classGoal}</span>
+          <span>{labels.reliableGroupsGoal}</span>
         </div>
       </section>
 
@@ -421,6 +400,7 @@ export function DashboardSessionsView({
         <NewSessionModal
           locale={locale}
           primaryGroupId={primaryGroupId}
+          memberCount={memberCount}
           canCreateSession={canCreateSession}
           action={createSessionAction}
           labels={labels}

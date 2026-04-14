@@ -1,5 +1,6 @@
 'use client';
 
+import { LogOut } from 'lucide-react';
 import { useTransition } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
@@ -34,13 +35,7 @@ export function LogoutButton({ className, showIcon = false }: LogoutButtonProps)
       disabled={isPending}
       aria-busy={isPending}
     >
-      {showIcon ? (
-        <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-          <path d="M14 7l5 5l-5 5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-          <path d="M19 12H9" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
-          <path d="M11 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h5" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
-        </svg>
-      ) : null}
+      {showIcon ? <LogOut className="h-4 w-4" aria-hidden="true" /> : null}
       <span className="relative inline-flex items-center justify-center">
         <span className={cn('inline-flex items-center justify-center transition', isPending && 'text-transparent')}>
           {t('signOut')}

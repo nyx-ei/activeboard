@@ -1,5 +1,6 @@
 'use client';
 
+import { CreditCard, User } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { LogoutButton } from '@/components/auth/logout-button';
@@ -74,16 +75,7 @@ export function ProfileMenu({
                 className="flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.05] hover:text-white"
                 onClick={() => setOpen(false)}
               >
-                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-slate-500" aria-hidden="true">
-                  <path
-                    d="M12 12a3.5 3.5 0 1 0 0-7a3.5 3.5 0 0 0 0 7ZM5.5 19.5a6.5 6.5 0 0 1 13 0"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="1.6"
-                  />
-                </svg>
+                <User className="h-3.5 w-3.5 text-slate-500" aria-hidden="true" />
                 <span>{profileLabel}</span>
               </a>
             ) : null}
@@ -94,16 +86,7 @@ export function ProfileMenu({
                 className="flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.05] hover:text-white"
                 onClick={() => setOpen(false)}
               >
-                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-slate-500" aria-hidden="true">
-                  <path
-                    d="M4 7.5h16M6 16.5h4M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5v11a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5v-11Z"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="1.6"
-                  />
-                </svg>
+                <CreditCard className="h-3.5 w-3.5 text-slate-500" aria-hidden="true" />
                 <span>{billingLabel}</span>
               </a>
             ) : null}

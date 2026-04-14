@@ -47,6 +47,8 @@ type DashboardGroup = {
   invite_code: string;
   created_by: string | null;
   created_at: string;
+  meeting_link: string | null;
+  max_members: number;
   is_founder: boolean;
   memberCount: number;
   nextSession: DashboardSession | null;
@@ -316,6 +318,7 @@ export const getDashboardData = cache(
     includeProfileAnalytics = false,
     includeMemberPerformance = includeGroupDashboard,
     includeUserSchedule = true,
+    activeGroupId?: string | null,
   ) => {
   const perf = createPerfTracker(`getDashboardData:${user.id}`);
   const supabase = createSupabaseServerClient();
@@ -345,7 +348,7 @@ export const getDashboardData = cache(
           supabase
             .schema('public')
             .from('groups')
-            .select('id, name, invite_code, created_by, created_at')
+            .select('id, name, invite_code, created_by, created_at, meeting_link, max_members')
             .in('id', groupIds)
             .then((result) => result.data ?? []),
           supabase
@@ -582,6 +585,7 @@ export const getDashboardData = cache(
   const nextSession = enrichedSessions.find((session) => session.status !== 'completed' && session.status !== 'cancelled') ?? null;
 
   const primaryGroup =
+    (activeGroupId ? dashboardGroups.find((group) => group.id === activeGroupId) : null) ??
     dashboardGroups.find((group) => group.is_founder) ??
     dashboardGroups[0] ??
     null;

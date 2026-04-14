@@ -130,6 +130,7 @@ type GroupsRow = {
   id: string;
   invite_code: string;
   max_members: number;
+  meeting_link: string | null;
   name: string;
 };
 
@@ -139,6 +140,7 @@ type GroupsInsert = {
   id?: string;
   invite_code: string;
   max_members?: number;
+  meeting_link?: string | null;
   name: string;
 };
 
@@ -148,6 +150,7 @@ type GroupsUpdate = {
   id?: string;
   invite_code?: string;
   max_members?: number;
+  meeting_link?: string | null;
   name?: string;
 };
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { Check, Clock, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -35,35 +36,12 @@ export function SessionHeaderMeta({
   return (
     <div className="flex items-center gap-3 text-xs font-bold">
       <span className={isComplete ? 'inline-flex items-center gap-1 text-brand' : 'inline-flex items-center gap-1 text-slate-500'}>
-        <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-          <path
-            d="M14.5 18.5v-1a3.5 3.5 0 0 0-3.5-3.5h-2a3.5 3.5 0 0 0-3.5 3.5v1M10 10.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM17 11a2.5 2.5 0 1 0-1.5-4.5"
-            fill="none"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.8"
-          />
-        </svg>
+        <Users className="h-4 w-4" aria-hidden="true" />
         {displaySubmittedCount}/{memberCount}
-        {isComplete ? (
-          <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-            <path
-              d="M7 12.5 10.5 16 17 8"
-              fill="none"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-            />
-          </svg>
-        ) : null}
+        {isComplete ? <Check className="h-4 w-4" aria-hidden="true" /> : null}
       </span>
       <span className={remainingSeconds <= 10 ? 'inline-flex items-center gap-1 text-red-400' : 'inline-flex items-center gap-1 text-brand'}>
-        <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-          <circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
-          <path d="M12 7.5v4.8l3 2" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-        </svg>
+        <Clock className="h-4 w-4" aria-hidden="true" />
         {remainingSeconds}s
       </span>
     </div>

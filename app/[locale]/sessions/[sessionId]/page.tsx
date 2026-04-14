@@ -1,3 +1,4 @@
+import { ArrowLeft, BarChart3, Check, Info, Play } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
@@ -88,9 +89,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
         <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
         <section className="flex w-full max-w-md flex-col items-center text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 text-brand">
-            <svg viewBox="0 0 24 24" className="ml-1 h-8 w-8" aria-hidden="true">
-              <path d="M8 5.5v13l10-6.5-10-6.5Z" fill="none" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.8" />
-            </svg>
+            <Play className="ml-1 h-8 w-8" aria-hidden="true" />
           </div>
           <h1 className="mt-8 text-2xl font-extrabold text-white">{data.session.name ?? data.group.name}</h1>
           <p className="mt-3 text-lg font-medium text-slate-400">
@@ -121,9 +120,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
         <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
         <section className="flex w-full max-w-md flex-col items-center text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 text-brand">
-            <svg viewBox="0 0 24 24" className="h-8 w-8" aria-hidden="true">
-              <path d="M7 12.5 10.5 16 17 8" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-            </svg>
+            <Check className="h-8 w-8" aria-hidden="true" />
           </div>
           <h1 className="mt-8 text-2xl font-extrabold text-white">{t('allAnswersSubmitted')}</h1>
           <p className="mt-3 text-lg font-medium text-slate-400">{t('questionsCompletedValue', { current: questionGoal, total: questionGoal })}</p>
@@ -156,7 +153,10 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
         <header className="sticky top-0 z-20 border-b border-white/[0.07] bg-background/95 backdrop-blur">
           <div className="mx-auto flex h-16 w-full max-w-[700px] items-center justify-between px-4">
             <Link href="/dashboard?view=sessions" className="text-sm font-bold text-slate-500 hover:text-white">
-              ← Dashboard
+              <span className="inline-flex items-center gap-2">
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                Dashboard
+              </span>
             </Link>
             <p className="text-lg font-extrabold text-white">{data.session.name ?? data.group.name} — {t('reviewShort')}</p>
             <p className="text-sm font-bold text-slate-500">Q{currentIndex + 1}/{questionGoal}</p>
@@ -176,7 +176,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
 
           <section className="surface-mockup p-5">
             <div className="flex items-center gap-2">
-              <span className="text-brand">▥</span>
+              <BarChart3 className="h-4 w-4 text-brand" aria-hidden="true" />
               <h2 className="text-sm font-extrabold text-white">{t('distribution')}</h2>
             </div>
             <div className="mt-8 flex items-end justify-center gap-8">
@@ -210,7 +210,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
           <details className="surface-mockup p-4">
             <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-extrabold text-slate-400">
               <span><span className="mr-2 inline-block h-3 w-3 rounded-full bg-orange-400" />{stabilityLabel}</span>
-              <span className="text-slate-600">ⓘ</span>
+              <Info className="h-4 w-4 text-slate-600" aria-hidden="true" />
             </summary>
             <div className="mt-4 rounded-[8px] border border-white/[0.10] p-4 text-sm text-slate-400">
               <p className="font-bold text-white">{t('pointLegendTitle')}</p>
@@ -292,7 +292,9 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
       <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
       <header className="border-b border-white/[0.07]">
         <div className="mx-auto flex h-16 w-full max-w-[560px] items-center justify-between px-4">
-          <Link href="/dashboard?view=sessions" className="text-slate-500 hover:text-white">↩</Link>
+          <Link href="/dashboard?view=sessions" className="text-slate-500 hover:text-white">
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          </Link>
           <div className="text-center">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">{t('questionUpper')}</p>
             <p className="text-xl font-extrabold text-white">{currentIndex + 1}<span className="text-sm text-slate-500">/{questionGoal}</span></p>
