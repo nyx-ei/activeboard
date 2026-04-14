@@ -6,8 +6,10 @@ import { getTranslations } from 'next-intl/server';
 
 import type { AppLocale } from '@/i18n/routing';
 import { getUserAccessState, hasUserTierCapability, requireUserTierCapability } from '@/lib/billing/gating';
+import { hasEmailEnv } from '@/lib/env';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
+import { sendGroupInviteEmail } from '@/lib/notifications/group-invites';
 import { parseAvailabilityGrid } from '@/lib/schedule/availability';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { generateInviteCode, generateSessionShareCode, normalizeEmail, withFeedback } from '@/lib/utils';
@@ -356,6 +358,24 @@ export async function completeOnboardingGroupDraftAction(formData: FormData): Pr
       question_banks: questionBanks,
     },
   });
+
+  if (hasEmailEnv()) {
+    const inviterName = draft.fullName?.trim() || user.user_metadata.full_name || user.email || 'ActiveBoard';
+
+    await Promise.all(
+      inviteEmails.map((inviteeEmail) =>
+        sendGroupInviteEmail({
+          locale,
+          groupId: group.id,
+          groupName,
+          inviteCode,
+          inviteeEmail,
+          inviterUserId: user.id,
+          inviterName,
+        }),
+      ),
+    );
+  }
 
   revalidatePath(`/${locale}/dashboard`);
   return { ok: true, groupId: group.id };
@@ -865,6 +885,23 @@ export async function inviteDashboardGroupMemberAction(formData: FormData) {
       invitee_user_id: existingUser?.id ?? null,
     },
   });
+
+  if (hasEmailEnv()) {
+    const [{ data: group }, { data: inviter }] = await Promise.all([
+      supabase.schema('public').from('groups').select('name, invite_code').eq('id', groupId).maybeSingle(),
+      supabase.schema('public').from('users').select('display_name, email').eq('id', user.id).maybeSingle(),
+    ]);
+
+    await sendGroupInviteEmail({
+      locale,
+      groupId,
+      groupName: group?.name ?? 'ActiveBoard',
+      inviteCode: group?.invite_code ?? '',
+      inviteeEmail: email,
+      inviterUserId: user.id,
+      inviterName: inviter?.display_name ?? inviter?.email ?? user.email ?? 'ActiveBoard',
+    });
+  }
 
   revalidatePath(`/${locale}/dashboard`);
   redirect(withFeedback(settingsPath, 'success', t('inviteSent')));

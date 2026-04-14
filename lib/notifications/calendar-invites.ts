@@ -6,7 +6,7 @@ import { logAppEvent } from '@/lib/logging/logger';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import type { Database } from '@/lib/supabase/types';
 import { buildSessionIcs } from '@/lib/calendar/ics';
-import { sendEmailWithResend } from '@/lib/email/resend';
+import { sendEmail } from '@/lib/email/mailersend';
 
 type SessionRow = Database['public']['Tables']['sessions']['Row'];
 
@@ -137,7 +137,7 @@ export async function sendSessionCalendarInvites(session: Pick<SessionRow, 'id' 
     });
 
     try {
-      const providerResponse = await sendEmailWithResend({
+      const providerResponse = await sendEmail({
         to: user.email,
         subject: copy.subject,
         html: copy.html,
@@ -173,7 +173,7 @@ export async function sendSessionCalendarInvites(session: Pick<SessionRow, 'id' 
         groupId: session.group_id,
         sessionId: session.id,
         metadata: {
-          provider: 'resend',
+          provider: 'mailersend',
         },
         useAdmin: true,
       });

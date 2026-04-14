@@ -142,11 +142,11 @@ export function SessionAnswerForm({
         <input type="hidden" name="questionIndex" value={questionIndex} />
       </form>
 
-      <div className="grid grid-cols-6 gap-2">
+      <div className="grid grid-cols-3 gap-2 min-[420px]:grid-cols-6">
         {[...ANSWER_OPTIONS, '?'].map((option) => (
           <label
             key={option}
-            className={`flex h-16 items-center justify-center rounded-[7px] border text-xl font-extrabold transition ${
+            className={`flex h-14 items-center justify-center rounded-[7px] border text-lg font-extrabold transition min-[420px]:h-16 min-[420px]:text-xl ${
               hasAnswer || isExpired ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
             } ${
               selectedOption === option
@@ -278,7 +278,7 @@ export function ReviewAnswerForm({
       <input type="hidden" name="advanceAfterSave" value={isLastQuestion ? 'false' : 'true'} />
       <input type="hidden" name="correctOption" value={correctOption} />
       <p className="text-sm font-bold text-slate-300">{labels.correctAnswer}</p>
-      <div className="grid grid-cols-6 gap-2">
+      <div className="grid grid-cols-3 gap-2 min-[420px]:grid-cols-6">
         {[...ANSWER_OPTIONS, '?'].map((option) => (
           <button
             key={option}

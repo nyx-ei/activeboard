@@ -3,7 +3,7 @@ import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import type { Database } from '@/lib/supabase/types';
-import { sendEmailWithResend } from '@/lib/email/resend';
+import { sendEmail } from '@/lib/email/mailersend';
 
 const REMINDER_WINDOWS = [
   { key: '24h', minutesBefore: 24 * 60 },
@@ -196,7 +196,7 @@ export async function dispatchDueSessionReminders(now = new Date()) {
       });
 
       try {
-        const providerResponse = await sendEmailWithResend({
+        const providerResponse = await sendEmail({
           to: user.email,
           subject: copy.subject,
           html: copy.html,
@@ -228,7 +228,7 @@ export async function dispatchDueSessionReminders(now = new Date()) {
           sessionId: session.id,
           metadata: {
             reminder_key: reminderKey,
-            provider: 'resend',
+            provider: 'mailersend',
           },
           useAdmin: true,
         });

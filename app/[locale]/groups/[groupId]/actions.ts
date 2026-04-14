@@ -10,6 +10,7 @@ import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
 import { hasEmailEnv } from '@/lib/env';
 import { sendSessionCalendarInvites } from '@/lib/notifications/calendar-invites';
+import { sendGroupInviteEmail } from '@/lib/notifications/group-invites';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { generateSessionShareCode, normalizeEmail, withFeedback } from '@/lib/utils';
 
@@ -100,6 +101,23 @@ export async function inviteMemberAction(formData: FormData) {
       invitee_user_id: existingUser?.id ?? null,
     },
   });
+
+  if (hasEmailEnv()) {
+    const [{ data: group }, { data: inviter }] = await Promise.all([
+      supabase.schema('public').from('groups').select('name, invite_code').eq('id', groupId).maybeSingle(),
+      supabase.schema('public').from('users').select('display_name, email').eq('id', user.id).maybeSingle(),
+    ]);
+
+    await sendGroupInviteEmail({
+      locale,
+      groupId,
+      groupName: group?.name ?? 'ActiveBoard',
+      inviteCode: group?.invite_code ?? '',
+      inviteeEmail: email,
+      inviterUserId: user.id,
+      inviterName: inviter?.display_name ?? inviter?.email ?? user.email ?? 'ActiveBoard',
+    });
+  }
 
   revalidatePath(`/${locale}/groups/${groupId}`);
   revalidatePath(`/${locale}/dashboard`);

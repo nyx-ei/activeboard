@@ -76,17 +76,17 @@ export default async function LocaleLayout({
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <RegisterServiceWorker />
-      <div className="min-h-screen px-3 pb-24 pt-2 sm:px-6 sm:pt-4">
+      <div className="min-h-screen overflow-x-hidden px-3 pb-24 pt-2 sm:px-6 sm:pt-4">
         <div className="mx-auto flex min-h-[calc(100vh-2.5rem)] max-w-[1240px] flex-col gap-5">
-          <header className="flex items-center justify-between gap-4 border-b border-white/8 pb-2 pt-1">
-            <Link href="/" className="flex items-center gap-2">
+          <header className="flex min-w-0 items-center justify-between gap-2 border-b border-white/8 pb-2 pt-1 sm:gap-4">
+            <Link href="/" className="flex min-w-0 items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-[5px] bg-brand text-xs font-extrabold text-white">
                 AB
               </div>
-              <p className="text-base font-extrabold tracking-tight text-white sm:text-lg">{t('appName')}</p>
+              <p className="truncate text-base font-extrabold tracking-tight text-white sm:text-lg">{t('appName')}</p>
             </Link>
 
-            <div className="flex items-center gap-3">
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
               <Suspense
                 fallback={
                   <div className="inline-flex items-center gap-2 rounded-full border border-border bg-white/[0.04] px-4 py-2 text-sm text-slate-400">

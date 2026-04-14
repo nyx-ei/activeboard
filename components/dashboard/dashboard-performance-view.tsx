@@ -148,7 +148,8 @@ export function DashboardPerformanceView({
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-[1fr_250px]">
-          <div className="min-w-0">
+          <div className="min-w-0 overflow-x-auto pb-1">
+            <div className="min-w-[360px]">
             <div className="ml-7 grid gap-[3px] text-[10px] font-semibold text-slate-600" style={{ gridTemplateColumns: `repeat(${weekCount}, 9px)` }}>
               {monthMarkers.map((month, index) => (
                 <span key={`${month}-${index}`} className="whitespace-nowrap">
@@ -162,7 +163,7 @@ export function DashboardPerformanceView({
                   <span key={label}>{label}</span>
                 ))}
               </div>
-              <div className="flex gap-[3px] overflow-hidden">
+              <div className="flex gap-[3px]">
                 {weeks.map((week, weekIndex) => (
                   <div key={weekIndex} className="grid grid-rows-7 gap-[3px]">
                     {Array.from({ length: 7 }).map((_, dayIndex) => {
@@ -178,6 +179,7 @@ export function DashboardPerformanceView({
                   </div>
                 ))}
               </div>
+            </div>
             </div>
           </div>
 

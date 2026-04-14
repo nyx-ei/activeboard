@@ -3,6 +3,8 @@ export const APP_EVENTS = {
   groupCreated: 'group_created',
   groupJoined: 'group_joined',
   groupInviteSent: 'group_invite_sent',
+  groupInviteEmailSent: 'group_invite_email_sent',
+  groupInviteEmailFailed: 'group_invite_email_failed',
   groupInviteAccepted: 'group_invite_accepted',
   groupInviteDeclined: 'group_invite_declined',
   groupMemberAdded: 'group_member_added',

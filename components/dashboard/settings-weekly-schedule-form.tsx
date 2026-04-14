@@ -69,7 +69,7 @@ export function SettingsWeeklyScheduleForm({ action, locale, groupId, labels }: 
         {drafts.map((draft) => (
           <div
             key={draft.id}
-            className="grid grid-cols-[minmax(96px,1.15fr)_minmax(82px,0.9fr)_14px_minmax(82px,0.9fr)_minmax(70px,0.65fr)_14px_minmax(20px,auto)] items-center gap-2"
+            className="grid grid-cols-[1fr_1fr_auto] items-center gap-2 rounded-[9px] bg-white/[0.025] p-2 sm:grid-cols-[minmax(96px,1.15fr)_minmax(82px,0.9fr)_14px_minmax(82px,0.9fr)_minmax(70px,0.65fr)_14px_minmax(20px,auto)] sm:bg-transparent sm:p-0"
           >
             <select
               name="weekday"
@@ -91,7 +91,7 @@ export function SettingsWeeklyScheduleForm({ action, locale, groupId, labels }: 
               value={draft.startTime}
               onChange={(event) => updateDraft(draft.id, { startTime: event.target.value })}
             />
-            <span className="text-center text-sm text-slate-500">→</span>
+            <span className="hidden text-center text-sm text-slate-500 sm:block">-&gt;</span>
             <input
               name="endTime"
               type="time"
@@ -99,6 +99,9 @@ export function SettingsWeeklyScheduleForm({ action, locale, groupId, labels }: 
               value={draft.endTime}
               onChange={(event) => updateDraft(draft.id, { endTime: event.target.value })}
             />
+            <span className="col-span-2 text-center text-xs font-semibold text-slate-500 sm:hidden">
+              {draft.startTime} - {draft.endTime}
+            </span>
             <input
               name="questionGoal"
               type="number"
