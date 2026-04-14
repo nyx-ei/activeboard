@@ -870,6 +870,70 @@ export async function inviteDashboardGroupMemberAction(formData: FormData) {
   redirect(withFeedback(settingsPath, 'success', t('inviteSent')));
 }
 
+export async function addDashboardExistingMemberAction(formData: FormData) {
+  const locale = formData.get('locale') as AppLocale;
+  const groupId = formData.get('groupId') as string;
+  const email = normalizeEmail((formData.get('email') as string | null) ?? '');
+  const { supabase, user, t } = await requireFounderDashboardMembership(groupId, locale);
+  const groupPath = `/${locale}/dashboard?view=group&groupId=${groupId}`;
+
+  if (!groupId || !email) {
+    redirect(withFeedback(groupPath, 'error', t('missingFields')));
+  }
+
+  const { data: group } = await supabase
+    .schema('public')
+    .from('groups')
+    .select('id, max_members')
+    .eq('id', groupId)
+    .maybeSingle();
+
+  if (!group) {
+    redirect(withFeedback(groupPath, 'error', t('notAuthorized')));
+  }
+
+  const [{ data: existingUser }, { data: members }] = await Promise.all([
+    supabase.schema('public').from('users').select('id, email').eq('email', email).maybeSingle(),
+    supabase.schema('public').from('group_members').select('user_id').eq('group_id', groupId),
+  ]);
+
+  if (!existingUser) {
+    redirect(withFeedback(groupPath, 'error', t('userNotFound')));
+  }
+
+  if ((members ?? []).some((member) => member.user_id === existingUser.id)) {
+    redirect(withFeedback(groupPath, 'success', t('memberAlreadyInGroup')));
+  }
+
+  if ((members?.length ?? 0) >= group.max_members) {
+    redirect(withFeedback(groupPath, 'error', t('groupFull')));
+  }
+
+  const { error } = await supabase.schema('public').from('group_members').insert({
+    group_id: groupId,
+    is_founder: false,
+    user_id: existingUser.id,
+  });
+
+  if (error) {
+    redirect(withFeedback(groupPath, 'error', t('actionFailed')));
+  }
+
+  await logAppEvent({
+    eventName: APP_EVENTS.groupMemberAdded,
+    locale,
+    userId: user.id,
+    groupId,
+    metadata: {
+      member_user_id: existingUser.id,
+      source: 'dashboard_group_tab_existing_user',
+    },
+  });
+
+  revalidatePath(`/${locale}/dashboard`);
+  redirect(withFeedback(groupPath, 'success', t('memberAdded')));
+}
+
 export async function addDashboardWeeklyScheduleAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
   const groupId = formData.get('groupId') as string;

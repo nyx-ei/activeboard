@@ -5,6 +5,7 @@ export const APP_EVENTS = {
   groupInviteSent: 'group_invite_sent',
   groupInviteAccepted: 'group_invite_accepted',
   groupInviteDeclined: 'group_invite_declined',
+  groupMemberAdded: 'group_member_added',
   sessionJoinedByCode: 'session_joined_by_code',
   sessionScheduled: 'session_scheduled',
   sessionStarted: 'session_started',
