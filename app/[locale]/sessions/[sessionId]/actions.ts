@@ -318,6 +318,8 @@ export async function saveReviewAnswerAction(formData: FormData) {
   const sessionId = formData.get('sessionId') as string;
   const questionId = formData.get('questionId') as string;
   const questionIndex = Number(formData.get('questionIndex'));
+  const nextQuestionIndex = Number(formData.get('nextQuestionIndex'));
+  const advanceAfterSave = formData.get('advanceAfterSave') === 'true';
   const correctOption = (formData.get('correctOption') as string | null)?.toUpperCase() ?? '';
   const { supabase, user, session, t } = await requireSessionMember(sessionId, locale);
 
@@ -380,80 +382,12 @@ export async function saveReviewAnswerAction(formData: FormData) {
   });
 
   revalidatePath(`/${locale}/sessions/${sessionId}`);
-  redirect(withFeedback(`/${locale}/sessions/${sessionId}?stage=review&q=${questionIndex}`, 'success', t('reviewSaved')));
-}
+  const targetQuestionIndex =
+    advanceAfterSave && Number.isInteger(nextQuestionIndex)
+      ? Math.max(0, Math.min(nextQuestionIndex, session.question_goal - 1))
+      : questionIndex;
 
-export async function saveCaptainFrequentErrorAction(formData: FormData) {
-  const locale = formData.get('locale') as AppLocale;
-  const sessionId = formData.get('sessionId') as string;
-  const questionId = formData.get('questionId') as string;
-  const questionIndex = Number(formData.get('questionIndex'));
-  const frequentErrorType = (formData.get('frequentErrorType') as string | null) ?? '';
-  const { supabase, user, session, membership, t } = await requireSessionMember(sessionId, locale);
-
-  if (!membership.is_founder && session.leader_id !== user.id) {
-    redirect(withFeedback(`/${locale}/sessions/${sessionId}?stage=review&q=${questionIndex}`, 'error', t('notAuthorized')));
-  }
-
-  if (!ERROR_TYPE_OPTIONS.includes(frequentErrorType as (typeof ERROR_TYPE_OPTIONS)[number])) {
-    redirect(withFeedback(`/${locale}/sessions/${sessionId}?stage=review&q=${questionIndex}`, 'error', t('missingFields')));
-  }
-
-  const { data: question } = await supabase
-    .schema('public')
-    .from('questions')
-    .select('id, session_id, correct_option')
-    .eq('id', questionId)
-    .maybeSingle();
-
-  if (!question || question.session_id !== sessionId) {
-    redirect(withFeedback(`/${locale}/sessions/${sessionId}?stage=review&q=${questionIndex}`, 'error', t('notAuthorized')));
-  }
-
-  const { data: existingClassification } = await supabase
-    .schema('public')
-    .from('question_classifications')
-    .select('id, physician_activity, dimension_of_care')
-    .eq('question_id', questionId)
-    .maybeSingle();
-
-  if (existingClassification) {
-    await supabase
-      .schema('public')
-      .from('question_classifications')
-      .update({
-        classified_by: user.id,
-        correct_answer: question.correct_option,
-        frequent_error_type: frequentErrorType as (typeof ERROR_TYPE_OPTIONS)[number],
-      })
-      .eq('id', existingClassification.id);
-  } else {
-    await supabase.schema('public').from('question_classifications').insert({
-      question_id: questionId,
-      session_id: sessionId,
-      classified_by: user.id,
-      correct_answer: question.correct_option,
-      physician_activity: 'history_taking',
-      dimension_of_care: 'diagnosis',
-      frequent_error_type: frequentErrorType as (typeof ERROR_TYPE_OPTIONS)[number],
-    });
-  }
-
-  await logAppEvent({
-    eventName: APP_EVENTS.questionClassified,
-    locale,
-    userId: user.id,
-    groupId: session.group_id,
-    sessionId,
-    metadata: {
-      question_id: questionId,
-      frequent_error_type: frequentErrorType,
-      source: 'review_flow_captain_error',
-    },
-  });
-
-  revalidatePath(`/${locale}/sessions/${sessionId}`);
-  redirect(withFeedback(`/${locale}/sessions/${sessionId}?stage=review&q=${questionIndex}`, 'success', t('reviewSaved')));
+  redirect(withFeedback(`/${locale}/sessions/${sessionId}?stage=review&q=${targetQuestionIndex}`, 'success', t('reviewSaved')));
 }
 
 export async function finishReviewSessionAction(formData: FormData) {
