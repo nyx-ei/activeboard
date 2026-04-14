@@ -1,4 +1,11 @@
 export type ConfidenceLevel = 'low' | 'medium' | 'high';
+export type CertaintyCorrectnessStatus =
+  | 'clearMastery'
+  | 'overconfidence'
+  | 'goodProgress'
+  | 'precisionToImprove'
+  | 'confidenceToBuild'
+  | 'foundationToBuild';
 
 const CONFIDENCE_SCORES: Record<ConfidenceLevel, number> = {
   low: 1,
@@ -26,4 +33,35 @@ export function scoreToConfidenceLevel(score: number | null | undefined): Confid
   if (score < 1.5) return 'low';
   if (score < 2.5) return 'medium';
   return 'high';
+}
+
+export function getCertaintyCorrectnessStatus(
+  confidence: ConfidenceLevel | null | undefined,
+  isCorrect: boolean | null | undefined,
+): CertaintyCorrectnessStatus {
+  if (confidence === 'high') {
+    return isCorrect ? 'clearMastery' : 'overconfidence';
+  }
+
+  if (confidence === 'medium') {
+    return isCorrect ? 'goodProgress' : 'precisionToImprove';
+  }
+
+  if (confidence === 'low') {
+    return isCorrect ? 'confidenceToBuild' : 'foundationToBuild';
+  }
+
+  return 'foundationToBuild';
+}
+
+export function getCertaintyCorrectnessTone(status: CertaintyCorrectnessStatus) {
+  if (status === 'clearMastery' || status === 'goodProgress' || status === 'confidenceToBuild') {
+    return 'positive';
+  }
+
+  if (status === 'overconfidence' || status === 'precisionToImprove') {
+    return 'warning';
+  }
+
+  return 'neutral';
 }
