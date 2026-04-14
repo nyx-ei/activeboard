@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation';
 
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
+import { hasEmailEnv } from '@/lib/env';
+import { sendPasswordChangedEmail } from '@/lib/notifications/account';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { withFeedback } from '@/lib/utils';
 
@@ -58,7 +60,7 @@ export async function updatePasswordAction(formData: FormData) {
   const password = ((formData.get('password') as string | null) ?? '').trim();
   const t = await getTranslations({ locale, namespace: 'Feedback' });
 
-  await requireUser(locale);
+  const user = await requireUser(locale);
 
   if (password.length < 8) {
     redirect(withFeedback(`/${locale}/profile`, 'error', t('passwordTooShort')));
@@ -69,6 +71,15 @@ export async function updatePasswordAction(formData: FormData) {
 
   if (error) {
     redirect(withFeedback(`/${locale}/profile`, 'error', t('actionFailed')));
+  }
+
+  if (hasEmailEnv() && user.email) {
+    await sendPasswordChangedEmail({
+      locale,
+      email: user.email,
+      userId: user.id,
+      displayName: user.user_metadata.full_name ?? user.email,
+    });
   }
 
   redirect(withFeedback(`/${locale}/profile`, 'success', t('passwordUpdated')));

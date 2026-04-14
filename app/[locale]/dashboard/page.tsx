@@ -2,6 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import { ArrowLeftRight, Shield, Trash2 } from 'lucide-react';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
+import { RealtimeRefresh } from '@/components/app/realtime-refresh';
 import { LogoutButton } from '@/components/auth/logout-button';
 import { DashboardPerformanceView } from '@/components/dashboard/dashboard-performance-view';
 import { DashboardSessionsView } from '@/components/dashboard/dashboard-sessions-view';
@@ -18,6 +19,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 import { GroupMeetingLinkForm, GroupNameForm, InviteMemberForm } from '../groups/[groupId]/group-settings-forms';
 import {
+  addDashboardExistingMemberAction,
   addDashboardWeeklyScheduleAction,
   cancelDashboardSessionAction,
   createDashboardSessionAction,
@@ -217,6 +219,17 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
         missingFieldsMessage={feedbackT('missingFields')}
         billingRequiredMessage={feedbackT('upgradeRequiredToCreateGroup')}
       />
+      {activeGroupId ? (
+        <RealtimeRefresh
+          channelName={`dashboard:${activeGroupId}`}
+          tables={[
+            { table: 'group_members', filter: `group_id=eq.${activeGroupId}` },
+            { table: 'group_weekly_schedules', filter: `group_id=eq.${activeGroupId}` },
+            { table: 'sessions', filter: `group_id=eq.${activeGroupId}` },
+          ]}
+          throttleMs={700}
+        />
+      ) : null}
       <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
 
       <section className="mx-auto w-full max-w-[620px] space-y-4">
@@ -453,9 +466,8 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
             </section>
 
             <section className="surface-mockup p-5">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">{t('inviteCode')}</p>
-              <p className="mt-1 text-sm font-semibold text-white">{primaryGroup ? primaryGroup.invite_code : t('noData')}</p>
-              <p className="mt-3 text-sm text-slate-400">{examSessionLabel}</p>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">{t('examSession')}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-300">{examSessionLabel}</p>
             </section>
 
             <section className="surface-mockup p-5">
@@ -466,14 +478,14 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
               <div className="mt-4 space-y-2">
                 {data.groupDashboard.schedules.length > 0 ? (
                   data.groupDashboard.schedules.map((schedule) => (
-                  <div key={schedule.id} className="grid grid-cols-[88px_1fr_auto] items-center gap-3 text-sm">
+                  <div key={schedule.id} className="grid grid-cols-[88px_1fr] items-center gap-2 text-sm min-[420px]:grid-cols-[88px_1fr_auto] min-[420px]:gap-3">
                     <span className="rounded-full bg-brand/12 px-3 py-1 text-xs font-semibold text-brand">
                       {weekdayLabels[schedule.weekday]}
                     </span>
                     <span className="font-semibold text-slate-300">
                       {schedule.start_time.slice(0, 5)} – {schedule.end_time.slice(0, 5)}
                     </span>
-                    <span className="rounded-[7px] bg-white/[0.05] px-3 py-1 text-xs font-extrabold text-white">
+                    <span className="col-span-2 rounded-[7px] bg-white/[0.05] px-3 py-1 text-xs font-extrabold text-white min-[420px]:col-span-1">
                       {t('questionGoalValue', { count: schedule.question_goal })}
                     </span>
                   </div>
@@ -491,10 +503,27 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
             </section>
 
             <section className="surface-mockup p-5">
-              <div className="flex items-center gap-2">
-                <UsersIcon />
-                <p className="text-sm font-bold text-white">{t('membersTitle')}</p>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <UsersIcon />
+                  <p className="text-sm font-bold text-white">{t('membersTitle')}</p>
+                </div>
               </div>
+              {isPrimaryGroupFounder && primaryGroup ? (
+                <div className="mt-4 rounded-[10px] bg-white/[0.025] p-3">
+                  <InviteMemberForm
+                    action={addDashboardExistingMemberAction}
+                    locale={locale}
+                    groupId={primaryGroup.id}
+                    label={t('addExistingMember')}
+                    emailLabel={t('email')}
+                    emailPlaceholder={t('existingMemberEmailPlaceholder')}
+                    pendingLabel={t('addMemberPending')}
+                    submitLabel={t('addMember')}
+                    compact
+                  />
+                </div>
+              ) : null}
               <div className="mt-4 space-y-3">
                 {data.groupDashboard.memberPerformance.length > 0 ? (
                   data.groupDashboard.memberPerformance.map((member) => (
@@ -634,12 +663,12 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                   <div className="mt-4 space-y-2">
                     {data.groupDashboard.schedules.length > 0 ? (
                       data.groupDashboard.schedules.map((schedule) => (
-                        <div key={schedule.id} className="flex items-center gap-3 rounded-[10px] bg-white/[0.035] px-3 py-2">
+                        <div key={schedule.id} className="flex flex-wrap items-center gap-2 rounded-[10px] bg-white/[0.035] px-3 py-2 sm:gap-3">
                           <span className="rounded-full bg-brand/12 px-3 py-1 text-xs font-semibold text-brand">{weekdayLabels[schedule.weekday]}</span>
                           <span className="text-sm font-medium text-slate-300">
                             {schedule.start_time.slice(0, 5)} → {schedule.end_time.slice(0, 5)}
                           </span>
-                          <span className="ml-auto text-xs font-semibold text-slate-500">{t('questionGoalValue', { count: schedule.question_goal })}</span>
+                          <span className="text-xs font-semibold text-slate-500 sm:ml-auto">{t('questionGoalValue', { count: schedule.question_goal })}</span>
                           {isPrimaryGroupFounder ? (
                             <form action={deleteDashboardWeeklyScheduleAction}>
                               <input type="hidden" name="locale" value={locale} />

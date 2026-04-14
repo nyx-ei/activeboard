@@ -236,15 +236,18 @@ export function CreateGroupWizard({ locale, labels }: { locale: string; labels: 
             </div>
             <div className="mt-7 space-y-3">
               {slots.map((slot) => (
-                <div key={slot.id} className="grid grid-cols-[1.2fr_0.9fr_16px_0.9fr_0.7fr_16px_24px] items-center gap-2 rounded-[7px] bg-[#111827] p-2">
+                <div key={slot.id} className="grid grid-cols-[1fr_1fr_auto] items-center gap-2 rounded-[7px] bg-[#111827] p-2 sm:grid-cols-[1.2fr_0.9fr_16px_0.9fr_0.7fr_16px_24px]">
                   <select value={slot.weekday} onChange={(event) => updateSlot(slot.id, { weekday: event.target.value })} className="field-compact rounded-[6px] text-sm">
                     {weekdays.map((weekday) => (
                       <option key={weekday} value={weekday}>{labels.weekdays[weekday]}</option>
                     ))}
                   </select>
                   <input value={slot.startTime} onChange={(event) => updateSlot(slot.id, { startTime: event.target.value })} type="time" className="field-compact rounded-[6px] text-sm" />
-                  <span className="text-center text-slate-500">-&gt;</span>
+                  <span className="hidden text-center text-slate-500 sm:block">-&gt;</span>
                   <input value={slot.endTime} onChange={(event) => updateSlot(slot.id, { endTime: event.target.value })} type="time" className="field-compact rounded-[6px] text-sm" />
+                  <span className="col-span-2 text-center text-xs font-semibold text-slate-500 sm:hidden">
+                    {slot.startTime} - {slot.endTime}
+                  </span>
                   <input value={slot.questionGoal} onChange={(event) => updateSlot(slot.id, { questionGoal: event.target.value })} type="number" min="1" className="field-compact rounded-[6px] text-center text-sm" />
                   <span className="text-xs font-bold text-slate-500">Q</span>
                   <button type="button" onClick={() => setSlots((current) => (current.length > 1 ? current.filter((item) => item.id !== slot.id) : current))} className="text-slate-500 hover:text-white">

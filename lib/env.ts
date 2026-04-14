@@ -18,8 +18,9 @@ type StripeServerEnv = {
 };
 
 type EmailServerEnv = {
-  resendApiKey: string;
-  resendFromEmail: string;
+  mailerSendApiKey: string;
+  mailerSendFromEmail: string;
+  mailerSendFromName: string;
   sessionReminderCronSecret: string | null;
 };
 
@@ -67,12 +68,16 @@ function getStripeWebhookSecret() {
   return readOptionalEnv(process.env.STRIPE_WEBHOOK_SECRET) ?? null;
 }
 
-function getResendApiKey() {
-  return readOptionalEnv(process.env.RESEND_API_KEY);
+function getMailerSendApiKey() {
+  return readOptionalEnv(process.env.MAILERSEND_API_KEY);
 }
 
-function getResendFromEmail() {
-  return readOptionalEnv(process.env.RESEND_FROM_EMAIL);
+function getMailerSendFromEmail() {
+  return readOptionalEnv(process.env.MAILERSEND_FROM_EMAIL);
+}
+
+function getMailerSendFromName() {
+  return readOptionalEnv(process.env.MAILERSEND_FROM_NAME) ?? 'ActiveBoard';
 }
 
 function getSessionReminderCronSecret() {
@@ -88,7 +93,7 @@ export function hasStripeWebhookEnv(): boolean {
 }
 
 export function hasEmailEnv(): boolean {
-  return Boolean(getResendApiKey() && getResendFromEmail());
+  return Boolean(getMailerSendApiKey() && getMailerSendFromEmail());
 }
 
 export function getSupabaseAdminEnv(): SupabaseAdminEnv {
@@ -127,18 +132,19 @@ export function getStripeServerEnv(): StripeServerEnv {
 }
 
 export function getEmailServerEnv(): EmailServerEnv {
-  const resendApiKey = getResendApiKey();
-  const resendFromEmail = getResendFromEmail();
+  const mailerSendApiKey = getMailerSendApiKey();
+  const mailerSendFromEmail = getMailerSendFromEmail();
 
-  if (!resendApiKey || !resendFromEmail) {
+  if (!mailerSendApiKey || !mailerSendFromEmail) {
     throw new Error(
-      'Missing email configuration. Expected RESEND_API_KEY and RESEND_FROM_EMAIL.',
+      'Missing email configuration. Expected MAILERSEND_API_KEY and MAILERSEND_FROM_EMAIL.',
     );
   }
 
   return {
-    resendApiKey,
-    resendFromEmail,
+    mailerSendApiKey,
+    mailerSendFromEmail,
+    mailerSendFromName: getMailerSendFromName(),
     sessionReminderCronSecret: getSessionReminderCronSecret(),
   };
 }

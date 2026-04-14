@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { routing, type AppLocale } from '@/i18n/routing';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
+import { hasEmailEnv } from '@/lib/env';
+import { sendAccountWelcomeEmail } from '@/lib/notifications/account';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/supabase/types';
 
@@ -38,6 +40,13 @@ export async function GET(request: Request, { params }: RouteContext) {
   } = await supabase.auth.getUser();
 
   if (user?.id) {
+    const { data: existingProfile } = await supabase
+      .schema('public')
+      .from('users')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle();
+
     const profile: Database['public']['Tables']['users']['Insert'] = {
       id: user.id,
       email: user.email ?? '',
@@ -58,6 +67,15 @@ export async function GET(request: Request, { params }: RouteContext) {
       profile,
       { onConflict: 'id' },
     );
+
+    if (!existingProfile && hasEmailEnv() && user.email) {
+      await sendAccountWelcomeEmail({
+        locale,
+        email: user.email,
+        userId: user.id,
+        displayName: profile.display_name,
+      });
+    }
 
     await logAppEvent({
       eventName: APP_EVENTS.authCallbackSucceeded,
