@@ -121,6 +121,14 @@ export function AuthForm() {
       return;
     }
 
+    fetch('/api/auth/welcome', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, displayName, locale }),
+    }).catch(() => {
+      // Email delivery is tracked server-side and must not block account creation.
+    });
+
     setMessageTone('success');
     setMessage(t('signUpSuccess'));
   }

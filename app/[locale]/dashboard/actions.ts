@@ -9,7 +9,7 @@ import { getUserAccessState, hasUserTierCapability, requireUserTierCapability } 
 import { hasEmailEnv } from '@/lib/env';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
-import { sendGroupInviteEmail } from '@/lib/notifications/group-invites';
+import { sendGroupInviteEmail, sendGroupMemberAddedEmail } from '@/lib/notifications/group-invites';
 import { parseAvailabilityGrid } from '@/lib/schedule/availability';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { generateInviteCode, generateSessionShareCode, normalizeEmail, withFeedback } from '@/lib/utils';
@@ -921,7 +921,7 @@ export async function addDashboardExistingMemberAction(formData: FormData) {
   const { data: group } = await supabase
     .schema('public')
     .from('groups')
-    .select('id, max_members')
+    .select('id, name, max_members')
     .eq('id', groupId)
     .maybeSingle();
 
@@ -930,7 +930,7 @@ export async function addDashboardExistingMemberAction(formData: FormData) {
   }
 
   const [{ data: existingUser }, { data: members }] = await Promise.all([
-    supabase.schema('public').from('users').select('id, email').eq('email', email).maybeSingle(),
+    supabase.schema('public').from('users').select('id, email, display_name').eq('email', email).maybeSingle(),
     supabase.schema('public').from('group_members').select('user_id').eq('group_id', groupId),
   ]);
 
@@ -966,6 +966,25 @@ export async function addDashboardExistingMemberAction(formData: FormData) {
       source: 'dashboard_group_tab_existing_user',
     },
   });
+
+  if (hasEmailEnv()) {
+    const { data: inviter } = await supabase
+      .schema('public')
+      .from('users')
+      .select('display_name, email')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    await sendGroupMemberAddedEmail({
+      locale,
+      groupId,
+      groupName: group.name,
+      memberEmail: existingUser.email,
+      memberName: existingUser.display_name,
+      inviterUserId: user.id,
+      inviterName: inviter?.display_name ?? inviter?.email ?? user.email ?? 'ActiveBoard',
+    });
+  }
 
   revalidatePath(`/${locale}/dashboard`);
   redirect(withFeedback(groupPath, 'success', t('memberAdded')));

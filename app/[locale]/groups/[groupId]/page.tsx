@@ -196,11 +196,6 @@ export default async function GroupPage({ params, searchParams }: GroupPageProps
               </div>
             </div>
 
-            <div className="surface-soft p-5">
-              <p className="text-sm font-semibold text-slate-300">{t('inviteCodeTitle')}</p>
-              <p className="mt-2 text-sm text-slate-500">{t('createdCode', { code: group.invite_code })}</p>
-            </div>
-
             {isFounder ? (
               <div className="surface-soft p-5">
                 <InviteMemberForm

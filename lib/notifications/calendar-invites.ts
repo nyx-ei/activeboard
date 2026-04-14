@@ -7,6 +7,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import type { Database } from '@/lib/supabase/types';
 import { buildSessionIcs } from '@/lib/calendar/ics';
 import { sendEmail } from '@/lib/email/mailersend';
+import { renderPlainTextEmail, renderTransactionalEmail } from '@/lib/email/templates';
 
 type SessionRow = Database['public']['Tables']['sessions']['Row'];
 
@@ -29,54 +30,84 @@ function buildCalendarInviteCopy(args: {
   if (args.locale === 'fr') {
     return {
       subject: `Invitation calendrier ActiveBoard : ${sessionLabel}`,
-      text: [
-        `Bonjour ${args.memberName},`,
-        '',
-        `La session "${sessionLabel}" du groupe "${args.groupName}" a ete programmee.`,
-        `Horaire : ${dateText}`,
-        `Code de session : ${args.shareCode}`,
-        args.meetingLink ? `Lien de reunion : ${args.meetingLink}` : null,
-        `Ouvrir ActiveBoard : ${getAppUrl()}/fr/dashboard`,
-      ]
-        .filter(Boolean)
-        .join('\n'),
-      html: `
-        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#0f172a">
-          <p>Bonjour ${args.memberName},</p>
-          <p>La session <strong>${sessionLabel}</strong> du groupe <strong>${args.groupName}</strong> a ete programmee.</p>
-          <p><strong>Horaire :</strong> ${dateText}<br /><strong>Code de session :</strong> ${args.shareCode}</p>
-          ${args.meetingLink ? `<p><strong>Lien de reunion :</strong> <a href="${args.meetingLink}">${args.meetingLink}</a></p>` : ''}
-          <p>Tu trouveras en piece jointe une invitation calendrier (.ics).</p>
-          <p><a href="${getAppUrl()}/fr/dashboard">Ouvrir ActiveBoard</a></p>
-        </div>
-      `,
+      text: renderPlainTextEmail({
+        title: 'Session ActiveBoard programmée',
+        preheader: `${sessionLabel} est maintenant dans votre calendrier ActiveBoard.`,
+        intro: [
+          `Bonjour ${args.memberName},`,
+          `La session "${sessionLabel}" du groupe "${args.groupName}" a été programmée.`,
+          'Ajoutez l’invitation calendrier jointe et ouvrez ActiveBoard au moment de la session pour répondre aux questions.',
+        ],
+        details: [
+          { label: 'Groupe', value: args.groupName },
+          { label: 'Session', value: sessionLabel },
+          { label: 'Horaire', value: dateText },
+          { label: 'Code de session', value: args.shareCode },
+          ...(args.meetingLink ? [{ label: 'Lien de réunion', value: args.meetingLink }] : []),
+        ],
+        action: { label: 'Ouvrir ActiveBoard', url: `${getAppUrl()}/fr/dashboard` },
+        secondaryNote: 'Une invitation calendrier .ics est jointe à cet email.',
+      }),
+      html: renderTransactionalEmail({
+        title: 'Session ActiveBoard programmée',
+        preheader: `${sessionLabel} est maintenant dans votre calendrier ActiveBoard.`,
+        intro: [
+          `Bonjour ${args.memberName},`,
+          `La session "${sessionLabel}" du groupe "${args.groupName}" a été programmée.`,
+          'Ajoutez l’invitation calendrier jointe et ouvrez ActiveBoard au moment de la session pour répondre aux questions.',
+        ],
+        details: [
+          { label: 'Groupe', value: args.groupName },
+          { label: 'Session', value: sessionLabel },
+          { label: 'Horaire', value: dateText },
+          { label: 'Code de session', value: args.shareCode },
+          ...(args.meetingLink ? [{ label: 'Lien de réunion', value: args.meetingLink }] : []),
+        ],
+        action: { label: 'Ouvrir ActiveBoard', url: `${getAppUrl()}/fr/dashboard` },
+        secondaryNote: 'Une invitation calendrier .ics est jointe à cet email.',
+      }),
       description: `Session ActiveBoard pour ${args.groupName}. Code de session: ${args.shareCode}${args.meetingLink ? ` - Lien: ${args.meetingLink}` : ''}`,
     };
   }
 
   return {
     subject: `ActiveBoard calendar invite: ${sessionLabel}`,
-    text: [
-      `Hi ${args.memberName},`,
-      '',
-      `The "${sessionLabel}" session for "${args.groupName}" has been scheduled.`,
-      `Time: ${dateText}`,
-      `Session code: ${args.shareCode}`,
-      args.meetingLink ? `Meeting link: ${args.meetingLink}` : null,
-      `Open ActiveBoard: ${getAppUrl()}/en/dashboard`,
-    ]
-      .filter(Boolean)
-      .join('\n'),
-    html: `
-      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#0f172a">
-        <p>Hi ${args.memberName},</p>
-        <p>The <strong>${sessionLabel}</strong> session for <strong>${args.groupName}</strong> has been scheduled.</p>
-        <p><strong>Time:</strong> ${dateText}<br /><strong>Session code:</strong> ${args.shareCode}</p>
-        ${args.meetingLink ? `<p><strong>Meeting link:</strong> <a href="${args.meetingLink}">${args.meetingLink}</a></p>` : ''}
-        <p>An .ics calendar invite is attached.</p>
-        <p><a href="${getAppUrl()}/en/dashboard">Open ActiveBoard</a></p>
-      </div>
-    `,
+    text: renderPlainTextEmail({
+      title: 'ActiveBoard session scheduled',
+      preheader: `${sessionLabel} is now ready in your ActiveBoard calendar.`,
+      intro: [
+        `Hi ${args.memberName},`,
+        `The "${sessionLabel}" session for "${args.groupName}" has been scheduled.`,
+        'Add the attached calendar invite and open ActiveBoard when the session starts to answer questions.',
+      ],
+      details: [
+        { label: 'Group', value: args.groupName },
+        { label: 'Session', value: sessionLabel },
+        { label: 'Time', value: dateText },
+        { label: 'Session code', value: args.shareCode },
+        ...(args.meetingLink ? [{ label: 'Meeting link', value: args.meetingLink }] : []),
+      ],
+      action: { label: 'Open ActiveBoard', url: `${getAppUrl()}/en/dashboard` },
+      secondaryNote: 'A calendar .ics invite is attached to this email.',
+    }),
+    html: renderTransactionalEmail({
+      title: 'ActiveBoard session scheduled',
+      preheader: `${sessionLabel} is now ready in your ActiveBoard calendar.`,
+      intro: [
+        `Hi ${args.memberName},`,
+        `The "${sessionLabel}" session for "${args.groupName}" has been scheduled.`,
+        'Add the attached calendar invite and open ActiveBoard when the session starts to answer questions.',
+      ],
+      details: [
+        { label: 'Group', value: args.groupName },
+        { label: 'Session', value: sessionLabel },
+        { label: 'Time', value: dateText },
+        { label: 'Session code', value: args.shareCode },
+        ...(args.meetingLink ? [{ label: 'Meeting link', value: args.meetingLink }] : []),
+      ],
+      action: { label: 'Open ActiveBoard', url: `${getAppUrl()}/en/dashboard` },
+      secondaryNote: 'A calendar .ics invite is attached to this email.',
+    }),
     description: `ActiveBoard session for ${args.groupName}. Session code: ${args.shareCode}${args.meetingLink ? ` - Meeting link: ${args.meetingLink}` : ''}`,
   };
 }

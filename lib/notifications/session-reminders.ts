@@ -4,6 +4,7 @@ import { logAppEvent } from '@/lib/logging/logger';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import type { Database } from '@/lib/supabase/types';
 import { sendEmail } from '@/lib/email/mailersend';
+import { renderPlainTextEmail, renderTransactionalEmail } from '@/lib/email/templates';
 
 const REMINDER_WINDOWS = [
   { key: '24h', minutesBefore: 24 * 60 },
@@ -58,51 +59,83 @@ function buildReminderCopy(args: {
   if (args.locale === 'fr') {
     return {
       subject: `Rappel ActiveBoard : ${sessionLabel} dans ${reminderMeta.short}`,
-      text: [
-        `Bonjour ${args.memberName},`,
-        '',
-        `La session "${sessionLabel}" du groupe "${args.groupName}" commence dans ${reminderMeta.label}.`,
-        `Horaire : ${dateText}`,
-        `Code de session : ${args.shareCode}`,
-        args.meetingLink ? `Lien de reunion : ${args.meetingLink}` : null,
-        `Ouvrir ActiveBoard : ${getAppUrl()}/fr/dashboard`,
-      ]
-        .filter(Boolean)
-        .join('\n'),
-      html: `
-        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#0f172a">
-          <p>Bonjour ${args.memberName},</p>
-          <p>La session <strong>${sessionLabel}</strong> du groupe <strong>${args.groupName}</strong> commence dans ${reminderMeta.label}.</p>
-          <p><strong>Horaire :</strong> ${dateText}<br /><strong>Code de session :</strong> ${args.shareCode}</p>
-          ${args.meetingLink ? `<p><strong>Lien de reunion :</strong> <a href="${args.meetingLink}">${args.meetingLink}</a></p>` : ''}
-          <p><a href="${getAppUrl()}/fr/dashboard">Ouvrir ActiveBoard</a></p>
-        </div>
-      `,
+      text: renderPlainTextEmail({
+        title: `Votre session commence dans ${reminderMeta.short}`,
+        preheader: `${sessionLabel} commence bientôt.`,
+        intro: [
+          `Bonjour ${args.memberName},`,
+          `La session "${sessionLabel}" du groupe "${args.groupName}" commence dans ${reminderMeta.label}.`,
+          'Préparez votre appel Zoom/Meet/Teams et ouvrez ActiveBoard sur votre téléphone ou votre ordinateur.',
+        ],
+        details: [
+          { label: 'Groupe', value: args.groupName },
+          { label: 'Session', value: sessionLabel },
+          { label: 'Horaire', value: dateText },
+          { label: 'Code de session', value: args.shareCode },
+          ...(args.meetingLink ? [{ label: 'Lien de réunion', value: args.meetingLink }] : []),
+        ],
+        action: { label: 'Ouvrir ActiveBoard', url: `${getAppUrl()}/fr/dashboard` },
+        secondaryNote: 'Les réponses sont synchronisées en direct avec les autres membres du groupe.',
+      }),
+      html: renderTransactionalEmail({
+        title: `Votre session commence dans ${reminderMeta.short}`,
+        preheader: `${sessionLabel} commence bientôt.`,
+        intro: [
+          `Bonjour ${args.memberName},`,
+          `La session "${sessionLabel}" du groupe "${args.groupName}" commence dans ${reminderMeta.label}.`,
+          'Préparez votre appel Zoom/Meet/Teams et ouvrez ActiveBoard sur votre téléphone ou votre ordinateur.',
+        ],
+        details: [
+          { label: 'Groupe', value: args.groupName },
+          { label: 'Session', value: sessionLabel },
+          { label: 'Horaire', value: dateText },
+          { label: 'Code de session', value: args.shareCode },
+          ...(args.meetingLink ? [{ label: 'Lien de réunion', value: args.meetingLink }] : []),
+        ],
+        action: { label: 'Ouvrir ActiveBoard', url: `${getAppUrl()}/fr/dashboard` },
+        secondaryNote: 'Les réponses sont synchronisées en direct avec les autres membres du groupe.',
+      }),
     };
   }
 
   return {
     subject: `ActiveBoard reminder: ${sessionLabel} starts in ${reminderMeta.short}`,
-    text: [
-      `Hi ${args.memberName},`,
-      '',
-      `Your "${sessionLabel}" session for "${args.groupName}" starts in ${reminderMeta.label}.`,
-      `Time: ${dateText}`,
-      `Session code: ${args.shareCode}`,
-      args.meetingLink ? `Meeting link: ${args.meetingLink}` : null,
-      `Open ActiveBoard: ${getAppUrl()}/en/dashboard`,
-    ]
-      .filter(Boolean)
-      .join('\n'),
-    html: `
-      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#0f172a">
-        <p>Hi ${args.memberName},</p>
-        <p>Your <strong>${sessionLabel}</strong> session for <strong>${args.groupName}</strong> starts in ${reminderMeta.label}.</p>
-        <p><strong>Time:</strong> ${dateText}<br /><strong>Session code:</strong> ${args.shareCode}</p>
-        ${args.meetingLink ? `<p><strong>Meeting link:</strong> <a href="${args.meetingLink}">${args.meetingLink}</a></p>` : ''}
-        <p><a href="${getAppUrl()}/en/dashboard">Open ActiveBoard</a></p>
-      </div>
-    `,
+    text: renderPlainTextEmail({
+      title: `Your session starts in ${reminderMeta.short}`,
+      preheader: `${sessionLabel} starts soon.`,
+      intro: [
+        `Hi ${args.memberName},`,
+        `Your "${sessionLabel}" session for "${args.groupName}" starts in ${reminderMeta.label}.`,
+        'Prepare your Zoom/Meet/Teams call and open ActiveBoard on your phone or computer.',
+      ],
+      details: [
+        { label: 'Group', value: args.groupName },
+        { label: 'Session', value: sessionLabel },
+        { label: 'Time', value: dateText },
+        { label: 'Session code', value: args.shareCode },
+        ...(args.meetingLink ? [{ label: 'Meeting link', value: args.meetingLink }] : []),
+      ],
+      action: { label: 'Open ActiveBoard', url: `${getAppUrl()}/en/dashboard` },
+      secondaryNote: 'Answers are synchronized live with the other group members.',
+    }),
+    html: renderTransactionalEmail({
+      title: `Your session starts in ${reminderMeta.short}`,
+      preheader: `${sessionLabel} starts soon.`,
+      intro: [
+        `Hi ${args.memberName},`,
+        `Your "${sessionLabel}" session for "${args.groupName}" starts in ${reminderMeta.label}.`,
+        'Prepare your Zoom/Meet/Teams call and open ActiveBoard on your phone or computer.',
+      ],
+      details: [
+        { label: 'Group', value: args.groupName },
+        { label: 'Session', value: sessionLabel },
+        { label: 'Time', value: dateText },
+        { label: 'Session code', value: args.shareCode },
+        ...(args.meetingLink ? [{ label: 'Meeting link', value: args.meetingLink }] : []),
+      ],
+      action: { label: 'Open ActiveBoard', url: `${getAppUrl()}/en/dashboard` },
+      secondaryNote: 'Answers are synchronized live with the other group members.',
+    }),
   };
 }
 

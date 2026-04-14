@@ -466,9 +466,8 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
             </section>
 
             <section className="surface-mockup p-5">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">{t('inviteCode')}</p>
-              <p className="mt-1 text-sm font-semibold text-white">{primaryGroup ? primaryGroup.invite_code : t('noData')}</p>
-              <p className="mt-3 text-sm text-slate-400">{examSessionLabel}</p>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">{t('examSession')}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-300">{examSessionLabel}</p>
             </section>
 
             <section className="surface-mockup p-5">
