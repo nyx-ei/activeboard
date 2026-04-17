@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Clock, Share2, Trash2 } from 'lucide-react';
+import { AlertTriangle, Clock, Share2, Trash2 } from 'lucide-react';
 
 import { useRouter } from '@/i18n/navigation';
 import { SubmitButton } from '@/components/ui/submit-button';
@@ -66,6 +66,8 @@ type DashboardSessionsViewProps = {
     questionCounter: string;
     reliableGroupsGoal: string;
     minimumMembersWarning: string;
+    soloSessionProgressHint: string;
+    groupAccessHint: string;
   };
 };
 
@@ -293,7 +295,7 @@ function NewSessionModal({
           </label>
 
           <p className="text-xs italic text-slate-500">{labels.modalHint}</p>
-          {memberCount < 2 ? <p className="text-xs font-bold text-red-300">{labels.minimumMembersWarning}</p> : null}
+          {memberCount < 2 ? <p className="text-xs font-semibold text-slate-500">{labels.groupAccessHint}</p> : null}
           <SubmitButton
             pendingLabel={labels.createSessionPending}
             className="button-primary h-10 w-full rounded-[7px] py-2 text-sm disabled:bg-brand/40 disabled:text-white/60"
@@ -361,6 +363,11 @@ export function DashboardSessionsView({
         </div>
       </section>
 
+      <div className="flex items-start gap-3 rounded-[7px] border border-white/[0.06] bg-[#121b2e] px-4 py-2.5 text-[11px] font-semibold leading-snug text-slate-500">
+        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" aria-hidden="true" />
+        <p>{labels.soloSessionProgressHint}</p>
+      </div>
+
       <section className="space-y-3">
         <h1 className="text-lg font-extrabold tracking-tight text-white">{labels.sessions}</h1>
         {sessions.length > 0 ? (
@@ -380,21 +387,25 @@ export function DashboardSessionsView({
         )}
       </section>
 
-      <form action={joinSessionAction} className="flex justify-center gap-2">
-        <input type="hidden" name="locale" value={locale} />
-        <input
-          name="sessionCode"
-          maxLength={6}
-          placeholder={labels.sessionCodePlaceholder}
-          autoCapitalize="characters"
-          autoComplete="off"
-          className="field h-9 max-w-[210px] rounded-[7px] px-4 py-2 text-center text-xs uppercase tracking-[0.18em]"
-        />
-        <SubmitButton pendingLabel={labels.goPending} className="button-primary h-9 rounded-[7px] px-4 py-2 text-xs" disabled={!canJoinSessions}>
-          {labels.go}
-        </SubmitButton>
-      </form>
-      {!canJoinSessions ? <p className="text-center text-sm text-amber-300">{labels.upgradeRequiredToJoinSession}</p> : null}
+      {sessions.length > 0 ? (
+        <>
+          <form action={joinSessionAction} className="flex justify-center gap-2">
+            <input type="hidden" name="locale" value={locale} />
+            <input
+              name="sessionCode"
+              maxLength={6}
+              placeholder={labels.sessionCodePlaceholder}
+              autoCapitalize="characters"
+              autoComplete="off"
+              className="field h-9 max-w-[210px] rounded-[7px] px-4 py-2 text-center text-xs uppercase tracking-[0.18em]"
+            />
+            <SubmitButton pendingLabel={labels.goPending} className="button-primary h-9 rounded-[7px] px-4 py-2 text-xs" disabled={!canJoinSessions}>
+              {labels.go}
+            </SubmitButton>
+          </form>
+          {!canJoinSessions ? <p className="text-center text-sm text-amber-300">{labels.upgradeRequiredToJoinSession}</p> : null}
+        </>
+      ) : null}
 
       {isModalOpen ? (
         <NewSessionModal

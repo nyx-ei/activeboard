@@ -62,6 +62,8 @@ type GroupMemberPerformance = {
   is_founder: boolean;
   presenceRate: number;
   completionRate: number;
+  averageWeeklyQuestions: number;
+  totalAnswers: number;
   status: 'setup' | 'active';
 };
 
@@ -611,15 +613,15 @@ export const getDashboardData = cache(
     );
     const primaryGroupSessions = sessions.filter((session) => session.group_id === primaryGroup.id);
     const primaryGroupSessionIds = primaryGroupSessions.map((session) => session.id);
-    const startOfWeek = new Date();
-    const currentDay = startOfWeek.getDay();
+    const currentWeekStart = new Date();
+    const currentDay = currentWeekStart.getDay();
     const offsetToMonday = currentDay === 0 ? 6 : currentDay - 1;
-    startOfWeek.setDate(startOfWeek.getDate() - offsetToMonday);
-    startOfWeek.setHours(0, 0, 0, 0);
+    currentWeekStart.setDate(currentWeekStart.getDate() - offsetToMonday);
+    currentWeekStart.setHours(0, 0, 0, 0);
 
     const weeklySessions = primaryGroupSessions.filter((session) => {
       if (session.status === 'cancelled') return false;
-      return new Date(session.scheduled_at).getTime() >= startOfWeek.getTime();
+      return new Date(session.scheduled_at).getTime() >= currentWeekStart.getTime();
     });
     const weeklySessionIds = new Set(weeklySessions.map((session) => session.id));
     const questionSessionIds = includeMemberPerformance ? primaryGroupSessionIds : Array.from(weeklySessionIds);
@@ -684,6 +686,7 @@ export const getDashboardData = cache(
 
     const totalTrackableSessions = primaryGroupSessions.filter((session) => session.status !== 'cancelled').length;
     const totalTrackableQuestions = primaryGroupQuestions.length;
+    const sessionsById = new Map(primaryGroupSessions.map((session) => [session.id, session]));
 
     groupDashboard = {
       group: primaryGroup,
@@ -696,6 +699,14 @@ export const getDashboardData = cache(
         const profile = groupUsers.get(member.user_id);
         const name = profile?.display_name ?? profile?.email ?? user.email ?? 'Member';
         const answerStats = answersByUser.get(member.user_id);
+        const totalAnswers = answerStats?.questionIds.size ?? 0;
+        const activeWeekKeys = new Set(
+          [...(answerStats?.sessionIds ?? [])].map((sessionId) => {
+            const scheduledAt = sessionsById.get(sessionId)?.scheduled_at;
+            return scheduledAt ? toIsoDay(startOfWeek(new Date(scheduledAt))) : sessionId;
+          }),
+        );
+        const averageWeeklyQuestions = Math.round(totalAnswers / Math.max(1, activeWeekKeys.size));
         const presenceRate =
           totalTrackableSessions > 0
             ? Math.round((((answerStats?.sessionIds.size ?? 0) / totalTrackableSessions) * 100))
@@ -719,6 +730,8 @@ export const getDashboardData = cache(
           is_founder: member.is_founder,
           presenceRate,
           completionRate,
+          averageWeeklyQuestions,
+          totalAnswers,
           status:
             (answerStats?.sessionIds.size ?? 0) === 0 && (answerStats?.questionIds.size ?? 0) === 0 ? 'setup' : 'active',
         };
