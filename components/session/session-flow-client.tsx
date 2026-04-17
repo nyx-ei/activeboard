@@ -5,7 +5,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { SubmitButton } from '@/components/ui/submit-button';
-import type { ConfidenceLevel } from '@/lib/demo/confidence';
+import {
+  getCertaintyCorrectnessStatus,
+  getCertaintyCorrectnessTone,
+  type CertaintyCorrectnessStatus,
+  type ConfidenceLevel,
+} from '@/lib/demo/confidence';
 import { ANSWER_OPTIONS, type AnswerOption } from '@/lib/types/demo';
 
 type ServerAction = (formData: FormData) => void | Promise<void>;
@@ -246,6 +251,8 @@ export function ReviewAnswerForm({
   nextQuestionIndex,
   isLastQuestion,
   initialCorrectOption,
+  participantAnswer,
+  participantConfidence,
   labels,
 }: {
   action: ServerAction;
@@ -256,6 +263,8 @@ export function ReviewAnswerForm({
   nextQuestionIndex: number;
   isLastQuestion: boolean;
   initialCorrectOption?: AnswerOption | null;
+  participantAnswer?: string | null;
+  participantConfidence?: ConfidenceLevel | null;
   labels: {
     correctAnswer: string;
     save: string;
@@ -263,10 +272,27 @@ export function ReviewAnswerForm({
     saveAndNext: string;
     updateAndNext: string;
     savePending: string;
+    reviewStatus: Record<CertaintyCorrectnessStatus, string>;
   };
 }) {
   const [correctOption, setCorrectOption] = useState<AnswerOption | ''>(initialCorrectOption ?? '');
   const canSubmit = Boolean(correctOption) && correctOption !== initialCorrectOption;
+  const hasCorrectOption = Boolean(correctOption);
+  const normalizedParticipantAnswer = participantAnswer?.toUpperCase() ?? '?';
+  const isCorrect = hasCorrectOption ? normalizedParticipantAnswer === correctOption : null;
+  const reviewStatus = hasCorrectOption ? getCertaintyCorrectnessStatus(participantConfidence, isCorrect) : null;
+  const reviewStatusTone = reviewStatus ? getCertaintyCorrectnessTone(reviewStatus) : null;
+  const reviewStatusDotClass =
+    reviewStatusTone === 'positive' ? 'bg-brand' : reviewStatusTone === 'warning' ? 'bg-orange-400' : 'bg-sky-400';
+  const reviewStatusCardClass =
+    reviewStatusTone === 'positive'
+      ? 'border-brand/30 bg-brand/10 text-brand'
+      : reviewStatusTone === 'warning'
+        ? 'border-orange-400/30 bg-orange-400/10 text-orange-300'
+        : 'border-sky-400/30 bg-sky-400/10 text-sky-300';
+  const reviewTrace = hasCorrectOption
+    ? `${normalizedParticipantAnswer} ${isCorrect ? '✓' : '×'} → ${correctOption}`
+    : '';
 
   return (
     <form action={action} className="space-y-4">
@@ -296,6 +322,17 @@ export function ReviewAnswerForm({
           </button>
         ))}
       </div>
+      {reviewStatus ? (
+        <section className={`rounded-[7px] border px-4 py-3 ${reviewStatusCardClass}`}>
+          <div className="flex items-start gap-3">
+            <span className={`mt-1 h-3 w-3 shrink-0 rounded-full ${reviewStatusDotClass}`} aria-hidden="true" />
+            <div>
+              <p className="text-sm font-extrabold">{labels.reviewStatus[reviewStatus]}</p>
+              <p className="mt-1 text-xs font-semibold text-slate-500">{reviewTrace}</p>
+            </div>
+          </div>
+        </section>
+      ) : null}
       <SubmitButton
         pendingLabel={labels.savePending}
         className="button-primary h-10 w-full rounded-[7px] py-2 text-sm disabled:bg-brand/40 disabled:text-white/60"

@@ -1,11 +1,12 @@
 import { getTranslations } from 'next-intl/server';
-import { ArrowLeftRight, Shield, Trash2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeftRight, Shield, Trash2 } from 'lucide-react';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
 import { RealtimeRefresh } from '@/components/app/realtime-refresh';
 import { LogoutButton } from '@/components/auth/logout-button';
 import { DashboardPerformanceView } from '@/components/dashboard/dashboard-performance-view';
 import { DashboardSessionsView } from '@/components/dashboard/dashboard-sessions-view';
+import { GroupMeetingLinkForm, GroupNameForm, InviteMemberForm } from '@/components/dashboard/group-settings-forms';
 import { LiveGroupsModal } from '@/components/dashboard/live-groups-modal';
 import { SettingsWeeklyScheduleForm } from '@/components/dashboard/settings-weekly-schedule-form';
 import { PendingGroupDraftSync } from '@/components/onboarding/pending-group-draft-sync';
@@ -15,16 +16,15 @@ import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
 import { getUserAccessState, hasUserTierCapability } from '@/lib/billing/gating';
 import { getDashboardData } from '@/lib/demo/data';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
-import { GroupMeetingLinkForm, GroupNameForm, InviteMemberForm } from '../groups/[groupId]/group-settings-forms';
 import {
   addDashboardExistingMemberAction,
   addDashboardWeeklyScheduleAction,
   cancelDashboardSessionAction,
   createDashboardSessionAction,
   deleteDashboardWeeklyScheduleAction,
-  inviteDashboardGroupMemberAction,
   joinGroupAction,
   joinSessionByCodeAction,
   transferDashboardCaptainAction,
@@ -42,21 +42,6 @@ type DashboardPageProps = {
   };
 };
 
-function getHeatmapCellClass(intensity: 0 | 1 | 2 | 3 | 4) {
-  switch (intensity) {
-    case 4:
-      return 'bg-brand';
-    case 3:
-      return 'bg-emerald-400/80';
-    case 2:
-      return 'bg-emerald-400/55';
-    case 1:
-      return 'bg-emerald-400/25';
-    default:
-      return 'bg-white/[0.07]';
-  }
-}
-
 function getInitials(value: string) {
   return (
     value
@@ -73,7 +58,6 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   const user = await requireUser(locale);
   const t = await getTranslations('Dashboard');
   const feedbackT = await getTranslations('Feedback');
-  const sessionT = await getTranslations('Session');
   const view =
     searchParams.view === 'performance' || searchParams.view === 'group' || searchParams.view === 'settings'
       ? searchParams.view
@@ -135,14 +119,21 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
         ? t('examAugustSeptember2026')
         : examSession === 'october_2026'
           ? t('examOctober2026')
-          : examSession === 'planning_ahead'
-            ? t('examPlanningAhead')
-            : t('examSessionUndefined');
+        : examSession === 'planning_ahead'
+          ? t('examPlanningAhead')
+          : t('examSessionUndefined');
+  const groupExamSummary = primaryGroup
+    ? [examSessionLabel, locale === 'fr' ? 'Français' : 'English', 'GMT+1'].join(' · ')
+    : t('noData');
+  const groupInfoSummary = primaryGroup
+    ? [primaryGroup.invite_code, examSessionLabel, locale === 'fr' ? 'Français' : 'English', 'GMT+1'].join(' · ')
+    : t('noData');
   const liveGroups =
     isGroupView || isSettingsView
       ? await (async () => {
+          const supabaseAdmin = createSupabaseAdminClient();
           const currentGroupIds = new Set(data.groups.map((group) => group.id));
-          const { data: candidateGroups } = await createSupabaseServerClient()
+          const { data: candidateGroups } = await supabaseAdmin
             .schema('public')
             .from('groups')
             .select('id, name, invite_code, max_members, created_at')
@@ -153,12 +144,12 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
           if (availableGroupIds.length === 0) return [];
 
           const [{ data: memberships }, { data: schedules }] = await Promise.all([
-            createSupabaseServerClient()
+            supabaseAdmin
               .schema('public')
               .from('group_members')
               .select('group_id, user_id')
               .in('group_id', availableGroupIds),
-            createSupabaseServerClient()
+            supabaseAdmin
               .schema('public')
               .from('group_weekly_schedules')
               .select('group_id, question_goal')
@@ -167,7 +158,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
           const usersMap = await (async () => {
             const ids = [...new Set((memberships ?? []).map((membership) => membership.user_id))];
             if (ids.length === 0) return new Map<string, { id: string; display_name: string | null; email: string }>();
-            const { data: users } = await createSupabaseServerClient()
+            const { data: users } = await supabaseAdmin
               .schema('public')
               .from('users')
               .select('id, display_name, email')
@@ -281,6 +272,8 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
               questionCounter: '{completed} / {total}',
               reliableGroupsGoal: t('reliableGroupsGoal'),
               minimumMembersWarning: t('minimumMembersWarning'),
+              soloSessionProgressHint: t('soloSessionProgressHint'),
+              groupAccessHint: t('groupAccessHint'),
             }}
           />
         ) : null}
@@ -339,99 +332,6 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
           />
         ) : null}
 
-        {false && isPerformanceView ? (
-          <>
-            <section className="surface-mockup p-5">
-              <div className="flex items-center gap-2">
-                <span className="text-brand">↯</span>
-                <p className="text-sm font-bold text-white">{t('heatmapTitle')}</p>
-              </div>
-              <p className="mt-4 text-3xl font-extrabold text-white">{data.metrics.answeredCount}</p>
-              <p className="mt-1 text-sm text-slate-400">{t('questionsAnswered')}</p>
-              <div className="mt-4 grid grid-cols-12 gap-1">
-                {data.profileAnalytics.heatmap.slice(-84).map((day) => (
-                  <div
-                    key={day.date}
-                    className={`h-7 rounded-[2px] border border-white/5 ${getHeatmapCellClass(day.intensity)}`}
-                    title={`${day.date} - ${day.count}`}
-                  />
-                ))}
-              </div>
-              <p className="mt-3 text-xs text-slate-500">{t('heatmapReplacesSprint')}</p>
-            </section>
-
-            <section className="surface-mockup p-5">
-              <div className="flex items-center gap-2">
-                <span className="text-brand">◎</span>
-                <p className="text-sm font-bold text-white">{t('certaintyTitle')}</p>
-              </div>
-              <p className="mt-3 text-sm text-slate-400">
-                {data.metrics.successRate !== null
-                  ? `${data.metrics.successRate}% - ${
-                      data.metrics.averageConfidence === 'low'
-                        ? t('confidenceLow')
-                        : data.metrics.averageConfidence === 'medium'
-                          ? t('confidenceMedium')
-                          : data.metrics.averageConfidence === 'high'
-                            ? t('confidenceHigh')
-                            : t('noData')
-                    }`
-                  : t('confidenceAfterNextSession')}
-              </p>
-            </section>
-
-            <section className="surface-mockup p-5">
-              <div className="flex items-center gap-2">
-                <span className="text-brand">△</span>
-                <p className="text-sm font-bold text-white">{t('errorTitle')}</p>
-              </div>
-              <p className="mt-3 text-sm text-slate-400">
-                {data.metrics.errorRate !== null ? `${data.metrics.errorRate}%` : t('errorAfterThreeSessions')}
-              </p>
-            </section>
-
-            <section className="grid gap-3 md:grid-cols-2">
-              <article className="surface-mockup p-5">
-                <p className="text-sm font-bold text-white">{t('confidenceCalibrationTitle')}</p>
-                <div className="mt-4 space-y-3">
-                  {data.profileAnalytics.confidenceCalibration.map((item) => (
-                    <div key={item.confidence}>
-                      <div className="flex items-center justify-between text-xs text-slate-400">
-                        <span>
-                          {item.confidence === 'low'
-                            ? t('confidenceLow')
-                            : item.confidence === 'medium'
-                              ? t('confidenceMedium')
-                              : t('confidenceHigh')}
-                        </span>
-                        <span>{item.total > 0 ? t('accuracyValue', { accuracy: item.accuracy, count: item.total }) : t('noData')}</span>
-                      </div>
-                      <div className="mt-1 h-2 overflow-hidden rounded-full bg-white/[0.08]">
-                        <div className="h-full rounded-full bg-brand" style={{ width: `${item.accuracy}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </article>
-              <article className="surface-mockup p-5">
-                <p className="text-sm font-bold text-white">{t('errorTypesTitle')}</p>
-                <div className="mt-4 space-y-2">
-                  {data.profileAnalytics.errorTypeBreakdown.length > 0 ? (
-                    data.profileAnalytics.errorTypeBreakdown.slice(0, 4).map((item) => (
-                      <div key={item.errorType} className="flex items-center justify-between rounded-[10px] bg-white/[0.04] px-3 py-2 text-sm">
-                        <span className="text-white">{sessionT(`errorType.${item.errorType}` as never)}</span>
-                        <span className="text-slate-400">{item.count}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-slate-400">{t('errorTypesEmpty')}</p>
-                  )}
-                </div>
-              </article>
-            </section>
-          </>
-        ) : null}
-
         {isGroupView ? (
           <>
             <LiveGroupsModal
@@ -443,14 +343,21 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                 open: t('joinLiveGroups'),
                 title: t('liveGroupsTitle'),
                 close: t('close'),
-                join: t('joinGroup'),
+                join: t('liveGroupJoin'),
                 joinPending: t('joinGroupPending'),
                 upgradeRequired: t('unlimitedPlanRequired'),
+                upgradeDescription: t('unlimitedPlanRequiredDescription'),
                 upgrade: t('upgrade'),
-                compatibleDays: t('compatibleDays'),
-                remainingPlaces: t('remainingPlaces'),
+                empty: t('liveGroupsEmpty'),
+                remainingPlaces: t('liveGroupRemainingPlaces', { count: '{count}' }),
                 oneRemainingPlace: t('oneRemainingPlace'),
-                minutesAgo: t('minutesAgo'),
+                secondsAgo: t('liveGroupSecondsAgo', { count: '{count}' }),
+                minutesAgo: t('liveGroupMinutesAgo', { count: '{count}' }),
+                hoursAgo: t('liveGroupHoursAgo', { count: '{count}' }),
+                daysAgo: t('liveGroupDaysAgo', { count: '{count}' }),
+                weeksAgo: t('liveGroupWeeksAgo', { count: '{count}' }),
+                monthsAgo: t('liveGroupMonthsAgo', { count: '{count}' }),
+                yearsAgo: t('liveGroupYearsAgo', { count: '{count}' }),
               }}
             />
             <section className="surface-mockup p-4">
@@ -458,6 +365,12 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                 <div className="min-w-0">
                   <p className="truncate text-sm font-bold text-white">{data.groupDashboard.group?.name ?? t('unknownGroup')}</p>
                   <p className="mt-1 text-xs text-slate-500">
+                    {groupInfoSummary}
+                  </p>
+                  <p className="hidden">
+                    {primaryGroup ? `${primaryGroup.invite_code} · ${groupExamSummary}` : groupExamSummary}
+                  </p>
+                  <p className="hidden">
                     {primaryGroup ? `${locale.toUpperCase()} · ${primaryGroup.memberCount}/${primaryGroup.max_members ?? 5}` : t('noData')}
                   </p>
                 </div>
@@ -465,8 +378,8 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
               </div>
             </section>
 
-            <section className="surface-mockup p-5">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">{t('examSession')}</p>
+            <section className="hidden">
+              <p className="hidden text-xs font-bold uppercase tracking-[0.16em] text-slate-500">{t('examSession')}</p>
               <p className="mt-1 text-sm font-semibold text-slate-300">{examSessionLabel}</p>
             </section>
 
@@ -542,6 +455,13 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                         <div className="min-w-0">
                           <p className="truncate text-sm font-bold text-white">{member.name}</p>
                           <p className="text-xs text-slate-400">
+                            <span>{t('memberAverageWeekly', { value: member.averageWeeklyQuestions })}</span>
+                            <span className="px-2">·</span>
+                            <span>{t('memberCompletion', { value: member.completionRate })}</span>
+                            <span className="px-2">·</span>
+                            <span>{t('memberTotal', { value: member.totalAnswers })}</span>
+                          </p>
+                          <p className="hidden">
                             <span>{t('memberPresence', { value: member.presenceRate })}</span>
                             <span className="px-2">·</span>
                             <span>{t('memberCompletion', { value: member.completionRate })}</span>
@@ -554,9 +474,6 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                       <span className="rounded-full border border-brand/25 bg-brand/10 px-3 py-1 text-[10px] font-bold text-brand">
                         {member.userId === currentCaptainId ? t('captainLabel') : t('memberStatusActive')}
                       </span>
-                      </div>
-                      <div className="ml-[34px] mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.10]">
-                        <div className="h-full rounded-full bg-slate-500" style={{ width: `${member.completionRate}%` }} />
                       </div>
                     </div>
                   ))
@@ -573,13 +490,13 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
           <>
             {primaryGroup ? (
               <>
-                <section className="surface-mockup p-5">
+                <section className="surface-mockup p-4">
                   <div className="flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-amber-400" aria-hidden="true" />
-                    <h1 className="text-sm font-extrabold uppercase tracking-[0.16em] text-white">{t('groupManagementTitle')}</h1>
+                    <Shield className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
+                    <h1 className="text-xs font-extrabold uppercase tracking-[0.14em] text-white">{t('groupManagementTitle')}</h1>
                   </div>
 
-                  <div className="mt-5 space-y-5">
+                  <div className="mt-3.5 space-y-3">
                     {isPrimaryGroupFounder ? (
                       <GroupNameForm
                         action={updateDashboardGroupNameAction}
@@ -612,35 +529,22 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                         submitLabel={t('saveShort')}
                       />
                     ) : primaryGroup.meeting_link ? (
-                      <div className="border-t border-white/[0.06] pt-4">
-                        <p className="text-sm font-semibold text-slate-400">{t('meetingLinkRequired')}</p>
-                        <a href={primaryGroup.meeting_link} target="_blank" rel="noreferrer" className="mt-2 block truncate rounded-[7px] bg-white/[0.06] px-3 py-2 text-sm font-semibold text-brand">
+                      <div className="border-t border-white/[0.06] pt-3">
+                        <p className="text-xs font-bold text-slate-400">{t('meetingLinkRequired')}</p>
+                        <a href={primaryGroup.meeting_link} target="_blank" rel="noreferrer" className="mt-1.5 block h-8 truncate rounded-[5px] bg-white/[0.06] px-3 py-1.5 text-[13px] font-semibold text-brand">
                           {primaryGroup.meeting_link}
                         </a>
                       </div>
                     ) : null}
 
-                    {isPrimaryGroupFounder ? (
-                      <InviteMemberForm
-                        action={inviteDashboardGroupMemberAction}
-                        locale={locale}
-                        groupId={primaryGroup.id}
-                        label={t('inviteMember')}
-                        emailLabel={t('email')}
-                        emailPlaceholder={t('emailPlaceholder')}
-                        pendingLabel={t('sendInvitePending')}
-                        submitLabel={t('sendInviteShort')}
-                        compact
-                      />
-                    ) : null}
                   </div>
                 </section>
 
-                <section className="surface-mockup p-5">
+                <section className="surface-mockup p-4">
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
                       <CalendarIcon />
-                      <h2 className="text-sm font-bold text-slate-300">{t('weeklyScheduleTitle')}</h2>
+                      <h2 className="text-xs font-bold text-slate-400">{t('weeklyScheduleTitle')}</h2>
                     </div>
                   </div>
 
@@ -660,49 +564,52 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                     />
                   ) : null}
 
-                  <div className="mt-4 space-y-2">
+                  <div className="mt-3 space-y-1.5">
                     {data.groupDashboard.schedules.length > 0 ? (
                       data.groupDashboard.schedules.map((schedule) => (
-                        <div key={schedule.id} className="flex flex-wrap items-center gap-2 rounded-[10px] bg-white/[0.035] px-3 py-2 sm:gap-3">
-                          <span className="rounded-full bg-brand/12 px-3 py-1 text-xs font-semibold text-brand">{weekdayLabels[schedule.weekday]}</span>
-                          <span className="text-sm font-medium text-slate-300">
+                        <div key={schedule.id} className="flex flex-wrap items-center gap-2 rounded-[8px] bg-white/[0.035] px-2 py-1.5 sm:gap-2.5">
+                          <span className="rounded-full bg-brand/12 px-2.5 py-0.5 text-[11px] font-bold text-brand">{weekdayLabels[schedule.weekday]}</span>
+                          <span className="text-xs font-semibold text-slate-300">
                             {schedule.start_time.slice(0, 5)} → {schedule.end_time.slice(0, 5)}
                           </span>
-                          <span className="text-xs font-semibold text-slate-500 sm:ml-auto">{t('questionGoalValue', { count: schedule.question_goal })}</span>
+                          <span className="text-[11px] font-bold text-slate-500 sm:ml-auto">{t('questionGoalValue', { count: schedule.question_goal })}</span>
                           {isPrimaryGroupFounder ? (
                             <form action={deleteDashboardWeeklyScheduleAction}>
                               <input type="hidden" name="locale" value={locale} />
                               <input type="hidden" name="groupId" value={primaryGroup.id} />
                               <input type="hidden" name="scheduleId" value={schedule.id} />
-                              <SubmitButton pendingLabel="" className="button-ghost px-1.5 py-1.5 text-slate-500 hover:text-white">
-                                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                              <SubmitButton pendingLabel="" className="button-ghost px-1 py-1 text-slate-500 hover:text-white">
+                                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                               </SubmitButton>
                             </form>
                           ) : null}
                         </div>
                       ))
                     ) : (
-                      <p className="text-sm text-slate-500">{t('weeklyScheduleEmpty')}</p>
+                      <p className="text-xs text-slate-500">{t('weeklyScheduleEmpty')}</p>
                     )}
                   </div>
                 </section>
 
-                <section className="surface-mockup p-5">
-                  <h2 className="text-sm font-bold text-slate-300">{t('membersTitle')} ({data.groupDashboard.memberPerformance.length})</h2>
+                <section className="surface-mockup p-4">
+                  <h2 className="text-xs font-bold text-slate-400">{t('membersTitle')} ({data.groupDashboard.memberPerformance.length})</h2>
                   {data.groupDashboard.memberPerformance.length < 2 ? (
-                    <p className="mt-3 text-xs font-semibold text-amber-400">{t('minimumMembersWarning')}</p>
+                    <p className="mt-2.5 flex items-start gap-1.5 text-[10px] font-bold text-amber-400">
+                      <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span>{t('sessionsCountWithSynchronizedMembers')}</span>
+                    </p>
                   ) : null}
-                  <div className="mt-4 space-y-3">
+                  <div className="mt-3 space-y-2">
                     {data.groupDashboard.memberPerformance.map((member) => (
-                      <div key={member.userId} className="flex items-center gap-3 rounded-[12px] bg-white/[0.04] px-3 py-3">
+                      <div key={member.userId} className="flex items-center gap-2 rounded-[8px] bg-white/[0.04] px-3 py-2">
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand/20 text-xs font-bold text-brand">
                           {member.initials}
                         </div>
                         <p className="truncate text-sm font-bold text-white">{member.name}</p>
                         {member.userId === currentCaptainId ? (
-                          <span className="text-xs font-extrabold uppercase tracking-[0.12em] text-amber-400">{t('captainLabel')}</span>
+                          <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-amber-400">{t('captainLabel')}</span>
                         ) : member.is_founder ? (
-                          <span className="text-xs font-extrabold uppercase tracking-[0.12em] text-amber-400">{t('founder')}</span>
+                          <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-amber-400">{t('founder')}</span>
                         ) : null}
                       </div>
                     ))}
@@ -710,29 +617,29 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                 </section>
 
                 {canTransferCaptain ? (
-                  <section className="surface-mockup border-amber-400/20 p-5">
+                  <section className="surface-mockup border-amber-400/20 p-4">
                     <div className="flex items-center gap-2 text-amber-400">
-                      <ArrowLeftRight className="h-5 w-5" aria-hidden="true" />
-                      <h2 className="text-sm font-bold">{t('transferCaptainTitle')}</h2>
+                      <ArrowLeftRight className="h-4 w-4" aria-hidden="true" />
+                      <h2 className="text-xs font-bold">{t('transferCaptainTitle')}</h2>
                     </div>
-                    <p className="mt-4 text-sm text-slate-500">{t('transferCaptainDescription')}</p>
+                    <p className="mt-3 text-xs text-slate-500">{t('transferCaptainDescription')}</p>
                     {captainTransferCandidates.length > 0 ? (
-                      <form action={transferDashboardCaptainAction} className="mt-4 flex items-center gap-2">
+                      <form action={transferDashboardCaptainAction} className="mt-3 flex items-center gap-2">
                         <input type="hidden" name="locale" value={locale} />
                         <input type="hidden" name="sessionId" value={captainSession?.id ?? ''} />
-                        <select name="targetUserId" className="field h-10 rounded-[7px] px-3 py-2 text-sm">
+                        <select name="targetUserId" className="field h-8 rounded-[5px] px-3 py-1.5 text-xs">
                           {captainTransferCandidates.map((member) => (
                             <option key={member.userId} value={member.userId}>
                               {member.name}
                             </option>
                           ))}
                         </select>
-                        <SubmitButton pendingLabel={t('transferCaptainPending')} className="button-secondary h-10 rounded-[7px] px-3 py-2 text-xs text-amber-300">
+                        <SubmitButton pendingLabel={t('transferCaptainPending')} className="button-secondary h-8 rounded-[5px] px-3 py-1.5 text-xs text-amber-300">
                           {t('transferCaptainAction')}
                         </SubmitButton>
                       </form>
                     ) : (
-                      <p className="mt-4 text-sm italic text-slate-500">{t('transferCaptainEmpty')}</p>
+                      <p className="mt-3 text-xs italic text-slate-500">{t('transferCaptainEmpty')}</p>
                     )}
                   </section>
                 ) : null}

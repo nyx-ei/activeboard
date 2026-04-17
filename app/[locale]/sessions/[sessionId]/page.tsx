@@ -1,4 +1,4 @@
-import { ArrowLeft, BarChart3, Check, Info, Play } from 'lucide-react';
+import { ArrowLeft, BarChart3, Check, Play } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
@@ -9,7 +9,7 @@ import { SubmitButton } from '@/components/ui/submit-button';
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
-import { getCertaintyCorrectnessStatus, getCertaintyCorrectnessTone, type ConfidenceLevel } from '@/lib/demo/confidence';
+import type { ConfidenceLevel } from '@/lib/demo/confidence';
 import { getSessionData } from '@/lib/demo/data';
 import { ANSWER_OPTIONS } from '@/lib/types/demo';
 
@@ -145,11 +145,6 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
     const questionAnswers = data.allAnswers.filter((answer) => answer.question_id === question.id);
     const distribution = getDistribution(questionAnswers, data.members.length);
     const myReviewAnswer = questionAnswers.find((answer) => answer.user_id === user.id) ?? null;
-    const reviewStatus = getCertaintyCorrectnessStatus(
-      myReviewAnswer?.confidence as ConfidenceLevel | null | undefined,
-      myReviewAnswer?.is_correct,
-    );
-    const reviewStatusTone = getCertaintyCorrectnessTone(reviewStatus);
     const canFinish = questions.filter((item) => item.correct_option).length >= questionGoal;
     const isLastQuestion = currentIndex >= questionGoal - 1;
 
@@ -206,6 +201,8 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
                 nextQuestionIndex={Math.min(questionGoal - 1, currentIndex + 1)}
                 isLastQuestion={isLastQuestion}
                 initialCorrectOption={question.correct_option as never}
+                participantAnswer={myReviewAnswer?.selected_option}
+                participantConfidence={myReviewAnswer?.confidence as ConfidenceLevel | null | undefined}
                 labels={{
                   correctAnswer: t('correctAnswer'),
                   save: t('saveReview'),
@@ -213,37 +210,18 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
                   saveAndNext: t('saveAndNextReview'),
                   updateAndNext: t('updateAndNextReview'),
                   savePending: t('saveReviewPending'),
+                  reviewStatus: {
+                    clearMastery: t('reviewStatus.clearMastery'),
+                    overconfidence: t('reviewStatus.overconfidence'),
+                    goodProgress: t('reviewStatus.goodProgress'),
+                    precisionToImprove: t('reviewStatus.precisionToImprove'),
+                    confidenceToBuild: t('reviewStatus.confidenceToBuild'),
+                    foundationToBuild: t('reviewStatus.foundationToBuild'),
+                  },
                 }}
               />
             </div>
           </section>
-
-          <details className="surface-mockup p-4">
-            <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-extrabold text-slate-400">
-              <span>
-                <span
-                  className={`mr-2 inline-block h-3 w-3 rounded-full ${
-                    reviewStatusTone === 'positive'
-                      ? 'bg-brand'
-                      : reviewStatusTone === 'warning'
-                        ? 'bg-orange-400'
-                        : 'bg-slate-500'
-                  }`}
-                />
-                {t(`reviewStatus.${reviewStatus}`)}
-              </span>
-              <Info className="h-4 w-4 text-slate-600" aria-hidden="true" />
-            </summary>
-            <div className="mt-4 rounded-[8px] border border-white/[0.10] p-4 text-sm text-slate-400">
-              <p className="font-bold text-white">{t('pointLegendTitle')}</p>
-              <p className="mt-3"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-brand" />{t('legendHighCorrect')}</p>
-              <p className="mt-2"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-red-400" />{t('legendHighWrong')}</p>
-              <p className="mt-2"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-yellow-400" />{t('legendMediumCorrect')}</p>
-              <p className="mt-2"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-orange-400" />{t('legendMediumWrong')}</p>
-              <p className="mt-2"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-sky-400" />{t('legendLowCorrect')}</p>
-              <p className="mt-2"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-slate-500" />{t('legendLowWrong')}</p>
-            </div>
-          </details>
 
           {canFinish ? (
             <form action={finishReviewSessionAction}>

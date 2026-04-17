@@ -133,12 +133,12 @@ export function UserScheduleForm({
       </div>
 
       <div className={compact ? 'mt-3 overflow-x-auto' : 'mt-5 overflow-x-auto'}>
-        <div className={compact ? 'min-w-[760px]' : 'min-w-[980px]'}>
+        <div className="w-max min-w-full">
           <div
             className={
               compact
-                ? 'grid grid-cols-[84px_repeat(17,minmax(34px,1fr))] gap-1.5'
-                : 'grid grid-cols-[120px_repeat(17,minmax(44px,1fr))] gap-2'
+                ? 'grid grid-cols-[72px_repeat(17,28px)] gap-1.5'
+                : 'grid grid-cols-[96px_repeat(17,36px)] gap-2'
             }
           >
             <div />

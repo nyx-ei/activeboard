@@ -39,6 +39,8 @@ function getCapabilityFeedbackKey(capability: UserTierCapability) {
       return 'upgradeRequiredToScheduleSession' as const;
     case 'canJoinMultipleGroups':
       return 'upgradeRequiredToJoinGroups' as const;
+    case 'canBrowseLookupLayer':
+      return 'upgradeRequiredToJoinGroups' as const;
     case 'canJoinSessions':
       return 'upgradeRequiredToJoinSession' as const;
     default:

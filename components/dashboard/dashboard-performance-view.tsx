@@ -86,11 +86,10 @@ export function DashboardPerformanceView({
   labels,
 }: DashboardPerformanceViewProps) {
   const heatmapByDate = new Map(heatmap.map((day) => [day.date, day]));
-  const latestHeatmapDay = heatmap.at(-1)?.date;
-  const latestDate = latestHeatmapDay ? parseIsoDate(latestHeatmapDay) : new Date();
-  latestDate.setUTCHours(0, 0, 0, 0);
-  const weekCount = 17;
-  const chartEnd = addUtcDays(startOfUtcWeek(latestDate), 6);
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const weekCount = 28;
+  const chartEnd = addUtcDays(startOfUtcWeek(today), 6);
   const chartStart = addUtcDays(chartEnd, -(weekCount * 7 - 1));
   const chartDays = Array.from({ length: weekCount * 7 }, (_, index) => {
     const date = addUtcDays(chartStart, index);
@@ -100,10 +99,9 @@ export function DashboardPerformanceView({
       date: dateKey,
       count: source?.count ?? 0,
       intensity: source?.intensity ?? 0,
-      isFuture: date.getTime() > latestDate.getTime(),
     };
   });
-  const weeks: Array<Array<HeatmapDay & { isFuture: boolean }>> = [];
+  const weeks: HeatmapDay[][] = [];
   for (let index = 0; index < chartDays.length; index += 7) {
     weeks.push(chartDays.slice(index, index + 7));
   }
@@ -147,31 +145,37 @@ export function DashboardPerformanceView({
           <span>GMT+1</span>
         </div>
 
-        <div className="mt-5 grid gap-4 md:grid-cols-[1fr_250px]">
-          <div className="min-w-0 overflow-x-auto pb-1">
-            <div className="min-w-[360px]">
-            <div className="ml-7 grid gap-[3px] text-[10px] font-semibold text-slate-600" style={{ gridTemplateColumns: `repeat(${weekCount}, 9px)` }}>
-              {monthMarkers.map((month, index) => (
-                <span key={`${month}-${index}`} className="whitespace-nowrap">
-                  {month}
-                </span>
-              ))}
-            </div>
-            <div className="mt-2 flex gap-2">
-              <div className="grid grid-rows-7 gap-[3px] pt-[2px] text-[9px] font-semibold leading-[10px] text-slate-600">
-                {labels.weekdays.map((label) => (
-                  <span key={label}>{label}</span>
+        <div className="mt-5 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
+          <div className="min-w-0 pb-1">
+            <div className="grid grid-cols-[18px_minmax(0,1fr)] gap-2">
+              <div />
+              <div
+                className="grid gap-[2px] overflow-visible text-[8px] font-semibold text-slate-600 sm:gap-[3px] sm:text-[9px] md:text-[10px]"
+                style={{ gridTemplateColumns: `repeat(${weekCount}, minmax(0, 1fr))` }}
+              >
+                {monthMarkers.map((month, index) => (
+                  <span key={`${month}-${index}`} className="whitespace-nowrap leading-none">
+                    {month}
+                  </span>
                 ))}
               </div>
-              <div className="flex gap-[3px]">
+
+              <div className="grid grid-rows-7 gap-[2px] pt-[2px] text-[8px] font-semibold leading-none text-slate-600 sm:gap-[3px] sm:text-[9px]">
+                {labels.weekdays.map((label) => (
+                  <span key={label} className="flex items-center">
+                    {label}
+                  </span>
+                ))}
+              </div>
+              <div className="flex min-w-0 gap-[2px] sm:gap-[3px]">
                 {weeks.map((week, weekIndex) => (
-                  <div key={weekIndex} className="grid grid-rows-7 gap-[3px]">
+                  <div key={weekIndex} className="grid min-w-0 flex-1 grid-rows-7 gap-[2px] sm:gap-[3px]">
                     {Array.from({ length: 7 }).map((_, dayIndex) => {
                       const day = week[dayIndex];
                       return (
                         <div
                           key={`${weekIndex}-${dayIndex}`}
-                          className={`h-[9px] w-[9px] rounded-[2px] ${day && !day.isFuture ? getHeatmapCellClass(day.intensity) : 'bg-transparent'}`}
+                          className={`aspect-square w-full rounded-[2px] ${day ? getHeatmapCellClass(day.intensity) : 'bg-[#1f2b3d]'}`}
                           title={day ? `${day.date} - ${day.count}` : undefined}
                         />
                       );
@@ -180,11 +184,10 @@ export function DashboardPerformanceView({
                 ))}
               </div>
             </div>
-            </div>
           </div>
 
           <aside className="border-white/[0.06] md:border-l md:pl-4">
-            <div className="mb-4 flex items-center gap-2 text-[11px] font-semibold text-slate-500">
+            <div className="mb-4 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-500">
               <span>{labels.none}</span>
               <span className="h-2 w-2 rounded-[2px] bg-[#1f2b3d]" />
               <span>{labels.less}</span>

@@ -428,7 +428,7 @@ export async function joinGroupAction(formData: FormData) {
 
   await requireUserTierCapability({
     userId: user.id,
-    capability: 'canJoinMultipleGroups',
+    capability: 'canBrowseLookupLayer',
     locale,
     redirectTo: `/${locale}/dashboard`,
   });
