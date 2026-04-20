@@ -323,6 +323,34 @@ Original sequencing was `#53 → #54 → #55 → #56 → #57 → #58`. The v8 re
 
 - [#79: Closed beta with 2–3 WhatsApp study groups](https://github.com/nyx-ei/activeboard/issues/79) — Not started
 - [#80: UX iteration pass based on beta feedback](https://github.com/nyx-ei/activeboard/issues/80) — Partially implemented (client mockup alignment pass)
+- [#89: Remove Error frequency tile from dashboard performance view](https://github.com/nyx-ei/activeboard/issues/89) — Not started (flat error rate is redundant with #75 error-type classification on the profile page)
+- [#90: Soften the header divider under the app shell](https://github.com/nyx-ei/activeboard/issues/90) — Not started
+- [#91: Modals: inconsistent centering and missing Escape / backdrop dismissal](https://github.com/nyx-ei/activeboard/issues/91) — Not started (shared modal primitive + migrate the two existing modals)
+- [#92: Header: duplicate avatar — one decorative, one interactive, visually identical](https://github.com/nyx-ei/activeboard/issues/92) — Not started (delete decorative avatar; keep the functional profile link)
+- [#93: Hide 'Join live groups' entirely when user can't join](https://github.com/nyx-ei/activeboard/issues/93) — Not started (gate CTA on `canBrowseLookupLayer`; remove lock-icon-on-CTA pattern and unreachable upgrade block)
+- [#94: Rebrand header live-groups pill: smart click → live modal or paywall modal](https://github.com/nyx-ei/activeboard/issues/94) — Not started (drop lock/billing link; open Live modal for eligible users, Paywall modal for gated users; extract `PaywallModal` component)
+
+### Multi-group rework — kill the global "active group" concept
+
+Tracked as epic **[#98](https://github.com/nyx-ei/activeboard/issues/98)**. Product direction: fuse all group-related features under a single **Group** entry. Shell chrome stops carrying an ambient "active group"; group context lives only on `/groups/[id]` pages. Session creation and settings all fold into the per-group page. Land order: #95 → #97 → #96.
+
+- [#95: Kill global 'active group' concept in shell chrome](https://github.com/nyx-ei/activeboard/issues/95) — Not started (remove `ActiveGroupName`, demote `GroupSwitcherMenu` to user menu, drop `?groupId` from shell and bottom nav)
+- [#97: New `/groups` index + unified `/groups/[id]` page — fuse all group features](https://github.com/nyx-ei/activeboard/issues/97) — Not started (one per-group page: header/edit, meeting link, schedule, members + invite, per-group sessions + session creation; retires `?view=settings`)
+- [#96: Cross-group dashboard — Sessions list spans all groups; retire `?view=group`](https://github.com/nyx-ei/activeboard/issues/96) — Not started (dashboard Sessions shows every group with row labels; session creation moves off the dashboard)
+
+### Shell & dashboard performance
+
+Tracked as epic **[#101](https://github.com/nyx-ei/activeboard/issues/101)**. HAR capture from production shows two independent causes of perceived lag on navigation: heavy dashboard SSR and a broad-but-shallow service worker.
+
+- [#99: Dashboard RSC slowness — 2+ second response on navigation](https://github.com/nyx-ei/activeboard/issues/99) — Not started (profile `getDashboardData`, parallelize queries, consider materialized view for analytics, tighten hover-prefetch on expensive routes)
+- [#100: Service worker adds overhead to every request without meaningful cache coverage](https://github.com/nyx-ei/activeboard/issues/100) — Not started (narrow fetch handler, cache-first for hashed Next assets, skip RSC/auth'd endpoints, version cache name)
+
+### Signup flow rework (v2)
+
+Tracked as epic **[#104](https://github.com/nyx-ei/activeboard/issues/104)**. Replace today's onboarding wizard with two focused variants and close three signup-era gaps: explicit language, explicit timezone, exam type distinct from exam period. Atomic commit at the final step — no orphan accounts.
+
+- [#102: Founder signup — 5-step wizard (Account → Plan → Schedule → Banks → Team)](https://github.com/nyx-ei/activeboard/issues/102) — Not started
+- [#103: Invitee signup — 3-step join-via-link wizard (inherits lang/timezone/exam from group)](https://github.com/nyx-ei/activeboard/issues/103) — Not started
 
 Key metrics to track during beta: questions-per-session, return rate, mobile vs. desktop split, session completion rate, 85→100-question funnel (warning to payment).
 
@@ -420,7 +448,7 @@ Target weekly cadence from the v8 spec:
 - New v8 items needing GitHub issues: ~13 (including rework issues, QuestionClassification, PersonalReflection, confidence migration, group role simplification, etc.)
 - Deferred: 5 issues (#32–#36) + v2 question types
 - **Current focus: Milestone 6 beta validation and/or Milestone 7 Lookup Layer**
-- Last updated: April 10, 2026
+- Last updated: April 20, 2026
 
 ---
 
