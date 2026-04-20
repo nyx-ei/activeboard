@@ -2,7 +2,7 @@
 
 import { ArrowLeft, CalendarDays, Check, Clock3, Mail, Trash2, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/i18n/navigation';
 
 type CreateGroupWizardLabels = {
   title: string;
