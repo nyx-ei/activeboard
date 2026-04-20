@@ -1,33 +1,47 @@
 'use client';
 
-import { CreditCard, User } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { BookOpen, CreditCard, Globe, User } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useSearchParams } from 'next/navigation';
 
-import { LogoutButton } from '@/components/auth/logout-button';
+import { Link } from '@/i18n/navigation';
 import { cn } from '@/lib/utils';
 
 type ProfileMenuProps = {
   initials: string;
   name: string;
   email: string;
+  isCaptain?: boolean;
+  locale: 'en' | 'fr';
   profileHref?: string | null;
   profileLabel?: string | null;
+  examHref?: string | null;
+  examLabel?: string | null;
   billingHref?: string | null;
   billingLabel?: string | null;
-  groupHref?: string | null;
-  groupLabel: string;
-  groupHint?: string | null;
+  languageLabel: string;
 };
 
 export function ProfileMenu({
   initials,
+  name,
+  email,
+  isCaptain = false,
+  locale,
   profileHref,
   profileLabel,
+  examHref,
+  examLabel,
   billingHref,
   billingLabel,
+  languageLabel,
 }: ProfileMenuProps) {
   const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const searchParams = useSearchParams();
+  const search = useMemo(() => searchParams.toString(), [searchParams]);
+  const nextLocale = locale === 'en' ? 'fr' : 'en';
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -57,46 +71,78 @@ export function ProfileMenu({
         type="button"
         onClick={() => setOpen((value) => !value)}
         className={cn(
-          'flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.06] text-sm font-bold text-white transition hover:bg-white/[0.1]',
-          open && 'bg-white/[0.1]',
+          'relative flex h-9 w-9 items-center justify-center rounded-full border border-[#176b55] bg-[#053b32] text-[11px] font-extrabold text-[#22e39c] shadow-[inset_0_0_0_1px_rgba(34,227,156,0.14)] transition hover:bg-[#07483d]',
+          open && 'ring-2 ring-white/70',
         )}
         aria-expanded={open}
         aria-haspopup="menu"
       >
         {initials}
+        <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-[#030712] bg-brand" />
+        {isCaptain ? (
+          <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-400 text-[8px] font-extrabold uppercase leading-none text-[#3b2600]">
+            c
+          </span>
+        ) : null}
       </button>
 
       {open ? (
-        <div className="absolute right-0 top-[calc(100%+10px)] z-30 w-[184px] rounded-[14px] border border-white/[0.08] bg-[#11192c] p-2 shadow-[0_18px_60px_rgba(0,0,0,0.45)]">
-          <div className="space-y-1">
+        <div className="absolute right-0 top-[calc(100%+10px)] z-50 w-[238px] overflow-hidden rounded-[12px] border border-white/[0.08] bg-[#11192c] shadow-[0_20px_70px_rgba(0,0,0,0.5)]">
+          <div className="px-4 py-4">
+            <p className="truncate text-base font-extrabold text-white">{name}</p>
+            <p className="mt-1 truncate text-sm font-semibold text-slate-500">{email}</p>
+          </div>
+          <div className="border-t border-white/[0.06] py-1">
             {profileHref && profileLabel ? (
-              <a
+              <Link
                 href={profileHref}
-                className="flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.05] hover:text-white"
+                className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-300 transition hover:bg-white/[0.05] hover:text-white"
                 onClick={() => setOpen(false)}
               >
-                <User className="h-3.5 w-3.5 text-slate-500" aria-hidden="true" />
+                <User className="h-4 w-4 text-slate-500" aria-hidden="true" strokeWidth={1.7} />
                 <span>{profileLabel}</span>
-              </a>
+              </Link>
+            ) : null}
+
+            {examHref && examLabel ? (
+              <Link
+                href={examHref}
+                className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-300 transition hover:bg-white/[0.05] hover:text-white"
+                onClick={() => setOpen(false)}
+              >
+                <BookOpen className="h-4 w-4 text-slate-500" aria-hidden="true" strokeWidth={1.7} />
+                <span>{examLabel}</span>
+              </Link>
             ) : null}
 
             {billingHref && billingLabel ? (
-              <a
+              <Link
                 href={billingHref}
-                className="flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.05] hover:text-white"
+                className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-300 transition hover:bg-white/[0.05] hover:text-white"
                 onClick={() => setOpen(false)}
               >
-                <CreditCard className="h-3.5 w-3.5 text-slate-500" aria-hidden="true" />
+                <CreditCard className="h-4 w-4 text-slate-500" aria-hidden="true" strokeWidth={1.7} />
                 <span>{billingLabel}</span>
-              </a>
+              </Link>
             ) : null}
+          </div>
 
-            <div className="border-t border-white/[0.06] pt-1">
-              <LogoutButton
-                showIcon
-                className="w-full justify-start gap-2 rounded-[10px] border-none bg-transparent px-3 py-2 text-sm font-medium text-rose-400 hover:bg-white/[0.05] hover:text-rose-300"
-              />
-            </div>
+          <div className="border-t border-white/[0.06] py-1">
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => {
+                setOpen(false);
+                startTransition(() => {
+                  const localizedPath = window.location.pathname.replace(/^\/(en|fr)(?=\/|$)/, `/${nextLocale}`);
+                  window.location.assign(search ? `${localizedPath}?${search}` : localizedPath);
+                });
+              }}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-slate-300 transition hover:bg-white/[0.05] hover:text-white disabled:opacity-60"
+            >
+              <Globe className="h-4 w-4 text-slate-500" aria-hidden="true" strokeWidth={1.7} />
+              <span>{languageLabel}</span>
+            </button>
           </div>
         </div>
       ) : null}

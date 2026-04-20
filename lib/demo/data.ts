@@ -321,6 +321,7 @@ export const getDashboardData = cache(
     includeMemberPerformance = includeGroupDashboard,
     includeUserSchedule = true,
     activeGroupId?: string | null,
+    includeUserAnswerStats = true,
   ) => {
   const perf = createPerfTracker(`getDashboardData:${user.id}`);
   const supabase = createSupabaseServerClient();
@@ -380,16 +381,18 @@ export const getDashboardData = cache(
       : [[], [], [], [] as DashboardSession[]];
   perf.step('dashboard_core_loaded');
 
-  const myAnswers =
-    (
-      await supabase
-        .schema('public')
-        .from('answers')
-        .select('question_id, confidence, is_correct, answered_at')
-        .eq('user_id', user.id)
-        .order('answered_at', { ascending: true })
-    ).data ?? [];
-  const sessionIds = sessions.map((session) => session.id);
+  const shouldLoadUserAnswers = includeUserAnswerStats || includeProfileAnalytics;
+  const myAnswers = shouldLoadUserAnswers
+    ? (
+        await supabase
+          .schema('public')
+          .from('answers')
+          .select('question_id, confidence, is_correct, answered_at')
+          .eq('user_id', user.id)
+          .order('answered_at', { ascending: true })
+      ).data ?? []
+    : [];
+  const sessionIds = includeUserAnswerStats ? sessions.map((session) => session.id) : [];
   const sessionQuestions =
     sessionIds.length > 0
       ? (

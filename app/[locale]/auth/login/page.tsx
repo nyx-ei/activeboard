@@ -4,6 +4,7 @@ import { getTranslations } from 'next-intl/server';
 
 import { AuthForm } from '@/components/auth/auth-form';
 import { getCurrentUser } from '@/lib/auth';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { AppLocale } from '@/i18n/routing';
 
 type LoginPageProps = {
@@ -16,7 +17,16 @@ export default async function LoginPage({ params }: LoginPageProps) {
   const t = await getTranslations('Auth');
 
   if (user) {
-    redirect(`/${locale}/dashboard`);
+    const supabase = createSupabaseServerClient();
+    const { data: firstMembership } = await supabase
+      .schema('public')
+      .from('group_members')
+      .select('group_id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle();
+
+    redirect(firstMembership?.group_id ? `/${locale}/dashboard` : `/${locale}/create-group`);
   }
 
   return (
@@ -29,7 +39,7 @@ export default async function LoginPage({ params }: LoginPageProps) {
               </div>
             }
           >
-            <AuthForm />
+            <AuthForm requireExamSessionOnSignUp={false} signUpRedirectToOverride={`/${locale}/create-group`} />
           </Suspense>
       </div>
     </main>

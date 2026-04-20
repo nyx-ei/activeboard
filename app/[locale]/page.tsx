@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
 import { Link } from '@/i18n/navigation';
+import { LandingSignupModal } from '@/components/onboarding/landing-signup-modal';
 import type { AppLocale } from '@/i18n/routing';
 import { getCurrentUser } from '@/lib/auth';
 
@@ -74,9 +75,9 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
               </span>
             ))}
           </div>
-          <Link href="/create-group" className="mt-8 inline-flex rounded-[7px] bg-brand px-5 py-4 text-base font-bold text-white shadow-[0_20px_50px_rgba(16,185,129,0.22)] transition hover:bg-brand-strong">
+          <LandingSignupModal locale={locale} closeLabel={t('close')} className="mt-8 inline-flex rounded-[7px] bg-brand px-5 py-4 text-base font-bold text-white shadow-[0_20px_50px_rgba(16,185,129,0.22)] transition hover:bg-brand-strong">
             {t('primaryCta')}
-          </Link>
+          </LandingSignupModal>
           <p className="mt-4 text-sm font-medium text-slate-500">{t('noCreditCard')}</p>
         </div>
         <div className="relative hidden min-h-[420px] items-center justify-center lg:flex">
@@ -169,9 +170,9 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
                 </p>
               ))}
             </div>
-            <Link href="/create-group" className="mt-7 flex w-full justify-center rounded-[8px] border border-white/[0.08] px-5 py-4 text-base font-semibold text-slate-300 transition hover:border-brand/50 hover:text-white">
+            <LandingSignupModal locale={locale} closeLabel={t('close')} className="mt-7 flex w-full justify-center rounded-[8px] border border-white/[0.08] px-5 py-4 text-base font-semibold text-slate-300 transition hover:border-brand/50 hover:text-white">
               {t('starterCta')}
-            </Link>
+            </LandingSignupModal>
           </article>
 
           <article className="rounded-[12px] border border-brand/20 bg-[#06131b] p-8">
@@ -217,9 +218,9 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
         <h2 className="max-w-[1180px] text-[40px] font-medium leading-tight tracking-[-0.04em] text-white sm:text-[50px]">
           {t('finalTitle')}
         </h2>
-        <Link href="/create-group" className="mt-8 inline-flex rounded-[7px] bg-brand px-5 py-4 text-base font-bold text-white transition hover:bg-brand-strong">
+        <LandingSignupModal locale={locale} closeLabel={t('close')} className="mt-8 inline-flex rounded-[7px] bg-brand px-5 py-4 text-base font-bold text-white transition hover:bg-brand-strong">
           {t('primaryCta')}
-        </Link>
+        </LandingSignupModal>
         <p className="mt-4 max-w-[520px] text-sm font-medium leading-6 text-slate-500">{t('finalNote')}</p>
       </section>
 

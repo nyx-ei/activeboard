@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Lock } from 'lucide-react';
 
 import { Link } from '@/i18n/navigation';
 import { SubmitButton } from '@/components/ui/submit-button';
+import { ModalPortal } from '@/components/ui/modal-portal';
 
 type LiveGroup = {
   id: string;
@@ -24,6 +25,7 @@ type LiveGroupsModalProps = {
   locale: string;
   groups: LiveGroup[];
   canJoinLiveGroups: boolean;
+  initialOpen?: boolean;
   joinGroupAction: (formData: FormData) => void | Promise<void>;
   labels: {
     open: string;
@@ -81,8 +83,17 @@ function formatElapsedTime(minutes: number, labels: LiveGroupsModalProps['labels
   return labels.yearsAgo.replace('{count}', String(Math.floor(months / 12)));
 }
 
-export function LiveGroupsModal({ locale, groups, canJoinLiveGroups, joinGroupAction, labels }: LiveGroupsModalProps) {
-  const [open, setOpen] = useState(false);
+export function LiveGroupsModal({ locale, groups, canJoinLiveGroups, initialOpen = false, joinGroupAction, labels }: LiveGroupsModalProps) {
+  const [open, setOpen] = useState(initialOpen);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [open]);
 
   return (
     <>
@@ -96,8 +107,10 @@ export function LiveGroupsModal({ locale, groups, canJoinLiveGroups, joinGroupAc
       </button>
 
       {open ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 px-0 backdrop-blur-[2px] sm:px-4 sm:py-6">
-          <section className="max-h-[82vh] w-full max-w-[548px] animate-in slide-in-from-bottom-4 overflow-y-auto rounded-t-[16px] border border-white/[0.08] bg-[#11192c] p-5 shadow-[0_-24px_80px_rgba(0,0,0,0.6)] duration-200 sm:rounded-[14px]">
+        <ModalPortal>
+        <div className="fixed inset-0 flex items-end justify-center bg-black/70 px-0 backdrop-blur-[2px] sm:px-4 sm:py-6" style={{ zIndex: 1000 }}>
+          <button type="button" className="absolute inset-0 cursor-default" aria-label={labels.close} onClick={() => setOpen(false)} />
+          <section className="relative max-h-[82vh] w-full max-w-[548px] animate-in slide-in-from-bottom-4 overflow-y-auto rounded-t-[16px] border border-white/[0.08] bg-[#11192c] p-5 shadow-[0_-24px_80px_rgba(0,0,0,0.6)] duration-200 [scrollbar-width:none] sm:rounded-[14px] [&::-webkit-scrollbar]:hidden">
             <div className="flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-lg font-extrabold text-white">
                 <span className="h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_0_4px_rgba(239,68,68,0.08)]" />
@@ -171,21 +184,24 @@ export function LiveGroupsModal({ locale, groups, canJoinLiveGroups, joinGroupAc
                 );
               })}
 
-              <div className="flex items-center justify-between gap-4 rounded-[12px] border border-amber-400/20 bg-white/[0.035] p-4">
-                <div className="flex min-w-0 items-center gap-3">
-                  <Lock className="h-5 w-5 shrink-0 text-amber-400" aria-hidden="true" strokeWidth={1.7} />
-                  <div>
-                    <p className="text-sm font-extrabold text-white">{labels.upgradeRequired}</p>
-                    <p className="text-xs text-slate-500">{labels.upgradeDescription}</p>
+              {!canJoinLiveGroups ? (
+                <div className="flex items-center justify-between gap-4 rounded-[12px] border border-amber-400/20 bg-white/[0.035] p-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Lock className="h-5 w-5 shrink-0 text-amber-400" aria-hidden="true" strokeWidth={1.7} />
+                    <div>
+                      <p className="text-sm font-extrabold text-white">{labels.upgradeRequired}</p>
+                      <p className="text-xs text-slate-500">{labels.upgradeDescription}</p>
+                    </div>
                   </div>
+                  <Link href="/billing" className="button-primary h-9 rounded-[8px] px-4 text-sm font-extrabold">
+                    {labels.upgrade}
+                  </Link>
                 </div>
-                <Link href="/billing" className="button-primary h-9 rounded-[8px] px-4 text-sm font-extrabold">
-                  {labels.upgrade}
-                </Link>
-              </div>
+              ) : null}
             </div>
           </section>
         </div>
+        </ModalPortal>
       ) : null}
     </>
   );

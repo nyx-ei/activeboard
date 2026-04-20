@@ -1,17 +1,16 @@
 import { getTranslations } from 'next-intl/server';
-import { AlertTriangle, ArrowLeftRight, Shield, Trash2 } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
 import { RealtimeRefresh } from '@/components/app/realtime-refresh';
-import { LogoutButton } from '@/components/auth/logout-button';
 import { DashboardPerformanceView } from '@/components/dashboard/dashboard-performance-view';
 import { DashboardSessionsView } from '@/components/dashboard/dashboard-sessions-view';
-import { GroupMeetingLinkForm, GroupNameForm, InviteMemberForm } from '@/components/dashboard/group-settings-forms';
+import { GroupEditModal } from '@/components/dashboard/group-edit-modal';
+import { GroupScheduleModal } from '@/components/dashboard/group-schedule-modal';
+import { InviteMemberForm } from '@/components/dashboard/group-settings-forms';
 import { LiveGroupsModal } from '@/components/dashboard/live-groups-modal';
-import { SettingsWeeklyScheduleForm } from '@/components/dashboard/settings-weekly-schedule-form';
 import { PendingGroupDraftSync } from '@/components/onboarding/pending-group-draft-sync';
 import { CalendarIcon, UsersIcon } from '@/components/ui/dashboard-icons';
-import { SubmitButton } from '@/components/ui/submit-button';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
 import { getUserAccessState, hasUserTierCapability } from '@/lib/billing/gating';
@@ -27,9 +26,8 @@ import {
   deleteDashboardWeeklyScheduleAction,
   joinGroupAction,
   joinSessionByCodeAction,
-  transferDashboardCaptainAction,
-  updateDashboardGroupMeetingLinkAction,
-  updateDashboardGroupNameAction,
+  updateDashboardGroupDetailsAction,
+  updateDashboardWeeklySchedulesAction,
 } from './actions';
 
 type DashboardPageProps = {
@@ -39,6 +37,7 @@ type DashboardPageProps = {
     feedbackTone?: string;
     view?: string;
     groupId?: string;
+    live?: string;
   };
 };
 
@@ -53,28 +52,33 @@ function getInitials(value: string) {
   );
 }
 
+function formatMeridiemTime(value: string) {
+  const [rawHour, minute = '00'] = value.slice(0, 5).split(':');
+  const hour = Number(rawHour);
+  const suffix = hour >= 12 ? 'pm' : 'am';
+  const twelveHour = hour % 12 === 0 ? 12 : hour % 12;
+  return `${String(twelveHour).padStart(2, '0')}:${minute} ${suffix}`;
+}
+
 export default async function DashboardPage({ params, searchParams }: DashboardPageProps) {
   const locale = params.locale as AppLocale;
   const user = await requireUser(locale);
   const t = await getTranslations('Dashboard');
   const feedbackT = await getTranslations('Feedback');
-  const view =
-    searchParams.view === 'performance' || searchParams.view === 'group' || searchParams.view === 'settings'
-      ? searchParams.view
-      : 'sessions';
+  const view = searchParams.view === 'performance' || searchParams.view === 'group' ? searchParams.view : 'sessions';
   const isGroupView = view === 'group';
   const isPerformanceView = view === 'performance';
-  const isSettingsView = view === 'settings';
   const isSessionsView = view === 'sessions';
   const requestedGroupId = typeof searchParams.groupId === 'string' ? searchParams.groupId : null;
   const [data, accessState, currentProfile] = await Promise.all([
     getDashboardData(
       user,
-      isSessionsView || isGroupView || isSettingsView,
+      isSessionsView || isGroupView,
       isPerformanceView,
-      isGroupView || isSettingsView,
+      isGroupView,
       false,
       requestedGroupId,
+      isSessionsView || isPerformanceView,
     ),
     getUserAccessState(user.id),
     isGroupView
@@ -91,7 +95,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   const canBrowseLookupLayer = hasUserTierCapability(accessState, 'canBrowseLookupLayer');
   const primaryGroup = data.groupDashboard.group ?? data.groups.find((group) => group.is_founder) ?? data.groups[0] ?? null;
   const activeGroupId = primaryGroup?.id ?? null;
-  const activeGroupSessions = activeGroupId ? data.sessions.filter((session) => session.group_id === activeGroupId) : data.sessions;
+  const dashboardSessions = data.sessions;
   const isPrimaryGroupFounder = Boolean(primaryGroup?.is_founder);
   const captainSession = primaryGroup
     ? data.sessions.find((session) => session.group_id === primaryGroup.id && session.status === 'active') ??
@@ -99,8 +103,6 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
       null
     : null;
   const currentCaptainId = captainSession?.leader_id ?? null;
-  const canTransferCaptain = Boolean(captainSession && currentCaptainId === user.id);
-  const captainTransferCandidates = data.groupDashboard.memberPerformance.filter((member) => member.userId !== currentCaptainId);
   const weekdayLabels = {
     monday: t('weekdayMonday'),
     tuesday: t('weekdayTuesday'),
@@ -129,7 +131,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
     ? [primaryGroup.invite_code, examSessionLabel, locale === 'fr' ? 'Français' : 'English', 'GMT+1'].join(' · ')
     : t('noData');
   const liveGroups =
-    isGroupView || isSettingsView
+    isGroupView
       ? await (async () => {
           const supabaseAdmin = createSupabaseAdminClient();
           const currentGroupIds = new Set(data.groups.map((group) => group.id));
@@ -228,7 +230,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
           <DashboardSessionsView
             locale={locale}
             primaryGroupId={activeGroupId}
-            sessions={activeGroupSessions}
+            sessions={dashboardSessions}
             weeklyCompletedQuestions={data.groupDashboard.weeklyCompletedQuestions}
             weeklyTargetQuestions={data.groupDashboard.weeklyTargetQuestions}
             weeklyProgressPercentage={data.groupDashboard.weeklyProgressPercentage}
@@ -334,32 +336,35 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
 
         {isGroupView ? (
           <>
-            <LiveGroupsModal
-              locale={locale}
-              groups={liveGroups}
-              canJoinLiveGroups={canBrowseLookupLayer}
-              joinGroupAction={joinGroupAction}
-              labels={{
-                open: t('joinLiveGroups'),
-                title: t('liveGroupsTitle'),
-                close: t('close'),
-                join: t('liveGroupJoin'),
-                joinPending: t('joinGroupPending'),
-                upgradeRequired: t('unlimitedPlanRequired'),
-                upgradeDescription: t('unlimitedPlanRequiredDescription'),
-                upgrade: t('upgrade'),
-                empty: t('liveGroupsEmpty'),
-                remainingPlaces: t('liveGroupRemainingPlaces', { count: '{count}' }),
-                oneRemainingPlace: t('oneRemainingPlace'),
-                secondsAgo: t('liveGroupSecondsAgo', { count: '{count}' }),
-                minutesAgo: t('liveGroupMinutesAgo', { count: '{count}' }),
-                hoursAgo: t('liveGroupHoursAgo', { count: '{count}' }),
-                daysAgo: t('liveGroupDaysAgo', { count: '{count}' }),
-                weeksAgo: t('liveGroupWeeksAgo', { count: '{count}' }),
-                monthsAgo: t('liveGroupMonthsAgo', { count: '{count}' }),
-                yearsAgo: t('liveGroupYearsAgo', { count: '{count}' }),
-              }}
-            />
+            {canBrowseLookupLayer ? (
+              <LiveGroupsModal
+                locale={locale}
+                groups={liveGroups}
+                canJoinLiveGroups={canBrowseLookupLayer}
+                initialOpen={searchParams.live === '1'}
+                joinGroupAction={joinGroupAction}
+                labels={{
+                  open: t('joinLiveGroups'),
+                  title: t('liveGroupsTitle'),
+                  close: t('close'),
+                  join: t('liveGroupJoin'),
+                  joinPending: t('joinGroupPending'),
+                  upgradeRequired: t('unlimitedPlanRequired'),
+                  upgradeDescription: t('unlimitedPlanRequiredDescription'),
+                  upgrade: t('upgrade'),
+                  empty: t('liveGroupsEmpty'),
+                  remainingPlaces: t('liveGroupRemainingPlaces', { count: '{count}' }),
+                  oneRemainingPlace: t('oneRemainingPlace'),
+                  secondsAgo: t('liveGroupSecondsAgo', { count: '{count}' }),
+                  minutesAgo: t('liveGroupMinutesAgo', { count: '{count}' }),
+                  hoursAgo: t('liveGroupHoursAgo', { count: '{count}' }),
+                  daysAgo: t('liveGroupDaysAgo', { count: '{count}' }),
+                  weeksAgo: t('liveGroupWeeksAgo', { count: '{count}' }),
+                  monthsAgo: t('liveGroupMonthsAgo', { count: '{count}' }),
+                  yearsAgo: t('liveGroupYearsAgo', { count: '{count}' }),
+                }}
+              />
+            ) : null}
             <section className="surface-mockup p-4">
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
@@ -367,6 +372,12 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                   <p className="mt-1 text-xs text-slate-500">
                     {groupInfoSummary}
                   </p>
+                  {!primaryGroup?.meeting_link ? (
+                    <p className="mt-3 flex items-center gap-1.5 text-[11px] font-bold text-amber-400">
+                      <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+                      {t('meetingLinkRequiredWarning')}
+                    </p>
+                  ) : null}
                   <p className="hidden">
                     {primaryGroup ? `${primaryGroup.invite_code} · ${groupExamSummary}` : groupExamSummary}
                   </p>
@@ -374,7 +385,31 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                     {primaryGroup ? `${locale.toUpperCase()} · ${primaryGroup.memberCount}/${primaryGroup.max_members ?? 5}` : t('noData')}
                   </p>
                 </div>
-                <span className="h-2 w-2 rounded-full bg-brand" />
+                {isPrimaryGroupFounder && primaryGroup ? (
+                  <GroupEditModal
+                    action={updateDashboardGroupDetailsAction}
+                    locale={locale}
+                    groupId={primaryGroup.id}
+                    initialName={primaryGroup.name}
+                    initialMeetingLink={primaryGroup.meeting_link ?? ''}
+                    labels={{
+                      open: t('editGroup'),
+                      title: t('editGroupTitle'),
+                      close: t('close'),
+                      cancel: t('cancel'),
+                      groupName: t('groupName'),
+                      groupNamePlaceholder: t('groupNamePlaceholder'),
+                      meetingLink: t('meetingToolLink'),
+                      meetingLinkPlaceholder: t('meetingLinkRequiredPlaceholder'),
+                      meetingLinkWarning: t('meetingLinkRequiredWarning'),
+                      helper: t('meetingToolHelper'),
+                      savePending: t('saveNamePending'),
+                      save: t('save'),
+                    }}
+                  />
+                ) : (
+                  <span className="h-2 w-2 rounded-full bg-brand" />
+                )}
               </div>
             </section>
 
@@ -384,9 +419,36 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
             </section>
 
             <section className="surface-mockup p-5">
-              <div className="flex items-center gap-2">
-                <CalendarIcon />
-                <p className="text-sm font-bold text-white">{t('scheduleAndGoalTitle')}</p>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <CalendarIcon />
+                  <p className="text-sm font-bold text-white">{t('scheduleAndGoalTitle')}</p>
+                </div>
+                {isPrimaryGroupFounder && primaryGroup ? (
+                  <div className="flex items-center gap-1">
+                    <GroupScheduleModal
+                      addAction={addDashboardWeeklyScheduleAction}
+                      updateAction={updateDashboardWeeklySchedulesAction}
+                      deleteAction={deleteDashboardWeeklyScheduleAction}
+                      locale={locale}
+                      groupId={primaryGroup.id}
+                      schedules={data.groupDashboard.schedules}
+                      weekdayLabels={weekdayLabels}
+                      labels={{
+                        open: locale === 'fr' ? 'Modifier les horaires' : 'Edit schedules',
+                        title: t('scheduleAndGoalTitle'),
+                        description: t('scheduleAndGoalDescription'),
+                        close: t('close'),
+                        cancel: t('cancel'),
+                        addDay: locale === 'fr' ? 'Ajouter' : 'Add',
+                        saveSchedule: t('save'),
+                        saveSchedulePending: t('saveSchedulePending'),
+                        questionGoal: t('questionGoalValue', { count: 50 }),
+                        removeDay: t('removeDay'),
+                      }}
+                    />
+                  </div>
+                ) : null}
               </div>
               <div className="mt-4 space-y-2">
                 {data.groupDashboard.schedules.length > 0 ? (
@@ -396,7 +458,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
                       {weekdayLabels[schedule.weekday]}
                     </span>
                     <span className="font-semibold text-slate-300">
-                      {schedule.start_time.slice(0, 5)} – {schedule.end_time.slice(0, 5)}
+                      {formatMeridiemTime(schedule.start_time)} – {formatMeridiemTime(schedule.end_time)}
                     </span>
                     <span className="col-span-2 rounded-[7px] bg-white/[0.05] px-3 py-1 text-xs font-extrabold text-white min-[420px]:col-span-1">
                       {t('questionGoalValue', { count: schedule.question_goal })}
@@ -486,179 +548,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
           </>
         ) : null}
 
-        {isSettingsView ? (
-          <>
-            {primaryGroup ? (
-              <>
-                <section className="surface-mockup p-4">
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
-                    <h1 className="text-xs font-extrabold uppercase tracking-[0.14em] text-white">{t('groupManagementTitle')}</h1>
-                  </div>
 
-                  <div className="mt-3.5 space-y-3">
-                    {isPrimaryGroupFounder ? (
-                      <GroupNameForm
-                        action={updateDashboardGroupNameAction}
-                        locale={locale}
-                        groupId={primaryGroup.id}
-                        initialName={primaryGroup.name}
-                        label={t('groupName')}
-                        placeholder={t('groupNamePlaceholder')}
-                        pendingLabel={t('saveNamePending')}
-                        submitLabel={t('saveShort')}
-                      />
-                    ) : (
-                      <div>
-                        <p className="text-sm font-semibold text-slate-400">{t('groupName')}</p>
-                        <p className="mt-2 rounded-[7px] bg-white/[0.06] px-3 py-2 text-sm font-semibold text-white">{primaryGroup.name}</p>
-                        <p className="mt-2 text-xs text-slate-500">{t('founderOnlySettingsHint')}</p>
-                      </div>
-                    )}
-
-                    {isPrimaryGroupFounder ? (
-                      <GroupMeetingLinkForm
-                        action={updateDashboardGroupMeetingLinkAction}
-                        locale={locale}
-                        groupId={primaryGroup.id}
-                        initialMeetingLink={primaryGroup.meeting_link ?? ''}
-                        label={t('meetingLinkRequired')}
-                        placeholder={t('meetingLinkRequiredPlaceholder')}
-                        warning={t('meetingLinkRequiredWarning')}
-                        pendingLabel={t('saveNamePending')}
-                        submitLabel={t('saveShort')}
-                      />
-                    ) : primaryGroup.meeting_link ? (
-                      <div className="border-t border-white/[0.06] pt-3">
-                        <p className="text-xs font-bold text-slate-400">{t('meetingLinkRequired')}</p>
-                        <a href={primaryGroup.meeting_link} target="_blank" rel="noreferrer" className="mt-1.5 block h-8 truncate rounded-[5px] bg-white/[0.06] px-3 py-1.5 text-[13px] font-semibold text-brand">
-                          {primaryGroup.meeting_link}
-                        </a>
-                      </div>
-                    ) : null}
-
-                  </div>
-                </section>
-
-                <section className="surface-mockup p-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-2">
-                      <CalendarIcon />
-                      <h2 className="text-xs font-bold text-slate-400">{t('weeklyScheduleTitle')}</h2>
-                    </div>
-                  </div>
-
-                  {isPrimaryGroupFounder ? (
-                    <SettingsWeeklyScheduleForm
-                      action={addDashboardWeeklyScheduleAction}
-                      locale={locale}
-                      groupId={primaryGroup.id}
-                      labels={{
-                        addDay: t('addDay'),
-                        saveSchedule: t('saveSchedule'),
-                        saveSchedulePending: t('saveSchedulePending'),
-                        questionGoal: t('questionGoalValue', { count: 50 }),
-                        removeDay: t('removeDay'),
-                        weekdays: weekdayLabels,
-                      }}
-                    />
-                  ) : null}
-
-                  <div className="mt-3 space-y-1.5">
-                    {data.groupDashboard.schedules.length > 0 ? (
-                      data.groupDashboard.schedules.map((schedule) => (
-                        <div key={schedule.id} className="flex flex-wrap items-center gap-2 rounded-[8px] bg-white/[0.035] px-2 py-1.5 sm:gap-2.5">
-                          <span className="rounded-full bg-brand/12 px-2.5 py-0.5 text-[11px] font-bold text-brand">{weekdayLabels[schedule.weekday]}</span>
-                          <span className="text-xs font-semibold text-slate-300">
-                            {schedule.start_time.slice(0, 5)} → {schedule.end_time.slice(0, 5)}
-                          </span>
-                          <span className="text-[11px] font-bold text-slate-500 sm:ml-auto">{t('questionGoalValue', { count: schedule.question_goal })}</span>
-                          {isPrimaryGroupFounder ? (
-                            <form action={deleteDashboardWeeklyScheduleAction}>
-                              <input type="hidden" name="locale" value={locale} />
-                              <input type="hidden" name="groupId" value={primaryGroup.id} />
-                              <input type="hidden" name="scheduleId" value={schedule.id} />
-                              <SubmitButton pendingLabel="" className="button-ghost px-1 py-1 text-slate-500 hover:text-white">
-                                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                              </SubmitButton>
-                            </form>
-                          ) : null}
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-xs text-slate-500">{t('weeklyScheduleEmpty')}</p>
-                    )}
-                  </div>
-                </section>
-
-                <section className="surface-mockup p-4">
-                  <h2 className="text-xs font-bold text-slate-400">{t('membersTitle')} ({data.groupDashboard.memberPerformance.length})</h2>
-                  {data.groupDashboard.memberPerformance.length < 2 ? (
-                    <p className="mt-2.5 flex items-start gap-1.5 text-[10px] font-bold text-amber-400">
-                      <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
-                      <span>{t('sessionsCountWithSynchronizedMembers')}</span>
-                    </p>
-                  ) : null}
-                  <div className="mt-3 space-y-2">
-                    {data.groupDashboard.memberPerformance.map((member) => (
-                      <div key={member.userId} className="flex items-center gap-2 rounded-[8px] bg-white/[0.04] px-3 py-2">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand/20 text-xs font-bold text-brand">
-                          {member.initials}
-                        </div>
-                        <p className="truncate text-sm font-bold text-white">{member.name}</p>
-                        {member.userId === currentCaptainId ? (
-                          <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-amber-400">{t('captainLabel')}</span>
-                        ) : member.is_founder ? (
-                          <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-amber-400">{t('founder')}</span>
-                        ) : null}
-                      </div>
-                    ))}
-                  </div>
-                </section>
-
-                {canTransferCaptain ? (
-                  <section className="surface-mockup border-amber-400/20 p-4">
-                    <div className="flex items-center gap-2 text-amber-400">
-                      <ArrowLeftRight className="h-4 w-4" aria-hidden="true" />
-                      <h2 className="text-xs font-bold">{t('transferCaptainTitle')}</h2>
-                    </div>
-                    <p className="mt-3 text-xs text-slate-500">{t('transferCaptainDescription')}</p>
-                    {captainTransferCandidates.length > 0 ? (
-                      <form action={transferDashboardCaptainAction} className="mt-3 flex items-center gap-2">
-                        <input type="hidden" name="locale" value={locale} />
-                        <input type="hidden" name="sessionId" value={captainSession?.id ?? ''} />
-                        <select name="targetUserId" className="field h-8 rounded-[5px] px-3 py-1.5 text-xs">
-                          {captainTransferCandidates.map((member) => (
-                            <option key={member.userId} value={member.userId}>
-                              {member.name}
-                            </option>
-                          ))}
-                        </select>
-                        <SubmitButton pendingLabel={t('transferCaptainPending')} className="button-secondary h-8 rounded-[5px] px-3 py-1.5 text-xs text-amber-300">
-                          {t('transferCaptainAction')}
-                        </SubmitButton>
-                      </form>
-                    ) : (
-                      <p className="mt-3 text-xs italic text-slate-500">{t('transferCaptainEmpty')}</p>
-                    )}
-                  </section>
-                ) : null}
-
-                <div className="flex justify-center py-4">
-                  <LogoutButton
-                    showIcon
-                    className="min-h-0 border-none bg-transparent px-3 py-1 text-sm font-bold text-[#ff4d5e] shadow-none hover:bg-transparent hover:text-[#ff7a86]"
-                  />
-                </div>
-              </>
-            ) : (
-              <section className="surface-mockup p-5 text-center">
-                <h1 className="text-sm font-extrabold uppercase tracking-[0.16em] text-white">{t('groupManagementTitle')}</h1>
-                <p className="mt-3 text-sm text-slate-400">{t('groupViewEmpty')}</p>
-              </section>
-            )}
-          </>
-        ) : null}
       </section>
     </main>
   );

@@ -1,4 +1,4 @@
-import { AlertIcon, SparkIcon, TargetIcon } from '@/components/ui/dashboard-icons';
+import { SparkIcon, TargetIcon } from '@/components/ui/dashboard-icons';
 import { Share2 } from 'lucide-react';
 
 type HeatmapDay = {
@@ -80,7 +80,6 @@ export function DashboardPerformanceView({
   answeredCount,
   completedSessionsCount,
   successRate,
-  errorRate,
   averageConfidence,
   heatmap,
   labels,
@@ -222,16 +221,6 @@ export function DashboardPerformanceView({
         </div>
         <p className="mt-3 text-sm text-slate-500">
           {successRate !== null ? `${successRate}% - ${confidenceLabel}` : labels.confidenceAfterNextSession}
-        </p>
-      </section>
-
-      <section className="surface-mockup p-5">
-        <div className="flex items-center gap-2">
-          <AlertIcon className="h-4 w-4" />
-          <p className="text-sm font-bold text-white">{labels.errorTitle}</p>
-        </div>
-        <p className="mt-3 text-sm text-slate-500">
-          {errorRate !== null ? `${errorRate}%` : labels.errorAfterThreeSessions}
         </p>
       </section>
     </>
