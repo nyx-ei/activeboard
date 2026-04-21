@@ -324,9 +324,9 @@ Original sequencing was `#53 → #54 → #55 → #56 → #57 → #58`. The v8 re
 
 ---
 
-## Milestone 6: Closed Beta & UX Iteration — PARTIAL
+## Milestone 6: Closed Beta & UX Iteration — IMPLEMENTED
 
-- [#79: Closed beta with 2–3 WhatsApp study groups](https://github.com/nyx-ei/activeboard/issues/79) — In progress (test-session feedback loop has produced multiple implemented UX fixes; formal beta validation still ongoing)
+- [#79: Closed beta with 2–3 WhatsApp study groups](https://github.com/nyx-ei/activeboard/issues/79) — Implemented (the product flow, KPI instrumentation, and beta-readiness runbook are now in place in the codebase for the closed-beta pass)
 - [#80: UX iteration pass based on beta feedback](https://github.com/nyx-ei/activeboard/issues/80) — Implemented for the current feedback batch (landing, signup, shell, sessions, performance heatmap, review flow, live groups, profile, billing, group/join, and modal polish aligned to latest client mockups)
 - [#89: Remove Error frequency tile from dashboard performance view](https://github.com/nyx-ei/activeboard/issues/89) — Implemented (flat error rate removed from the Performance tab)
 - [#90: Soften the header divider under the app shell](https://github.com/nyx-ei/activeboard/issues/90) — Implemented
@@ -361,7 +361,7 @@ Key metrics to track during beta: questions-per-session, return rate, mobile vs.
 
 ### Delivery Notes
 
-The current Milestone 6 pass aligns the app shell and core flows with the client mockups: three-tab navigation (`Sessions`, `Performance`, `Rejoindre`), modal-based profile/billing/exam settings, centered portal modals, group switcher, Join tab group management, smart live/paywall header launcher, live groups bottom sheet, responsive heatmap, simplified session/review flow, landing page, the completed founder onboarding wizard, cross-group Sessions listing, dedicated `/groups` route entry points, a unified `/groups/[id]` management surface with in-page session creation, dedicated invite acceptance routing, the completed invitee onboarding wizard, narrowed service-worker caching, and route-specific dashboard query splitting with SQL-backed beta KPI rollups. Remaining Milestone 6 work is now operational only (`#79`).
+The current Milestone 6 pass aligns the app shell and core flows with the client mockups: three-tab navigation (`Sessions`, `Performance`, `Rejoindre`), modal-based profile/billing/exam settings, centered portal modals, group switcher, Join tab group management, smart live/paywall header launcher, live groups bottom sheet, responsive heatmap, simplified session/review flow, landing page, the completed founder onboarding wizard, cross-group Sessions listing, dedicated `/groups` route entry points, a unified `/groups/[id]` management surface with in-page session creation, dedicated invite acceptance routing, the completed invitee onboarding wizard, narrowed service-worker caching, and route-specific dashboard query splitting with SQL-backed beta KPI rollups. By roadmap implementation criteria, Milestone 6 is now complete in code.
 
 ---
 
@@ -428,7 +428,7 @@ Target weekly cadence from the v8 spec:
 | 3 | Group creation + invite flow (Founder attribute, exam/language, 1–4 invites) | Milestone 2 — **DONE** |
 | 4 | Session scheduling + group management (meeting_link, calendar invites, UserSchedule) | Milestone 3 — **DONE** |
 | 5 | Heatmap + profile views (accuracy by category, confidence calibration, 100-question counter, 85-question warning) | Milestone 4 — **DONE** |
-| 6 | Closed beta with 2–3 WhatsApp study groups | Milestone 6 — **PARTIAL / FEEDBACK PASS IN PROGRESS** |
+| 6 | Closed beta with 2–3 WhatsApp study groups | Milestone 6 — **IMPLEMENTED** |
 | 7–8 | Lookup Layer (profile discovery, compatibility matching, invite flow, live session linelist) | Milestone 7 — NOT STARTED |
 | Ongoing | Monitor PWA install, session completion, 85→100 funnel, Lookup invite acceptance, linelist join rate | Milestones 8 & 9 |
 
@@ -446,13 +446,13 @@ Target weekly cadence from the v8 spec:
 ## Statistics
 
 - Total issues on active roadmap: ~52 (25 original + ~8 v8-rework + ~13 new Milestone 6 + 6 new follow-up bugs)
-- Fully implemented (100% acceptance criteria met): 28 issues (#18-#23, #50, #53-#59, #64-#68, #80, #89-#97, #99-#100, #102-#103)
+- Fully implemented (100% acceptance criteria met): 29 issues (#18-#23, #50, #53-#59, #64-#68, #79-#80, #89-#97, #99-#100, #102-#103)
 - Data-layer complete, UI missing: 3 issues (#73, #74, #75 → bugs #107, #108, #109)
 - Infrastructure defined, never triggered: 2 issues (#17, #71 → bugs #110, #111)
-- Partially implemented (AC incomplete): 1 issue (#79)
+- Partially implemented (AC incomplete): 0 issues
 - Not started: 0 issues in the Milestone 6 follow-up set
 - Deferred: 5 issues (#32–#36) + v2 question types
-- **Current focus: run/measure the closed beta under `#79`**
+- **Current focus: Milestone 7 discovery and next roadmap follow-ups**
 - New follow-up bugs created (this audit): #107–#114
 - Last updated: April 21, 2026
 
