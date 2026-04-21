@@ -18,6 +18,8 @@ type AuthFormProps = {
   variant?: 'page' | 'modal';
 };
 
+const CREATE_GROUP_ACCOUNT_DRAFT_KEY = 'activeboard:create-group-account-draft';
+
 function PendingInlineLabel({ pending, label, pendingLabel }: { pending: boolean; label: string; pendingLabel: string }) {
   return (
     <span className="relative inline-flex items-center justify-center">
@@ -60,7 +62,7 @@ export function AuthForm({
     }
 
     try {
-      const rawDraft = window.sessionStorage.getItem('activeboard:create-group-draft');
+      const rawDraft = window.sessionStorage.getItem(CREATE_GROUP_ACCOUNT_DRAFT_KEY);
       if (!rawDraft) {
         return;
       }
@@ -75,7 +77,7 @@ export function AuthForm({
       setEmail((current) => current || draft.email || '');
       setExamSession((current) => current || draft.examSession || '');
     } catch {
-      window.sessionStorage.removeItem('activeboard:create-group-draft');
+      window.sessionStorage.removeItem(CREATE_GROUP_ACCOUNT_DRAFT_KEY);
     }
   }, [mode]);
 
@@ -127,6 +129,20 @@ export function AuthForm({
         .maybeSingle();
 
       window.location.assign(firstMembership?.group_id ? redirectTo : `/${locale}/create-group`);
+      return;
+    }
+
+    if (!requireExamSessionOnSignUp) {
+      window.sessionStorage.setItem(
+        CREATE_GROUP_ACCOUNT_DRAFT_KEY,
+        JSON.stringify({
+          displayName,
+          email,
+          password,
+          locale,
+        }),
+      );
+      window.location.assign(signUpRedirectTo);
       return;
     }
 

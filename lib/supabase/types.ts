@@ -433,6 +433,7 @@ type UsersRow = {
   created_at: string;
   display_name: string | null;
   email: string;
+  exam_type: 'mccqe1' | 'usmle' | 'plab' | 'other' | null;
   exam_session: 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead' | null;
   has_valid_payment_method: boolean;
   id: string;
@@ -461,6 +462,7 @@ type UsersInsert = {
   created_at?: string;
   display_name?: string | null;
   email: string;
+  exam_type?: 'mccqe1' | 'usmle' | 'plab' | 'other' | null;
   exam_session?: 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead' | null;
   has_valid_payment_method?: boolean;
   id: string;
@@ -489,6 +491,7 @@ type UsersUpdate = {
   created_at?: string;
   display_name?: string | null;
   email?: string;
+  exam_type?: 'mccqe1' | 'usmle' | 'plab' | 'other' | null;
   exam_session?: 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead' | null;
   has_valid_payment_method?: boolean;
   id?: string;
@@ -530,6 +533,31 @@ type UserSchedulesUpdate = {
   timezone?: string;
   updated_at?: string;
   user_id?: string;
+};
+
+type DashboardSessionQuestionCountsViewRow = {
+  question_count: number;
+  session_id: string | null;
+};
+
+type DashboardUserSessionAnswerCountsViewRow = {
+  answered_question_count: number;
+  session_id: string | null;
+  user_id: string | null;
+};
+
+type DashboardUserAnswerMetricsViewRow = {
+  answered_count: number;
+  average_confidence_score: number | null;
+  correct_count: number;
+  incorrect_count: number;
+  user_id: string | null;
+};
+
+type DashboardUserAnswerDailyCountsViewRow = {
+  answer_count: number;
+  answered_on: string | null;
+  user_id: string | null;
 };
 
 export type Database = {
@@ -626,7 +654,24 @@ export type Database = {
         Relationships: [];
       };
     };
-    Views: Record<string, never>;
+    Views: {
+      dashboard_session_question_counts: {
+        Row: DashboardSessionQuestionCountsViewRow;
+        Relationships: [];
+      };
+      dashboard_user_answer_daily_counts: {
+        Row: DashboardUserAnswerDailyCountsViewRow;
+        Relationships: [];
+      };
+      dashboard_user_answer_metrics: {
+        Row: DashboardUserAnswerMetricsViewRow;
+        Relationships: [];
+      };
+      dashboard_user_session_answer_counts: {
+        Row: DashboardUserSessionAnswerCountsViewRow;
+        Relationships: [];
+      };
+    };
     Functions: {
       find_group_by_invite_code: {
         Args: {

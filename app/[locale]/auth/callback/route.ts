@@ -53,6 +53,10 @@ export async function GET(request: Request, { params }: RouteContext) {
       display_name:
         user.user_metadata.full_name ?? user.user_metadata.name ?? user.email?.split('@')[0] ?? null,
       avatar_url: user.user_metadata.avatar_url ?? null,
+      exam_type:
+        typeof user.user_metadata.exam_type === 'string'
+          ? (user.user_metadata.exam_type as 'mccqe1' | 'usmle' | 'plab' | 'other')
+          : null,
       exam_session:
         typeof user.user_metadata.exam_session === 'string'
           ? (user.user_metadata.exam_session as 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead')

@@ -36,8 +36,7 @@ const items = [
 export function AppBottomNav({ locale, labels }: AppBottomNavProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const rawDashboardView = searchParams.get('view') ?? 'sessions';
-  const dashboardView = rawDashboardView === 'settings' ? 'group' : rawDashboardView;
+  const dashboardView = searchParams.get('view') ?? 'sessions';
   const isDashboardPath = pathname === `/${locale}/dashboard` || pathname === '/dashboard';
   const isGroupsPath = pathname === `/${locale}/groups` || pathname.startsWith(`/${locale}/groups/`) || pathname === '/groups';
 
@@ -46,7 +45,7 @@ export function AppBottomNav({ locale, labels }: AppBottomNavProps) {
       <div className="mx-auto grid max-w-[520px] grid-cols-3 gap-1">
         {items.map((item) => {
           const Icon = item.Icon;
-          const active = item.key === 'group' ? isGroupsPath || (isDashboardPath && dashboardView === 'group') : isDashboardPath && dashboardView === item.key;
+          const active = item.key === 'group' ? isGroupsPath : isDashboardPath && dashboardView === item.key;
 
           return (
             <Link
