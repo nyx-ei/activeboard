@@ -8,14 +8,7 @@ import { computeAnswerDistribution } from '@/lib/demo/distribution';
 import { confidenceToScore, scoreToConfidenceLevel, type ConfidenceLevel } from '@/lib/demo/confidence';
 import { createPerfTracker } from '@/lib/observability/perf';
 import { getAvailabilitySlotCount, normalizeAvailabilityGrid } from '@/lib/schedule/availability';
-import {
-  DIMENSION_OF_CARE_OPTIONS,
-  ERROR_TYPE_OPTIONS,
-  PHYSICIAN_ACTIVITY_OPTIONS,
-  type DimensionOfCare,
-  type ErrorType,
-  type PhysicianActivity,
-} from '@/lib/types/demo';
+import { type DimensionOfCare, type ErrorType, type PhysicianActivity } from '@/lib/types/demo';
 
 type PublicClient = ReturnType<typeof createSupabaseServerClient>;
 type DashboardSession = {
@@ -220,13 +213,12 @@ function startOfWeek(date: Date) {
   return next;
 }
 
-function computeHeatmap(answers: { answered_at: string | null }[]): HeatmapDay[] {
+function computeHeatmapFromDailyCounts(dailyCounts: { answered_on: string | null; answer_count: number | null }[]): HeatmapDay[] {
   const countsByDay = new Map<string, number>();
 
-  for (const answer of answers) {
-    if (!answer.answered_at) continue;
-    const dayKey = answer.answered_at.slice(0, 10);
-    countsByDay.set(dayKey, (countsByDay.get(dayKey) ?? 0) + 1);
+  for (const row of dailyCounts) {
+    if (!row.answered_on) continue;
+    countsByDay.set(row.answered_on, row.answer_count ?? 0);
   }
 
   const days: HeatmapDay[] = [];
@@ -256,181 +248,85 @@ function computeHeatmap(answers: { answered_at: string | null }[]): HeatmapDay[]
   });
 }
 
-function buildCategoryAccuracy<TCategory extends string>(
-  categories: readonly TCategory[],
-  rows: Array<{ category: TCategory; isCorrect: boolean | null }>,
-): CategoryAccuracyItem<TCategory>[] {
-  return categories.map((category) => {
-    const matching = rows.filter((row) => row.category === category);
-    const total = matching.length;
-    const correct = matching.filter((row) => row.isCorrect === true).length;
-    return {
-      category,
-      total,
-      correct,
-      accuracy: total > 0 ? Math.round((correct / total) * 100) : 0,
-    };
-  });
+function buildEmptyProfileAnalytics(answeredCount = 0, heatmap: HeatmapDay[] = []): ProfileAnalyticsData {
+  return {
+    trialProgress: {
+      current: Math.min(answeredCount, TRIAL_QUESTION_LIMIT),
+      total: TRIAL_QUESTION_LIMIT,
+      remaining: Math.max(TRIAL_QUESTION_LIMIT - answeredCount, 0),
+      warningThreshold: TRIAL_WARNING_THRESHOLD,
+      showWarning: answeredCount >= TRIAL_WARNING_THRESHOLD && answeredCount < TRIAL_QUESTION_LIMIT,
+      isComplete: answeredCount >= TRIAL_QUESTION_LIMIT,
+    },
+    heatmap,
+    physicianActivityAccuracy: [],
+    dimensionOfCareAccuracy: [],
+    blueprintGrid: [],
+    confidenceCalibration: [],
+    errorTypeBreakdown: [],
+    weeklyTrend: [],
+  };
 }
 
-function buildWeeklyTrend(
-  answers: { answered_at: string | null; is_correct: boolean | null }[],
-  weeks = 8,
-): TrendPoint[] {
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  const currentWeekStart = startOfWeek(today);
-  const weeklyBuckets = new Map<string, { total: number; correct: number }>();
+async function getUserSchedule(userId: string) {
+  const { data: userSchedule } = await createSupabaseServerClient()
+    .schema('public')
+    .from('user_schedules')
+    .select('user_id, timezone, availability_grid, updated_at')
+    .eq('user_id', userId)
+    .maybeSingle();
 
-  for (let index = weeks - 1; index >= 0; index -= 1) {
-    const weekStart = new Date(currentWeekStart);
-    weekStart.setUTCDate(currentWeekStart.getUTCDate() - index * 7);
-    weeklyBuckets.set(toIsoDay(weekStart), { total: 0, correct: 0 });
-  }
-
-  for (const answer of answers) {
-    if (!answer.answered_at) continue;
-    const answeredAt = new Date(answer.answered_at);
-    const bucketKey = toIsoDay(startOfWeek(answeredAt));
-    const bucket = weeklyBuckets.get(bucketKey);
-    if (!bucket) continue;
-    bucket.total += 1;
-    if (answer.is_correct === true) {
-      bucket.correct += 1;
-    }
-  }
-
-  return Array.from(weeklyBuckets.entries()).map(([weekStart, bucket]) => {
-    const label = new Intl.DateTimeFormat('en-CA', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(
-      new Date(weekStart),
-    );
-
-    return {
-      label,
-      total: bucket.total,
-      accuracy: bucket.total > 0 ? Math.round((bucket.correct / bucket.total) * 100) : null,
-    };
-  });
+  return userSchedule
+    ? {
+        ...userSchedule,
+        availability_grid: normalizeAvailabilityGrid(userSchedule.availability_grid),
+        slotCount: getAvailabilitySlotCount(normalizeAvailabilityGrid(userSchedule.availability_grid)),
+      }
+    : null;
 }
 
-export const getDashboardData = cache(
-  async (
-    user: User,
-    includeGroupDashboard = false,
-    includeProfileAnalytics = false,
-    includeMemberPerformance = includeGroupDashboard,
-    includeUserSchedule = true,
-    activeGroupId?: string | null,
-    includeUserAnswerStats = true,
-  ) => {
-  const perf = createPerfTracker(`getDashboardData:${user.id}`);
+async function getDashboardCore(userId: string) {
   const supabase = createSupabaseServerClient();
+  const { data: memberships } = await supabase
+    .schema('public')
+    .from('group_members')
+    .select('group_id, is_founder')
+    .eq('user_id', userId);
 
-  const [{ data: memberships }, { data: userSchedule }] = await Promise.all([
+  const groupIds = (memberships ?? []).map((membership) => membership.group_id);
+  if (groupIds.length === 0) {
+    return {
+      groups: [] as DashboardGroup[],
+      groupsById: new Map<string, { name: string }>(),
+      sessions: [] as DashboardSession[],
+      activeSessions: [] as DashboardSession[],
+      completedSessionsCount: 0,
+    };
+  }
+
+  const [groups, memberCounts, sessions] = await Promise.all([
+    supabase
+      .schema('public')
+      .from('groups')
+      .select('id, name, invite_code, created_by, created_at, meeting_link, max_members')
+      .in('id', groupIds)
+      .then((result) => result.data ?? []),
     supabase
       .schema('public')
       .from('group_members')
-      .select('group_id, is_founder')
-      .eq('user_id', user.id),
-    includeUserSchedule
-      ? supabase
-          .schema('public')
-          .from('user_schedules')
-          .select('user_id, timezone, availability_grid, updated_at')
-          .eq('user_id', user.id)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
+      .select('group_id')
+      .in('group_id', groupIds)
+      .then((result) => result.data ?? []),
+    supabase
+      .schema('public')
+      .from('sessions')
+      .select('id, group_id, name, scheduled_at, share_code, status, timer_mode, timer_seconds, leader_id, question_goal')
+      .in('group_id', groupIds)
+      .order('scheduled_at', { ascending: true })
+      .then((result) => (result.data ?? []) as DashboardSession[]),
   ]);
 
-  const groupIds = (memberships ?? []).map((membership) => membership.group_id);
-  perf.step('memberships_loaded');
-
-  const [groups, memberCounts, weeklySchedules, sessions] =
-    groupIds.length > 0
-      ? await Promise.all([
-          supabase
-            .schema('public')
-            .from('groups')
-            .select('id, name, invite_code, created_by, created_at, meeting_link, max_members')
-            .in('id', groupIds)
-            .then((result) => result.data ?? []),
-          supabase
-            .schema('public')
-            .from('group_members')
-            .select('group_id')
-            .in('group_id', groupIds)
-            .then((result) => result.data ?? []),
-          includeGroupDashboard
-            ? supabase
-                .schema('public')
-                .from('group_weekly_schedules')
-                .select('id, group_id, weekday, start_time, end_time, question_goal')
-                .in('group_id', groupIds)
-                .order('weekday', { ascending: true })
-                .order('start_time', { ascending: true })
-                .then((result) => result.data ?? [])
-            : Promise.resolve([]),
-          supabase
-            .schema('public')
-            .from('sessions')
-            .select('id, group_id, name, scheduled_at, share_code, status, timer_mode, timer_seconds, leader_id, question_goal')
-            .in('group_id', groupIds)
-            .order('scheduled_at', { ascending: true })
-            .then((result) => (result.data ?? []) as DashboardSession[]),
-        ])
-      : [[], [], [], [] as DashboardSession[]];
-  perf.step('dashboard_core_loaded');
-
-  const shouldLoadUserAnswers = includeUserAnswerStats || includeProfileAnalytics;
-  const myAnswers = shouldLoadUserAnswers
-    ? (
-        await supabase
-          .schema('public')
-          .from('answers')
-          .select('question_id, confidence, is_correct, answered_at')
-          .eq('user_id', user.id)
-          .order('answered_at', { ascending: true })
-      ).data ?? []
-    : [];
-  const sessionIds = includeUserAnswerStats ? sessions.map((session) => session.id) : [];
-  const sessionQuestions =
-    sessionIds.length > 0
-      ? (
-          await supabase
-            .schema('public')
-            .from('questions')
-            .select('id, session_id')
-            .in('session_id', sessionIds)
-        ).data ?? []
-      : [];
-  const answeredQuestionIds = myAnswers.map((answer) => answer.question_id);
-  const [classifications, reflections] =
-    includeProfileAnalytics && answeredQuestionIds.length > 0
-      ? await Promise.all([
-          supabase
-            .schema('public')
-            .from('question_classifications')
-            .select('question_id, physician_activity, dimension_of_care')
-            .in('question_id', answeredQuestionIds)
-            .then((result) => result.data ?? []),
-          supabase
-            .schema('public')
-            .from('personal_reflections')
-            .select('question_id, error_type')
-            .eq('user_id', user.id)
-            .in('question_id', answeredQuestionIds)
-            .then((result) => result.data ?? []),
-        ])
-      : [[], []];
-  perf.step('profile_analytics_loaded');
-
   const groupsById = new Map(groups.map((group) => [group.id, group]));
-  const weeklySchedulesByGroup = new Map<string, typeof weeklySchedules>();
-  for (const schedule of weeklySchedules) {
-    const current = weeklySchedulesByGroup.get(schedule.group_id) ?? [];
-    current.push(schedule);
-    weeklySchedulesByGroup.set(schedule.group_id, current);
-  }
   const countsByGroup = new Map<string, number>();
   for (const item of memberCounts) {
     countsByGroup.set(item.group_id, (countsByGroup.get(item.group_id) ?? 0) + 1);
@@ -441,12 +337,9 @@ export const getDashboardData = cache(
       .filter((session) => session.status !== 'completed' && session.status !== 'cancelled')
       .map((session) => [session.group_id, session]),
   );
-  const activeSessions = sessions.filter((session) => session.status === 'active');
-  const completedSessions = sessions.filter((session) => session.status === 'completed');
 
-  perf.step('invite_users_loaded');
-
-  const dashboardGroups = (memberships ?? []).reduce<DashboardGroup[]>((acc, membership) => {
+  return {
+    groups: (memberships ?? []).reduce<DashboardGroup[]>((acc, membership) => {
       const group = groupsById.get(membership.group_id);
       if (!group) return acc;
 
@@ -458,321 +351,278 @@ export const getDashboardData = cache(
       });
 
       return acc;
-    }, []);
+    }, []),
+    groupsById,
+    sessions,
+    activeSessions: sessions.filter((session) => session.status === 'active'),
+    completedSessionsCount: sessions.filter((session) => session.status === 'completed').length,
+  };
+}
 
-  const pendingInvites: PendingInvite[] = [];
+async function getCompletedSessionsCount(userId: string) {
+  const supabase = createSupabaseServerClient();
+  const { data: memberships } = await supabase
+    .schema('public')
+    .from('group_members')
+    .select('group_id')
+    .eq('user_id', userId);
 
-  const answeredCount = myAnswers.length;
-  const correctCount = myAnswers.filter((answer) => answer.is_correct).length;
-  const incorrectCount = myAnswers.filter((answer) => answer.is_correct === false).length;
-  const averageConfidence =
-    answeredCount > 0
-      ? scoreToConfidenceLevel(
-          myAnswers.reduce((sum, answer) => sum + confidenceToScore(answer.confidence), 0) / answeredCount,
-        )
-      : null;
-  const successRate = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : null;
-  const errorRate = answeredCount > 0 ? Math.round((incorrectCount / answeredCount) * 100) : null;
-  const classificationByQuestionId = new Map(
-    classifications.map((classification) => [classification.question_id, classification]),
-  );
-  const profileAnalytics: ProfileAnalyticsData = includeProfileAnalytics
-    ? (() => {
-        const activityRows = myAnswers.flatMap((answer) => {
-          const classification = classificationByQuestionId.get(answer.question_id);
-          return classification
-            ? [{ category: classification.physician_activity, isCorrect: answer.is_correct }]
-            : [];
-        });
-        const dimensionRows = myAnswers.flatMap((answer) => {
-          const classification = classificationByQuestionId.get(answer.question_id);
-          return classification
-            ? [{ category: classification.dimension_of_care, isCorrect: answer.is_correct }]
-            : [];
-        });
-        const confidenceCalibration: ConfidenceCalibrationItem[] = (['low', 'medium', 'high'] as const).map(
-          (confidence) => {
-            const matching = myAnswers.filter((answer) => answer.confidence === confidence);
-            const total = matching.length;
-            const correct = matching.filter((answer) => answer.is_correct === true).length;
-            return {
-              confidence,
-              total,
-              correct,
-              accuracy: total > 0 ? Math.round((correct / total) * 100) : 0,
-            };
-          },
-        );
-        const errorTypeBreakdown = ERROR_TYPE_OPTIONS.map((errorType) => ({
-          errorType,
-          count: reflections.filter((reflection) => reflection.error_type === errorType).length,
-        })).filter((item) => item.count > 0);
-        const trialProgress: TrialProgressData = {
-          current: Math.min(answeredCount, TRIAL_QUESTION_LIMIT),
-          total: TRIAL_QUESTION_LIMIT,
-          remaining: Math.max(TRIAL_QUESTION_LIMIT - answeredCount, 0),
-          warningThreshold: TRIAL_WARNING_THRESHOLD,
-          showWarning: answeredCount >= TRIAL_WARNING_THRESHOLD && answeredCount < TRIAL_QUESTION_LIMIT,
-          isComplete: answeredCount >= TRIAL_QUESTION_LIMIT,
-        };
-        const blueprintGrid: BlueprintGridCell[] = PHYSICIAN_ACTIVITY_OPTIONS.flatMap((physicianActivity) =>
-          DIMENSION_OF_CARE_OPTIONS.map((dimensionOfCare) => {
-            const matchingAnswers = myAnswers.filter((answer) => {
-              const classification = classificationByQuestionId.get(answer.question_id);
-              return (
-                classification?.physician_activity === physicianActivity &&
-                classification.dimension_of_care === dimensionOfCare
-              );
-            });
-            const total = matchingAnswers.length;
-            const correct = matchingAnswers.filter((answer) => answer.is_correct === true).length;
-
-            return {
-              physicianActivity,
-              dimensionOfCare,
-              total,
-              correct,
-              accuracy: total > 0 ? Math.round((correct / total) * 100) : null,
-            };
-          }),
-        );
-
-        return {
-          trialProgress,
-          heatmap: computeHeatmap(myAnswers),
-          physicianActivityAccuracy: buildCategoryAccuracy(PHYSICIAN_ACTIVITY_OPTIONS, activityRows),
-          dimensionOfCareAccuracy: buildCategoryAccuracy(DIMENSION_OF_CARE_OPTIONS, dimensionRows),
-          blueprintGrid,
-          confidenceCalibration,
-          errorTypeBreakdown,
-          weeklyTrend: buildWeeklyTrend(myAnswers),
-        };
-      })()
-    : {
-        trialProgress: {
-          current: Math.min(answeredCount, TRIAL_QUESTION_LIMIT),
-          total: TRIAL_QUESTION_LIMIT,
-          remaining: Math.max(TRIAL_QUESTION_LIMIT - answeredCount, 0),
-          warningThreshold: TRIAL_WARNING_THRESHOLD,
-          showWarning: false,
-          isComplete: answeredCount >= TRIAL_QUESTION_LIMIT,
-        },
-        heatmap: [],
-        physicianActivityAccuracy: [],
-        dimensionOfCareAccuracy: [],
-        blueprintGrid: [],
-        confidenceCalibration: [],
-        errorTypeBreakdown: [],
-        weeklyTrend: [],
-      };
-
-  const sessionByQuestionId = new Map(sessionQuestions.map((question) => [question.id, question.session_id]));
-  const questionCountBySession = new Map<string, number>();
-  const answeredQuestionCountBySession = new Map<string, number>();
-
-  for (const question of sessionQuestions) {
-    questionCountBySession.set(question.session_id, (questionCountBySession.get(question.session_id) ?? 0) + 1);
+  const groupIds = (memberships ?? []).map((membership) => membership.group_id);
+  if (groupIds.length === 0) {
+    return 0;
   }
 
-  for (const answer of myAnswers) {
-    const sessionId = sessionByQuestionId.get(answer.question_id);
-    if (!sessionId) continue;
-    answeredQuestionCountBySession.set(sessionId, (answeredQuestionCountBySession.get(sessionId) ?? 0) + 1);
+  const { data: sessions } = await supabase
+    .schema('public')
+    .from('sessions')
+    .select('status')
+    .in('group_id', groupIds)
+    .eq('status', 'completed');
+
+  return sessions?.length ?? 0;
+}
+
+async function getDashboardSessionCounts(userId: string, sessionIds: string[]) {
+  if (sessionIds.length === 0) {
+    return {
+      questionCountBySession: new Map<string, number>(),
+      answeredQuestionCountBySession: new Map<string, number>(),
+    };
   }
 
-  const enrichedSessions = sessions.map((session) => ({
+  const supabase = createSupabaseServerClient();
+  const [{ data: questionCounts }, { data: answeredCounts }] = await Promise.all([
+    supabase
+      .schema('public')
+      .from('dashboard_session_question_counts')
+      .select('session_id, question_count')
+      .in('session_id', sessionIds),
+    supabase
+      .schema('public')
+      .from('dashboard_user_session_answer_counts')
+      .select('session_id, answered_question_count')
+      .eq('user_id', userId)
+      .in('session_id', sessionIds),
+  ]);
+
+  return {
+    questionCountBySession: new Map(
+      (questionCounts ?? []).flatMap((row) => (row.session_id ? [[row.session_id, row.question_count]] : [])),
+    ),
+    answeredQuestionCountBySession: new Map(
+      (answeredCounts ?? []).flatMap((row) => (row.session_id ? [[row.session_id, row.answered_question_count]] : [])),
+    ),
+  };
+}
+
+async function getPrimaryGroupDashboard(primaryGroup: DashboardGroup | null, sessions: DashboardSession[]) {
+  if (!primaryGroup) {
+    return {
+      group: null,
+      schedules: [],
+      weeklyProgressPercentage: 0,
+      weeklyCompletedQuestions: 0,
+      weeklyTargetQuestions: 0,
+      memberPerformance: [],
+    } satisfies GroupDashboardData;
+  }
+
+  const supabase = createSupabaseServerClient();
+  const primaryGroupSessions = sessions.filter((session) => session.group_id === primaryGroup.id);
+  const currentWeekStart = new Date();
+  const currentDay = currentWeekStart.getDay();
+  const offsetToMonday = currentDay === 0 ? 6 : currentDay - 1;
+  currentWeekStart.setDate(currentWeekStart.getDate() - offsetToMonday);
+  currentWeekStart.setHours(0, 0, 0, 0);
+
+  const weeklySessions = primaryGroupSessions.filter((session) => {
+    if (session.status === 'cancelled') return false;
+    return new Date(session.scheduled_at).getTime() >= currentWeekStart.getTime();
+  });
+
+  const weeklySessionIds = weeklySessions.map((session) => session.id);
+  const [{ data: schedules }, { data: weeklyQuestions }] = await Promise.all([
+    supabase
+      .schema('public')
+      .from('group_weekly_schedules')
+      .select('id, weekday, start_time, end_time, question_goal')
+      .eq('group_id', primaryGroup.id)
+      .order('weekday', { ascending: true })
+      .order('start_time', { ascending: true }),
+    weeklySessionIds.length > 0
+      ? supabase.schema('public').from('questions').select('id, session_id').in('session_id', weeklySessionIds)
+      : Promise.resolve({ data: [] as { id: string; session_id: string }[] }),
+  ]);
+
+  const safeWeeklyQuestions = weeklyQuestions ?? [];
+  const weeklyQuestionIds = safeWeeklyQuestions.map((question) => question.id);
+  const { data: weeklyAnswers } =
+    weeklyQuestionIds.length > 0
+      ? await supabase
+          .schema('public')
+          .from('answers')
+          .select('question_id')
+          .in('question_id', weeklyQuestionIds)
+      : { data: [] as { question_id: string }[] };
+
+  const weeklyTargetQuestions = (schedules ?? []).reduce((sum, schedule) => sum + schedule.question_goal, 0);
+  const qualifyingGroupSize = primaryGroup.memberCount >= 2 && primaryGroup.memberCount <= 5;
+  const questionAnswerCounts = new Map<string, number>();
+  for (const answer of weeklyAnswers ?? []) {
+    questionAnswerCounts.set(answer.question_id, (questionAnswerCounts.get(answer.question_id) ?? 0) + 1);
+  }
+
+  const weeklyCompletedQuestions = qualifyingGroupSize
+    ? safeWeeklyQuestions.filter((question) => (questionAnswerCounts.get(question.id) ?? 0) >= primaryGroup.memberCount).length
+    : 0;
+
+  return {
+    group: primaryGroup,
+    schedules: sortWeeklySchedules(schedules ?? []),
+    weeklyProgressPercentage:
+      weeklyTargetQuestions > 0 ? Math.min(100, Math.round((weeklyCompletedQuestions / weeklyTargetQuestions) * 100)) : 0,
+    weeklyCompletedQuestions,
+    weeklyTargetQuestions,
+    memberPerformance: [],
+  } satisfies GroupDashboardData;
+}
+
+export const getDashboardSessionsData = cache(async (user: User, activeGroupId?: string | null) => {
+  const perf = createPerfTracker(`getDashboardSessionsData:${user.id}`);
+  const core = await getDashboardCore(user.id);
+  perf.step('dashboard_core_loaded');
+
+  const sessionIds = core.sessions.map((session) => session.id);
+  const { questionCountBySession, answeredQuestionCountBySession } = await getDashboardSessionCounts(user.id, sessionIds);
+  perf.step('session_rollups_loaded');
+
+  const enrichedSessions = core.sessions.map((session) => ({
     ...session,
-    groupName: groupsById.get(session.group_id)?.name ?? null,
+    groupName: core.groupsById.get(session.group_id)?.name ?? null,
     answeredQuestionCount: answeredQuestionCountBySession.get(session.id) ?? 0,
     questionCount: questionCountBySession.get(session.id) ?? 0,
   }));
 
-  const nextSession = enrichedSessions.find((session) => session.status !== 'completed' && session.status !== 'cancelled') ?? null;
-
   const primaryGroup =
-    (activeGroupId ? dashboardGroups.find((group) => group.id === activeGroupId) : null) ??
-    dashboardGroups.find((group) => group.is_founder) ??
-    dashboardGroups[0] ??
+    (activeGroupId ? core.groups.find((group) => group.id === activeGroupId) : null) ??
+    core.groups.find((group) => group.is_founder) ??
+    core.groups[0] ??
     null;
 
-  let groupDashboard: GroupDashboardData = {
-    group: primaryGroup,
-    schedules: [],
-    weeklyProgressPercentage: 0,
-    weeklyCompletedQuestions: 0,
-    weeklyTargetQuestions: 0,
-    memberPerformance: [],
-  };
+  const groupDashboard = await getPrimaryGroupDashboard(primaryGroup, core.sessions);
+  perf.step('group_dashboard_loaded');
 
-  if (includeGroupDashboard && primaryGroup) {
-    const primaryGroupSchedules = sortWeeklySchedules(
-      (weeklySchedulesByGroup.get(primaryGroup.id) ?? []).map((schedule) => ({
-        id: schedule.id,
-        weekday: schedule.weekday,
-        start_time: schedule.start_time,
-        end_time: schedule.end_time,
-        question_goal: schedule.question_goal,
-      })),
-    );
-    const primaryGroupSessions = sessions.filter((session) => session.group_id === primaryGroup.id);
-    const primaryGroupSessionIds = primaryGroupSessions.map((session) => session.id);
-    const currentWeekStart = new Date();
-    const currentDay = currentWeekStart.getDay();
-    const offsetToMonday = currentDay === 0 ? 6 : currentDay - 1;
-    currentWeekStart.setDate(currentWeekStart.getDate() - offsetToMonday);
-    currentWeekStart.setHours(0, 0, 0, 0);
-
-    const weeklySessions = primaryGroupSessions.filter((session) => {
-      if (session.status === 'cancelled') return false;
-      return new Date(session.scheduled_at).getTime() >= currentWeekStart.getTime();
-    });
-    const weeklySessionIds = new Set(weeklySessions.map((session) => session.id));
-    const questionSessionIds = includeMemberPerformance ? primaryGroupSessionIds : Array.from(weeklySessionIds);
-    const [{ data: groupMembers }, { data: groupQuestions }] = await Promise.all([
-      includeMemberPerformance
-        ? supabase
-            .schema('public')
-            .from('group_members')
-            .select('group_id, user_id, is_founder')
-            .eq('group_id', primaryGroup.id)
-        : Promise.resolve({ data: [] as { group_id: string; user_id: string; is_founder: boolean }[] }),
-      questionSessionIds.length > 0
-        ? supabase
-            .schema('public')
-            .from('questions')
-            .select('id, session_id')
-            .in('session_id', questionSessionIds)
-        : Promise.resolve({ data: [] as { id: string; session_id: string }[] }),
-    ]);
-
-    const primaryGroupQuestions = (groupQuestions ?? []).filter((question) =>
-      primaryGroupSessionIds.includes(question.session_id),
-    );
-    const primaryGroupQuestionIds = primaryGroupQuestions.map((question) => question.id);
-
-    const { data: primaryGroupAnswers } =
-      primaryGroupQuestionIds.length > 0
-        ? await supabase
-            .schema('public')
-            .from('answers')
-            .select('question_id, user_id, is_correct')
-            .in('question_id', primaryGroupQuestionIds)
-        : { data: [] as { question_id: string; user_id: string; is_correct: boolean | null }[] };
-
-    const memberIds = includeMemberPerformance ? [...new Set((groupMembers ?? []).map((member) => member.user_id))] : [];
-    const groupUsers = includeMemberPerformance ? await getUsersMap(supabase, memberIds) : new Map();
-    const questionSessionById = new Map(primaryGroupQuestions.map((question) => [question.id, question.session_id]));
-
-    const weeklyQuestions = primaryGroupQuestions.filter((question) => weeklySessionIds.has(question.session_id));
-    const weeklyQuestionIds = new Set(weeklyQuestions.map((question) => question.id));
-    const weeklyAnswers = (primaryGroupAnswers ?? []).filter((answer) => weeklyQuestionIds.has(answer.question_id));
-
-    const qualifyingGroupSize = primaryGroup.memberCount >= 2 && primaryGroup.memberCount <= 5;
-    const weeklyTargetQuestions = primaryGroupSchedules.reduce((sum, schedule) => sum + schedule.question_goal, 0);
-    const questionAnswerCounts = new Map<string, number>();
-    for (const answer of weeklyAnswers) {
-      questionAnswerCounts.set(answer.question_id, (questionAnswerCounts.get(answer.question_id) ?? 0) + 1);
-    }
-
-    const weeklyCompletedQuestions = qualifyingGroupSize
-      ? weeklyQuestions.filter((question) => (questionAnswerCounts.get(question.id) ?? 0) >= primaryGroup.memberCount).length
-      : 0;
-
-    const answersByUser = new Map<string, { questionIds: Set<string>; sessionIds: Set<string> }>();
-    for (const answer of primaryGroupAnswers ?? []) {
-      const current = answersByUser.get(answer.user_id) ?? { questionIds: new Set<string>(), sessionIds: new Set<string>() };
-      current.questionIds.add(answer.question_id);
-      const sessionId = questionSessionById.get(answer.question_id);
-      if (sessionId) current.sessionIds.add(sessionId);
-      answersByUser.set(answer.user_id, current);
-    }
-
-    const totalTrackableSessions = primaryGroupSessions.filter((session) => session.status !== 'cancelled').length;
-    const totalTrackableQuestions = primaryGroupQuestions.length;
-    const sessionsById = new Map(primaryGroupSessions.map((session) => [session.id, session]));
-
-    groupDashboard = {
-      group: primaryGroup,
-      schedules: primaryGroupSchedules,
-      weeklyProgressPercentage:
-        weeklyTargetQuestions > 0 ? Math.min(100, Math.round((weeklyCompletedQuestions / weeklyTargetQuestions) * 100)) : 0,
-      weeklyCompletedQuestions,
-      weeklyTargetQuestions,
-      memberPerformance: includeMemberPerformance ? (groupMembers ?? []).map((member) => {
-        const profile = groupUsers.get(member.user_id);
-        const name = profile?.display_name ?? profile?.email ?? user.email ?? 'Member';
-        const answerStats = answersByUser.get(member.user_id);
-        const totalAnswers = answerStats?.questionIds.size ?? 0;
-        const activeWeekKeys = new Set(
-          [...(answerStats?.sessionIds ?? [])].map((sessionId) => {
-            const scheduledAt = sessionsById.get(sessionId)?.scheduled_at;
-            return scheduledAt ? toIsoDay(startOfWeek(new Date(scheduledAt))) : sessionId;
-          }),
-        );
-        const averageWeeklyQuestions = Math.round(totalAnswers / Math.max(1, activeWeekKeys.size));
-        const presenceRate =
-          totalTrackableSessions > 0
-            ? Math.round((((answerStats?.sessionIds.size ?? 0) / totalTrackableSessions) * 100))
-            : 0;
-        const completionRate =
-          totalTrackableQuestions > 0
-            ? Math.round((((answerStats?.questionIds.size ?? 0) / totalTrackableQuestions) * 100))
-            : 0;
-
-        return {
-          userId: member.user_id,
-          name,
-          email: profile?.email ?? '',
-          initials:
-            name
-              .split(' ')
-              .map((part: string) => part[0])
-              .join('')
-              .slice(0, 2)
-              .toUpperCase() || 'AB',
-          is_founder: member.is_founder,
-          presenceRate,
-          completionRate,
-          averageWeeklyQuestions,
-          totalAnswers,
-          status:
-            (answerStats?.sessionIds.size ?? 0) === 0 && (answerStats?.questionIds.size ?? 0) === 0 ? 'setup' : 'active',
-        };
-      }) : [],
-    };
-  }
+  const dedupedSessions = dedupeDashboardSessions(enrichedSessions.filter((session) => session.status !== 'cancelled'));
+  const nextSession = enrichedSessions.find((session) => session.status !== 'completed' && session.status !== 'cancelled') ?? null;
 
   perf.done({
-    groups: dashboardGroups.length,
-    sessions: enrichedSessions.length,
-    invites: pendingInvites.length,
-    includeGroupDashboard,
+    groups: core.groups.length,
+    sessions: dedupedSessions.length,
   });
 
   return {
-    groups: dashboardGroups,
-    pendingInvites,
-    userSchedule: userSchedule
-      ? {
-          ...userSchedule,
-          availability_grid: normalizeAvailabilityGrid(userSchedule.availability_grid),
-          slotCount: getAvailabilitySlotCount(normalizeAvailabilityGrid(userSchedule.availability_grid)),
-        }
-      : null,
-    metrics: {
-      answeredCount,
-      completedSessionsCount: completedSessions.length,
-      successRate,
-      errorRate,
-      averageConfidence,
-      leagueProgress: Math.min(100, Math.round((answeredCount / 300) * 100)),
-    },
-    profileAnalytics,
-    sessions: dedupeDashboardSessions(enrichedSessions.filter((session) => session.status !== 'cancelled')),
-    activeSessions,
+    groups: core.groups,
+    sessions: dedupedSessions,
+    activeSessions: core.activeSessions,
     nextSession,
     groupDashboard,
   };
+});
+
+export const getDashboardPerformanceData = cache(async (userId: string) => {
+  const perf = createPerfTracker(`getDashboardPerformanceData:${userId}`);
+  const supabase = createSupabaseServerClient();
+  const completedSessionsCount = await getCompletedSessionsCount(userId);
+  perf.step('completed_sessions_loaded');
+
+  const [{ data: metricsRow }, { data: dailyCounts }] = await Promise.all([
+    supabase
+      .schema('public')
+      .from('dashboard_user_answer_metrics')
+      .select('answered_count, correct_count, incorrect_count, average_confidence_score')
+      .eq('user_id', userId)
+      .maybeSingle(),
+    supabase
+      .schema('public')
+      .from('dashboard_user_answer_daily_counts')
+      .select('answered_on, answer_count')
+      .eq('user_id', userId),
+  ]);
+  perf.step('analytics_views_loaded');
+
+  const answeredCount = metricsRow?.answered_count ?? 0;
+  const correctCount = metricsRow?.correct_count ?? 0;
+  const incorrectCount = metricsRow?.incorrect_count ?? 0;
+  const averageConfidence =
+    answeredCount > 0 && metricsRow?.average_confidence_score
+      ? scoreToConfidenceLevel(metricsRow.average_confidence_score)
+      : null;
+
+  const heatmap = computeHeatmapFromDailyCounts(dailyCounts ?? []);
+  perf.done({
+    answeredCount,
+    completedSessionsCount,
+  });
+
+  return {
+    metrics: {
+      answeredCount,
+      completedSessionsCount,
+      successRate: answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : null,
+      errorRate: answeredCount > 0 ? Math.round((incorrectCount / answeredCount) * 100) : null,
+      averageConfidence,
+      leagueProgress: Math.min(100, Math.round((answeredCount / 300) * 100)),
+    },
+    profileAnalytics: buildEmptyProfileAnalytics(answeredCount, heatmap),
+  };
+});
+
+export const getUserScheduleData = cache(async (userId: string) => getUserSchedule(userId));
+
+export const getDashboardData = cache(
+  async (
+    user: User,
+    includeGroupDashboard = false,
+    includeProfileAnalytics = false,
+    _includeMemberPerformance = includeGroupDashboard,
+    includeUserSchedule = true,
+    activeGroupId?: string | null,
+  ) => {
+    void _includeMemberPerformance;
+    const [sessionsData, performanceData, userSchedule] = await Promise.all([
+      includeGroupDashboard ? getDashboardSessionsData(user, activeGroupId) : null,
+      includeProfileAnalytics ? getDashboardPerformanceData(user.id) : null,
+      includeUserSchedule ? getUserScheduleData(user.id) : null,
+    ]);
+
+    return {
+      groups: sessionsData?.groups ?? [],
+      pendingInvites: [] as PendingInvite[],
+      userSchedule,
+      metrics:
+        performanceData?.metrics ?? {
+          answeredCount: 0,
+          completedSessionsCount: 0,
+          successRate: null,
+          errorRate: null,
+          averageConfidence: null,
+          leagueProgress: 0,
+        },
+      profileAnalytics: performanceData?.profileAnalytics ?? buildEmptyProfileAnalytics(),
+      sessions: sessionsData?.sessions ?? [],
+      activeSessions: sessionsData?.activeSessions ?? [],
+      nextSession: sessionsData?.nextSession ?? null,
+      groupDashboard:
+        sessionsData?.groupDashboard ??
+        ({
+          group: null,
+          schedules: [],
+          weeklyProgressPercentage: 0,
+          weeklyCompletedQuestions: 0,
+          weeklyTargetQuestions: 0,
+          memberPerformance: [],
+        } satisfies GroupDashboardData),
+    };
   },
 );
 
@@ -796,7 +646,7 @@ export const getGroupData = cache(async (groupId: string, user: User) => {
     supabase
       .schema('public')
       .from('groups')
-      .select('id, name, invite_code, created_by, created_at')
+      .select('id, name, invite_code, created_by, created_at, meeting_link, max_members')
       .eq('id', groupId)
       .single(),
     supabase.schema('public').from('group_members').select('user_id, is_founder, joined_at').eq('group_id', groupId),
@@ -821,19 +671,130 @@ export const getGroupData = cache(async (groupId: string, user: User) => {
       .order('start_time', { ascending: true }),
   ]);
   const safeInvites = invites ?? [];
-  const userIds = [...new Set([...(members ?? []).map((member) => member.user_id), ...safeInvites.map((invite) => invite.invited_by)])];
+  const safeMembers = members ?? [];
+  const safeSessions = sessions ?? [];
+  const safeWeeklySchedules = sortWeeklySchedules(weeklySchedules ?? []);
+  const userIds = [...new Set([...safeMembers.map((member) => member.user_id), ...safeInvites.map((invite) => invite.invited_by)])];
   const usersMap = await getUsersMap(supabase, userIds);
+
+  const sessionIds = safeSessions.map((session) => session.id);
+  const currentWeekStart = new Date();
+  const currentDay = currentWeekStart.getDay();
+  const offsetToMonday = currentDay === 0 ? 6 : currentDay - 1;
+  currentWeekStart.setDate(currentWeekStart.getDate() - offsetToMonday);
+  currentWeekStart.setHours(0, 0, 0, 0);
+
+  const weeklySessions = safeSessions.filter((session) => {
+    if (session.status === 'cancelled') return false;
+    return new Date(session.scheduled_at).getTime() >= currentWeekStart.getTime();
+  });
+  const weeklySessionIds = new Set(weeklySessions.map((session) => session.id));
+
+  const { data: groupQuestions } =
+    sessionIds.length > 0
+      ? await supabase
+          .schema('public')
+          .from('questions')
+          .select('id, session_id')
+          .in('session_id', sessionIds)
+      : { data: [] as { id: string; session_id: string }[] };
+  const groupQuestionIds = (groupQuestions ?? []).map((question) => question.id);
+
+  const { data: groupAnswers } =
+    groupQuestionIds.length > 0
+      ? await supabase
+          .schema('public')
+          .from('answers')
+          .select('question_id, user_id')
+          .in('question_id', groupQuestionIds)
+      : { data: [] as { question_id: string; user_id: string }[] };
+
+  const questionSessionById = new Map((groupQuestions ?? []).map((question) => [question.id, question.session_id]));
+  const weeklyQuestionIds = new Set(
+    (groupQuestions ?? [])
+      .filter((question) => weeklySessionIds.has(question.session_id))
+      .map((question) => question.id),
+  );
+  const weeklyAnswers = (groupAnswers ?? []).filter((answer) => weeklyQuestionIds.has(answer.question_id));
+  const questionAnswerCounts = new Map<string, number>();
+  for (const answer of weeklyAnswers) {
+    questionAnswerCounts.set(answer.question_id, (questionAnswerCounts.get(answer.question_id) ?? 0) + 1);
+  }
+
+  const weeklyTargetQuestions = safeWeeklySchedules.reduce((sum, schedule) => sum + schedule.question_goal, 0);
+  const qualifyingGroupSize = safeMembers.length >= 2 && safeMembers.length <= 5;
+  const weeklyCompletedQuestions = qualifyingGroupSize
+    ? (groupQuestions ?? []).filter(
+        (question) => weeklyQuestionIds.has(question.id) && (questionAnswerCounts.get(question.id) ?? 0) >= safeMembers.length,
+      ).length
+    : 0;
+
+  const answersByUser = new Map<string, { questionIds: Set<string>; sessionIds: Set<string> }>();
+  for (const answer of groupAnswers ?? []) {
+    const current = answersByUser.get(answer.user_id) ?? { questionIds: new Set<string>(), sessionIds: new Set<string>() };
+    current.questionIds.add(answer.question_id);
+    const sessionId = questionSessionById.get(answer.question_id);
+    if (sessionId) current.sessionIds.add(sessionId);
+    answersByUser.set(answer.user_id, current);
+  }
+
+  const sessionsById = new Map(safeSessions.map((session) => [session.id, session]));
+  const totalTrackableSessions = safeSessions.filter((session) => session.status !== 'cancelled').length;
+  const totalTrackableQuestions = groupQuestionIds.length;
+  const memberPerformance = safeMembers.map((member) => {
+    const profile = usersMap.get(member.user_id);
+    const name = profile?.display_name ?? profile?.email ?? user.email ?? 'Member';
+    const answerStats = answersByUser.get(member.user_id);
+    const totalAnswers = answerStats?.questionIds.size ?? 0;
+    const activeWeekKeys = new Set(
+      [...(answerStats?.sessionIds ?? [])].map((sessionId) => {
+        const scheduledAt = sessionsById.get(sessionId)?.scheduled_at;
+        return scheduledAt ? toIsoDay(startOfWeek(new Date(scheduledAt))) : sessionId;
+      }),
+    );
+
+    return {
+      userId: member.user_id,
+      name,
+      email: profile?.email ?? '',
+      initials:
+        name
+          .split(' ')
+          .map((part: string) => part[0])
+          .join('')
+          .slice(0, 2)
+          .toUpperCase() || 'AB',
+      is_founder: member.is_founder,
+      presenceRate: totalTrackableSessions > 0 ? Math.round(((answerStats?.sessionIds.size ?? 0) / totalTrackableSessions) * 100) : 0,
+      completionRate: totalTrackableQuestions > 0 ? Math.round(((answerStats?.questionIds.size ?? 0) / totalTrackableQuestions) * 100) : 0,
+      averageWeeklyQuestions: Math.round(totalAnswers / Math.max(1, activeWeekKeys.size)),
+      totalAnswers,
+      status: (answerStats?.sessionIds.size ?? 0) === 0 && (answerStats?.questionIds.size ?? 0) === 0 ? 'setup' : 'active',
+    };
+  });
+
+  const currentCaptainId =
+    safeSessions.find((session) => session.status === 'active')?.leader_id ??
+    safeSessions.find((session) => session.status === 'scheduled')?.leader_id ??
+    null;
+
   perf.done({
-    members: members?.length ?? 0,
+    members: safeMembers.length,
     invites: safeInvites.length,
-    sessions: sessions?.length ?? 0,
-    weeklySchedules: weeklySchedules?.length ?? 0,
+    sessions: safeSessions.length,
+    weeklySchedules: safeWeeklySchedules.length,
   });
 
   return {
-    group,
+    group: group
+      ? {
+          ...group,
+          is_founder: membership.is_founder,
+          memberCount: safeMembers.length,
+        }
+      : null,
     membership,
-    members: (members ?? []).map((member) => ({
+    members: safeMembers.map((member) => ({
       ...member,
       profile: usersMap.get(member.user_id) ?? null,
     })),
@@ -841,8 +802,14 @@ export const getGroupData = cache(async (groupId: string, user: User) => {
       ...invite,
       invitedByName: usersMap.get(invite.invited_by)?.display_name ?? usersMap.get(invite.invited_by)?.email ?? null,
     })),
-    sessions: sessions ?? [],
-    weeklySchedules: sortWeeklySchedules(weeklySchedules ?? []),
+    sessions: safeSessions,
+    weeklySchedules: safeWeeklySchedules,
+    weeklyCompletedQuestions,
+    weeklyTargetQuestions,
+    weeklyProgressPercentage:
+      weeklyTargetQuestions > 0 ? Math.min(100, Math.round((weeklyCompletedQuestions / weeklyTargetQuestions) * 100)) : 0,
+    memberPerformance,
+    currentCaptainId,
   };
 });
 

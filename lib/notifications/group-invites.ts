@@ -7,6 +7,7 @@ import { logAppEvent } from '@/lib/logging/logger';
 
 type SendGroupInviteEmailInput = {
   locale: AppLocale;
+  inviteId: string;
   groupId: string;
   groupName: string;
   inviteCode: string;
@@ -26,7 +27,7 @@ type SendGroupMemberAddedEmailInput = {
 };
 
 function buildGroupInviteCopy(input: SendGroupInviteEmailInput) {
-  const authUrl = `${getAppUrl()}/${input.locale}/auth/login?next=/${input.locale}/groups/${input.groupId}`;
+  const authUrl = `${getAppUrl()}/${input.locale}/auth/login?next=/${input.locale}/invite/${input.inviteId}`;
 
   if (input.locale === 'fr') {
     return {
@@ -46,7 +47,7 @@ function buildGroupInviteCopy(input: SendGroupInviteEmailInput) {
         ],
         action: { label: "Accepter l'invitation", url: authUrl },
         secondaryNote:
-          'Si vous avez déjà un compte ActiveBoard, connectez-vous avec cette adresse email. Sinon, créez un compte puis ouvrez le tableau de bord.',
+          'Si vous avez déjà un compte ActiveBoard, connectez-vous avec cette adresse email. Sinon, créez un compte puis poursuivez depuis la page d’invitation.',
       },
     };
   }
@@ -68,7 +69,7 @@ function buildGroupInviteCopy(input: SendGroupInviteEmailInput) {
       ],
       action: { label: 'Accept invitation', url: authUrl },
       secondaryNote:
-        'If you already have an ActiveBoard account, sign in with this email address. Otherwise, create an account and open the dashboard.',
+        'If you already have an ActiveBoard account, sign in with this email address. Otherwise, create an account and continue from the invitation page.',
     },
   };
 }
@@ -90,6 +91,7 @@ export async function sendGroupInviteEmail(input: SendGroupInviteEmailInput) {
       userId: input.inviterUserId,
       groupId: input.groupId,
       metadata: {
+        invite_id: input.inviteId,
         invitee_email: input.inviteeEmail,
         provider: 'mailersend',
         provider_message_id: response.id,
@@ -104,6 +106,7 @@ export async function sendGroupInviteEmail(input: SendGroupInviteEmailInput) {
       userId: input.inviterUserId,
       groupId: input.groupId,
       metadata: {
+        invite_id: input.inviteId,
         invitee_email: input.inviteeEmail,
         error_message: error instanceof Error ? error.message : 'Unknown group invite email error',
       },

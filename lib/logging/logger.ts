@@ -1,3 +1,5 @@
+import { headers } from 'next/headers';
+
 import type { AppLocale } from '@/i18n/routing';
 import { isFeatureEnabled, type FeatureFlagKey } from '@/lib/features/flags';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
@@ -28,6 +30,54 @@ function sanitizeMetadata(metadata: LogMetadata | undefined): Json {
   return Object.fromEntries(Object.entries(metadata).filter(([, value]) => value !== undefined));
 }
 
+function detectDeviceType(userAgent: string) {
+  const normalized = userAgent.toLowerCase();
+
+  if (!normalized) return 'unknown';
+  if (/(bot|crawler|spider|preview)/i.test(userAgent)) return 'bot';
+  if (/(ipad|tablet|kindle|playbook|silk)/i.test(userAgent)) return 'tablet';
+  if (/(mobi|iphone|ipod|android)/i.test(userAgent)) return 'mobile';
+  return 'desktop';
+}
+
+function detectPlatform(userAgent: string) {
+  const normalized = userAgent.toLowerCase();
+
+  if (!normalized) return 'unknown';
+  if (normalized.includes('iphone') || normalized.includes('ipad') || normalized.includes('ios')) return 'ios';
+  if (normalized.includes('android')) return 'android';
+  if (normalized.includes('mac os x') || normalized.includes('macintosh')) return 'macos';
+  if (normalized.includes('windows')) return 'windows';
+  if (normalized.includes('linux')) return 'linux';
+  return 'other';
+}
+
+function detectBrowser(userAgent: string) {
+  const normalized = userAgent.toLowerCase();
+
+  if (!normalized) return 'unknown';
+  if (normalized.includes('edg/')) return 'edge';
+  if (normalized.includes('chrome/') && !normalized.includes('edg/')) return 'chrome';
+  if (normalized.includes('safari/') && !normalized.includes('chrome/')) return 'safari';
+  if (normalized.includes('firefox/')) return 'firefox';
+  return 'other';
+}
+
+function getRequestMetadata(): LogMetadata {
+  try {
+    const headerStore = headers();
+    const userAgent = headerStore.get('user-agent') ?? '';
+
+    return {
+      device_type: detectDeviceType(userAgent),
+      platform: detectPlatform(userAgent),
+      browser: detectBrowser(userAgent),
+    };
+  } catch {
+    return {};
+  }
+}
+
 export async function logAppEvent({
   eventName,
   level = 'info',
@@ -46,6 +96,7 @@ export async function logAppEvent({
   }
 
   const supabase = useAdmin ? createSupabaseAdminClient() : createSupabaseServerClient();
+  const requestMetadata = getRequestMetadata();
   const { error } = await supabase.schema('public').from('app_logs').insert({
     event_name: eventName,
     level,
@@ -54,7 +105,7 @@ export async function logAppEvent({
     user_id: userId,
     group_id: groupId,
     session_id: sessionId,
-    metadata: sanitizeMetadata(metadata),
+    metadata: sanitizeMetadata({ ...requestMetadata, ...metadata }),
   });
 
   if (error && process.env.NODE_ENV !== 'production') {

@@ -4,12 +4,15 @@ import { Fragment, useMemo, useState } from 'react';
 
 import { SubmitButton } from '@/components/ui/submit-button';
 import {
-  AVAILABILITY_HOURS,
-  AVAILABILITY_WEEKDAYS,
+  AVAILABILITY_HOURS as BASE_AVAILABILITY_HOURS,
+  AVAILABILITY_WEEKDAYS as BASE_AVAILABILITY_WEEKDAYS,
   DEFAULT_AVAILABILITY_GRID,
   type AvailabilityGrid,
   type AvailabilityWeekday,
 } from '@/lib/schedule/availability';
+
+export const AVAILABILITY_HOURS = BASE_AVAILABILITY_HOURS;
+export const AVAILABILITY_WEEKDAYS = BASE_AVAILABILITY_WEEKDAYS;
 
 type UserScheduleFormProps = {
   action: (formData: FormData) => void;
@@ -29,7 +32,7 @@ type UserScheduleFormProps = {
   initialGrid: AvailabilityGrid;
 };
 
-const CURATED_TIMEZONES = [
+export const CURATED_TIMEZONES = [
   'UTC',
   'America/New_York',
   'America/Chicago',

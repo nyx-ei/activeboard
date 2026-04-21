@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
 import type { AppLocale } from '@/i18n/routing';
-import { getUserAccessState, hasUserTierCapability, requireUserTierCapability } from '@/lib/billing/gating';
+import { requireUserTierCapability } from '@/lib/billing/gating';
 import { hasEmailEnv } from '@/lib/env';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
@@ -187,236 +187,6 @@ export async function createGroupAction(formData: FormData) {
   redirect(withFeedback(`/${locale}/dashboard`, 'success', t('groupCreated')));
 }
 
-type OnboardingGroupDraft = {
-  fullName?: string;
-  email?: string;
-  examSession?: 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead' | '';
-  groupName?: string;
-  memberEmails?: string[];
-  schedule?: Array<{
-    weekday?: string;
-    startTime?: string;
-    endTime?: string;
-    questionGoal?: string | number;
-  }>;
-  questionBanks?: string[];
-};
-
-export async function completeOnboardingGroupDraftAction(formData: FormData): Promise<
-  | { ok: true; groupId: string }
-  | { ok: false; reason: 'missing_fields' | 'not_authenticated' | 'action_failed' | 'invite_exists' | 'billing_required' }
-> {
-  const locale = formData.get('locale') as AppLocale;
-  const rawDraft = (formData.get('draft') as string | null) ?? '';
-  const { supabase, user } = await getCurrentAuthUser();
-
-  if (!user) {
-    return { ok: false, reason: 'not_authenticated' };
-  }
-
-  let draft: OnboardingGroupDraft;
-  try {
-    draft = JSON.parse(rawDraft) as OnboardingGroupDraft;
-  } catch {
-    return { ok: false, reason: 'missing_fields' };
-  }
-
-  const groupName = draft.groupName?.trim() ?? '';
-  const inviteEmails = [...new Set((draft.memberEmails ?? []).map(normalizeEmail).filter(Boolean))].slice(0, 4);
-  const schedules =
-    draft.schedule
-      ?.map((slot) => ({
-        weekday: slot.weekday,
-        start_time: slot.startTime,
-        end_time: slot.endTime,
-        question_goal: Number(slot.questionGoal),
-      }))
-      .filter(
-        (slot): slot is {
-          weekday: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
-          start_time: string;
-          end_time: string;
-          question_goal: number;
-        } =>
-          slot.weekday === 'monday' ||
-          slot.weekday === 'tuesday' ||
-          slot.weekday === 'wednesday' ||
-          slot.weekday === 'thursday' ||
-          slot.weekday === 'friday' ||
-          slot.weekday === 'saturday' ||
-          slot.weekday === 'sunday'
-            ? Boolean(slot.start_time && slot.end_time && Number.isFinite(slot.question_goal) && slot.question_goal > 0)
-            : false,
-      ) ?? [];
-  const questionBanks = [...new Set((draft.questionBanks ?? []).filter((value): value is string => typeof value === 'string' && value.length > 0))];
-
-  if (!groupName || inviteEmails.length < 1 || questionBanks.length === 0) {
-    return { ok: false, reason: 'missing_fields' };
-  }
-
-  const accessState = await getUserAccessState(user.id);
-
-  if (!hasUserTierCapability(accessState, 'canBeCaptain')) {
-    return { ok: false, reason: 'billing_required' };
-  }
-
-  let inviteCode = generateInviteCode();
-
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const { data: existing } = await supabase
-      .schema('public')
-      .from('groups')
-      .select('id')
-      .eq('invite_code', inviteCode)
-      .maybeSingle();
-
-    if (!existing) {
-      break;
-    }
-
-    inviteCode = generateInviteCode();
-  }
-
-  const { data: group, error: groupError } = await supabase
-    .schema('public')
-    .from('groups')
-    .insert({
-      name: groupName,
-      invite_code: inviteCode,
-      created_by: user.id,
-    })
-    .select('id')
-    .single();
-
-  if (groupError || !group) {
-    return { ok: false, reason: 'action_failed' };
-  }
-
-  const { error: memberError } = await supabase.schema('public').from('group_members').insert({
-    group_id: group.id,
-    is_founder: true,
-    user_id: user.id,
-  });
-
-  if (memberError) {
-    return { ok: false, reason: 'action_failed' };
-  }
-
-  const existingUsersByEmail = await Promise.all(
-    inviteEmails.map(async (email) => {
-      const { data: existingUser } = await supabase.schema('public').from('users').select('id, email').eq('email', email).maybeSingle();
-      return { email, userId: existingUser?.id ?? null };
-    }),
-  );
-  const existingInvitees = existingUsersByEmail.filter(
-    (invitee): invitee is { email: string; userId: string } => Boolean(invitee.userId && invitee.userId !== user.id),
-  );
-  const pendingInvitees = existingUsersByEmail.filter((invitee) => !invitee.userId);
-
-  if (existingInvitees.length > 0) {
-    const { error: directMemberError } = await supabase.schema('public').from('group_members').insert(
-      existingInvitees.map((invitee) => ({
-        group_id: group.id,
-        is_founder: false,
-        user_id: invitee.userId,
-      })),
-    );
-
-    if (directMemberError) {
-      return { ok: false, reason: directMemberError.code === '23505' ? 'invite_exists' : 'action_failed' };
-    }
-  }
-
-  if (pendingInvitees.length > 0) {
-    const { error: inviteError } = await supabase.schema('public').from('group_invites').insert(
-      pendingInvitees.map((invitee) => ({
-        group_id: group.id,
-        invited_by: user.id,
-        invitee_email: invitee.email,
-        invitee_user_id: null,
-      })),
-    );
-
-    if (inviteError) {
-      return { ok: false, reason: inviteError.code === '23505' ? 'invite_exists' : 'action_failed' };
-    }
-  }
-
-  if (schedules.length > 0) {
-    const { error: scheduleError } = await supabase.schema('public').from('group_weekly_schedules').insert(
-      schedules.map((slot) => ({
-        group_id: group.id,
-        weekday: slot.weekday,
-        start_time: slot.start_time,
-        end_time: slot.end_time,
-        question_goal: slot.question_goal,
-      })),
-    );
-
-    if (scheduleError) {
-      return { ok: false, reason: 'action_failed' };
-    }
-  }
-
-  await supabase
-    .schema('public')
-    .from('users')
-    .update({
-      display_name: draft.fullName?.trim() || user.user_metadata.full_name || user.email,
-      exam_session: draft.examSession || null,
-      question_banks: questionBanks,
-    })
-    .eq('id', user.id);
-
-  await logAppEvent({
-    eventName: APP_EVENTS.groupCreated,
-    locale,
-    userId: user.id,
-    groupId: group.id,
-    metadata: {
-      source: 'public_create_group_wizard',
-      direct_member_count: existingInvitees.length,
-      invite_count: pendingInvitees.length,
-      schedule_count: schedules.length,
-      question_banks: questionBanks,
-    },
-  });
-
-  if (hasEmailEnv()) {
-    const inviterName = draft.fullName?.trim() || user.user_metadata.full_name || user.email || 'ActiveBoard';
-
-    await Promise.all(
-      pendingInvitees.map((invitee) =>
-        sendGroupInviteEmail({
-          locale,
-          groupId: group.id,
-          groupName,
-          inviteCode,
-          inviteeEmail: invitee.email,
-          inviterUserId: user.id,
-          inviterName,
-        }),
-      ),
-    );
-
-    await Promise.all(
-      existingInvitees.map((invitee) =>
-        sendGroupMemberAddedEmail({
-          locale,
-          groupId: group.id,
-          groupName,
-          memberEmail: invitee.email,
-          inviterUserId: user.id,
-          inviterName,
-        }),
-      ),
-    );
-  }
-
-  revalidatePath(`/${locale}/dashboard`);
-  return { ok: true, groupId: group.id };
-}
-
 export async function joinGroupAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
   const code = (formData.get('inviteCode') as string | null)?.trim().toUpperCase() ?? '';
@@ -502,8 +272,10 @@ export async function respondToInviteAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
   const inviteId = formData.get('inviteId') as string;
   const intent = formData.get('intent') as 'accept' | 'decline';
+  const redirectTo = ((formData.get('redirectTo') as string | null) ?? '').trim();
   const t = await getTranslations({ locale, namespace: 'Feedback' });
   const { supabase, user } = await getCurrentAuthUser();
+  const safeRedirectTo = redirectTo.startsWith(`/${locale}/`) ? redirectTo : `/${locale}/dashboard`;
 
   if (!user) {
     redirect(`/${locale}/auth/login`);
@@ -517,7 +289,7 @@ export async function respondToInviteAction(formData: FormData) {
     .maybeSingle();
 
   if (!invite || invite.status !== 'pending') {
-    redirect(withFeedback(`/${locale}/dashboard`, 'error', t('notAuthorized')));
+    redirect(withFeedback(safeRedirectTo, 'error', t('notAuthorized')));
   }
 
   if (intent === 'accept') {
@@ -525,7 +297,7 @@ export async function respondToInviteAction(formData: FormData) {
       userId: user.id,
       capability: 'canJoinMultipleGroups',
       locale,
-      redirectTo: `/${locale}/dashboard`,
+      redirectTo: safeRedirectTo,
     });
 
     const { data: members } = await supabase
@@ -535,7 +307,7 @@ export async function respondToInviteAction(formData: FormData) {
       .eq('group_id', invite.group_id);
 
     if ((members?.length ?? 0) >= 5) {
-      redirect(withFeedback(`/${locale}/dashboard`, 'error', t('groupFull')));
+      redirect(withFeedback(safeRedirectTo, 'error', t('groupFull')));
     }
 
     await supabase.schema('public').from('group_members').insert({
@@ -567,13 +339,162 @@ export async function respondToInviteAction(formData: FormData) {
   });
 
   revalidatePath(`/${locale}/dashboard`);
+  revalidatePath(safeRedirectTo);
   redirect(
     withFeedback(
-      `/${locale}/dashboard`,
+      safeRedirectTo,
       'success',
       intent === 'accept' ? t('inviteAccepted') : t('inviteDeclined'),
     ),
   );
+}
+
+export async function completeInviteOnboardingAction(formData: FormData) {
+  const locale = formData.get('locale') as AppLocale;
+  const inviteId = ((formData.get('inviteId') as string | null) ?? '').trim();
+  const redirectTo = ((formData.get('redirectTo') as string | null) ?? '').trim();
+  const examSession = ((formData.get('examSession') as string | null) ?? '').trim();
+  const language = formData.get('language') === 'fr' ? 'fr' : 'en';
+  const timezone = ((formData.get('timezone') as string | null) ?? '').trim() || 'UTC';
+  const availabilityGridRaw = (formData.get('availabilityGrid') as string | null) ?? '{}';
+  const questionBanks = [...new Set(formData.getAll('questionBanks').map((value) => String(value).trim()).filter(Boolean))];
+  const t = await getTranslations({ locale, namespace: 'Feedback' });
+  const { supabase, user } = await getCurrentAuthUser();
+  const safeRedirectTo = redirectTo.startsWith(`/${locale}/`) ? redirectTo : `/${locale}/dashboard`;
+
+  if (!user) {
+    redirect(`/${locale}/auth/login`);
+  }
+
+  if (!inviteId || !examSession) {
+    redirect(withFeedback(safeRedirectTo, 'error', t('missingFields')));
+  }
+
+  const { data: invite } = await supabase
+    .schema('public')
+    .from('group_invites')
+    .select('id, group_id, invitee_email, status')
+    .eq('id', inviteId)
+    .maybeSingle();
+
+  if (!invite || invite.status !== 'pending') {
+    redirect(withFeedback(safeRedirectTo, 'error', t('notAuthorized')));
+  }
+
+  if (normalizeEmail(invite.invitee_email) !== normalizeEmail(user.email ?? '')) {
+    redirect(withFeedback(safeRedirectTo, 'error', t('notAuthorized')));
+  }
+
+  await requireUserTierCapability({
+    userId: user.id,
+    capability: 'canJoinMultipleGroups',
+    locale,
+    redirectTo: safeRedirectTo,
+  });
+
+  const availabilityGrid = parseAvailabilityGrid(availabilityGridRaw);
+
+  const { error: authError } = await supabase.auth.updateUser({
+    data: {
+      ...user.user_metadata,
+      exam_session: examSession,
+      question_banks: questionBanks,
+      locale: language,
+    },
+  });
+
+  if (authError) {
+    redirect(withFeedback(safeRedirectTo, 'error', t('actionFailed')));
+  }
+
+  const { error: userProfileError } = await supabase
+    .schema('public')
+    .from('users')
+    .update({
+      exam_session: examSession as 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead',
+      question_banks: questionBanks,
+      locale: language,
+    })
+    .eq('id', user.id);
+
+  if (userProfileError) {
+    redirect(withFeedback(safeRedirectTo, 'error', t('actionFailed')));
+  }
+
+  const { error: scheduleError } = await supabase.schema('public').from('user_schedules').upsert({
+    user_id: user.id,
+    timezone,
+    availability_grid: availabilityGrid,
+  });
+
+  if (scheduleError) {
+    redirect(withFeedback(safeRedirectTo, 'error', t('actionFailed')));
+  }
+
+  const { data: existingMembership } = await supabase
+    .schema('public')
+    .from('group_members')
+    .select('group_id')
+    .eq('group_id', invite.group_id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (!existingMembership) {
+    const { data: members } = await supabase
+      .schema('public')
+      .from('group_members')
+      .select('group_id')
+      .eq('group_id', invite.group_id);
+
+    if ((members?.length ?? 0) >= 5) {
+      redirect(withFeedback(safeRedirectTo, 'error', t('groupFull')));
+    }
+
+    const { error: membershipError } = await supabase.schema('public').from('group_members').insert({
+      group_id: invite.group_id,
+      is_founder: false,
+      user_id: user.id,
+    });
+
+    if (membershipError) {
+      redirect(withFeedback(safeRedirectTo, 'error', t('actionFailed')));
+    }
+  }
+
+  const { error: inviteUpdateError } = await supabase
+    .schema('public')
+    .from('group_invites')
+    .update({
+      status: 'accepted',
+      invitee_user_id: user.id,
+      responded_at: new Date().toISOString(),
+    })
+    .eq('id', inviteId);
+
+  if (inviteUpdateError) {
+    redirect(withFeedback(safeRedirectTo, 'error', t('actionFailed')));
+  }
+
+  await logAppEvent({
+    eventName: APP_EVENTS.groupInviteAccepted,
+    locale,
+    userId: user.id,
+    groupId: invite.group_id,
+    metadata: {
+      invite_id: invite.id,
+      source: 'invite_onboarding_wizard',
+      exam_session: examSession,
+      locale_selected: language,
+      timezone,
+      question_banks: questionBanks,
+      availability_slot_count: Object.values(availabilityGrid).reduce((sum, hours) => sum + hours.length, 0),
+    },
+  });
+
+  revalidatePath(`/${locale}/dashboard`);
+  revalidatePath(`/${locale}/groups/${invite.group_id}`);
+  revalidatePath(safeRedirectTo);
+  redirect(withFeedback(safeRedirectTo, 'success', t('inviteAccepted')));
 }
 
 export async function createDashboardSessionAction(formData: FormData) {
@@ -933,12 +854,17 @@ export async function inviteDashboardGroupMemberAction(formData: FormData) {
     .eq('email', email)
     .maybeSingle();
 
-  const { error } = await supabase.schema('public').from('group_invites').insert({
-    group_id: groupId,
-    invited_by: user.id,
-    invitee_email: email,
-    invitee_user_id: existingUser?.id ?? null,
-  });
+  const { data: insertedInvite, error } = await supabase
+    .schema('public')
+    .from('group_invites')
+    .insert({
+      group_id: groupId,
+      invited_by: user.id,
+      invitee_email: email,
+      invitee_user_id: existingUser?.id ?? null,
+    })
+    .select('id')
+    .single();
 
   if (error) {
     redirect(withFeedback(settingsPath, 'error', t('actionFailed')));
@@ -963,6 +889,7 @@ export async function inviteDashboardGroupMemberAction(formData: FormData) {
 
     await sendGroupInviteEmail({
       locale,
+      inviteId: insertedInvite?.id ?? '',
       groupId,
       groupName: group?.name ?? 'ActiveBoard',
       inviteCode: group?.invite_code ?? '',
