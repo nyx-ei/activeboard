@@ -340,7 +340,7 @@ Original sequencing was `#53 → #54 → #55 → #56 → #57 → #58`. The v8 re
 Tracked as epic **[#98](https://github.com/nyx-ei/activeboard/issues/98)**. Product direction: fuse all group-related features under a single **Group** entry. Shell chrome stops carrying an ambient "active group"; group context lives only on `/groups/[id]` pages. Session creation and settings all fold into the per-group page. Land order: #95 → #97 → #96.
 
 - [#95: Kill global 'active group' concept in shell chrome](https://github.com/nyx-ei/activeboard/issues/95) — Implemented (group switcher no longer reads `?groupId=` as shell state; active context now comes from `/groups/[id]` only, with bottom nav routed through `/groups`)
-- [#97: New `/groups` index + unified `/groups/[id]` page — fuse all group features](https://github.com/nyx-ei/activeboard/issues/97) — Partially implemented (`/groups` and `/groups/[id]` are real route entry points and the group page owns profile/meeting link/schedule/objective/members/invite/live-groups management, but session creation still launches from dashboard instead of being fully folded into `/groups/[id]`)
+- [#97: New `/groups` index + unified `/groups/[id]` page - fuse all group features](https://github.com/nyx-ei/activeboard/issues/97) - Implemented (`/groups` redirects into a concrete membership route, `/groups/[id]` owns profile/meeting link/schedule/objective/members/invite/live-groups management, group sessions are listed on the page itself, and session creation/cancellation now live on `/groups/[id]` instead of the dashboard)
 - [#96: Cross-group dashboard — Sessions list spans all groups; retire `?view=group`](https://github.com/nyx-ei/activeboard/issues/96) — Implemented (Sessions spans all user groups and legacy `?view=group` now hard-redirects to `/groups/[id]` instead of rendering group content in dashboard)
 
 ### Shell & dashboard performance
@@ -361,7 +361,7 @@ Key metrics to track during beta: questions-per-session, return rate, mobile vs.
 
 ### Delivery Notes
 
-The current Milestone 6 pass aligns the app shell and core flows with the client mockups: three-tab navigation (`Sessions`, `Performance`, `Rejoindre`), modal-based profile/billing/exam settings, centered portal modals, group switcher, Join tab group management, smart live/paywall header launcher, live groups bottom sheet, responsive heatmap, simplified session/review flow, landing page, the completed founder onboarding wizard, cross-group Sessions listing, dedicated `/groups` route entry points, dedicated invite acceptance routing, the completed invitee onboarding wizard, narrowed service-worker caching, and route-specific dashboard query splitting with SQL-backed beta KPI rollups. Remaining Milestone 6 work is now mostly operational (`#79`) plus one structural acceptance-criteria gap under `#97`: session creation still needs to live fully on `/groups/[id]`.
+The current Milestone 6 pass aligns the app shell and core flows with the client mockups: three-tab navigation (`Sessions`, `Performance`, `Rejoindre`), modal-based profile/billing/exam settings, centered portal modals, group switcher, Join tab group management, smart live/paywall header launcher, live groups bottom sheet, responsive heatmap, simplified session/review flow, landing page, the completed founder onboarding wizard, cross-group Sessions listing, dedicated `/groups` route entry points, a unified `/groups/[id]` management surface with in-page session creation, dedicated invite acceptance routing, the completed invitee onboarding wizard, narrowed service-worker caching, and route-specific dashboard query splitting with SQL-backed beta KPI rollups. Remaining Milestone 6 work is now operational only (`#79`).
 
 ---
 
@@ -446,13 +446,13 @@ Target weekly cadence from the v8 spec:
 ## Statistics
 
 - Total issues on active roadmap: ~52 (25 original + ~8 v8-rework + ~13 new Milestone 6 + 6 new follow-up bugs)
-- Fully implemented (100% acceptance criteria met): 27 issues (#18–#23, #50, #53–#59, #64–#68, #80, #89–#96, #99–#100, #102–#103)
+- Fully implemented (100% acceptance criteria met): 28 issues (#18-#23, #50, #53-#59, #64-#68, #80, #89-#97, #99-#100, #102-#103)
 - Data-layer complete, UI missing: 3 issues (#73, #74, #75 → bugs #107, #108, #109)
 - Infrastructure defined, never triggered: 2 issues (#17, #71 → bugs #110, #111)
-- Partially implemented (AC incomplete): 2 issues (#79, #97)
+- Partially implemented (AC incomplete): 1 issue (#79)
 - Not started: 0 issues in the Milestone 6 follow-up set
 - Deferred: 5 issues (#32–#36) + v2 question types
-- **Current focus: finish the remaining `#97` structural gap, then run/measure the closed beta under `#79`**
+- **Current focus: run/measure the closed beta under `#79`**
 - New follow-up bugs created (this audit): #107–#114
 - Last updated: April 21, 2026
 

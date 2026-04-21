@@ -500,12 +500,16 @@ export async function completeInviteOnboardingAction(formData: FormData) {
 export async function createDashboardSessionAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
   const groupId = (formData.get('groupId') as string | null) ?? '';
+  const returnTo = (formData.get('returnTo') as string | null) ?? '';
   const sessionName = ((formData.get('sessionName') as string | null) ?? '').trim();
   const questionGoal = Number(formData.get('questionGoal'));
   const timerMode = formData.get('timerMode') === 'global' ? 'global' : 'per_question';
   const timerSeconds = Number(formData.get('timerSeconds'));
   const t = await getTranslations({ locale, namespace: 'Feedback' });
-  const sessionsPath = `/${locale}/dashboard?view=sessions${groupId ? `&groupId=${groupId}` : ''}`;
+  const sessionsPath =
+    groupId && returnTo === groupDashboardPath(locale, groupId)
+      ? returnTo
+      : `/${locale}/dashboard?view=sessions`;
 
   if (
     !groupId ||
@@ -604,7 +608,7 @@ export async function createDashboardSessionAction(formData: FormData) {
     groupId,
     sessionId: createdSession.id,
     metadata: {
-      source: 'dashboard_sessions_modal',
+      source: sessionsPath === groupDashboardPath(locale, groupId) ? 'group_page_session_modal' : 'dashboard_sessions_modal',
       session_name: sessionName,
       question_goal: questionGoal,
       timer_seconds: timerSeconds,
@@ -614,12 +618,16 @@ export async function createDashboardSessionAction(formData: FormData) {
   });
 
   revalidatePath(`/${locale}/dashboard`);
+  revalidatePath(groupDashboardPath(locale, groupId));
   redirect(withFeedback(sessionsPath, 'success', t('sessionScheduled')));
 }
+
+export const createGroupSessionAction = createDashboardSessionAction;
 
 export async function cancelDashboardSessionAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
   const sessionId = (formData.get('sessionId') as string | null) ?? '';
+  const returnTo = (formData.get('returnTo') as string | null) ?? '';
   const t = await getTranslations({ locale, namespace: 'Feedback' });
   const { supabase, user } = await getCurrentAuthUser();
 
@@ -633,9 +641,13 @@ export async function cancelDashboardSessionAction(formData: FormData) {
     .select('id, group_id, leader_id, created_by, status')
     .eq('id', sessionId)
     .maybeSingle();
+  const sessionReturnPath =
+    session && returnTo === groupDashboardPath(locale, session.group_id)
+      ? returnTo
+      : `/${locale}/dashboard?view=sessions`;
 
   if (!session || session.status === 'completed' || session.status === 'cancelled') {
-    redirect(withFeedback(`/${locale}/dashboard?view=sessions`, 'error', t('actionFailed')));
+    redirect(withFeedback(sessionReturnPath, 'error', t('actionFailed')));
   }
 
   const { data: membership } = await supabase
@@ -647,13 +659,13 @@ export async function cancelDashboardSessionAction(formData: FormData) {
     .maybeSingle();
 
   if (!membership || (session.leader_id !== user.id && session.created_by !== user.id && !membership.is_founder)) {
-    redirect(withFeedback(`/${locale}/dashboard?view=sessions`, 'error', t('notAuthorized')));
+    redirect(withFeedback(sessionReturnPath, 'error', t('notAuthorized')));
   }
 
   const { error } = await supabase.schema('public').from('sessions').update({ status: 'cancelled' }).eq('id', sessionId);
 
   if (error) {
-    redirect(withFeedback(`/${locale}/dashboard?view=sessions`, 'error', t('actionFailed')));
+    redirect(withFeedback(sessionReturnPath, 'error', t('actionFailed')));
   }
 
   await logAppEvent({
@@ -663,14 +675,15 @@ export async function cancelDashboardSessionAction(formData: FormData) {
     groupId: session.group_id,
     sessionId,
     metadata: {
-      source: 'dashboard_session_delete_icon',
+      source: sessionReturnPath === groupDashboardPath(locale, session.group_id) ? 'group_page_session_delete_icon' : 'dashboard_session_delete_icon',
       previous_status: session.status,
       new_status: 'cancelled',
     },
   });
 
   revalidatePath(`/${locale}/dashboard`);
-  redirect(withFeedback(`/${locale}/dashboard?view=sessions`, 'success', t('actionSucceeded')));
+  revalidatePath(groupDashboardPath(locale, session.group_id));
+  redirect(withFeedback(sessionReturnPath, 'success', t('actionSucceeded')));
 }
 
 async function requireFounderDashboardMembership(groupId: string, locale: AppLocale) {

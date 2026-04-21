@@ -12,7 +12,6 @@ import { getDashboardPerformanceData, getDashboardSessionsData } from '@/lib/dem
 
 import {
   cancelDashboardSessionAction,
-  createDashboardSessionAction,
   joinSessionByCodeAction,
 } from './actions';
 
@@ -70,19 +69,14 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
         {isSessionsView ? (
           <DashboardSessionsView
             locale={locale}
-            primaryGroupId={activeGroupId}
             sessions={sessionsData?.sessions ?? []}
             weeklyCompletedQuestions={sessionsData?.groupDashboard.weeklyCompletedQuestions ?? 0}
             weeklyTargetQuestions={sessionsData?.groupDashboard.weeklyTargetQuestions ?? 0}
             weeklyProgressPercentage={sessionsData?.groupDashboard.weeklyProgressPercentage ?? 0}
-            canCreateSession={hasUserTierCapability(accessState, 'canCreateSession')}
             canJoinSessions={canJoinSessions}
-            memberCount={sessionsData?.groups.find((group) => group.id === activeGroupId)?.memberCount ?? 0}
-            createSessionAction={createDashboardSessionAction}
             cancelSessionAction={cancelDashboardSessionAction}
             joinSessionAction={joinSessionByCodeAction}
             labels={{
-              newSession: t('newSession'),
               weeklyProgressTitle: t('weeklyProgressTitle'),
               prequalification: t('prequalificationBadge'),
               classGoal: t('classGoal'),
@@ -92,18 +86,6 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
               go: t('go'),
               goPending: t('goPending'),
               upgradeRequiredToJoinSession: feedbackT('upgradeRequiredToJoinSession'),
-              createSession: t('createSession'),
-              createSessionPending: t('createSessionPending'),
-              sessionName: t('sessionName'),
-              sessionNamePlaceholder: t('sessionNamePlaceholder'),
-              questionCount: t('questionCount'),
-              timerMode: t('timerMode'),
-              perQuestionMode: t('perQuestionMode'),
-              globalMode: t('globalMode'),
-              timerSeconds: t('timerSeconds'),
-              totalTimerSeconds: t('totalTimerSeconds'),
-              modalHint: t('modalHint'),
-              close: t('close'),
               share: t('shareSession'),
               delete: t('deleteSession'),
               copied: t('copied'),

@@ -13,6 +13,8 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
   addDashboardExistingMemberAction,
   addDashboardWeeklyScheduleAction,
+  cancelDashboardSessionAction,
+  createGroupSessionAction,
   deleteDashboardWeeklyScheduleAction,
   joinGroupAction,
   updateDashboardGroupDetailsAction,
@@ -42,6 +44,7 @@ export default async function GroupRoutePage({
   const t = await getTranslations('Dashboard');
   const accessState = await getUserAccessState(user.id);
   const canBrowseLookupLayer = hasUserTierCapability(accessState, 'canBrowseLookupLayer');
+  const canCreateSession = hasUserTierCapability(accessState, 'canCreateSession');
 
   const [data, currentProfile, memberships] = await Promise.all([
     getGroupData(params.groupId, user),
@@ -80,13 +83,8 @@ export default async function GroupRoutePage({
             ? t('examPlanningAhead')
             : t('examSessionUndefined');
   const groupInfoSummary = primaryGroup
-    ? [primaryGroup.invite_code, examSessionLabel, locale === 'fr' ? 'Français' : 'English', 'GMT+1'].join(' · ')
+    ? [primaryGroup.invite_code, examSessionLabel, locale === 'fr' ? 'Francais' : 'English', 'GMT+1'].join(' | ')
     : t('noData');
-
-  const displayGroupInfoSummary = primaryGroup
-    ? [primaryGroup.invite_code, examSessionLabel, locale === 'fr' ? 'Français' : 'English', 'GMT+1'].join(' · ')
-    : t('noData');
-  void groupInfoSummary;
 
   const weekdayLabels = {
     monday: t('weekdayMonday'),
@@ -97,10 +95,6 @@ export default async function GroupRoutePage({
     saturday: t('weekdaySaturday'),
     sunday: t('weekdaySunday'),
   };
-  void displayGroupInfoSummary;
-  const sanitizedGroupInfoSummary = primaryGroup
-    ? [primaryGroup.invite_code, examSessionLabel, locale === 'fr' ? 'Francais' : 'English', 'GMT+1'].join(' | ')
-    : t('noData');
 
   const currentGroupIds = new Set(memberships.map((membership) => membership.group_id));
   const liveGroups =
@@ -203,9 +197,23 @@ export default async function GroupRoutePage({
           weeklyTargetQuestions={data.weeklyTargetQuestions}
           memberPerformance={data.memberPerformance}
           weekdayLabels={weekdayLabels}
-          groupInfoSummary={sanitizedGroupInfoSummary}
+          groupInfoSummary={groupInfoSummary}
+          sessions={data.sessions}
+          canCreateSession={canCreateSession}
           liveGroups={liveGroups}
           labels={{
+            newSession: t('newSession'),
+            createSession: t('createSession'),
+            createSessionPending: t('createSessionPending'),
+            sessionName: t('sessionName'),
+            sessionNamePlaceholder: t('sessionNamePlaceholder'),
+            questionCount: t('questionCount'),
+            timerMode: t('timerMode'),
+            perQuestionMode: t('perQuestionMode'),
+            globalMode: t('globalMode'),
+            timerSeconds: t('timerSeconds'),
+            totalTimerSeconds: t('totalTimerSeconds'),
+            modalHint: t('modalHint'),
             joinLiveGroups: t('joinLiveGroups'),
             liveGroupsTitle: t('liveGroupsTitle'),
             close: t('close'),
@@ -249,14 +257,27 @@ export default async function GroupRoutePage({
             existingMemberEmailPlaceholder: t('existingMemberEmailPlaceholder'),
             addMemberPending: t('addMemberPending'),
             addMember: t('addMember'),
+            sessionsTitle: t('sessions'),
+            noSessionCta: t('noSessionCta'),
+            share: t('shareSession'),
+            delete: t('deleteSession'),
+            copied: t('copied'),
+            statusScheduled: t('statusScheduled'),
+            statusActive: t('statusActive'),
+            statusCompleted: t('statusCompleted'),
+            statusIncomplete: t('statusIncomplete'),
+            statusCancelled: t('statusCancelled'),
             memberAverageWeekly: t('memberAverageWeekly', { value: '{value}' }),
             memberCompletion: t('memberCompletion', { value: '{value}' }),
             memberTotal: t('memberTotal', { value: '{value}' }),
             captainLabel: t('captainLabel'),
             memberStatusActive: t('memberStatusActive'),
             groupViewEmpty: t('groupViewEmpty'),
+            groupAccessHint: t('groupAccessHint'),
           }}
           actions={{
+            createSessionAction: createGroupSessionAction,
+            cancelSessionAction: cancelDashboardSessionAction,
             updateGroupDetailsAction: updateDashboardGroupDetailsAction,
             addWeeklyScheduleAction: addDashboardWeeklyScheduleAction,
             updateWeeklySchedulesAction: updateDashboardWeeklySchedulesAction,

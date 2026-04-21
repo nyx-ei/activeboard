@@ -23,6 +23,10 @@ function getGlobalDeadline(startedAt: string | null, timerSeconds: number) {
   return new Date(startedAtMs + timerSeconds * 1000);
 }
 
+function groupPath(locale: AppLocale, groupId: string) {
+  return `/${locale}/groups/${groupId}`;
+}
+
 async function getCurrentAuthUser() {
   const supabase = createSupabaseServerClient();
   const {
@@ -310,7 +314,8 @@ export async function quitIncompleteSessionAction(formData: FormData) {
   }
 
   revalidatePath(`/${locale}/dashboard`);
-  redirect(`/${locale}/dashboard?view=sessions`);
+  revalidatePath(groupPath(locale, session.group_id));
+  redirect(groupPath(locale, session.group_id));
 }
 
 export async function saveReviewAnswerAction(formData: FormData) {
@@ -425,7 +430,8 @@ export async function finishReviewSessionAction(formData: FormData) {
   });
 
   revalidatePath(`/${locale}/dashboard`);
-  redirect(withFeedback(`/${locale}/dashboard?view=sessions`, 'success', t('sessionCompleted')));
+  revalidatePath(groupPath(locale, session.group_id));
+  redirect(withFeedback(groupPath(locale, session.group_id), 'success', t('sessionCompleted')));
 }
 
 export async function startSessionAction(formData: FormData) {

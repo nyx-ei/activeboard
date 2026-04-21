@@ -1,7 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
+import { CreateSessionModal } from '@/components/sessions/create-session-modal';
+import { SessionCard, type SessionListItem } from '@/components/sessions/session-card';
 import { GroupEditModal } from '@/components/dashboard/group-edit-modal';
 import { GroupScheduleModal } from '@/components/dashboard/group-schedule-modal';
 import { InviteMemberForm } from '@/components/dashboard/group-settings-forms';
@@ -61,8 +64,22 @@ type GroupPageViewProps = {
   memberPerformance: MemberPerformance[];
   weekdayLabels: Record<string, string>;
   groupInfoSummary: string;
+  sessions: SessionListItem[];
+  canCreateSession: boolean;
   liveGroups: LiveGroup[];
   labels: {
+    newSession: string;
+    createSession: string;
+    createSessionPending: string;
+    sessionName: string;
+    sessionNamePlaceholder: string;
+    questionCount: string;
+    timerMode: string;
+    perQuestionMode: string;
+    globalMode: string;
+    timerSeconds: string;
+    totalTimerSeconds: string;
+    modalHint: string;
     joinLiveGroups: string;
     liveGroupsTitle: string;
     close: string;
@@ -106,14 +123,27 @@ type GroupPageViewProps = {
     existingMemberEmailPlaceholder: string;
     addMemberPending: string;
     addMember: string;
+    sessionsTitle: string;
+    noSessionCta: string;
+    share: string;
+    delete: string;
+    copied: string;
+    statusScheduled: string;
+    statusActive: string;
+    statusCompleted: string;
+    statusIncomplete: string;
+    statusCancelled: string;
     memberAverageWeekly: string;
     memberCompletion: string;
     memberTotal: string;
     captainLabel: string;
     memberStatusActive: string;
     groupViewEmpty: string;
+    groupAccessHint: string;
   };
   actions: {
+    createSessionAction: (formData: FormData) => void | Promise<void>;
+    cancelSessionAction: (formData: FormData) => void | Promise<void>;
     updateGroupDetailsAction: (formData: FormData) => void | Promise<void>;
     addWeeklyScheduleAction: (formData: FormData) => void | Promise<void>;
     updateWeeklySchedulesAction: (formData: FormData) => void | Promise<void>;
@@ -144,10 +174,15 @@ export function GroupPageView({
   memberPerformance,
   weekdayLabels,
   groupInfoSummary,
+  sessions,
+  canCreateSession,
   liveGroups,
   labels,
   actions,
 }: GroupPageViewProps) {
+  const [isCreateSessionOpen, setIsCreateSessionOpen] = useState(false);
+  const groupPath = primaryGroup ? `/${locale}/groups/${primaryGroup.id}` : `/${locale}/groups`;
+
   return (
     <>
       {canBrowseLookupLayer ? (
@@ -217,6 +252,49 @@ export function GroupPageView({
             />
           ) : (
             <span className="h-2 w-2 rounded-full bg-brand" />
+          )}
+        </div>
+      </section>
+
+      <section className="surface-mockup p-5">
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-sm font-bold text-white">{labels.sessionsTitle}</p>
+          {primaryGroup ? (
+            <button
+              type="button"
+              onClick={() => setIsCreateSessionOpen(true)}
+              className="button-primary h-10 rounded-[7px] px-4 text-sm"
+              disabled={!canCreateSession}
+            >
+              <span className="mr-2 text-lg leading-none">+</span>
+              {labels.newSession}
+            </button>
+          ) : null}
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {sessions.length > 0 ? (
+            sessions.map((session) => (
+              <SessionCard
+                key={session.id}
+                session={session}
+                locale={locale}
+                labels={{
+                  share: labels.share,
+                  delete: labels.delete,
+                  copied: labels.copied,
+                  statusScheduled: labels.statusScheduled,
+                  statusActive: labels.statusActive,
+                  statusCompleted: labels.statusCompleted,
+                  statusIncomplete: labels.statusIncomplete,
+                  statusCancelled: labels.statusCancelled,
+                }}
+                cancelSessionAction={actions.cancelSessionAction}
+                returnTo={groupPath}
+              />
+            ))
+          ) : (
+            <p className="text-sm text-slate-400">{labels.noSessionCta}</p>
           )}
         </div>
       </section>
@@ -328,9 +406,9 @@ export function GroupPageView({
                       <p className="truncate text-sm font-bold text-white">{member.name}</p>
                       <p className="text-xs text-slate-400">
                         <span>{labels.memberAverageWeekly.replace('{value}', String(member.averageWeeklyQuestions))}</span>
-                        <span className="px-2">·</span>
+                        <span className="px-2">|</span>
                         <span>{labels.memberCompletion.replace('{value}', String(member.completionRate))}</span>
-                        <span className="px-2">·</span>
+                        <span className="px-2">|</span>
                         <span>{labels.memberTotal.replace('{value}', String(member.totalAnswers))}</span>
                       </p>
                     </div>
@@ -346,6 +424,34 @@ export function GroupPageView({
           )}
         </div>
       </section>
+
+      {isCreateSessionOpen && primaryGroup ? (
+        <CreateSessionModal
+          locale={locale}
+          groupId={primaryGroup.id}
+          memberCount={primaryGroup.memberCount}
+          canCreateSession={canCreateSession}
+          action={actions.createSessionAction}
+          returnTo={groupPath}
+          labels={{
+            newSession: labels.newSession,
+            createSession: labels.createSession,
+            createSessionPending: labels.createSessionPending,
+            sessionName: labels.sessionName,
+            sessionNamePlaceholder: labels.sessionNamePlaceholder,
+            questionCount: labels.questionCount,
+            timerMode: labels.timerMode,
+            perQuestionMode: labels.perQuestionMode,
+            globalMode: labels.globalMode,
+            timerSeconds: labels.timerSeconds,
+            totalTimerSeconds: labels.totalTimerSeconds,
+            modalHint: labels.modalHint,
+            close: labels.close,
+            groupAccessHint: labels.groupAccessHint,
+          }}
+          onClose={() => setIsCreateSessionOpen(false)}
+        />
+      ) : null}
     </>
   );
 }
