@@ -255,39 +255,44 @@ No dedicated GitHub issues were tracked for this work — it was delivered as pa
 
 ---
 
-## Milestone 3: Scheduling, Calendar & BYOM Integration — DONE
+## Milestone 3: Scheduling, Calendar & BYOM Integration — PARTIAL
 
 - Session scheduling with datetime — Implemented
 - `meeting_link` field on sessions — Implemented
 - Weekly recurring schedules (group-level) — Implemented
-- [#17: Session reminders via email](https://github.com/nyx-ei/activeboard/issues/17) — Implemented ✓
-- [#71: Calendar invite generation via Resend](https://github.com/nyx-ei/activeboard/issues/71) — Implemented ✓
+- [#17: Session reminders via email](https://github.com/nyx-ei/activeboard/issues/17) — **Infrastructure defined, never called** ([#110: follow-up bug](https://github.com/nyx-ei/activeboard/issues/110)) — function `sendSessionReminders()` exists but is never triggered on session creation
+- [#71: Calendar invite generation via Resend](https://github.com/nyx-ei/activeboard/issues/71) — **Infrastructure defined, never called** ([#111: follow-up bug](https://github.com/nyx-ei/activeboard/issues/111)) — ICS generation works, email templates ready, function exists but never triggered on session creation
 - [#72: UserSchedule entity — personal availability grid for matching](https://github.com/nyx-ei/activeboard/issues/72) — Implemented ✓
+
+**Follow-up work required:** See bugs #110, #111 to wire up email sending on session creation.
 
 ---
 
-## Milestone 4: Heatmap, Profile & Inert-to-Lookup Progress — DONE
+## Milestone 4: Heatmap, Profile & Inert-to-Lookup Progress — PARTIAL
 
 - [#24: Activity heatmap (GitHub-style)](https://github.com/nyx-ei/activeboard/issues/24) — Implemented ✓
 - [#25: Accuracy by exam blueprint category](https://github.com/nyx-ei/activeboard/issues/25) — Implemented ✓
 - [#26: Confidence calibration chart](https://github.com/nyx-ei/activeboard/issues/26) — Implemented ✓
 - [#27: Profile statistics summary](https://github.com/nyx-ei/activeboard/issues/27) — Implemented ✓
 - [#28: Trend lines (improvement over time)](https://github.com/nyx-ei/activeboard/issues/28) — Implemented ✓
-- [#73: 100-question progress counter & 85-question warning banner](https://github.com/nyx-ei/activeboard/issues/73) — Implemented ✓
-- [#74: Accuracy by Physician activity × Dimension of care grid](https://github.com/nyx-ei/activeboard/issues/74) — Implemented ✓
+- [#73: 100-question progress counter & 85-question warning banner](https://github.com/nyx-ei/activeboard/issues/73) — **Data-only, UI incomplete** ([#107: follow-up bug](https://github.com/nyx-ei/activeboard/issues/107)) — progress counter on billing page only; missing from dashboard/sessions; warning banner not displayed; email nudge at 85 questions not implemented
+- [#74: Accuracy by Physician activity × Dimension of care grid](https://github.com/nyx-ei/activeboard/issues/74) — **Data-only, UI missing** ([#108: follow-up bug](https://github.com/nyx-ei/activeboard/issues/108)) — data calculated but no grid/matrix visualization
+- [#75: Most frequent error types display](https://github.com/nyx-ei/activeboard/issues/75) — **Data-only, UI missing** ([#109: follow-up bug](https://github.com/nyx-ei/activeboard/issues/109)) — data calculated but no profile display
 
 ### Delivery Notes
 
-Milestone 4 analytics are now surfaced in a dedicated profile page, with trial progress messaging also available in billing:
-- 100-question progress counter with 85-question warning and 100-question hard-stop messaging
-- 12-week activity heatmap
-- profile summary metrics
-- confidence calibration by low / medium / high
-- accuracy by physician activity and dimension of care
-- physician activity × dimension of care blueprint grid
-- frequent private error types
-- weekly improvement trend
-- [#75: Most frequent error types display](https://github.com/nyx-ei/activeboard/issues/75) — Implemented ✓
+Milestone 4 data layer is complete. UI visualization is **partial**:
+- ✓ 12-week activity heatmap
+- ✓ profile summary metrics
+- ✓ confidence calibration by low / medium / high
+- ⚠️ 100-question progress counter (on billing page only, not dashboard/sessions)
+- ✗ 85-question warning banner (not displayed)
+- ✗ physician activity × dimension of care grid (data calculated, no visualization)
+- ✗ frequent private error types (data calculated, no profile display)
+- ✗ email nudge at 85 questions (no implementation)
+- ✓ weekly improvement trend
+
+**Follow-up work required:** See bugs #107, #108, #109 to complete analytics UX for Trial progression messaging and competency blueprint visualization.
 
 ---
 
@@ -334,7 +339,7 @@ Original sequencing was `#53 → #54 → #55 → #56 → #57 → #58`. The v8 re
 
 Tracked as epic **[#98](https://github.com/nyx-ei/activeboard/issues/98)**. Product direction: fuse all group-related features under a single **Group** entry. Shell chrome stops carrying an ambient "active group"; group context lives only on `/groups/[id]` pages. Session creation and settings all fold into the per-group page. Land order: #95 → #97 → #96.
 
-- [#95: Kill global 'active group' concept in shell chrome](https://github.com/nyx-ei/activeboard/issues/95) — Partially implemented (left-side ambient group label and unused shell component removed, bottom navigation no longer propagates `groupId`, and group switching now targets `/groups/[id]`; the shared dashboard renderer still uses `groupId` internally as a compatibility bridge)
+- [#95: Kill global 'active group' concept in shell chrome](https://github.com/nyx-ei/activeboard/issues/95) — Partially implemented ([#112: follow-up bug](https://github.com/nyx-ei/activeboard/issues/112)) — active-group-name.tsx deleted, bottom nav fixed, but `group-switcher-menu.tsx` still reads `?groupId=` query param violating acceptance criteria
 - [#97: New `/groups` index + unified `/groups/[id]` page — fuse all group features](https://github.com/nyx-ei/activeboard/issues/97) — Partially implemented (`/groups` and `/groups/[id]` routes exist, group profile/meeting link/schedule/objective/members/invite/live groups/edit modals are fused visually; extracting the group renderer out of dashboard remains)
 - [#96: Cross-group dashboard — Sessions list spans all groups; retire `?view=group`](https://github.com/nyx-ei/activeboard/issues/96) — Partially implemented (Sessions now lists all user group sessions and bottom nav targets `/groups`; legacy `?view=group` remains as a compatibility renderer for the new group route)
 
@@ -349,8 +354,8 @@ Tracked as epic **[#101](https://github.com/nyx-ei/activeboard/issues/101)**. HA
 
 Tracked as epic **[#104](https://github.com/nyx-ei/activeboard/issues/104)**. Replace today's onboarding wizard with two focused variants and close three signup-era gaps: explicit language, explicit timezone, exam type distinct from exam period. Atomic commit at the final step — no orphan accounts.
 
-- [#102: Founder signup — 5-step wizard (Account → Plan → Schedule → Banks → Team)](https://github.com/nyx-ei/activeboard/issues/102) — Partially implemented (landing sign-up modal and `/create-group` wizard cover account → exam period → optional schedule → team/invites; users without groups are routed into group creation after auth, and existing ActiveBoard invitees are added directly with notification; explicit Plan step, explicit timezone/language, separate exam type, and atomic final account creation remain)
-- [#103: Invitee signup — 3-step join-via-link wizard (inherits lang/timezone/exam from group)](https://github.com/nyx-ei/activeboard/issues/103) — Not started (invite acceptance exists and invitation emails now return users to the target group after auth, but the dedicated invitee onboarding wizard is not implemented)
+- [#102: Founder signup — 5-step wizard (Account → Plan → Schedule → Banks → Team)](https://github.com/nyx-ei/activeboard/issues/102) — Partially implemented ([#113: follow-up bug](https://github.com/nyx-ei/activeboard/issues/113)) — landing modal and `/create-group` wizard exist; missing: explicit Plan step, explicit timezone field, separate exam type from exam period, atomic account creation with rollback
+- [#103: Invitee signup — 3-step join-via-link wizard (inherits lang/timezone/exam from group)](https://github.com/nyx-ei/activeboard/issues/103) — Not started ([#114: follow-up bug](https://github.com/nyx-ei/activeboard/issues/114)) — invite acceptance exists for logged-in users, but no dedicated signup flow for new users invited to group; new invitees land at generic auth/onboarding, not group-aware
 
 Key metrics to track during beta: questions-per-session, return rate, mobile vs. desktop split, session completion rate, 85→100-question funnel (warning to payment).
 
@@ -440,15 +445,16 @@ Target weekly cadence from the v8 spec:
 
 ## Statistics
 
-- Total issues on active roadmap: ~38 (25 existing + ~13 new/rework items needing GitHub issues)
-- Fully implemented (no rework): 22 issues (#18–#23, #50, #53–#57, #59, #64, #65, #67, #89–#94, #100)
-- Implemented but needs v8 rework: 0 issues
-- Partially implemented: 10 issues (#27, #41, #42, #79, #80, #95, #96, #97, #99, #102)
-- Not started / structurally pending: 4 issues (#103, plus the remaining route-level multi-group and onboarding follow-ups)
-- New v8 items needing GitHub issues: ~13 (including route-level group consolidation, cross-group Sessions, signup v2, service worker narrowing, and dashboard query splitting)
+- Total issues on active roadmap: ~52 (25 original + ~8 v8-rework + ~13 new Milestone 6 + 6 new follow-up bugs)
+- Fully implemented (100% acceptance criteria met): 22 issues (#18–#23, #50, #53–#59, #64–#68, #89–#94, #100)
+- Data-layer complete, UI missing: 3 issues (#73, #74, #75 → bugs #107, #108, #109)
+- Infrastructure defined, never triggered: 2 issues (#17, #71 → bugs #110, #111)
+- Partially implemented (AC incomplete): 7 issues (#95, #96, #97, #99, #102, #103 → bugs #112, #113, #114)
+- Not started: 1 issue (#103, bug #114)
 - Deferred: 5 issues (#32–#36) + v2 question types
-- **Current focus: close Milestone 6 beta feedback without over-claiming the remaining structural route, performance, and onboarding work**
-- Last updated: April 20, 2026
+- **Current focus: address follow-up bugs to close acceptance criteria gaps before next phase**
+- New follow-up bugs created (this audit): #107–#114
+- Last updated: April 21, 2026
 
 ---
 
