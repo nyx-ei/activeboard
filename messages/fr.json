@@ -899,9 +899,22 @@
                     "groupSettingsTitle":  "Paramètres du groupe",
                     "openSettings":  "Ouvrir",
                     "summaryQuestions":  "Questions répondues",
-                    "summarySessions":  "Sessions terminées",
-                    "summaryAccuracy":  "Précision",
-                    "sessionsCompletedValue":  "{count} sessions terminées"
+    "summarySessions":  "Sessions terminées",
+    "summaryAccuracy":  "Précision",
+    "sessionsCompletedValue":  "{count} sessions terminées"
+                },
+    "Offline":  {
+                    "eyebrow":  "Mode hors ligne",
+                    "title":  "Tu es actuellement hors ligne.",
+                    "description":  "ActiveBoard peut garder une coque minimale disponible quand le réseau tombe, mais les actions de session en direct et les requêtes authentifiées exigent une connexion.",
+                    "bannerTitle":  "Connexion perdue",
+                    "bannerDescription":  "L'application garde les écrans statiques accessibles, mais les mises à jour de session reprendront seulement quand le réseau reviendra.",
+                    "openFallback":  "Ouvrir la page de secours hors ligne",
+                    "tipRefresh":  "Reconnecte-toi pour reprendre les sessions live, l'envoi des réponses et l'actualisation du tableau de bord.",
+                    "tipReconnect":  "Si la connexion est instable, garde cet onglet ouvert et réessaie dès que l'indicateur réseau revient.",
+                    "tipFallback":  "Cette page de secours est mise en cache localement pour offrir un chemin de reprise clair pendant une coupure.",
+                    "backToApp":  "Retour à l'application",
+                    "backHome":  "Retour à l'accueil"
                 },
     "Feedback":  {
                      "groupCreated":  "Groupe créé avec succès.",

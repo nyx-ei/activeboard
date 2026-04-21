@@ -8,6 +8,13 @@ import { SessionCard, type SessionCardLabels, type SessionListItem } from '@/com
 type DashboardSessionsViewProps = {
   locale: string;
   sessions: SessionListItem[];
+  trialProgress: {
+    current: number;
+    total: number;
+    remaining: number;
+    showWarning: boolean;
+    isComplete: boolean;
+  };
   weeklyCompletedQuestions: number;
   weeklyTargetQuestions: number;
   weeklyProgressPercentage: number;
@@ -29,12 +36,18 @@ type DashboardSessionsViewProps = {
     minimumMembersWarning: string;
     soloSessionProgressHint: string;
     groupAccessHint: string;
+    trialProgressTitle: string;
+    trialProgressSummary: string;
+    trialProgressDescription: string;
+    trialProgressWarning: string;
+    trialProgressComplete: string;
   };
 };
 
 export function DashboardSessionsView({
   locale,
   sessions,
+  trialProgress,
   weeklyCompletedQuestions,
   weeklyTargetQuestions,
   weeklyProgressPercentage,
@@ -47,6 +60,33 @@ export function DashboardSessionsView({
 
   return (
     <>
+      <section className="surface-mockup p-5">
+        <div className="flex items-start justify-between gap-4">
+          <p className="text-sm font-bold text-white">{labels.trialProgressTitle}</p>
+          <p className="text-sm font-extrabold text-white">
+            {trialProgress.current} / {trialProgress.total}
+          </p>
+        </div>
+        <p className="mt-2 text-sm text-slate-400">
+          {labels.trialProgressSummary
+            .replace('{current}', String(trialProgress.current))
+            .replace('{total}', String(trialProgress.total))}
+        </p>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.08]">
+          <div
+            className="h-full rounded-full bg-brand"
+            style={{ width: `${Math.min(100, Math.round((trialProgress.current / Math.max(1, trialProgress.total)) * 100))}%` }}
+          />
+        </div>
+        <p className={`mt-3 text-sm ${trialProgress.isComplete || trialProgress.showWarning ? 'font-bold text-amber-300' : 'text-slate-500'}`}>
+          {trialProgress.isComplete
+            ? labels.trialProgressComplete
+            : trialProgress.showWarning
+              ? labels.trialProgressWarning.replace('{remaining}', String(trialProgress.remaining))
+              : labels.trialProgressDescription.replace('{remaining}', String(trialProgress.remaining))}
+        </p>
+      </section>
+
       <section className="surface-mockup p-5">
         <div className="flex items-start justify-between gap-4">
           <div>

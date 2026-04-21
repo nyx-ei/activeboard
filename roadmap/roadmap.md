@@ -255,44 +255,41 @@ No dedicated GitHub issues were tracked for this work — it was delivered as pa
 
 ---
 
-## Milestone 3: Scheduling, Calendar & BYOM Integration — PARTIAL
+## Milestone 3: Scheduling, Calendar & BYOM Integration — DONE
 
 - Session scheduling with datetime — Implemented
 - `meeting_link` field on sessions — Implemented
 - Weekly recurring schedules (group-level) — Implemented
-- [#17: Session reminders via email](https://github.com/nyx-ei/activeboard/issues/17) — **Infrastructure defined, never called** ([#110: follow-up bug](https://github.com/nyx-ei/activeboard/issues/110)) — function `sendSessionReminders()` exists but is never triggered on session creation
-- [#71: Calendar invite generation via Resend](https://github.com/nyx-ei/activeboard/issues/71) — **Infrastructure defined, never called** ([#111: follow-up bug](https://github.com/nyx-ei/activeboard/issues/111)) — ICS generation works, email templates ready, function exists but never triggered on session creation
+- [#17: Session reminders via email](https://github.com/nyx-ei/activeboard/issues/17) — Implemented ✓ (reminder dispatch route is live and scheduled through Vercel cron for due-session windows)
+- [#71: Calendar invite generation via Resend](https://github.com/nyx-ei/activeboard/issues/71) — Implemented ✓ (session creation now sends calendar invites with .ics attachments to group members)
 - [#72: UserSchedule entity — personal availability grid for matching](https://github.com/nyx-ei/activeboard/issues/72) — Implemented ✓
 
-**Follow-up work required:** See bugs #110, #111 to wire up email sending on session creation.
+Milestone 3 is now complete in code, including calendar invite delivery and scheduled reminder dispatch.
 
 ---
 
-## Milestone 4: Heatmap, Profile & Inert-to-Lookup Progress — PARTIAL
+## Milestone 4: Heatmap, Profile & Inert-to-Lookup Progress — DONE
 
 - [#24: Activity heatmap (GitHub-style)](https://github.com/nyx-ei/activeboard/issues/24) — Implemented ✓
 - [#25: Accuracy by exam blueprint category](https://github.com/nyx-ei/activeboard/issues/25) — Implemented ✓
 - [#26: Confidence calibration chart](https://github.com/nyx-ei/activeboard/issues/26) — Implemented ✓
 - [#27: Profile statistics summary](https://github.com/nyx-ei/activeboard/issues/27) — Implemented ✓
 - [#28: Trend lines (improvement over time)](https://github.com/nyx-ei/activeboard/issues/28) — Implemented ✓
-- [#73: 100-question progress counter & 85-question warning banner](https://github.com/nyx-ei/activeboard/issues/73) — **Data-only, UI incomplete** ([#107: follow-up bug](https://github.com/nyx-ei/activeboard/issues/107)) — progress counter on billing page only; missing from dashboard/sessions; warning banner not displayed; email nudge at 85 questions not implemented
-- [#74: Accuracy by Physician activity × Dimension of care grid](https://github.com/nyx-ei/activeboard/issues/74) — **Data-only, UI missing** ([#108: follow-up bug](https://github.com/nyx-ei/activeboard/issues/108)) — data calculated but no grid/matrix visualization
-- [#75: Most frequent error types display](https://github.com/nyx-ei/activeboard/issues/75) — **Data-only, UI missing** ([#109: follow-up bug](https://github.com/nyx-ei/activeboard/issues/109)) — data calculated but no profile display
+- [#73: 100-question progress counter & 85-question warning banner](https://github.com/nyx-ei/activeboard/issues/73) — Implemented ✓ (trial progress now appears on dashboard, sessions, and performance surfaces; warning state is displayed; 85-question email nudge is wired)
+- [#74: Accuracy by Physician activity × Dimension of care grid](https://github.com/nyx-ei/activeboard/issues/74) — Implemented ✓ (performance view now renders the blueprint matrix with color-coded accuracy cells)
+- [#75: Most frequent error types display](https://github.com/nyx-ei/activeboard/issues/75) — Implemented ✓ (performance view now exposes the user's top private error types)
 
 ### Delivery Notes
 
-Milestone 4 data layer is complete. UI visualization is **partial**:
+Milestone 4 analytics UX is now complete in code:
 - ✓ 12-week activity heatmap
 - ✓ profile summary metrics
 - ✓ confidence calibration by low / medium / high
-- ⚠️ 100-question progress counter (on billing page only, not dashboard/sessions)
-- ✗ 85-question warning banner (not displayed)
-- ✗ physician activity × dimension of care grid (data calculated, no visualization)
-- ✗ frequent private error types (data calculated, no profile display)
-- ✗ email nudge at 85 questions (no implementation)
+- ✓ 100-question progress counter on billing, dashboard, and session flows
+- ✓ 85-question warning banner and email nudge
+- ✓ physician activity × dimension of care grid
+- ✓ frequent private error types display
 - ✓ weekly improvement trend
-
-**Follow-up work required:** See bugs #107, #108, #109 to complete analytics UX for Trial progression messaging and competency blueprint visualization.
 
 ---
 
@@ -392,8 +389,8 @@ Domain gap matching (complementary profiles) is deferred to v2.
 
 The phone is the intended primary ActiveBoard device (BYOM two-device pattern: laptop for the call, phone for ActiveBoard).
 
-- [#41: Mobile-optimized session UI](https://github.com/nyx-ei/activeboard/issues/41) — Partially implemented
-- [#42: Offline resilience](https://github.com/nyx-ei/activeboard/issues/42) — Partially implemented
+- [#41: Mobile-optimized session UI](https://github.com/nyx-ei/activeboard/issues/41) — Implemented (the session, review, and summary flows now use mobile-first widths, large touch targets, responsive option grids, and phone-oriented pacing)
+- [#42: Offline resilience](https://github.com/nyx-ei/activeboard/issues/42) — Implemented (localized offline fallback page is cached by the service worker and surfaced through an in-app offline banner)
 - [#40: PWA install prompt (smart timing)](https://github.com/nyx-ei/activeboard/issues/40) — Not started
 - [#81: Monitor PWA install funnel & adoption rates](https://github.com/nyx-ei/activeboard/issues/81) — Not started
 
@@ -446,13 +443,13 @@ Target weekly cadence from the v8 spec:
 ## Statistics
 
 - Total issues on active roadmap: ~52 (25 original + ~8 v8-rework + ~13 new Milestone 6 + 6 new follow-up bugs)
-- Fully implemented (100% acceptance criteria met): 29 issues (#18-#23, #50, #53-#59, #64-#68, #79-#80, #89-#97, #99-#100, #102-#103)
-- Data-layer complete, UI missing: 3 issues (#73, #74, #75 → bugs #107, #108, #109)
-- Infrastructure defined, never triggered: 2 issues (#17, #71 → bugs #110, #111)
+- Fully implemented (100% acceptance criteria met): 36 issues (#17-#28, #41-#42, #50, #53-#59, #64-#68, #71-#72, #79-#80, #89-#97, #99-#100, #102-#103)
+- Data-layer complete, UI missing: 0 issues
+- Infrastructure defined, never triggered: 0 issues
 - Partially implemented (AC incomplete): 0 issues
 - Not started: 0 issues in the Milestone 6 follow-up set
 - Deferred: 5 issues (#32–#36) + v2 question types
-- **Current focus: Milestone 7 discovery and next roadmap follow-ups**
+- **Current focus: no remaining acceptance-criteria gaps on started milestones; remaining partial milestones are partial only because of untouched backlog items**
 - New follow-up bugs created (this audit): #107–#114
 - Last updated: April 21, 2026
 

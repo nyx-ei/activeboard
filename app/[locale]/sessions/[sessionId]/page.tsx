@@ -9,6 +9,7 @@ import { SubmitButton } from '@/components/ui/submit-button';
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
+import { getUserBillingSnapshot, TRIAL_QUESTION_LIMIT } from '@/lib/billing/user-tier';
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
 import { getSessionData } from '@/lib/demo/data';
 import { ANSWER_OPTIONS } from '@/lib/types/demo';
@@ -49,11 +50,54 @@ function getDistribution(answers: Array<{ selected_option: string | null; confid
   return distribution;
 }
 
+function TrialProgressPanel({
+  current,
+  total,
+  remaining,
+  showWarning,
+  isComplete,
+  labels,
+}: {
+  current: number;
+  total: number;
+  remaining: number;
+  showWarning: boolean;
+  isComplete: boolean;
+  labels: {
+    title: string;
+    summary: string;
+    description: string;
+    warning: string;
+    complete: string;
+  };
+}) {
+  const progressPercentage = Math.min(100, Math.round((current / Math.max(1, total)) * 100));
+
+  return (
+    <section className="mx-auto mb-4 w-full max-w-[560px] rounded-[12px] border border-white/[0.06] bg-[#11192c] px-4 py-4">
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-sm font-bold text-white">{labels.title}</p>
+        <p className="text-sm font-extrabold text-white">
+          {current} / {total}
+        </p>
+      </div>
+      <p className="mt-2 text-sm text-slate-400">{labels.summary.replace('{current}', String(current)).replace('{total}', String(total))}</p>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.08]">
+        <div className="h-full rounded-full bg-brand" style={{ width: `${progressPercentage}%` }} />
+      </div>
+      <p className={`mt-3 text-sm ${isComplete || showWarning ? 'font-bold text-amber-300' : 'text-slate-500'}`}>
+        {isComplete ? labels.complete : showWarning ? labels.warning.replace('{remaining}', String(remaining)) : labels.description.replace('{remaining}', String(remaining))}
+      </p>
+    </section>
+  );
+}
+
 export default async function SessionPage({ params, searchParams }: SessionPageProps) {
   const locale = params.locale as AppLocale;
   const user = await requireUser(locale);
   const t = await getTranslations('Session');
-  const data = await getSessionData(params.sessionId, user);
+  const dashboardT = await getTranslations('Dashboard');
+  const [data, billingSnapshot] = await Promise.all([getSessionData(params.sessionId, user), getUserBillingSnapshot(user.id)]);
 
   if (!data?.session || !data.group) {
     notFound();
@@ -72,6 +116,13 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
   const myAnswers = data.allAnswers.filter((answer) => answer.user_id === user.id);
   const answeredCount = new Set(myAnswers.map((answer) => answer.question_id)).size;
   const memberCount = Math.max(data.members.length, 1);
+  const trialProgress = {
+    current: Math.min(billingSnapshot?.questions_answered ?? 0, TRIAL_QUESTION_LIMIT),
+    total: TRIAL_QUESTION_LIMIT,
+    remaining: Math.max(TRIAL_QUESTION_LIMIT - (billingSnapshot?.questions_answered ?? 0), 0),
+    showWarning: (billingSnapshot?.questions_answered ?? 0) >= 85 && (billingSnapshot?.questions_answered ?? 0) < TRIAL_QUESTION_LIMIT,
+    isComplete: (billingSnapshot?.questions_answered ?? 0) >= TRIAL_QUESTION_LIMIT,
+  };
   const shouldShowCompletion =
     searchParams.stage === 'complete' ||
     (data.session.status === 'incomplete' && searchParams.stage !== 'review') ||
@@ -89,6 +140,20 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
         <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} />
         <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
         <section className="flex w-full max-w-md flex-col items-center text-center">
+          <TrialProgressPanel
+            current={trialProgress.current}
+            total={trialProgress.total}
+            remaining={trialProgress.remaining}
+            showWarning={trialProgress.showWarning}
+            isComplete={trialProgress.isComplete}
+            labels={{
+              title: dashboardT('trialProgressTitle'),
+              summary: dashboardT('trialProgressSummary'),
+              description: dashboardT('trialProgressDescription'),
+              warning: dashboardT('trialProgressWarning'),
+              complete: dashboardT('trialProgressComplete'),
+            }}
+          />
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 text-brand">
             <Play className="ml-1 h-8 w-8" aria-hidden="true" />
           </div>
@@ -121,6 +186,20 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
         <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} />
         <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
         <section className="flex w-full max-w-md flex-col items-center text-center">
+          <TrialProgressPanel
+            current={trialProgress.current}
+            total={trialProgress.total}
+            remaining={trialProgress.remaining}
+            showWarning={trialProgress.showWarning}
+            isComplete={trialProgress.isComplete}
+            labels={{
+              title: dashboardT('trialProgressTitle'),
+              summary: dashboardT('trialProgressSummary'),
+              description: dashboardT('trialProgressDescription'),
+              warning: dashboardT('trialProgressWarning'),
+              complete: dashboardT('trialProgressComplete'),
+            }}
+          />
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 text-brand">
             <Check className="h-8 w-8" aria-hidden="true" />
           </div>
@@ -152,6 +231,20 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
       <main className="flex flex-1 flex-col">
         <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} />
         <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
+        <TrialProgressPanel
+          current={trialProgress.current}
+          total={trialProgress.total}
+          remaining={trialProgress.remaining}
+          showWarning={trialProgress.showWarning}
+          isComplete={trialProgress.isComplete}
+          labels={{
+            title: dashboardT('trialProgressTitle'),
+            summary: dashboardT('trialProgressSummary'),
+            description: dashboardT('trialProgressDescription'),
+            warning: dashboardT('trialProgressWarning'),
+            complete: dashboardT('trialProgressComplete'),
+          }}
+        />
         <header className="sticky top-0 z-20 border-b border-white/[0.07] bg-background/95 backdrop-blur">
           <div className="mx-auto flex h-16 w-full max-w-[700px] items-center justify-between px-4">
             <Link href={`/groups/${data.group.id}`} className="text-sm font-bold text-slate-500 hover:text-white">
@@ -242,6 +335,20 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
       <main className="flex flex-1 flex-col">
         <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} />
         <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
+        <TrialProgressPanel
+          current={trialProgress.current}
+          total={trialProgress.total}
+          remaining={trialProgress.remaining}
+          showWarning={trialProgress.showWarning}
+          isComplete={trialProgress.isComplete}
+          labels={{
+            title: dashboardT('trialProgressTitle'),
+            summary: dashboardT('trialProgressSummary'),
+            description: dashboardT('trialProgressDescription'),
+            warning: dashboardT('trialProgressWarning'),
+            complete: dashboardT('trialProgressComplete'),
+          }}
+        />
         <section className="flex flex-1 items-center justify-center px-4 text-center text-sm font-bold text-slate-500">
           {t('loadingSession')}
         </section>
@@ -259,6 +366,20 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
     <main className="flex flex-1 flex-col">
       <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} />
       <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
+      <TrialProgressPanel
+        current={trialProgress.current}
+        total={trialProgress.total}
+        remaining={trialProgress.remaining}
+        showWarning={trialProgress.showWarning}
+        isComplete={trialProgress.isComplete}
+        labels={{
+          title: dashboardT('trialProgressTitle'),
+          summary: dashboardT('trialProgressSummary'),
+          description: dashboardT('trialProgressDescription'),
+          warning: dashboardT('trialProgressWarning'),
+          complete: dashboardT('trialProgressComplete'),
+        }}
+      />
       <header className="border-b border-white/[0.07]">
         <div className="mx-auto flex h-16 w-full max-w-[560px] items-center justify-between px-4">
           <Link href={`/groups/${data.group.id}`} className="text-slate-500 hover:text-white">

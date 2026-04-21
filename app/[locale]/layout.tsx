@@ -8,6 +8,7 @@ import { GroupSwitcherMenu } from '@/components/layout/group-switcher-menu';
 import { HomeHeaderNav } from '@/components/layout/home-header-nav';
 import { LanguageSwitcher } from '@/components/layout/language-switcher';
 import { ProfileMenu } from '@/components/layout/profile-menu';
+import { OfflineStatusBanner } from '@/components/pwa/offline-status-banner';
 import { RegisterServiceWorker } from '@/components/pwa/register-service-worker';
 import { Link } from '@/i18n/navigation';
 import { routing, type AppLocale } from '@/i18n/routing';
@@ -133,6 +134,7 @@ export default async function LocaleLayout({
       <RegisterServiceWorker />
       <div className="min-h-screen overflow-x-hidden px-3 pb-24 pt-2 sm:px-6 sm:pt-4">
         <div className="mx-auto flex min-h-[calc(100vh-2.5rem)] max-w-[1240px] flex-col gap-5">
+          <OfflineStatusBanner />
           <header className="flex min-w-0 items-center justify-between gap-2 border-b border-[#1f2937]/80 pb-2 pt-1 sm:gap-4">
             <div className="flex min-w-0 items-center gap-2">
               <Link href="/" className="flex min-w-0 shrink-0 items-center gap-2">

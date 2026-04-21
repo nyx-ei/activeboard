@@ -27,6 +27,8 @@ export const APP_EVENTS = {
   sessionReminderFailed: 'session_reminder_failed',
   sessionCalendarInviteSent: 'session_calendar_invite_sent',
   sessionCalendarInviteFailed: 'session_calendar_invite_failed',
+  trialWarningEmailSent: 'trial_warning_email_sent',
+  trialWarningEmailFailed: 'trial_warning_email_failed',
   userScheduleUpdated: 'user_schedule_updated',
   billingSetupStarted: 'billing_setup_started',
   billingSetupCompleted: 'billing_setup_completed',

@@ -9,6 +9,7 @@ import { requireUserTierCapability } from '@/lib/billing/gating';
 import { hasEmailEnv } from '@/lib/env';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
+import { sendSessionCalendarInvites } from '@/lib/notifications/calendar-invites';
 import { sendGroupInviteEmail, sendGroupMemberAddedEmail } from '@/lib/notifications/group-invites';
 import { parseAvailabilityGrid } from '@/lib/schedule/availability';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -558,6 +559,7 @@ export async function createDashboardSessionAction(formData: FormData) {
   }
 
   let shareCode = generateSessionShareCode();
+  const scheduledAt = new Date().toISOString();
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const { data: existingSession } = await supabase
@@ -577,7 +579,7 @@ export async function createDashboardSessionAction(formData: FormData) {
   const { data: createdSession, error } = await supabase.schema('public').from('sessions').insert({
     group_id: groupId,
     name: sessionName,
-    scheduled_at: new Date().toISOString(),
+    scheduled_at: scheduledAt,
     share_code: shareCode,
     timer_mode: timerMode,
     timer_seconds: timerSeconds,
@@ -585,7 +587,7 @@ export async function createDashboardSessionAction(formData: FormData) {
     created_by: user.id,
     leader_id: user.id,
     status: 'scheduled',
-  }).select('id').single();
+  }).select('id, group_id, name, scheduled_at, share_code, meeting_link, timer_seconds').single();
 
   if (error || !createdSession) {
     console.error('createDashboardSessionAction failed', {
@@ -616,6 +618,18 @@ export async function createDashboardSessionAction(formData: FormData) {
       share_code: shareCode,
     },
   });
+
+  if (hasEmailEnv()) {
+    try {
+      await sendSessionCalendarInvites(createdSession);
+    } catch (inviteError) {
+      console.error('sendSessionCalendarInvites failed', {
+        sessionId: createdSession.id,
+        groupId,
+        error: inviteError instanceof Error ? inviteError.message : 'Unknown calendar invite error',
+      });
+    }
+  }
 
   revalidatePath(`/${locale}/dashboard`);
   revalidatePath(groupDashboardPath(locale, groupId));

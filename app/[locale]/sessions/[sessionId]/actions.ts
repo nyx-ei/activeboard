@@ -8,6 +8,7 @@ import type { AppLocale } from '@/i18n/routing';
 import { requireUserTierCapability } from '@/lib/billing/gating';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
+import { sendTrialWarningEmailIfNeeded } from '@/lib/notifications/trial-progress';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { isConfidenceLevel } from '@/lib/demo/confidence';
 import {
@@ -241,6 +242,8 @@ export async function submitSessionStepAction(formData: FormData) {
       source: 'self_paced_session_flow',
     },
   });
+
+  await sendTrialWarningEmailIfNeeded(user.id);
 
   revalidatePath(`/${locale}/sessions/${sessionId}`);
   redirect(`/${locale}/sessions/${sessionId}?q=${questionIndex}`);

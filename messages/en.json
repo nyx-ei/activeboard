@@ -903,6 +903,19 @@
     "summaryAccuracy": "Accuracy",
     "sessionsCompletedValue": "{count} completed sessions"
   },
+  "Offline": {
+    "eyebrow": "Offline mode",
+    "title": "You're offline right now.",
+    "description": "ActiveBoard can keep a minimal shell available when the network drops, but live session actions and authenticated requests need a connection.",
+    "bannerTitle": "Connection lost",
+    "bannerDescription": "The app will keep static screens available, but session updates will resume only after the network returns.",
+    "openFallback": "Open the offline fallback page",
+    "tipRefresh": "Reconnect to resume live sessions, answer submissions, and dashboard refreshes.",
+    "tipReconnect": "If the connection is unstable, keep this tab open and retry once the network indicator returns.",
+    "tipFallback": "This fallback page is cached locally so members still see a clear recovery path during outages.",
+    "backToApp": "Back to the app",
+    "backHome": "Back home"
+  },
   "Feedback": {
     "groupCreated": "Group created successfully.",
     "groupJoined": "You joined the group.",

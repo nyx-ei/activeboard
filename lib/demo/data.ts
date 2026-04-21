@@ -8,7 +8,14 @@ import { computeAnswerDistribution } from '@/lib/demo/distribution';
 import { confidenceToScore, scoreToConfidenceLevel, type ConfidenceLevel } from '@/lib/demo/confidence';
 import { createPerfTracker } from '@/lib/observability/perf';
 import { getAvailabilitySlotCount, normalizeAvailabilityGrid } from '@/lib/schedule/availability';
-import { type DimensionOfCare, type ErrorType, type PhysicianActivity } from '@/lib/types/demo';
+import {
+  DIMENSION_OF_CARE_OPTIONS,
+  ERROR_TYPE_OPTIONS,
+  PHYSICIAN_ACTIVITY_OPTIONS,
+  type DimensionOfCare,
+  type ErrorType,
+  type PhysicianActivity,
+} from '@/lib/types/demo';
 
 type PublicClient = ReturnType<typeof createSupabaseServerClient>;
 type DashboardSession = {
@@ -266,6 +273,178 @@ function buildEmptyProfileAnalytics(answeredCount = 0, heatmap: HeatmapDay[] = [
     errorTypeBreakdown: [],
     weeklyTrend: [],
   };
+}
+
+async function getProfileAnalytics(userId: string, answeredCount: number, heatmap: HeatmapDay[]) {
+  const supabase = createSupabaseServerClient();
+  const { data: answers } = await supabase
+    .schema('public')
+    .from('answers')
+    .select('question_id, answered_at, is_correct, confidence')
+    .eq('user_id', userId);
+
+  const safeAnswers = answers ?? [];
+  if (safeAnswers.length === 0) {
+    return buildEmptyProfileAnalytics(answeredCount, heatmap);
+  }
+
+  const questionIds = [...new Set(safeAnswers.map((answer) => answer.question_id))];
+  const [{ data: questions }, { data: classifications }, { data: reflections }] = await Promise.all([
+    supabase
+      .schema('public')
+      .from('questions')
+      .select('id, session_id')
+      .in('id', questionIds),
+    supabase
+      .schema('public')
+      .from('question_classifications')
+      .select('question_id, physician_activity, dimension_of_care')
+      .in('question_id', questionIds),
+    supabase
+      .schema('public')
+      .from('personal_reflections')
+      .select('question_id, error_type')
+      .eq('user_id', userId)
+      .in('question_id', questionIds),
+  ]);
+
+  const sessionIds = [...new Set((questions ?? []).map((question) => question.session_id))];
+  const { data: sessions } =
+    sessionIds.length > 0
+      ? await supabase.schema('public').from('sessions').select('id, scheduled_at').in('id', sessionIds)
+      : { data: [] as { id: string; scheduled_at: string }[] };
+
+  const questionById = new Map((questions ?? []).map((question) => [question.id, question]));
+  const classificationByQuestionId = new Map((classifications ?? []).map((classification) => [classification.question_id, classification]));
+  const sessionById = new Map((sessions ?? []).map((session) => [session.id, session]));
+
+  const physicianActivityTotals = new Map<PhysicianActivity, { total: number; correct: number }>();
+  const dimensionOfCareTotals = new Map<DimensionOfCare, { total: number; correct: number }>();
+  const blueprintTotals = new Map<string, { total: number; correct: number }>();
+  const confidenceTotals = new Map<ConfidenceLevel, { total: number; correct: number }>();
+  const errorTypeTotals = new Map<ErrorType, number>();
+  const weeklyTotals = new Map<string, { total: number; correct: number }>();
+
+  for (const reflection of reflections ?? []) {
+    if (!reflection.error_type) continue;
+    errorTypeTotals.set(reflection.error_type, (errorTypeTotals.get(reflection.error_type) ?? 0) + 1);
+  }
+
+  for (const answer of safeAnswers) {
+    const classification = classificationByQuestionId.get(answer.question_id);
+    const isCorrect = Boolean(answer.is_correct);
+
+    if (classification) {
+      const physicianTotals = physicianActivityTotals.get(classification.physician_activity) ?? { total: 0, correct: 0 };
+      physicianTotals.total += 1;
+      physicianTotals.correct += isCorrect ? 1 : 0;
+      physicianActivityTotals.set(classification.physician_activity, physicianTotals);
+
+      const dimensionTotals = dimensionOfCareTotals.get(classification.dimension_of_care) ?? { total: 0, correct: 0 };
+      dimensionTotals.total += 1;
+      dimensionTotals.correct += isCorrect ? 1 : 0;
+      dimensionOfCareTotals.set(classification.dimension_of_care, dimensionTotals);
+
+      const blueprintKey = `${classification.physician_activity}:${classification.dimension_of_care}`;
+      const blueprintCell = blueprintTotals.get(blueprintKey) ?? { total: 0, correct: 0 };
+      blueprintCell.total += 1;
+      blueprintCell.correct += isCorrect ? 1 : 0;
+      blueprintTotals.set(blueprintKey, blueprintCell);
+    }
+
+    if (answer.confidence) {
+      const confidenceTotal = confidenceTotals.get(answer.confidence) ?? { total: 0, correct: 0 };
+      confidenceTotal.total += 1;
+      confidenceTotal.correct += isCorrect ? 1 : 0;
+      confidenceTotals.set(answer.confidence, confidenceTotal);
+    }
+
+    const sessionId = questionById.get(answer.question_id)?.session_id;
+    const scheduledAt = sessionId ? sessionById.get(sessionId)?.scheduled_at : null;
+    const weekSource = scheduledAt ?? answer.answered_at;
+    const weekKey = toIsoDay(startOfWeek(new Date(weekSource)));
+    const weeklyTotal = weeklyTotals.get(weekKey) ?? { total: 0, correct: 0 };
+    weeklyTotal.total += 1;
+    weeklyTotal.correct += isCorrect ? 1 : 0;
+    weeklyTotals.set(weekKey, weeklyTotal);
+  }
+
+  const physicianActivityAccuracy = PHYSICIAN_ACTIVITY_OPTIONS.map((category) => {
+    const totals = physicianActivityTotals.get(category) ?? { total: 0, correct: 0 };
+    return {
+      category,
+      total: totals.total,
+      correct: totals.correct,
+      accuracy: totals.total > 0 ? Math.round((totals.correct / totals.total) * 100) : 0,
+    };
+  });
+
+  const dimensionOfCareAccuracy = DIMENSION_OF_CARE_OPTIONS.map((category) => {
+    const totals = dimensionOfCareTotals.get(category) ?? { total: 0, correct: 0 };
+    return {
+      category,
+      total: totals.total,
+      correct: totals.correct,
+      accuracy: totals.total > 0 ? Math.round((totals.correct / totals.total) * 100) : 0,
+    };
+  });
+
+  const blueprintGrid = PHYSICIAN_ACTIVITY_OPTIONS.flatMap((physicianActivity) =>
+    DIMENSION_OF_CARE_OPTIONS.map((dimensionOfCare) => {
+      const totals = blueprintTotals.get(`${physicianActivity}:${dimensionOfCare}`) ?? { total: 0, correct: 0 };
+      return {
+        physicianActivity,
+        dimensionOfCare,
+        total: totals.total,
+        correct: totals.correct,
+        accuracy: totals.total > 0 ? Math.round((totals.correct / totals.total) * 100) : null,
+      };
+    }),
+  );
+
+  const confidenceCalibration = (['low', 'medium', 'high'] as ConfidenceLevel[]).map((confidence) => {
+    const totals = confidenceTotals.get(confidence) ?? { total: 0, correct: 0 };
+    return {
+      confidence,
+      total: totals.total,
+      correct: totals.correct,
+      accuracy: totals.total > 0 ? Math.round((totals.correct / totals.total) * 100) : 0,
+    };
+  });
+
+  const errorTypeBreakdown = ERROR_TYPE_OPTIONS.map((errorType) => ({
+    errorType,
+    count: errorTypeTotals.get(errorType) ?? 0,
+  }))
+    .filter((item) => item.count > 0)
+    .sort((left, right) => right.count - left.count);
+
+  const weeklyTrend = [...weeklyTotals.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .slice(-8)
+    .map(([label, totals]) => ({
+      label,
+      total: totals.total,
+      accuracy: totals.total > 0 ? Math.round((totals.correct / totals.total) * 100) : null,
+    }));
+
+  return {
+    trialProgress: {
+      current: Math.min(answeredCount, TRIAL_QUESTION_LIMIT),
+      total: TRIAL_QUESTION_LIMIT,
+      remaining: Math.max(TRIAL_QUESTION_LIMIT - answeredCount, 0),
+      warningThreshold: TRIAL_WARNING_THRESHOLD,
+      showWarning: answeredCount >= TRIAL_WARNING_THRESHOLD && answeredCount < TRIAL_QUESTION_LIMIT,
+      isComplete: answeredCount >= TRIAL_QUESTION_LIMIT,
+    },
+    heatmap,
+    physicianActivityAccuracy,
+    dimensionOfCareAccuracy,
+    blueprintGrid,
+    confidenceCalibration,
+    errorTypeBreakdown,
+    weeklyTrend,
+  } satisfies ProfileAnalyticsData;
 }
 
 async function getUserSchedule(userId: string) {
@@ -559,6 +738,7 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
       : null;
 
   const heatmap = computeHeatmapFromDailyCounts(dailyCounts ?? []);
+  const profileAnalytics = await getProfileAnalytics(userId, answeredCount, heatmap);
   perf.done({
     answeredCount,
     completedSessionsCount,
@@ -573,7 +753,7 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
       averageConfidence,
       leagueProgress: Math.min(100, Math.round((answeredCount / 300) * 100)),
     },
-    profileAnalytics: buildEmptyProfileAnalytics(answeredCount, heatmap),
+    profileAnalytics,
   };
 });
 
