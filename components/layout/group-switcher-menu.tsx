@@ -1,109 +1,167 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { CreditCard, Menu, User, Users } from 'lucide-react';
+import { ChevronDown, Lock, Users, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 
+import { ModalPortal } from '@/components/ui/modal-portal';
 import { Link } from '@/i18n/navigation';
 import { cn } from '@/lib/utils';
 
 type ShellGroup = {
   id: string;
   name: string;
+  language: string;
+  scheduleLabel: string;
+  weeklyQuestions: number;
 };
 
 type GroupSwitcherMenuProps = {
   groups: ShellGroup[];
+  liveGroupCount: number;
+  liveHref: string;
+  userInitials: string;
   labels: {
-    group: string;
-    profile: string;
-    billing: string;
+    myGroups: string;
+    active: string;
+    selectHint: string;
+    noSchedule: string;
+    averageWeekly: string;
   };
 };
 
-export function GroupSwitcherMenu({ groups, labels }: GroupSwitcherMenuProps) {
+function getInitials(name: string) {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+export function GroupSwitcherMenu({ groups, liveGroupCount, liveHref, userInitials, labels }: GroupSwitcherMenuProps) {
   const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const selectedGroupId = searchParams.get('groupId');
+  const pathGroupId = pathname.match(/\/groups\/([^/?#]+)/)?.[1] ?? null;
+  const activeGroupId = pathGroupId ?? selectedGroupId;
   const selectedGroup = useMemo(
-    () => groups.find((group) => group.id === selectedGroupId) ?? groups[0] ?? null,
-    [groups, selectedGroupId],
+    () => groups.find((group) => group.id === activeGroupId) ?? groups[0] ?? null,
+    [groups, activeGroupId],
   );
+  const resolvedLiveHref =
+    liveHref === '/groups?live=1' && selectedGroup ? `/groups/${selectedGroup.id}?live=1` : liveHref;
 
   useEffect(() => {
-    function handlePointerDown(event: MouseEvent) {
-      if (!containerRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
+    if (!open) return;
 
     function handleEscape(event: KeyboardEvent) {
       if (event.key === 'Escape') setOpen(false);
     }
 
-    document.addEventListener('mousedown', handlePointerDown);
     document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, []);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [open]);
+
+  if (!selectedGroup) return null;
 
   return (
-    <div ref={containerRef} className="relative flex items-center gap-2">
+    <>
+      <div className="hidden items-center gap-2 sm:flex">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex h-10 min-w-0 max-w-[290px] items-center gap-3 rounded-[10px] border border-white/[0.08] bg-[#11192c] px-3 text-left shadow-[inset_0_0_0_1px_rgba(255,255,255,0.015)] transition hover:border-white/15 hover:bg-[#131d32]"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+        >
+          <span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#176b55] bg-[#053b32] text-[10px] font-extrabold text-[#22e39c]">
+            {userInitials}
+            <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-[#11192c] bg-brand" />
+          </span>
+          <span className="min-w-0 flex-1 truncate text-sm font-extrabold text-white">{selectedGroup.name}</span>
+          <ChevronDown className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" strokeWidth={1.8} />
+        </button>
+        <Link
+          href={resolvedLiveHref}
+          className="inline-flex h-10 items-center gap-1.5 rounded-[8px] bg-amber-500/10 px-3 text-xs font-extrabold text-amber-400 ring-1 ring-amber-500/10 transition hover:bg-amber-500/15"
+          aria-label={`${liveGroupCount}`}
+        >
+          <Lock className="h-3.5 w-3.5" aria-hidden="true" strokeWidth={1.8} />
+          {liveGroupCount}
+        </Link>
+      </div>
+
       <button
         type="button"
-        onClick={() => setOpen((value) => !value)}
-        className={cn(
-          'flex h-8 w-8 items-center justify-center rounded-[8px] text-slate-400 transition hover:bg-white/[0.06] hover:text-white',
-          open && 'bg-white/[0.08] text-white',
-        )}
+        onClick={() => setOpen(true)}
+        className="flex h-9 w-9 items-center justify-center rounded-[9px] border border-white/[0.08] bg-[#11192c] text-slate-400 transition hover:bg-[#131d32] hover:text-white sm:hidden"
+        aria-haspopup="dialog"
         aria-expanded={open}
-        aria-haspopup="menu"
       >
-        <Menu className="h-5 w-5" aria-hidden="true" strokeWidth={1.9} />
+        <Users className="h-4 w-4" aria-hidden="true" strokeWidth={1.8} />
       </button>
 
       {open ? (
-        <div className="absolute right-0 top-[calc(100%+10px)] z-50 w-[238px] overflow-hidden rounded-[12px] border border-white/[0.08] bg-[#11192c] shadow-[0_20px_70px_rgba(0,0,0,0.5)]">
-          <div className="px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">{labels.group}</p>
-            <p className="mt-1 truncate text-sm font-extrabold text-white">{selectedGroup?.name ?? 'ActiveBoard'}</p>
-          </div>
+        <ModalPortal>
+        <div className="fixed inset-0 flex items-center justify-center bg-black/72 px-4 py-6 backdrop-blur-[2px]" style={{ zIndex: 1000 }} role="dialog" aria-modal="true">
+          <button type="button" className="absolute inset-0 cursor-default" aria-label="Close" onClick={() => setOpen(false)} />
+          <section className="relative w-full max-w-[440px] overflow-hidden rounded-[15px] border border-white/[0.06] bg-[#11192c] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.55)]">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-brand" aria-hidden="true" strokeWidth={1.8} />
+                <h2 className="text-lg font-extrabold tracking-tight text-white">{labels.myGroups}</h2>
+              </div>
+              <button type="button" onClick={() => setOpen(false)} className="rounded-md p-1 text-slate-400 transition hover:bg-white/[0.06] hover:text-white">
+                <X className="h-5 w-5" aria-hidden="true" strokeWidth={1.8} />
+              </button>
+            </div>
 
-          <div className="max-h-[176px] overflow-y-auto">
-            {groups.map((group) => {
-              const active = group.id === selectedGroup?.id;
-              return (
-                <Link
-                  key={group.id}
-                  href={`/dashboard?view=sessions&groupId=${group.id}`}
-                  onClick={() => setOpen(false)}
-                  className={cn(
-                    'flex items-center gap-3 px-4 py-3 text-sm font-semibold transition',
-                    active ? 'bg-brand/12 text-brand' : 'text-slate-300 hover:bg-white/[0.05] hover:text-white',
-                  )}
-                >
-                  <Users className="h-4 w-4 shrink-0" aria-hidden="true" strokeWidth={1.7} />
-                  <span className="truncate">{group.name}</span>
-                </Link>
-              );
-            })}
-          </div>
+            <div className="max-h-[min(58vh,360px)] space-y-2 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {groups.map((group) => {
+                const active = group.id === selectedGroup.id;
+                return (
+                  <Link
+                    key={group.id}
+                    href={`/groups/${group.id}`}
+                    onClick={() => setOpen(false)}
+                    className={cn(
+                      'block rounded-[10px] border p-3 transition',
+                      active
+                        ? 'border-brand/60 bg-[#073a33] shadow-[inset_0_0_0_1px_rgba(0,194,129,0.18),0_0_22px_rgba(0,194,129,0.12)] ring-1 ring-brand/25 hover:border-brand hover:bg-[#0a4a40]'
+                        : 'border-white/[0.06] bg-white/[0.035] hover:border-brand/45 hover:bg-brand/[0.08]',
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-3 text-[11px] font-bold text-slate-500">
+                      <span className="inline-flex items-center gap-2">
+                        <span className={cn('h-2 w-2 rounded-full', active ? 'bg-brand' : 'bg-slate-500')} />
+                        {group.scheduleLabel || labels.noSchedule}
+                      </span>
+                      {active ? <span className="rounded-full bg-brand/15 px-2 py-0.5 text-[10px] text-brand">{labels.active}</span> : null}
+                    </div>
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#053b32] text-[9px] font-extrabold text-brand">
+                          {getInitials(group.name)}
+                        </span>
+                        <p className="min-w-0 truncate text-xs font-bold text-slate-300">
+                          {group.name} <span className="font-semibold text-slate-600">· {labels.averageWeekly}: {group.weeklyQuestions}</span>
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-xs font-bold text-slate-400">{group.language}</span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
 
-          <div className="border-t border-white/[0.06] py-1">
-            <Link href="/profile" onClick={() => setOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-slate-300 hover:bg-white/[0.05] hover:text-white">
-              <User className="h-4 w-4 text-slate-500" aria-hidden="true" strokeWidth={1.6} />
-              {labels.profile}
-            </Link>
-            <Link href="/billing" onClick={() => setOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-slate-300 hover:bg-white/[0.05] hover:text-white">
-              <CreditCard className="h-4 w-4 text-slate-500" aria-hidden="true" strokeWidth={1.6} />
-              {labels.billing}
-            </Link>
-          </div>
+            <p className="mt-4 text-center text-[11px] font-medium italic text-slate-500">{labels.selectHint}</p>
+          </section>
         </div>
+        </ModalPortal>
       ) : null}
-    </div>
+    </>
   );
 }

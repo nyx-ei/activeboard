@@ -18,13 +18,12 @@ const SYNC_KEY = 'activeboard:create-group-draft-syncing';
 
 function feedbackUrl(locale: string, tone: 'success' | 'error', message: string, groupId?: string) {
   const params = new URLSearchParams({
-    view: groupId ? 'settings' : 'sessions',
     feedbackTone: tone,
     feedbackMessage: message,
   });
 
   if (groupId) {
-    params.set('groupId', groupId);
+    return `/${locale}/groups/${groupId}?${params.toString()}`;
   }
 
   return `/${locale}/dashboard?${params.toString()}`;

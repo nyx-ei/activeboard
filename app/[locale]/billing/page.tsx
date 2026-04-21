@@ -41,7 +41,7 @@ export default async function BillingPage({ params }: BillingPageProps) {
         <section className="rounded-t-[16px] border border-white/[0.06] bg-[#11192c] p-5 shadow-[0_-24px_70px_rgba(0,0,0,0.55)] sm:rounded-[15px] sm:p-6">
           <div className="flex items-center justify-between gap-4">
             <h1 className="text-lg font-extrabold tracking-tight text-white">{t('title')}</h1>
-            <Link href="/dashboard?view=group" className="text-2xl leading-none text-slate-400 transition hover:text-white" aria-label={t('close')}>
+            <Link href="/groups" className="text-2xl leading-none text-slate-400 transition hover:text-white" aria-label={t('close')}>
               ×
             </Link>
           </div>

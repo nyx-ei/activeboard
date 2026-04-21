@@ -10,6 +10,14 @@ import { cn } from '@/lib/utils';
 
 type Mode = 'sign-in' | 'sign-up';
 
+type AuthFormProps = {
+  initialMode?: Mode;
+  redirectToOverride?: string;
+  signUpRedirectToOverride?: string;
+  requireExamSessionOnSignUp?: boolean;
+  variant?: 'page' | 'modal';
+};
+
 function PendingInlineLabel({ pending, label, pendingLabel }: { pending: boolean; label: string; pendingLabel: string }) {
   return (
     <span className="relative inline-flex items-center justify-center">
@@ -24,12 +32,19 @@ function PendingInlineLabel({ pending, label, pendingLabel }: { pending: boolean
   );
 }
 
-export function AuthForm() {
+export function AuthForm({
+  initialMode,
+  redirectToOverride,
+  signUpRedirectToOverride,
+  requireExamSessionOnSignUp = true,
+  variant = 'page',
+}: AuthFormProps = {}) {
   const t = useTranslations('Auth');
   const locale = useLocale() as AppLocale;
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('next') ?? `/${locale}/dashboard`;
-  const [mode, setMode] = useState<Mode>(searchParams.get('mode') === 'sign-up' ? 'sign-up' : 'sign-in');
+  const redirectTo = redirectToOverride ?? searchParams.get('next') ?? `/${locale}/dashboard`;
+  const signUpRedirectTo = signUpRedirectToOverride ?? redirectTo;
+  const [mode, setMode] = useState<Mode>(initialMode ?? (searchParams.get('mode') === 'sign-up' ? 'sign-up' : 'sign-in'));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -81,7 +96,7 @@ export function AuthForm() {
   async function handlePasswordAuth() {
     setMessage(null);
 
-    if (!email || !password || (mode === 'sign-up' && (!displayName || !examSession))) {
+    if (!email || !password || (mode === 'sign-up' && (!displayName || (requireExamSessionOnSignUp && !examSession)))) {
       setMessageTone('error');
       setMessage(t('missingFields'));
       return;
@@ -98,7 +113,20 @@ export function AuthForm() {
 
       setMessageTone('success');
       setMessage(t('signInSuccess'));
-      window.location.assign(redirectTo);
+      const explicitNext = searchParams.has('next');
+      if (explicitNext) {
+        window.location.assign(redirectTo);
+        return;
+      }
+
+      const { data: firstMembership } = await supabase
+        .schema('public')
+        .from('group_members')
+        .select('group_id')
+        .limit(1)
+        .maybeSingle();
+
+      window.location.assign(firstMembership?.group_id ? redirectTo : `/${locale}/create-group`);
       return;
     }
 
@@ -108,10 +136,10 @@ export function AuthForm() {
       options: {
         data: {
           full_name: displayName,
-          exam_session: examSession,
+          ...(examSession ? { exam_session: examSession } : {}),
           locale,
         },
-        emailRedirectTo: `${window.location.origin}/${locale}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}/${locale}/auth/callback?next=${encodeURIComponent(signUpRedirectTo)}`,
       },
     });
 
@@ -131,13 +159,15 @@ export function AuthForm() {
 
     setMessageTone('success');
     setMessage(t('signUpSuccess'));
+    window.location.assign(signUpRedirectTo);
   }
 
   async function handleGoogle() {
+    const nextUrl = mode === 'sign-up' ? signUpRedirectTo : redirectTo;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/${locale}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
+        redirectTo: `${window.location.origin}/${locale}/auth/callback?next=${encodeURIComponent(nextUrl)}`,
         queryParams: {
           access_type: 'offline',
           prompt: 'select_account',
@@ -152,20 +182,27 @@ export function AuthForm() {
   }
 
   return (
-    <div className="w-full max-w-[410px]">
-      <div className="mx-auto flex h-[52px] w-[52px] items-center justify-center rounded-[8px] bg-brand text-xl font-extrabold text-white">
-        AB
-      </div>
-      <div className="mt-5 text-center">
-        <h1 className="text-2xl font-extrabold tracking-tight text-white">
-          {mode === 'sign-in' ? t('welcomeBack') : t('createAccountTitle')}
+    <div className={cn('w-full max-w-[410px]', variant === 'modal' && 'max-w-none')}>
+      {variant === 'page' ? (
+        <div className="mx-auto flex h-[52px] w-[52px] items-center justify-center rounded-[8px] bg-brand text-xl font-extrabold text-white">
+          AB
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <span className="flex h-8 w-8 items-center justify-center rounded-[6px] bg-brand text-sm font-extrabold text-white">AB</span>
+          <span className="text-base font-extrabold text-white">ActiveBoard</span>
+        </div>
+      )}
+      <div className={cn(variant === 'page' ? 'mt-5 text-center' : 'mt-4 text-left')}>
+        <h1 className={cn('font-extrabold tracking-tight text-white', variant === 'page' ? 'text-2xl' : 'text-xl')}>
+          {mode === 'sign-in' ? t('welcomeBack') : requireExamSessionOnSignUp ? t('createAccountTitle') : t('createGroupTitle')}
         </h1>
-        <p className="mt-2 text-sm font-medium text-slate-500">
-          {mode === 'sign-in' ? t('welcomeBackSubtitle') : t('createAccountSubtitle')}
+        <p className="mt-2 text-sm font-medium text-slate-400">
+          {mode === 'sign-in' ? t('welcomeBackSubtitle') : requireExamSessionOnSignUp ? t('createAccountSubtitle') : t('createGroupSubtitle')}
         </p>
       </div>
 
-      <div className="mt-8 space-y-4">
+      <div className={cn('space-y-4', variant === 'page' ? 'mt-8' : 'mt-5')}>
         {mode === 'sign-up' ? (
           <label className="block">
             <span className="mb-2 block text-sm font-bold text-slate-300">{t('displayName')}</span>
@@ -200,7 +237,7 @@ export function AuthForm() {
           {mode === 'sign-up' ? <span className="mt-1 block text-xs text-slate-500">{t('passwordHint')}</span> : null}
         </label>
 
-        {mode === 'sign-up' ? (
+        {mode === 'sign-up' && requireExamSessionOnSignUp ? (
           <label className="block">
             <span className="mb-2 block text-sm font-bold text-slate-300">{t('examSession')}</span>
             <select

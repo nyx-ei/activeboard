@@ -44,6 +44,36 @@ export function ProfileDetailsForm({
   initialQuestionBanks,
   labels,
 }: ProfileDetailsFormProps) {
+  return (
+    <form action={action} className="mt-5 space-y-4">
+      <input type="hidden" name="locale" value={locale} />
+      <input type="hidden" name="examSession" value={initialExamSession} />
+      {initialQuestionBanks.map((bank) => (
+        <input key={bank} type="hidden" name="questionBanks" value={bank} />
+      ))}
+
+      <label className="block">
+        <span className="mb-2 block text-sm font-semibold text-slate-400">{labels.displayName}</span>
+        <input name="displayName" className="field h-10 rounded-[7px] px-3 py-2 text-sm" defaultValue={displayName} />
+      </label>
+
+      <SubmitButton pendingLabel={labels.saveProfilePending} className="button-primary w-full rounded-[7px] py-2.5 text-sm">
+        {labels.saveProfile}
+      </SubmitButton>
+    </form>
+  );
+}
+
+type ExamSettingsFormProps = ProfileDetailsFormProps;
+
+export function ExamSettingsForm({
+  action,
+  locale,
+  displayName,
+  initialExamSession,
+  initialQuestionBanks,
+  labels,
+}: ExamSettingsFormProps) {
   const [selectedBanks, setSelectedBanks] = useState(() => new Set(initialQuestionBanks));
 
   function toggleBank(value: string) {
@@ -59,16 +89,13 @@ export function ProfileDetailsForm({
   }
 
   return (
-    <form action={action} className="mt-5 space-y-4">
+    <form action={action} className="mt-5 space-y-5">
       <input type="hidden" name="locale" value={locale} />
+      <input type="hidden" name="section" value="exam" />
+      <input type="hidden" name="displayName" value={displayName} />
       {[...selectedBanks].map((bank) => (
         <input key={bank} type="hidden" name="questionBanks" value={bank} />
       ))}
-
-      <label className="block">
-        <span className="mb-2 block text-sm font-semibold text-slate-400">{labels.displayName}</span>
-        <input name="displayName" className="field h-10 rounded-[7px] px-3 py-2 text-sm" defaultValue={displayName} />
-      </label>
 
       <label className="block">
         <span className="mb-2 block text-sm font-semibold text-slate-400">{labels.examSession}</span>

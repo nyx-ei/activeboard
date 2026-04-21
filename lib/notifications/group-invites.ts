@@ -26,8 +26,7 @@ type SendGroupMemberAddedEmailInput = {
 };
 
 function buildGroupInviteCopy(input: SendGroupInviteEmailInput) {
-  const dashboardUrl = `${getAppUrl()}/${input.locale}/dashboard`;
-  const authUrl = `${getAppUrl()}/${input.locale}/auth/login?next=/${input.locale}/dashboard`;
+  const authUrl = `${getAppUrl()}/${input.locale}/auth/login?next=/${input.locale}/groups/${input.groupId}`;
 
   if (input.locale === 'fr') {
     return {
@@ -43,9 +42,9 @@ function buildGroupInviteCopy(input: SendGroupInviteEmailInput) {
         details: [
           { label: 'Groupe', value: input.groupName },
           { label: 'Invité par', value: input.inviterName },
-          { label: 'Code d’invitation', value: input.inviteCode || 'Disponible dans ActiveBoard' },
+          { label: "Code d'invitation", value: input.inviteCode || 'Disponible dans ActiveBoard' },
         ],
-        action: { label: 'Accepter l’invitation', url: authUrl },
+        action: { label: "Accepter l'invitation", url: authUrl },
         secondaryNote:
           'Si vous avez déjà un compte ActiveBoard, connectez-vous avec cette adresse email. Sinon, créez un compte puis ouvrez le tableau de bord.',
       },
@@ -67,7 +66,7 @@ function buildGroupInviteCopy(input: SendGroupInviteEmailInput) {
         { label: 'Invited by', value: input.inviterName },
         { label: 'Invitation code', value: input.inviteCode || 'Available in ActiveBoard' },
       ],
-      action: { label: 'Accept invitation', url: dashboardUrl },
+      action: { label: 'Accept invitation', url: authUrl },
       secondaryNote:
         'If you already have an ActiveBoard account, sign in with this email address. Otherwise, create an account and open the dashboard.',
     },
@@ -114,7 +113,7 @@ export async function sendGroupInviteEmail(input: SendGroupInviteEmailInput) {
 }
 
 export async function sendGroupMemberAddedEmail(input: SendGroupMemberAddedEmailInput) {
-  const dashboardUrl = `${getAppUrl()}/${input.locale}/dashboard?view=group&groupId=${input.groupId}`;
+  const dashboardUrl = `${getAppUrl()}/${input.locale}/groups/${input.groupId}`;
   const memberName = input.memberName?.trim() || input.memberEmail.split('@')[0] || 'ActiveBoard member';
   const isFrench = input.locale === 'fr';
   const content = isFrench

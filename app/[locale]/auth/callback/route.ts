@@ -87,7 +87,21 @@ export async function GET(request: Request, { params }: RouteContext) {
     });
   }
 
-  const redirectPath = next?.startsWith('/') ? next : `/${locale}/dashboard`;
+  let redirectPath = next?.startsWith('/') ? next : `/${locale}/dashboard`;
+
+  if (!next && user?.id) {
+    const { data: firstMembership } = await supabase
+      .schema('public')
+      .from('group_members')
+      .select('group_id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (!firstMembership?.group_id) {
+      redirectPath = `/${locale}/create-group`;
+    }
+  }
 
   return NextResponse.redirect(new URL(redirectPath, requestUrl.origin));
 }

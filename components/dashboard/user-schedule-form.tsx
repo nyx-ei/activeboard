@@ -132,7 +132,7 @@ export function UserScheduleForm({
         </label>
       </div>
 
-      <div className={compact ? 'mt-3 overflow-x-auto' : 'mt-5 overflow-x-auto'}>
+      <div className={compact ? 'mt-3 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden' : 'mt-5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'}>
         <div className="w-max min-w-full">
           <div
             className={

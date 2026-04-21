@@ -40,6 +40,7 @@ type GroupMeetingLinkFormProps = {
   warning: string;
   pendingLabel: string;
   submitLabel: string;
+  helper?: string;
 };
 
 export function GroupNameForm({
@@ -157,6 +158,7 @@ export function GroupMeetingLinkForm({
   warning,
   pendingLabel,
   submitLabel,
+  helper,
 }: GroupMeetingLinkFormProps) {
   const [meetingLink, setMeetingLink] = useState(initialMeetingLink);
   const isValid = isValidMeetingLink(meetingLink);
@@ -193,7 +195,7 @@ export function GroupMeetingLinkForm({
           </SubmitButton>
         </div>
       </label>
-      {!isValid ? <p className="mt-1.5 text-[10px] font-bold text-amber-400">{warning}</p> : null}
+      {!isValid ? <p className="mt-1.5 text-[10px] font-bold text-amber-400">{warning}</p> : helper ? <p className="mt-1.5 text-[10px] font-semibold text-slate-500">{helper}</p> : null}
     </form>
   );
 }

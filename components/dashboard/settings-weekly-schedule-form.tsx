@@ -17,6 +17,7 @@ type SettingsWeeklyScheduleFormProps = {
   action: (formData: FormData) => void | Promise<void>;
   locale: string;
   groupId: string;
+  inline?: boolean;
   labels: {
     addDay: string;
     saveSchedule: string;
@@ -29,6 +30,11 @@ type SettingsWeeklyScheduleFormProps = {
 
 const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
+function getMeridiem(value: string) {
+  const hour = Number(value.slice(0, 2));
+  return hour >= 12 ? 'pm' : 'am';
+}
+
 function createDraft(index: number): ScheduleDraft {
   return {
     id: `${Date.now()}-${index}`,
@@ -39,7 +45,7 @@ function createDraft(index: number): ScheduleDraft {
   };
 }
 
-export function SettingsWeeklyScheduleForm({ action, locale, groupId, labels }: SettingsWeeklyScheduleFormProps) {
+export function SettingsWeeklyScheduleForm({ action, locale, groupId, inline = false, labels }: SettingsWeeklyScheduleFormProps) {
   const [drafts, setDrafts] = useState<ScheduleDraft[]>([]);
 
   function updateDraft(id: string, patch: Partial<ScheduleDraft>) {
@@ -55,17 +61,17 @@ export function SettingsWeeklyScheduleForm({ action, locale, groupId, labels }: 
   }
 
   return (
-    <form action={action} className="relative mt-3">
+    <form action={action} className={inline ? 'relative mt-0' : 'relative mt-3'}>
       <input type="hidden" name="locale" value={locale} />
       <input type="hidden" name="groupId" value={groupId} />
 
-      <div className="absolute -top-8 right-0">
+      <div className={inline ? 'mt-2' : 'absolute -top-8 right-0'}>
         <button type="button" onClick={addDraft} className="text-xs font-bold text-brand transition hover:text-emerald-300">
           + {labels.addDay}
         </button>
       </div>
 
-      <div className="space-y-1.5 rounded-[8px] bg-white/[0.035] p-2 empty:hidden sm:p-2.5">
+      <div className={inline ? 'mt-2 space-y-1.5 empty:hidden' : 'space-y-1.5 rounded-[8px] bg-white/[0.035] p-2 empty:hidden sm:p-2.5'}>
         {drafts.map((draft) => (
           <div
             key={draft.id}
@@ -84,21 +90,27 @@ export function SettingsWeeklyScheduleForm({ action, locale, groupId, labels }: 
                 </option>
               ))}
             </select>
-            <input
-              name="startTime"
-              type="time"
-              className="h-8 min-w-0 rounded-[5px] border border-white/[0.08] bg-white/[0.08] px-2 text-[12px] font-bold text-white outline-none focus:border-brand"
-              value={draft.startTime}
-              onChange={(event) => updateDraft(draft.id, { startTime: event.target.value })}
-            />
+            <div className="flex h-8 min-w-0 items-center rounded-[5px] border border-white/[0.08] bg-white/[0.08] px-2 focus-within:border-brand">
+              <input
+                name="startTime"
+                type="time"
+                className="min-w-0 flex-1 bg-transparent p-0 text-[12px] font-bold text-white outline-none"
+                value={draft.startTime}
+                onChange={(event) => updateDraft(draft.id, { startTime: event.target.value })}
+              />
+              <span className="ml-1 text-[10px] font-bold text-slate-400">{getMeridiem(draft.startTime)}</span>
+            </div>
             <span className="hidden text-center text-xs text-slate-500 sm:block">-&gt;</span>
-            <input
-              name="endTime"
-              type="time"
-              className="h-8 min-w-0 rounded-[5px] border border-white/[0.08] bg-white/[0.08] px-2 text-[12px] font-bold text-white outline-none focus:border-brand"
-              value={draft.endTime}
-              onChange={(event) => updateDraft(draft.id, { endTime: event.target.value })}
-            />
+            <div className="flex h-8 min-w-0 items-center rounded-[5px] border border-white/[0.08] bg-white/[0.08] px-2 focus-within:border-brand">
+              <input
+                name="endTime"
+                type="time"
+                className="min-w-0 flex-1 bg-transparent p-0 text-[12px] font-bold text-white outline-none"
+                value={draft.endTime}
+                onChange={(event) => updateDraft(draft.id, { endTime: event.target.value })}
+              />
+              <span className="ml-1 text-[10px] font-bold text-slate-400">{getMeridiem(draft.endTime)}</span>
+            </div>
             <input
               name="questionGoal"
               type="number"

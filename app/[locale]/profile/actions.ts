@@ -15,11 +15,13 @@ export async function updateProfileAction(formData: FormData) {
   const displayName = ((formData.get('displayName') as string | null) ?? '').trim();
   const examSession = ((formData.get('examSession') as string | null) ?? '').trim();
   const questionBanks = formData.getAll('questionBanks').map((value) => String(value));
+  const section = ((formData.get('section') as string | null) ?? '').trim();
+  const profilePath = section === 'exam' ? `/${locale}/profile?section=exam` : `/${locale}/profile`;
   const t = await getTranslations({ locale, namespace: 'Feedback' });
   const user = await requireUser(locale);
 
   if (!displayName) {
-    redirect(withFeedback(`/${locale}/profile`, 'error', t('missingFields')));
+    redirect(withFeedback(profilePath, 'error', t('missingFields')));
   }
 
   const supabase = createSupabaseServerClient();
@@ -33,7 +35,7 @@ export async function updateProfileAction(formData: FormData) {
   });
 
   if (authError) {
-    redirect(withFeedback(`/${locale}/profile`, 'error', t('actionFailed')));
+    redirect(withFeedback(profilePath, 'error', t('actionFailed')));
   }
 
   const { error: profileError } = await supabase
@@ -49,10 +51,10 @@ export async function updateProfileAction(formData: FormData) {
     .eq('id', user.id);
 
   if (profileError) {
-    redirect(withFeedback(`/${locale}/profile`, 'error', t('actionFailed')));
+    redirect(withFeedback(profilePath, 'error', t('actionFailed')));
   }
 
-  redirect(withFeedback(`/${locale}/profile`, 'success', t('profileUpdated')));
+  redirect(withFeedback(profilePath, 'success', t('profileUpdated')));
 }
 
 export async function updatePasswordAction(formData: FormData) {
