@@ -1,10 +1,45 @@
-import { SparkIcon, TargetIcon } from '@/components/ui/dashboard-icons';
-import { Share2 } from 'lucide-react';
-
 type HeatmapDay = {
   date: string;
   count: number;
   intensity: 0 | 1 | 2 | 3 | 4;
+};
+
+type TrialProgress = {
+  current: number;
+  total: number;
+  remaining: number;
+  showWarning: boolean;
+  isComplete: boolean;
+};
+
+type CategoryAccuracyItem = {
+  category: string;
+  total: number;
+  accuracy: number;
+};
+
+type BlueprintGridCell = {
+  physicianActivity: string;
+  dimensionOfCare: string;
+  total: number;
+  accuracy: number | null;
+};
+
+type ConfidenceCalibrationItem = {
+  confidence: 'low' | 'medium' | 'high';
+  total: number;
+  accuracy: number;
+};
+
+type ErrorTypeBreakdownItem = {
+  errorType: string;
+  count: number;
+};
+
+type TrendPoint = {
+  label: string;
+  total: number;
+  accuracy: number | null;
 };
 
 type DashboardPerformanceViewProps = {
@@ -13,7 +48,14 @@ type DashboardPerformanceViewProps = {
   successRate: number | null;
   errorRate: number | null;
   averageConfidence: 'low' | 'medium' | 'high' | null;
+  trialProgress: TrialProgress;
   heatmap: HeatmapDay[];
+  physicianActivityAccuracy: CategoryAccuracyItem[];
+  dimensionOfCareAccuracy: CategoryAccuracyItem[];
+  blueprintGrid: BlueprintGridCell[];
+  confidenceCalibration: ConfidenceCalibrationItem[];
+  errorTypeBreakdown: ErrorTypeBreakdownItem[];
+  weeklyTrend: TrendPoint[];
   labels: {
     sprintActivityTitle: string;
     questionsAnswered: string;
@@ -35,6 +77,27 @@ type DashboardPerformanceViewProps = {
     averagePerWeek: string;
     completion: string;
     share: string;
+    trialProgressTitle: string;
+    trialProgressSummary: string;
+    trialProgressDescription: string;
+    trialProgressWarning: string;
+    trialProgressComplete: string;
+    trendTitle: string;
+    trendDescription: string;
+    trendAccuracyValue: string;
+    trendEmpty: string;
+    physicianActivityTitle: string;
+    dimensionOfCareTitle: string;
+    accuracyValue: string;
+    confidenceCalibrationTitle: string;
+    errorTypesTitle: string;
+    errorTypesEmpty: string;
+    errorTypeCount: string;
+    blueprintGridTitle: string;
+    blueprintGridDescription: string;
+    physicianActivityLabels: Record<string, string>;
+    dimensionOfCareLabels: Record<string, string>;
+    errorTypeLabels: Record<string, string>;
   };
 };
 
@@ -51,6 +114,14 @@ function getHeatmapCellClass(intensity: HeatmapDay['intensity']) {
     default:
       return 'bg-[#1f2b3d]';
   }
+}
+
+function getBlueprintCellTone(accuracy: number | null) {
+  if (accuracy === null) return 'bg-[#172133] text-slate-600';
+  if (accuracy >= 80) return 'bg-emerald-500/20 text-emerald-200';
+  if (accuracy >= 60) return 'bg-emerald-400/12 text-emerald-100';
+  if (accuracy >= 40) return 'bg-amber-400/16 text-amber-100';
+  return 'bg-red-400/16 text-red-100';
 }
 
 function parseIsoDate(date: string) {
@@ -76,12 +147,57 @@ function startOfUtcWeek(date: Date) {
   return next;
 }
 
+function formatTrendLabel(value: string) {
+  const date = parseIsoDate(value);
+  return `${String(date.getUTCDate()).padStart(2, '0')}/${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+function AccuracyList({
+  items,
+  title,
+  labels,
+  empty,
+}: {
+  items: CategoryAccuracyItem[];
+  title: string;
+  labels: Record<string, string>;
+  empty: string;
+}) {
+  const visibleItems = items.filter((item) => item.total > 0);
+
+  return (
+    <section className="surface-mockup p-5">
+      <p className="text-sm font-bold text-white">{title}</p>
+      <div className="mt-4 space-y-3">
+        {visibleItems.length > 0 ? (
+          visibleItems.map((item) => (
+            <div key={item.category} className="rounded-[10px] bg-white/[0.035] px-3 py-3">
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-sm font-semibold text-slate-300">{labels[item.category] ?? item.category}</p>
+                <span className="text-sm font-extrabold text-white">{item.accuracy}%</span>
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="text-sm text-slate-500">{empty}</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export function DashboardPerformanceView({
   answeredCount,
   completedSessionsCount,
   successRate,
   averageConfidence,
   heatmap,
+  physicianActivityAccuracy,
+  dimensionOfCareAccuracy,
+  blueprintGrid,
+  confidenceCalibration,
+  errorTypeBreakdown,
+  weeklyTrend,
   labels,
 }: DashboardPerformanceViewProps) {
   const heatmapByDate = new Map(heatmap.map((day) => [day.date, day]));
@@ -121,27 +237,25 @@ export function DashboardPerformanceView({
         : averageConfidence === 'high'
           ? labels.confidenceHigh
           : labels.noData;
+  const blueprintRows = physicianActivityAccuracy
+    .map((item) => item.category)
+    .filter((category) => blueprintGrid.some((cell) => cell.physicianActivity === category && cell.total > 0));
 
   return (
     <>
       <section className="surface-mockup p-5">
         <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <SparkIcon className="h-4 w-4" />
-            <p className="text-sm font-bold text-white">{labels.sprintActivityTitle}</p>
+          <div>
+            <p className="text-sm font-bold text-slate-300">{labels.sprintActivityTitle}</p>
+            <p className="mt-2 text-2xl font-extrabold text-white">
+              {answeredCount}
+              <span className="ml-2 text-sm font-bold text-slate-500">{labels.questionsAnswered}</span>
+            </p>
           </div>
           <div className="text-right">
-            <p className="text-3xl font-extrabold leading-none text-white">{answeredCount}</p>
-            <p className="mt-1 text-xs font-semibold text-slate-500">{labels.questionsAnswered}</p>
+            <p className="text-2xl font-extrabold text-brand">{completedSessionsCount}</p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">{labels.sessionsFinished}</p>
           </div>
-        </div>
-
-        <div className="mt-2 text-xs font-semibold text-slate-600">
-          <span>-</span>
-          <span className="mx-2">-</span>
-          <span>FRANÇAIS</span>
-          <span className="mx-2">·</span>
-          <span>GMT+1</span>
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
@@ -202,26 +316,126 @@ export function DashboardPerformanceView({
             </div>
           </aside>
         </div>
-
-        <div className="mt-3 flex justify-end">
-          <button
-            type="button"
-            className="rounded-md p-1.5 text-slate-500 transition hover:bg-white/[0.06] hover:text-brand"
-            aria-label={labels.share}
-          >
-            <Share2 className="h-4 w-4" aria-hidden="true" strokeWidth={1.8} />
-          </button>
-        </div>
       </section>
 
       <section className="surface-mockup p-5">
-        <div className="flex items-center gap-2">
-          <TargetIcon className="h-4 w-4" />
-          <p className="text-sm font-bold text-white">{labels.certaintyTitle}</p>
-        </div>
-        <p className="mt-3 text-sm text-slate-500">
+        <p className="text-sm font-bold text-white">{labels.certaintyTitle}</p>
+        <p className="mt-2 text-sm text-slate-500">
           {successRate !== null ? `${successRate}% - ${confidenceLabel}` : labels.confidenceAfterNextSession}
         </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          {confidenceCalibration.map((item) => (
+            <div key={item.confidence} className="rounded-[10px] bg-white/[0.035] px-3 py-3">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+                {item.confidence === 'low' ? labels.confidenceLow : item.confidence === 'medium' ? labels.confidenceMedium : labels.confidenceHigh}
+              </p>
+              <p className="mt-2 text-lg font-extrabold text-white">{item.total > 0 ? `${item.accuracy}%` : labels.noData}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2">
+        <AccuracyList
+          items={physicianActivityAccuracy}
+          title={labels.physicianActivityTitle}
+          labels={labels.physicianActivityLabels}
+          empty={labels.noData}
+        />
+        <AccuracyList
+          items={dimensionOfCareAccuracy}
+          title={labels.dimensionOfCareTitle}
+          labels={labels.dimensionOfCareLabels}
+          empty={labels.noData}
+        />
+      </section>
+
+      <section className="surface-mockup p-5">
+        <p className="text-sm font-bold text-white">{labels.blueprintGridTitle}</p>
+        <p className="mt-2 text-sm text-slate-500">{labels.blueprintGridDescription}</p>
+        <div className="mt-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="min-w-[680px]">
+            <div className="grid grid-cols-[180px_repeat(6,minmax(0,1fr))] gap-2 text-[11px] font-bold text-slate-500">
+              <div />
+              {dimensionOfCareAccuracy.map((item) => (
+                <div key={item.category} className="px-2 text-center">
+                  {labels.dimensionOfCareLabels[item.category] ?? item.category}
+                </div>
+              ))}
+            </div>
+            <div className="mt-2 space-y-2">
+              {blueprintRows.length > 0 ? (
+                blueprintRows.map((rowKey) => (
+                  <div key={rowKey} className="grid grid-cols-[180px_repeat(6,minmax(0,1fr))] gap-2">
+                    <div className="flex items-center px-2 text-xs font-semibold text-slate-300">
+                      {labels.physicianActivityLabels[rowKey] ?? rowKey}
+                    </div>
+                    {dimensionOfCareAccuracy.map((column) => {
+                      const cell = blueprintGrid.find(
+                        (item) => item.physicianActivity === rowKey && item.dimensionOfCare === column.category,
+                      );
+                      return (
+                        <div
+                          key={`${rowKey}-${column.category}`}
+                          className={`rounded-[8px] px-2 py-3 text-center text-xs font-extrabold ${getBlueprintCellTone(cell?.accuracy ?? null)}`}
+                        >
+                          {cell?.accuracy ?? labels.noData}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-500">{labels.noData}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2">
+        <section className="surface-mockup p-5">
+          <p className="text-sm font-bold text-white">{labels.errorTypesTitle}</p>
+          <div className="mt-4 space-y-3">
+            {errorTypeBreakdown.length > 0 ? (
+              errorTypeBreakdown.map((item) => (
+                <div key={item.errorType} className="rounded-[10px] bg-white/[0.035] px-3 py-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="text-sm font-semibold text-slate-300">{labels.errorTypeLabels[item.errorType] ?? item.errorType}</p>
+                    <span className="text-sm font-extrabold text-white">
+                      {labels.errorTypeCount.replace('{count}', String(item.count))}
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-slate-500">{labels.errorTypesEmpty}</p>
+            )}
+          </div>
+        </section>
+
+        <section className="surface-mockup p-5">
+          <p className="text-sm font-bold text-white">{labels.trendTitle}</p>
+          <p className="mt-2 text-sm text-slate-500">{labels.trendDescription}</p>
+          <div className="mt-4 space-y-3">
+            {weeklyTrend.length > 0 ? (
+              weeklyTrend.map((point) => (
+                <div key={point.label} className="rounded-[10px] bg-white/[0.035] px-3 py-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="text-sm font-semibold text-slate-300">{formatTrendLabel(point.label)}</p>
+                    <span className="text-sm font-extrabold text-white">
+                      {point.accuracy !== null
+                        ? labels.trendAccuracyValue.replace('{accuracy}', String(point.accuracy)).replace('{count}', String(point.total))
+                        : labels.trendEmpty}
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-slate-500">{labels.trendEmpty}</p>
+            )}
+          </div>
+        </section>
       </section>
     </>
   );

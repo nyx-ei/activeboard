@@ -26,10 +26,6 @@ export function hasUserTierCapability(
   accessState: Awaited<ReturnType<typeof getUserAccessState>>,
   capability: UserTierCapability,
 ) {
-  if (!accessState.gatingEnabled) {
-    return true;
-  }
-
   return Boolean(accessState.capabilities?.[capability]);
 }
 

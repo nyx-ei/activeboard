@@ -11,6 +11,14 @@ import { renderPlainTextEmail, renderTransactionalEmail } from '@/lib/email/temp
 
 type SessionRow = Database['public']['Tables']['sessions']['Row'];
 
+function normalizeLocale(locale: string | null | undefined): 'en' | 'fr' {
+  return locale === 'fr' ? 'fr' : 'en';
+}
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
 function buildCalendarInviteCopy(args: {
   locale: 'en' | 'fr';
   memberName: string;
@@ -137,6 +145,7 @@ export async function sendSessionCalendarInvites(session: Pick<SessionRow, 'id' 
     .in('id', memberIds);
 
   const sentUserIds = new Set((alreadySentRows ?? []).map((row) => row.user_id));
+  const sentEmails = new Set<string>();
   let attempted = 0;
   let sent = 0;
 
@@ -145,10 +154,16 @@ export async function sendSessionCalendarInvites(session: Pick<SessionRow, 'id' 
       continue;
     }
 
+    const normalizedRecipientEmail = normalizeEmail(user.email);
+    if (sentEmails.has(normalizedRecipientEmail)) {
+      continue;
+    }
+
     attempted += 1;
+    const locale = normalizeLocale(user.locale);
 
     const copy = buildCalendarInviteCopy({
-      locale: user.locale,
+      locale,
       memberName: user.display_name ?? user.email,
       groupName: group?.name ?? 'ActiveBoard',
       sessionName: session.name ?? group?.name ?? 'ActiveBoard',
@@ -195,11 +210,12 @@ export async function sendSessionCalendarInvites(session: Pick<SessionRow, 'id' 
         throw new Error(`Failed to persist calendar invite receipt: ${insertError.message}`);
       }
 
+      sentEmails.add(normalizedRecipientEmail);
       sent += 1;
 
       await logAppEvent({
         eventName: APP_EVENTS.sessionCalendarInviteSent,
-        locale: user.locale,
+        locale,
         userId: user.id,
         groupId: session.group_id,
         sessionId: session.id,
@@ -212,7 +228,7 @@ export async function sendSessionCalendarInvites(session: Pick<SessionRow, 'id' 
       await logAppEvent({
         eventName: APP_EVENTS.sessionCalendarInviteFailed,
         level: 'error',
-        locale: user.locale,
+        locale,
         userId: user.id,
         groupId: session.group_id,
         sessionId: session.id,

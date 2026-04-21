@@ -42,6 +42,7 @@ export function LandingSignupModal({ locale, children, className, closeLabel }: 
                 initialMode="sign-up"
                 redirectToOverride={`/${locale}/create-group`}
                 requireExamSessionOnSignUp={false}
+                deferSignUpToRedirect
                 variant="modal"
               />
             </div>

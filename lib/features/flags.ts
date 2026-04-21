@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 export const FEATURE_FLAGS = {
   canUseUbiquitousLogging: false,
   canUseStripeBilling: false,
-  canEnforceUserTierGating: false,
+  canEnforceUserTierGating: true,
 } as const;
 
 export type FeatureFlagKey = keyof typeof FEATURE_FLAGS;

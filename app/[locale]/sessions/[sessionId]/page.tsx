@@ -9,6 +9,7 @@ import { SubmitButton } from '@/components/ui/submit-button';
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
+import { getUserBillingSnapshot, TRIAL_QUESTION_LIMIT } from '@/lib/billing/user-tier';
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
 import { getSessionData } from '@/lib/demo/data';
 import { ANSWER_OPTIONS } from '@/lib/types/demo';
@@ -49,11 +50,54 @@ function getDistribution(answers: Array<{ selected_option: string | null; confid
   return distribution;
 }
 
+function TrialProgressPanel({
+  current,
+  total,
+  remaining,
+  showWarning,
+  isComplete,
+  labels,
+}: {
+  current: number;
+  total: number;
+  remaining: number;
+  showWarning: boolean;
+  isComplete: boolean;
+  labels: {
+    title: string;
+    summary: string;
+    description: string;
+    warning: string;
+    complete: string;
+  };
+}) {
+  const progressPercentage = Math.min(100, Math.round((current / Math.max(1, total)) * 100));
+
+  return (
+    <section className="mx-auto mb-4 w-full max-w-[560px] rounded-[12px] border border-white/[0.06] bg-[#11192c] px-4 py-4">
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-sm font-bold text-white">{labels.title}</p>
+        <p className="text-sm font-extrabold text-white">
+          {current} / {total}
+        </p>
+      </div>
+      <p className="mt-2 text-sm text-slate-400">{labels.summary.replace('{current}', String(current)).replace('{total}', String(total))}</p>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.08]">
+        <div className="h-full rounded-full bg-brand" style={{ width: `${progressPercentage}%` }} />
+      </div>
+      <p className={`mt-3 text-sm ${isComplete || showWarning ? 'font-bold text-amber-300' : 'text-slate-500'}`}>
+        {isComplete ? labels.complete : showWarning ? labels.warning.replace('{remaining}', String(remaining)) : labels.description.replace('{remaining}', String(remaining))}
+      </p>
+    </section>
+  );
+}
+
 export default async function SessionPage({ params, searchParams }: SessionPageProps) {
   const locale = params.locale as AppLocale;
   const user = await requireUser(locale);
   const t = await getTranslations('Session');
-  const data = await getSessionData(params.sessionId, user);
+  const dashboardT = await getTranslations('Dashboard');
+  const [data, billingSnapshot] = await Promise.all([getSessionData(params.sessionId, user), getUserBillingSnapshot(user.id)]);
 
   if (!data?.session || !data.group) {
     notFound();
@@ -72,8 +116,16 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
   const myAnswers = data.allAnswers.filter((answer) => answer.user_id === user.id);
   const answeredCount = new Set(myAnswers.map((answer) => answer.question_id)).size;
   const memberCount = Math.max(data.members.length, 1);
+  const trialProgress = {
+    current: Math.min(billingSnapshot?.questions_answered ?? 0, TRIAL_QUESTION_LIMIT),
+    total: TRIAL_QUESTION_LIMIT,
+    remaining: Math.max(TRIAL_QUESTION_LIMIT - (billingSnapshot?.questions_answered ?? 0), 0),
+    showWarning: (billingSnapshot?.questions_answered ?? 0) >= 85 && (billingSnapshot?.questions_answered ?? 0) < TRIAL_QUESTION_LIMIT,
+    isComplete: (billingSnapshot?.questions_answered ?? 0) >= TRIAL_QUESTION_LIMIT,
+  };
   const shouldShowCompletion =
     searchParams.stage === 'complete' ||
+    (data.session.status === 'completed' && searchParams.stage !== 'review') ||
     (data.session.status === 'incomplete' && searchParams.stage !== 'review') ||
     (data.session.status === 'active' && answeredCount >= questionGoal && searchParams.stage !== 'review');
   const isReview = searchParams.stage === 'review';
@@ -103,11 +155,11 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
             <input type="hidden" name="locale" value={locale} />
             <input type="hidden" name="sessionId" value={params.sessionId} />
             <SubmitButton pendingLabel={t('startSessionPending')} className="button-primary rounded-[7px] px-5 py-2.5 text-sm">
-              <span className="mr-2" aria-hidden="true">▷</span>
+              <span className="mr-2" aria-hidden="true">{'>'}</span>
               {t('startSession')}
             </SubmitButton>
           </form>
-          <Link href="/dashboard?view=sessions" className="button-ghost mt-4 px-4 py-2 text-sm text-slate-500">
+          <Link href={`/groups/${data.group.id}`} className="button-ghost mt-4 px-4 py-2 text-sm text-slate-500">
             {t('quitSession')}
           </Link>
         </section>
@@ -127,7 +179,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
           <h1 className="mt-8 text-2xl font-extrabold text-white">{t('allAnswersSubmitted')}</h1>
           <p className="mt-3 text-lg font-medium text-slate-400">{t('questionsCompletedValue', { current: questionGoal, total: questionGoal })}</p>
           <Link href={`/sessions/${params.sessionId}?stage=review&q=0`} className="button-primary mt-7 rounded-[7px] px-5 py-2.5 text-sm">
-            {t('goToReview')} <span aria-hidden="true">›</span>
+            {t('goToReview')} <span aria-hidden="true">{'>'}</span>
           </Link>
           <form action={quitIncompleteSessionAction} className="mt-4">
             <input type="hidden" name="locale" value={locale} />
@@ -154,13 +206,13 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
         <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
         <header className="sticky top-0 z-20 border-b border-white/[0.07] bg-background/95 backdrop-blur">
           <div className="mx-auto flex h-16 w-full max-w-[700px] items-center justify-between px-4">
-            <Link href="/dashboard?view=sessions" className="text-sm font-bold text-slate-500 hover:text-white">
+            <Link href={`/groups/${data.group.id}`} className="text-sm font-bold text-slate-500 hover:text-white">
               <span className="inline-flex items-center gap-2">
                 <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-                Dashboard
+                {data.group.name}
               </span>
             </Link>
-            <p className="text-lg font-extrabold text-white">{data.session.name ?? data.group.name} — {t('reviewShort')}</p>
+            <p className="text-lg font-extrabold text-white">{data.session.name ?? data.group.name} - {t('reviewShort')}</p>
             <p className="text-sm font-bold text-slate-500">Q{currentIndex + 1}/{questionGoal}</p>
           </div>
         </header>
@@ -168,11 +220,11 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
         <section className="mx-auto w-full max-w-[700px] space-y-6 px-4 py-7">
           <div className="flex items-center justify-between text-sm font-bold text-slate-500">
             <Link href={`/sessions/${params.sessionId}?stage=review&q=${Math.max(0, currentIndex - 1)}`} className="hover:text-white">
-              ‹ {t('previous')}
+              {'<'} {t('previous')}
             </Link>
             <h1 className="text-2xl font-extrabold text-white">{t('questionNumber', { number: currentIndex + 1 })}</h1>
             <Link href={`/sessions/${params.sessionId}?stage=review&q=${Math.min(questionGoal - 1, currentIndex + 1)}`} className="hover:text-white">
-              {t('next')} ›
+              {t('next')} {'>'}
             </Link>
           </div>
 
@@ -185,7 +237,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
               {[...ANSWER_OPTIONS, '?'].map((option) => (
                 <div key={option} className="flex min-w-7 flex-col items-center gap-1 text-center">
                   <span className={question.correct_option === option ? 'text-sm font-extrabold text-brand' : 'text-sm font-bold text-slate-500'}>
-                    {option}{question.correct_option === option ? ' ✓' : ''}
+                    {option}{question.correct_option === option ? ' *' : ''}
                   </span>
                   <span className="text-xs font-bold text-slate-600">{distribution.get(option) ?? 0}</span>
                 </div>
@@ -259,9 +311,23 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
     <main className="flex flex-1 flex-col">
       <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} />
       <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
+      <TrialProgressPanel
+        current={trialProgress.current}
+        total={trialProgress.total}
+        remaining={trialProgress.remaining}
+        showWarning={trialProgress.showWarning}
+        isComplete={trialProgress.isComplete}
+        labels={{
+          title: dashboardT('trialProgressTitle'),
+          summary: dashboardT('trialProgressSummary', { current: '{current}', total: '{total}' }),
+          description: dashboardT('trialProgressDescription', { remaining: '{remaining}' }),
+          warning: dashboardT('trialProgressWarning', { remaining: '{remaining}' }),
+          complete: dashboardT('trialProgressComplete'),
+        }}
+      />
       <header className="border-b border-white/[0.07]">
         <div className="mx-auto flex h-16 w-full max-w-[560px] items-center justify-between px-4">
-          <Link href="/dashboard?view=sessions" className="text-slate-500 hover:text-white">
+          <Link href={`/groups/${data.group.id}`} className="text-slate-500 hover:text-white">
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           </Link>
           <div className="text-center">

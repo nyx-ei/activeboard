@@ -53,6 +53,10 @@ export async function GET(request: Request, { params }: RouteContext) {
       display_name:
         user.user_metadata.full_name ?? user.user_metadata.name ?? user.email?.split('@')[0] ?? null,
       avatar_url: user.user_metadata.avatar_url ?? null,
+      exam_type:
+        typeof user.user_metadata.exam_type === 'string'
+          ? (user.user_metadata.exam_type as 'mccqe1' | 'usmle' | 'plab' | 'other')
+          : null,
       exam_session:
         typeof user.user_metadata.exam_session === 'string'
           ? (user.user_metadata.exam_session as 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead')
@@ -90,6 +94,20 @@ export async function GET(request: Request, { params }: RouteContext) {
   let redirectPath = next?.startsWith('/') ? next : `/${locale}/dashboard`;
 
   if (!next && user?.id) {
+    const normalizedEmail = user.email?.trim().toLowerCase() ?? '';
+    const { data: pendingInvite } = await supabase
+      .schema('public')
+      .from('group_invites')
+      .select('id')
+      .eq('status', 'pending')
+      .or(`invitee_user_id.eq.${user.id},invitee_email.eq.${normalizedEmail}`)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (pendingInvite?.id) {
+      redirectPath = `/${locale}/invite/${pendingInvite.id}`;
+    } else {
     const { data: firstMembership } = await supabase
       .schema('public')
       .from('group_members')
@@ -98,8 +116,9 @@ export async function GET(request: Request, { params }: RouteContext) {
       .limit(1)
       .maybeSingle();
 
-    if (!firstMembership?.group_id) {
-      redirectPath = `/${locale}/create-group`;
+      if (!firstMembership?.group_id) {
+        redirectPath = `/${locale}/create-group`;
+      }
     }
   }
 

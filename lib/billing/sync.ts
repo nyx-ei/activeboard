@@ -2,6 +2,7 @@ import type Stripe from 'stripe';
 
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
+import { createStripeServerClient } from '@/lib/stripe/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import type { Database } from '@/lib/supabase/types';
 
@@ -70,13 +71,44 @@ async function requireUserBillingTargetByCustomerId(customerId: string): Promise
     .from('users')
     .select('id, stripe_default_payment_method_id')
     .eq('stripe_customer_id', customerId)
-    .single();
+    .maybeSingle();
 
   if (error) {
     throw new Error(`Failed to resolve user for Stripe customer ${customerId}: ${error.message}`);
   }
 
-  return user;
+  if (user) {
+    return user;
+  }
+
+  const stripe = createStripeServerClient();
+  const customer = await stripe.customers.retrieve(customerId);
+
+  if (typeof customer === 'string' || ('deleted' in customer && customer.deleted)) {
+    throw new Error(`Stripe customer ${customerId} could not be resolved to an ActiveBoard user.`);
+  }
+
+  const customerEmail = customer.email?.trim().toLowerCase() ?? null;
+  if (!customerEmail) {
+    throw new Error(`Stripe customer ${customerId} has no email for ActiveBoard user matching.`);
+  }
+
+  const { data: fallbackUser, error: fallbackError } = await supabaseAdmin
+    .schema('public')
+    .from('users')
+    .select('id, stripe_default_payment_method_id')
+    .ilike('email', customerEmail)
+    .maybeSingle();
+
+  if (fallbackError) {
+    throw new Error(`Failed to resolve user by email ${customerEmail}: ${fallbackError.message}`);
+  }
+
+  if (!fallbackUser) {
+    throw new Error(`No ActiveBoard user matches Stripe customer email ${customerEmail}.`);
+  }
+
+  return fallbackUser;
 }
 
 export async function syncUserBillingFromStripeSubscription({

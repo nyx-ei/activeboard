@@ -9,15 +9,38 @@ import type { AppLocale } from '@/i18n/routing';
 
 type LoginPageProps = {
   params: { locale: string };
+  searchParams?: { next?: string };
 };
 
-export default async function LoginPage({ params }: LoginPageProps) {
+export default async function LoginPage({ params, searchParams }: LoginPageProps) {
   const locale = params.locale as AppLocale;
   const user = await getCurrentUser();
   const t = await getTranslations('Auth');
+  const next = searchParams?.next;
+  const isInviteNext = typeof next === 'string' && next.startsWith(`/${locale}/invite/`);
 
   if (user) {
     const supabase = createSupabaseServerClient();
+
+    if (typeof next === 'string' && next.startsWith(`/${locale}/`)) {
+      redirect(next);
+    }
+
+    const normalizedEmail = user.email?.trim().toLowerCase() ?? '';
+    const { data: pendingInvite } = await supabase
+      .schema('public')
+      .from('group_invites')
+      .select('id')
+      .eq('status', 'pending')
+      .or(`invitee_user_id.eq.${user.id},invitee_email.eq.${normalizedEmail}`)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (pendingInvite?.id) {
+      redirect(`/${locale}/invite/${pendingInvite.id}`);
+    }
+
     const { data: firstMembership } = await supabase
       .schema('public')
       .from('group_members')
@@ -39,7 +62,11 @@ export default async function LoginPage({ params }: LoginPageProps) {
               </div>
             }
           >
-            <AuthForm requireExamSessionOnSignUp={false} signUpRedirectToOverride={`/${locale}/create-group`} />
+            <AuthForm
+              requireExamSessionOnSignUp={false}
+              deferSignUpToRedirect={!isInviteNext}
+              signUpRedirectToOverride={typeof next === 'string' && next.startsWith(`/${locale}/`) ? next : `/${locale}/create-group`}
+            />
           </Suspense>
       </div>
     </main>

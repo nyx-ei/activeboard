@@ -9,7 +9,7 @@ import { ExamSettingsForm, PasswordUpdateForm, ProfileDetailsForm } from '@/comp
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
-import { getDashboardData } from '@/lib/demo/data';
+import { getUserScheduleData } from '@/lib/demo/data';
 import { DEFAULT_AVAILABILITY_GRID } from '@/lib/schedule/availability';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -37,7 +37,7 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
     .select('display_name, exam_session, question_banks')
     .eq('id', user.id)
     .maybeSingle();
-  const data = await getDashboardData(user, false, false);
+  const userSchedule = await getUserScheduleData(user.id);
   const section = searchParams.section === 'exam' ? 'exam' : 'profile';
   const displayName = profile?.display_name ?? user.user_metadata.full_name ?? user.email?.split('@')[0] ?? 'ActiveBoard';
   const examSession = profile?.exam_session ?? (typeof user.user_metadata.exam_session === 'string' ? user.user_metadata.exam_session : '');
@@ -157,8 +157,8 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
                   compact
                   action={updateUserScheduleAction}
                   locale={locale}
-                  initialTimezone={data.userSchedule?.timezone ?? 'UTC'}
-                  initialGrid={data.userSchedule?.availability_grid ?? DEFAULT_AVAILABILITY_GRID}
+                  initialTimezone={userSchedule?.timezone ?? 'UTC'}
+                  initialGrid={userSchedule?.availability_grid ?? DEFAULT_AVAILABILITY_GRID}
                   labels={{
                     title: dashboardT('availabilityTitle'),
                     description: dashboardT('availabilityShortDescription'),
