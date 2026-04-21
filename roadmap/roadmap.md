@@ -339,29 +339,29 @@ Original sequencing was `#53 → #54 → #55 → #56 → #57 → #58`. The v8 re
 
 Tracked as epic **[#98](https://github.com/nyx-ei/activeboard/issues/98)**. Product direction: fuse all group-related features under a single **Group** entry. Shell chrome stops carrying an ambient "active group"; group context lives only on `/groups/[id]` pages. Session creation and settings all fold into the per-group page. Land order: #95 → #97 → #96.
 
-- [#95: Kill global 'active group' concept in shell chrome](https://github.com/nyx-ei/activeboard/issues/95) — Partially implemented ([#112: follow-up bug](https://github.com/nyx-ei/activeboard/issues/112)) — active-group-name.tsx deleted, bottom nav fixed, but `group-switcher-menu.tsx` still reads `?groupId=` query param violating acceptance criteria
-- [#97: New `/groups` index + unified `/groups/[id]` page — fuse all group features](https://github.com/nyx-ei/activeboard/issues/97) — Partially implemented (`/groups` and `/groups/[id]` routes exist, group profile/meeting link/schedule/objective/members/invite/live groups/edit modals are fused visually; extracting the group renderer out of dashboard remains)
-- [#96: Cross-group dashboard — Sessions list spans all groups; retire `?view=group`](https://github.com/nyx-ei/activeboard/issues/96) — Partially implemented (Sessions now lists all user group sessions and bottom nav targets `/groups`; legacy `?view=group` remains as a compatibility renderer for the new group route)
+- [#95: Kill global 'active group' concept in shell chrome](https://github.com/nyx-ei/activeboard/issues/95) — Implemented (group switcher no longer reads `?groupId=` as shell state; active context now comes from `/groups/[id]` only, with bottom nav routed through `/groups`)
+- [#97: New `/groups` index + unified `/groups/[id]` page — fuse all group features](https://github.com/nyx-ei/activeboard/issues/97) — Partially implemented (`/groups` and `/groups/[id]` are real route entry points and the group page owns profile/meeting link/schedule/objective/members/invite/live-groups management, but session creation still launches from dashboard instead of being fully folded into `/groups/[id]`)
+- [#96: Cross-group dashboard — Sessions list spans all groups; retire `?view=group`](https://github.com/nyx-ei/activeboard/issues/96) — Implemented (Sessions spans all user groups and legacy `?view=group` now hard-redirects to `/groups/[id]` instead of rendering group content in dashboard)
 
 ### Shell & dashboard performance
 
 Tracked as epic **[#101](https://github.com/nyx-ei/activeboard/issues/101)**. HAR capture from production shows two independent causes of perceived lag on navigation: heavy dashboard SSR and a broad-but-shallow service worker.
 
-- [#99: Dashboard RSC slowness — 2+ second response on navigation](https://github.com/nyx-ei/activeboard/issues/99) — Partially implemented (payload and UI simplification passes, realtime refresh UX, cross-group Sessions loading, reduced user-answer/question loading on the Join tab, and static-only service worker behavior are in place; deeper `getDashboardData` route-specific query split/materialized analytics work remains)
+- [#99: Dashboard RSC slowness — 2+ second response on navigation](https://github.com/nyx-ei/activeboard/issues/99) — Implemented (route-specific dashboard loaders are split by Sessions / Performance / Profile needs, profile schedule loading no longer routes through the global dashboard loader, and analytics/session counters are backed by SQL views instead of broad answer/question fetches)
 - [#100: Service worker adds overhead to every request without meaningful cache coverage](https://github.com/nyx-ei/activeboard/issues/100) — Implemented (service worker now skips dynamic/RSC/auth/dashboard requests and only cache-firsts static same-origin assets)
 
 ### Signup flow rework (v2)
 
 Tracked as epic **[#104](https://github.com/nyx-ei/activeboard/issues/104)**. Replace today's onboarding wizard with two focused variants and close three signup-era gaps: explicit language, explicit timezone, exam type distinct from exam period. Atomic commit at the final step — no orphan accounts.
 
-- [#102: Founder signup — 5-step wizard (Account → Plan → Schedule → Banks → Team)](https://github.com/nyx-ei/activeboard/issues/102) — Partially implemented ([#113: follow-up bug](https://github.com/nyx-ei/activeboard/issues/113)) — landing modal and `/create-group` wizard exist; missing: explicit Plan step, explicit timezone field, separate exam type from exam period, atomic account creation with rollback
-- [#103: Invitee signup — 3-step join-via-link wizard (inherits lang/timezone/exam from group)](https://github.com/nyx-ei/activeboard/issues/103) — Not started ([#114: follow-up bug](https://github.com/nyx-ei/activeboard/issues/114)) — invite acceptance exists for logged-in users, but no dedicated signup flow for new users invited to group; new invitees land at generic auth/onboarding, not group-aware
+- [#102: Founder signup — 5-step wizard (Account → Plan → Schedule → Banks → Team)](https://github.com/nyx-ei/activeboard/issues/102) — Implemented (landing sign-up modal and `/create-group` now use the full founder flow with explicit account → plan → optional schedule → banks → team, separate exam type + exam session, explicit language/timezone persistence, and atomic final account/group creation with rollback on failure)
+- [#103: Invitee signup — 3-step join-via-link wizard (inherits lang/timezone/exam from group)](https://github.com/nyx-ei/activeboard/issues/103) — Implemented (invitation emails deep-link to `/invite/[inviteId]`; unauthenticated invitees authenticate first, then complete a dedicated group-aware onboarding flow for exam settings → optional availability → review/accept before joining)
 
 Key metrics to track during beta: questions-per-session, return rate, mobile vs. desktop split, session completion rate, 85→100-question funnel (warning to payment).
 
 ### Delivery Notes
 
-The current Milestone 6 pass aligns the app shell and core  flows with the client mockups: three-tab navigation (`Sessions`, `Performance`, `Rejoindre`), modal-based profile/billing/exam settings, centered portal modals, group switcher, Join tab group management, smart live/paywall header launcher, live groups bottom sheet, responsive heatmap, simplified session/review flow, landing page, starter group creation flow, cross-group Sessions listing, `/groups` route entry points, and narrowed service-worker caching. Remaining Milestone 6 work is structural and should be isolated into follow-up PRs: extracting the group renderer fully out of dashboard, deeper dashboard query splitting/materialized analytics, and the full v2 invitee/founder onboarding spec.
+The current Milestone 6 pass aligns the app shell and core flows with the client mockups: three-tab navigation (`Sessions`, `Performance`, `Rejoindre`), modal-based profile/billing/exam settings, centered portal modals, group switcher, Join tab group management, smart live/paywall header launcher, live groups bottom sheet, responsive heatmap, simplified session/review flow, landing page, the completed founder onboarding wizard, cross-group Sessions listing, dedicated `/groups` route entry points, dedicated invite acceptance routing, the completed invitee onboarding wizard, narrowed service-worker caching, and route-specific dashboard query splitting with SQL-backed beta KPI rollups. Remaining Milestone 6 work is now mostly operational (`#79`) plus one structural acceptance-criteria gap under `#97`: session creation still needs to live fully on `/groups/[id]`.
 
 ---
 
@@ -446,13 +446,13 @@ Target weekly cadence from the v8 spec:
 ## Statistics
 
 - Total issues on active roadmap: ~52 (25 original + ~8 v8-rework + ~13 new Milestone 6 + 6 new follow-up bugs)
-- Fully implemented (100% acceptance criteria met): 22 issues (#18–#23, #50, #53–#59, #64–#68, #89–#94, #100)
+- Fully implemented (100% acceptance criteria met): 27 issues (#18–#23, #50, #53–#59, #64–#68, #80, #89–#96, #99–#100, #102–#103)
 - Data-layer complete, UI missing: 3 issues (#73, #74, #75 → bugs #107, #108, #109)
 - Infrastructure defined, never triggered: 2 issues (#17, #71 → bugs #110, #111)
-- Partially implemented (AC incomplete): 7 issues (#95, #96, #97, #99, #102, #103 → bugs #112, #113, #114)
-- Not started: 1 issue (#103, bug #114)
+- Partially implemented (AC incomplete): 2 issues (#79, #97)
+- Not started: 0 issues in the Milestone 6 follow-up set
 - Deferred: 5 issues (#32–#36) + v2 question types
-- **Current focus: address follow-up bugs to close acceptance criteria gaps before next phase**
+- **Current focus: finish the remaining `#97` structural gap, then run/measure the closed beta under `#79`**
 - New follow-up bugs created (this audit): #107–#114
 - Last updated: April 21, 2026
 

@@ -97,6 +97,10 @@ export default async function GroupRoutePage({
     saturday: t('weekdaySaturday'),
     sunday: t('weekdaySunday'),
   };
+  void displayGroupInfoSummary;
+  const sanitizedGroupInfoSummary = primaryGroup
+    ? [primaryGroup.invite_code, examSessionLabel, locale === 'fr' ? 'Francais' : 'English', 'GMT+1'].join(' | ')
+    : t('noData');
 
   const currentGroupIds = new Set(memberships.map((membership) => membership.group_id));
   const liveGroups =
@@ -199,7 +203,7 @@ export default async function GroupRoutePage({
           weeklyTargetQuestions={data.weeklyTargetQuestions}
           memberPerformance={data.memberPerformance}
           weekdayLabels={weekdayLabels}
-          groupInfoSummary={displayGroupInfoSummary}
+          groupInfoSummary={sanitizedGroupInfoSummary}
           liveGroups={liveGroups}
           labels={{
             joinLiveGroups: t('joinLiveGroups'),
