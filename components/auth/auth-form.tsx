@@ -15,6 +15,9 @@ type AuthFormProps = {
   redirectToOverride?: string;
   signUpRedirectToOverride?: string;
   requireExamSessionOnSignUp?: boolean;
+  deferSignUpToRedirect?: boolean;
+  inviteIdForSignUp?: string;
+  lockedEmail?: string;
   variant?: 'page' | 'modal';
 };
 
@@ -39,15 +42,20 @@ export function AuthForm({
   redirectToOverride,
   signUpRedirectToOverride,
   requireExamSessionOnSignUp = true,
+  deferSignUpToRedirect = false,
+  inviteIdForSignUp,
+  lockedEmail,
   variant = 'page',
 }: AuthFormProps = {}) {
   const t = useTranslations('Auth');
   const locale = useLocale() as AppLocale;
   const searchParams = useSearchParams();
-  const redirectTo = redirectToOverride ?? searchParams.get('next') ?? `/${locale}/dashboard`;
+  const searchNext = searchParams.get('next');
+  const redirectTo = redirectToOverride ?? searchNext ?? `/${locale}/dashboard`;
   const signUpRedirectTo = signUpRedirectToOverride ?? redirectTo;
+  const hasExplicitRedirectTarget = Boolean(redirectToOverride ?? signUpRedirectToOverride ?? searchNext);
   const [mode, setMode] = useState<Mode>(initialMode ?? (searchParams.get('mode') === 'sign-up' ? 'sign-up' : 'sign-in'));
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(lockedEmail ?? '');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [examSession, setExamSession] = useState('');
@@ -57,7 +65,7 @@ export function AuthForm({
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
   useEffect(() => {
-    if (mode !== 'sign-up') {
+    if (mode !== 'sign-up' || !deferSignUpToRedirect) {
       return;
     }
 
@@ -79,7 +87,15 @@ export function AuthForm({
     } catch {
       window.sessionStorage.removeItem(CREATE_GROUP_ACCOUNT_DRAFT_KEY);
     }
-  }, [mode]);
+  }, [deferSignUpToRedirect, mode]);
+
+  useEffect(() => {
+    if (!lockedEmail) {
+      return;
+    }
+
+    setEmail(lockedEmail);
+  }, [lockedEmail]);
 
   function resolveAuthError(message: string) {
     const normalizedMessage = message.toLowerCase();
@@ -97,15 +113,16 @@ export function AuthForm({
 
   async function handlePasswordAuth() {
     setMessage(null);
+    const normalizedEmail = email.trim().toLowerCase();
 
-    if (!email || !password || (mode === 'sign-up' && (!displayName || (requireExamSessionOnSignUp && !examSession)))) {
+    if (!normalizedEmail || !password || (mode === 'sign-up' && (!displayName || (requireExamSessionOnSignUp && !examSession)))) {
       setMessageTone('error');
       setMessage(t('missingFields'));
       return;
     }
 
     if (mode === 'sign-in') {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
 
       if (error) {
         setMessageTone('error');
@@ -115,8 +132,7 @@ export function AuthForm({
 
       setMessageTone('success');
       setMessage(t('signInSuccess'));
-      const explicitNext = searchParams.has('next');
-      if (explicitNext) {
+      if (hasExplicitRedirectTarget) {
         window.location.assign(redirectTo);
         return;
       }
@@ -132,12 +148,12 @@ export function AuthForm({
       return;
     }
 
-    if (!requireExamSessionOnSignUp) {
+    if (!requireExamSessionOnSignUp && deferSignUpToRedirect) {
       window.sessionStorage.setItem(
         CREATE_GROUP_ACCOUNT_DRAFT_KEY,
-        JSON.stringify({
+            JSON.stringify({
           displayName,
-          email,
+          email: normalizedEmail,
           password,
           locale,
         }),
@@ -146,32 +162,91 @@ export function AuthForm({
       return;
     }
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: displayName,
-          ...(examSession ? { exam_session: examSession } : {}),
+    if (inviteIdForSignUp) {
+      const inviteResponse = await fetch('/api/invite-auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          inviteId: inviteIdForSignUp,
+          email: normalizedEmail,
+          password,
+          displayName,
           locale,
+        }),
+      });
+
+      const invitePayload = (await inviteResponse.json().catch(() => null)) as
+        | { ok?: boolean; reason?: string }
+        | null;
+
+      if (!inviteResponse.ok || !invitePayload?.ok) {
+        setMessageTone('error');
+        if (invitePayload?.reason === 'invite_email_mismatch') {
+          setMessage(t('invalidCredentials'));
+        } else if (invitePayload?.reason === 'account_exists') {
+          setMessage(t('invalidCredentials'));
+        } else {
+          setMessage(t('unexpectedError'));
+        }
+        return;
+      }
+
+      const { error: inviteSignInError } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
+
+      if (inviteSignInError) {
+        setMessageTone('error');
+        setMessage(resolveAuthError(inviteSignInError.message));
+        return;
+      }
+    } else {
+      const { data, error } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password,
+        options: {
+          data: {
+            full_name: displayName,
+            ...(examSession ? { exam_session: examSession } : {}),
+            locale,
+          },
+          emailRedirectTo: `${window.location.origin}/${locale}/auth/callback?next=${encodeURIComponent(signUpRedirectTo)}`,
         },
-        emailRedirectTo: `${window.location.origin}/${locale}/auth/callback?next=${encodeURIComponent(signUpRedirectTo)}`,
-      },
-    });
+      });
 
-    if (error) {
-      setMessageTone('error');
-      setMessage(resolveAuthError(error.message));
-      return;
+      if (error) {
+        setMessageTone('error');
+        setMessage(resolveAuthError(error.message));
+        return;
+      }
+
+      if (!data.session) {
+        const { error: signInAfterSignUpError } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
+        
+        if (!signInAfterSignUpError) {
+          fetch('/api/auth/welcome', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: normalizedEmail, displayName, locale }),
+          }).catch(() => {
+            // Email delivery is tracked server-side and must not block account creation.
+          });
+
+          setMessageTone('success');
+          setMessage(t('signUpSuccess'));
+          window.location.assign(signUpRedirectTo);
+          return;
+        }
+        setMessageTone('success');
+        setMessage(t('signUpSuccess'));
+        return;
+      }
+      fetch('/api/auth/welcome', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: normalizedEmail, displayName, locale }),
+      }).catch(() => {
+        // Email delivery is tracked server-side and must not block account creation.
+      });
     }
-
-    fetch('/api/auth/welcome', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, displayName, locale }),
-    }).catch(() => {
-      // Email delivery is tracked server-side and must not block account creation.
-    });
 
     setMessageTone('success');
     setMessage(t('signUpSuccess'));
@@ -211,10 +286,10 @@ export function AuthForm({
       )}
       <div className={cn(variant === 'page' ? 'mt-5 text-center' : 'mt-4 text-left')}>
         <h1 className={cn('font-extrabold tracking-tight text-white', variant === 'page' ? 'text-2xl' : 'text-xl')}>
-          {mode === 'sign-in' ? t('welcomeBack') : requireExamSessionOnSignUp ? t('createAccountTitle') : t('createGroupTitle')}
+          {mode === 'sign-in' ? t('welcomeBack') : requireExamSessionOnSignUp || !deferSignUpToRedirect ? t('createAccountTitle') : t('createGroupTitle')}
         </h1>
         <p className="mt-2 text-sm font-medium text-slate-400">
-          {mode === 'sign-in' ? t('welcomeBackSubtitle') : requireExamSessionOnSignUp ? t('createAccountSubtitle') : t('createGroupSubtitle')}
+          {mode === 'sign-in' ? t('welcomeBackSubtitle') : requireExamSessionOnSignUp || !deferSignUpToRedirect ? t('createAccountSubtitle') : t('createGroupSubtitle')}
         </p>
       </div>
 
@@ -238,6 +313,7 @@ export function AuthForm({
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="you@example.com"
+            disabled={Boolean(lockedEmail)}
             className="field h-10 rounded-[6px] px-3 text-sm"
           />
         </label>

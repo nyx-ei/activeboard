@@ -191,7 +191,6 @@ export function DashboardPerformanceView({
   completedSessionsCount,
   successRate,
   averageConfidence,
-  trialProgress,
   heatmap,
   physicianActivityAccuracy,
   dimensionOfCareAccuracy,
@@ -238,37 +237,12 @@ export function DashboardPerformanceView({
         : averageConfidence === 'high'
           ? labels.confidenceHigh
           : labels.noData;
-  const progressPercentage = Math.min(100, Math.round((trialProgress.current / Math.max(1, trialProgress.total)) * 100));
   const blueprintRows = physicianActivityAccuracy
     .map((item) => item.category)
     .filter((category) => blueprintGrid.some((cell) => cell.physicianActivity === category && cell.total > 0));
 
   return (
     <>
-      <section className="surface-mockup p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-bold text-white">{labels.trialProgressTitle}</p>
-            <p className="mt-2 text-sm font-semibold text-slate-300">
-              {labels.trialProgressSummary
-                .replace('{current}', String(trialProgress.current))
-                .replace('{total}', String(trialProgress.total))}
-            </p>
-          </div>
-          <p className="text-lg font-extrabold text-white">{progressPercentage}%</p>
-        </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.08]">
-          <div className="h-full rounded-full bg-brand" style={{ width: `${progressPercentage}%` }} />
-        </div>
-        <p className={`mt-3 text-sm ${trialProgress.isComplete ? 'font-bold text-amber-300' : trialProgress.showWarning ? 'font-bold text-amber-300' : 'text-slate-500'}`}>
-          {trialProgress.isComplete
-            ? labels.trialProgressComplete
-            : trialProgress.showWarning
-              ? labels.trialProgressWarning.replace('{remaining}', String(trialProgress.remaining))
-              : labels.trialProgressDescription.replace('{remaining}', String(trialProgress.remaining))}
-        </p>
-      </section>
-
       <section className="surface-mockup p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -379,7 +353,7 @@ export function DashboardPerformanceView({
       <section className="surface-mockup p-5">
         <p className="text-sm font-bold text-white">{labels.blueprintGridTitle}</p>
         <p className="mt-2 text-sm text-slate-500">{labels.blueprintGridDescription}</p>
-        <div className="mt-4 overflow-x-auto">
+        <div className="mt-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="min-w-[680px]">
             <div className="grid grid-cols-[180px_repeat(6,minmax(0,1fr))] gap-2 text-[11px] font-bold text-slate-500">
               <div />

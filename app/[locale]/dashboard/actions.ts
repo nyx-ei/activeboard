@@ -10,7 +10,7 @@ import { hasEmailEnv } from '@/lib/env';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
 import { sendSessionCalendarInvites } from '@/lib/notifications/calendar-invites';
-import { sendGroupInviteEmail, sendGroupMemberAddedEmail } from '@/lib/notifications/group-invites';
+import { sendGroupInviteEmail } from '@/lib/notifications/group-invites';
 import { parseAvailabilityGrid } from '@/lib/schedule/availability';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { generateInviteCode, generateSessionShareCode, normalizeEmail, withFeedback } from '@/lib/utils';
@@ -944,7 +944,7 @@ export async function addDashboardExistingMemberAction(formData: FormData) {
   const { data: group } = await supabase
     .schema('public')
     .from('groups')
-    .select('id, name, max_members')
+    .select('id, name, invite_code, max_members')
     .eq('id', groupId)
     .maybeSingle();
 
@@ -952,9 +952,17 @@ export async function addDashboardExistingMemberAction(formData: FormData) {
     redirect(withFeedback(groupPath, 'error', t('notAuthorized')));
   }
 
-  const [{ data: existingUser }, { data: members }] = await Promise.all([
+  const [{ data: existingUser }, { data: members }, { data: existingInvite }] = await Promise.all([
     supabase.schema('public').from('users').select('id, email, display_name').eq('email', email).maybeSingle(),
     supabase.schema('public').from('group_members').select('user_id').eq('group_id', groupId),
+    supabase
+      .schema('public')
+      .from('group_invites')
+      .select('id')
+      .eq('group_id', groupId)
+      .eq('invitee_email', email)
+      .eq('status', 'pending')
+      .maybeSingle(),
   ]);
 
   if (!existingUser) {
@@ -965,28 +973,39 @@ export async function addDashboardExistingMemberAction(formData: FormData) {
     redirect(withFeedback(groupPath, 'success', t('memberAlreadyInGroup')));
   }
 
+  if (existingInvite) {
+    redirect(withFeedback(groupPath, 'error', t('inviteExists')));
+  }
+
   if ((members?.length ?? 0) >= group.max_members) {
     redirect(withFeedback(groupPath, 'error', t('groupFull')));
   }
 
-  const { error } = await supabase.schema('public').from('group_members').insert({
-    group_id: groupId,
-    is_founder: false,
-    user_id: existingUser.id,
-  });
+  const { data: insertedInvite, error } = await supabase
+    .schema('public')
+    .from('group_invites')
+    .insert({
+      group_id: groupId,
+      invited_by: user.id,
+      invitee_email: existingUser.email,
+      invitee_user_id: existingUser.id,
+    })
+    .select('id')
+    .single();
 
   if (error) {
     redirect(withFeedback(groupPath, 'error', t('actionFailed')));
   }
 
   await logAppEvent({
-    eventName: APP_EVENTS.groupMemberAdded,
+    eventName: APP_EVENTS.groupInviteSent,
     locale,
     userId: user.id,
     groupId,
     metadata: {
-      member_user_id: existingUser.id,
-      source: 'dashboard_group_tab_existing_user',
+      invitee_email: existingUser.email,
+      invitee_user_id: existingUser.id,
+      source: 'dashboard_group_tab_existing_user_invite',
     },
   });
 
@@ -998,19 +1017,20 @@ export async function addDashboardExistingMemberAction(formData: FormData) {
       .eq('id', user.id)
       .maybeSingle();
 
-    await sendGroupMemberAddedEmail({
+    await sendGroupInviteEmail({
       locale,
+      inviteId: insertedInvite?.id ?? '',
       groupId,
       groupName: group.name,
-      memberEmail: existingUser.email,
-      memberName: existingUser.display_name,
+      inviteCode: group.invite_code ?? '',
+      inviteeEmail: existingUser.email,
       inviterUserId: user.id,
       inviterName: inviter?.display_name ?? inviter?.email ?? user.email ?? 'ActiveBoard',
     });
   }
 
   revalidatePath(`/${locale}/dashboard`);
-  redirect(withFeedback(groupPath, 'success', t('memberAdded')));
+  redirect(withFeedback(groupPath, 'success', t('inviteSent')));
 }
 
 export async function addDashboardWeeklyScheduleAction(formData: FormData) {

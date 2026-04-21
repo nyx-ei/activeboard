@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Lock } from 'lucide-react';
 
-import { Link } from '@/i18n/navigation';
+import { Link, usePathname, useRouter } from '@/i18n/navigation';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { ModalPortal } from '@/components/ui/modal-portal';
 
@@ -46,6 +46,7 @@ type LiveGroupsModalProps = {
     monthsAgo: string;
     yearsAgo: string;
     hoursAgo: string;
+    averageWeekly: string;
   };
 };
 
@@ -85,6 +86,14 @@ function formatElapsedTime(minutes: number, labels: LiveGroupsModalProps['labels
 
 export function LiveGroupsModal({ locale, groups, canJoinLiveGroups, initialOpen = false, joinGroupAction, labels }: LiveGroupsModalProps) {
   const [open, setOpen] = useState(initialOpen);
+  const pathname = usePathname();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (initialOpen) {
+      setOpen(true);
+    }
+  }, [initialOpen]);
 
   useEffect(() => {
     if (!open) return;
@@ -94,6 +103,22 @@ export function LiveGroupsModal({ locale, groups, canJoinLiveGroups, initialOpen
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [open]);
+
+  function handleClose() {
+    setOpen(false);
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has('live')) {
+      return;
+    }
+
+    params.delete('live');
+    const nextSearch = params.toString();
+    router.replace(nextSearch ? `${pathname}?${nextSearch}` : pathname);
+  }
 
   return (
     <>
@@ -109,14 +134,14 @@ export function LiveGroupsModal({ locale, groups, canJoinLiveGroups, initialOpen
       {open ? (
         <ModalPortal>
         <div className="fixed inset-0 flex items-end justify-center bg-black/70 px-0 backdrop-blur-[2px] sm:px-4 sm:py-6" style={{ zIndex: 1000 }}>
-          <button type="button" className="absolute inset-0 cursor-default" aria-label={labels.close} onClick={() => setOpen(false)} />
+          <button type="button" className="absolute inset-0 cursor-default" aria-label={labels.close} onClick={handleClose} />
           <section className="relative max-h-[82vh] w-full max-w-[548px] animate-in slide-in-from-bottom-4 overflow-y-auto rounded-t-[16px] border border-white/[0.08] bg-[#11192c] p-5 shadow-[0_-24px_80px_rgba(0,0,0,0.6)] duration-200 [scrollbar-width:none] sm:rounded-[14px] [&::-webkit-scrollbar]:hidden">
             <div className="flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-lg font-extrabold text-white">
                 <span className="h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_0_4px_rgba(239,68,68,0.08)]" />
                 {labels.title}
               </h2>
-              <button type="button" onClick={() => setOpen(false)} className="text-2xl leading-none text-slate-400 hover:text-white" aria-label={labels.close}>
+              <button type="button" onClick={handleClose} className="text-2xl leading-none text-slate-400 hover:text-white" aria-label={labels.close}>
                 x
               </button>
             </div>
@@ -130,7 +155,7 @@ export function LiveGroupsModal({ locale, groups, canJoinLiveGroups, initialOpen
 
               {groups.map((group) => {
                 const remaining = Math.max(group.maxMembers - group.memberCount, 0);
-                const groupMeta = [group.name, group.language, group.timezone, `Moy./sem: ${group.weeklyQuestions}`].join(' · ');
+                const groupMeta = [group.name, group.language, `${labels.averageWeekly}: ${group.weeklyQuestions}`].join(' | ');
 
                 return (
                   <article key={group.id} className="rounded-[12px] border border-white/[0.06] bg-[#18243a] p-4">
@@ -173,7 +198,7 @@ export function LiveGroupsModal({ locale, groups, canJoinLiveGroups, initialOpen
 
                     <div className="mt-4 flex items-center justify-between gap-4 text-xs font-semibold text-slate-500">
                       <p className="truncate">
-                        {groupMeta} ·{' '}
+                        {groupMeta} |{' '}
                         <span className={remaining === 1 ? 'text-amber-400' : ''}>
                           {remaining === 1 ? labels.oneRemainingPlace : labels.remainingPlaces.replace('{count}', String(remaining))}
                         </span>

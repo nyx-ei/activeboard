@@ -18,6 +18,14 @@ type ReminderWindowKey = (typeof REMINDER_WINDOWS)[number]['key'];
 type UserRow = Database['public']['Tables']['users']['Row'];
 type ReminderMembershipRow = Pick<Database['public']['Tables']['group_members']['Row'], 'group_id' | 'user_id'>;
 
+function normalizeLocale(locale: string | null | undefined): 'en' | 'fr' {
+  return locale === 'fr' ? 'fr' : 'en';
+}
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
 function getDueReminderKeys(scheduledAt: string, now: Date): ReminderWindowKey[] {
   const minutesUntilStart = (new Date(scheduledAt).getTime() - now.getTime()) / 60000;
 
@@ -202,11 +210,17 @@ export async function dispatchDueSessionReminders(now = new Date()) {
   for (const { session, reminderKey } of dueSessions) {
     const group = groupsById.get(session.group_id);
     const members = membersByGroup.get(session.group_id) ?? [];
+    const sentEmailsForSessionReminder = new Set<string>();
 
     for (const member of members) {
       const user = usersById.get(member.user_id);
 
       if (!user?.email) {
+        continue;
+      }
+
+      const normalizedRecipientEmail = normalizeEmail(user.email);
+      if (sentEmailsForSessionReminder.has(normalizedRecipientEmail)) {
         continue;
       }
 
@@ -216,9 +230,10 @@ export async function dispatchDueSessionReminders(now = new Date()) {
       }
 
       attemptedReminders += 1;
+      const locale = normalizeLocale(user.locale);
 
       const copy = buildReminderCopy({
-        locale: user.locale,
+        locale,
         memberName: user.display_name ?? user.email,
         groupName: group?.name ?? 'ActiveBoard',
         sessionName: session.name ?? group?.name ?? 'ActiveBoard',
@@ -251,11 +266,12 @@ export async function dispatchDueSessionReminders(now = new Date()) {
         }
 
         sentReminderKeys.add(sentKey);
+        sentEmailsForSessionReminder.add(normalizedRecipientEmail);
         sentReminders += 1;
 
         await logAppEvent({
           eventName: APP_EVENTS.sessionReminderSent,
-          locale: user.locale,
+          locale,
           userId: user.id,
           groupId: session.group_id,
           sessionId: session.id,
@@ -269,7 +285,7 @@ export async function dispatchDueSessionReminders(now = new Date()) {
         await logAppEvent({
           eventName: APP_EVENTS.sessionReminderFailed,
           level: 'error',
-          locale: user.locale,
+          locale,
           userId: user.id,
           groupId: session.group_id,
           sessionId: session.id,

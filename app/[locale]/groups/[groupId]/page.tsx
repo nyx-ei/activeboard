@@ -83,7 +83,7 @@ export default async function GroupRoutePage({
             ? t('examPlanningAhead')
             : t('examSessionUndefined');
   const groupInfoSummary = primaryGroup
-    ? [primaryGroup.invite_code, examSessionLabel, locale === 'fr' ? 'Francais' : 'English', 'GMT+1'].join(' | ')
+    ? [primaryGroup.invite_code, examSessionLabel].join(' | ')
     : t('noData');
 
   const weekdayLabels = {
@@ -153,7 +153,7 @@ export default async function GroupRoutePage({
                 memberCount: members.length,
                 maxMembers: group.max_members,
                 language: locale.toUpperCase(),
-                timezone: locale === 'fr' ? 'GMT+1' : 'GMT-5',
+                timezone: '',
                 weeklyQuestions: weeklyByGroup.get(group.id) ?? 0,
                 minutesAgo: Math.max(1, Math.round((Date.now() - new Date(group.created_at).getTime()) / 60000)),
                 compatible: true,
@@ -232,6 +232,7 @@ export default async function GroupRoutePage({
             liveGroupWeeksAgo: t('liveGroupWeeksAgo', { count: '{count}' }),
             liveGroupMonthsAgo: t('liveGroupMonthsAgo', { count: '{count}' }),
             liveGroupYearsAgo: t('liveGroupYearsAgo', { count: '{count}' }),
+            averageWeeklyShort: t('averageWeeklyShort'),
             unknownGroup: t('unknownGroup'),
             meetingLinkRequiredWarning: t('meetingLinkRequiredWarning'),
             editGroup: t('editGroup'),

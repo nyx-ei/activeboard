@@ -77,14 +77,33 @@ export default async function LocaleLayout({
           .from('groups')
           .select('id, name')
           .in('id', groupIds)
-          .order('created_at', { ascending: true });
+          .order('created_at', { ascending: false });
         const { data: schedules } = await supabase
           .schema('public')
           .from('group_weekly_schedules')
           .select('group_id, weekday, start_time, end_time, question_goal')
           .in('group_id', groupIds)
           .order('weekday', { ascending: true });
+        const { data: membershipsWithUsers } = await supabaseAdmin
+          .schema('public')
+          .from('group_members')
+          .select('group_id, user_id')
+          .in('group_id', groupIds);
+        const memberIds = [...new Set((membershipsWithUsers ?? []).map((membership) => membership.user_id))];
+        const { data: memberProfiles } =
+          memberIds.length > 0
+            ? await supabaseAdmin
+                .schema('public')
+                .from('users')
+                .select('id, display_name, email, avatar_url')
+                .in('id', memberIds)
+            : { data: [] };
         const scheduleByGroup = new Map<string, { scheduleLabel: string; weeklyQuestions: number }>();
+        const memberProfileById = new Map((memberProfiles ?? []).map((profile) => [profile.id, profile]));
+        const membersPreviewByGroup = new Map<
+          string,
+          Array<{ id: string; initials: string; avatarUrl: string | null }>
+        >();
         for (const groupId of groupIds) {
           const groupSchedules = (schedules ?? []).filter((schedule) => schedule.group_id === groupId);
           const weeklyQuestions = groupSchedules.reduce((sum, schedule) => sum + (schedule.question_goal ?? 0), 0);
@@ -95,6 +114,26 @@ export default async function LocaleLayout({
               : '',
             weeklyQuestions,
           });
+
+          const memberPreview = (membershipsWithUsers ?? [])
+            .filter((membership) => membership.group_id === groupId)
+            .slice(0, 4)
+            .map((membership) => {
+              const profile = memberProfileById.get(membership.user_id);
+              const displayLabel = profile?.display_name ?? profile?.email ?? 'AB';
+              return {
+                id: membership.user_id,
+                initials: displayLabel
+                  .split(' ')
+                  .filter(Boolean)
+                  .map((part) => part[0])
+                  .join('')
+                  .slice(0, 2)
+                  .toUpperCase(),
+                avatarUrl: profile?.avatar_url ?? null,
+              };
+            });
+          membersPreviewByGroup.set(groupId, memberPreview);
         }
         const { data: captainSession } = await supabase
           .schema('public')
@@ -112,6 +151,7 @@ export default async function LocaleLayout({
               language: locale.toUpperCase(),
               scheduleLabel: scheduleMeta?.scheduleLabel ?? '',
               weeklyQuestions: scheduleMeta?.weeklyQuestions ?? 0,
+              membersPreview: membersPreviewByGroup.get(group.id) ?? [],
             };
           }),
           isCaptain: Boolean(captainSession),

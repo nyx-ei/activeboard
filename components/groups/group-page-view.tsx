@@ -98,6 +98,7 @@ type GroupPageViewProps = {
     liveGroupWeeksAgo: string;
     liveGroupMonthsAgo: string;
     liveGroupYearsAgo: string;
+    averageWeeklyShort: string;
     unknownGroup: string;
     meetingLinkRequiredWarning: string;
     editGroup: string;
@@ -211,6 +212,7 @@ export function GroupPageView({
             weeksAgo: labels.liveGroupWeeksAgo,
             monthsAgo: labels.liveGroupMonthsAgo,
             yearsAgo: labels.liveGroupYearsAgo,
+            averageWeekly: labels.averageWeeklyShort,
           }}
         />
       ) : null}

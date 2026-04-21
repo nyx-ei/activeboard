@@ -8,7 +8,7 @@ import { hasEmailEnv } from '@/lib/env';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
 import { sendAccountWelcomeEmail } from '@/lib/notifications/account';
-import { sendGroupInviteEmail, sendGroupMemberAddedEmail } from '@/lib/notifications/group-invites';
+import { sendGroupInviteEmail } from '@/lib/notifications/group-invites';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { generateInviteCode, normalizeEmail } from '@/lib/utils';
@@ -154,7 +154,6 @@ export async function completeFounderOnboardingAction(formData: FormData): Promi
   let groupId: string | null = null;
   let inviteCode = '';
   const cleanupInviteIds: string[] = [];
-  const cleanupDirectMemberIds: string[] = [];
   let shouldDeleteFounderProfile = false;
 
   try {
@@ -274,37 +273,18 @@ export async function completeFounderOnboardingAction(formData: FormData): Promi
       }),
     );
 
-    const directInvitees = existingUsersByEmail.filter(
-      (entry): entry is { email: string; userId: string; displayName: string | null } => Boolean(entry.userId && entry.userId !== founderId),
-    );
-    const pendingInvitees = existingUsersByEmail.filter((entry) => !entry.userId);
+    const invitees = existingUsersByEmail.filter((entry) => entry.userId !== founderId);
 
-    if (directInvitees.length > 0) {
-      const { error: directError } = await adminClient.schema('public').from('group_members').insert(
-        directInvitees.map((entry) => ({
-          group_id: groupId!,
-          is_founder: false,
-          user_id: entry.userId,
-        })),
-      );
-
-      if (directError) {
-        return { ok: false, reason: directError.code === '23505' ? 'invite_exists' : 'action_failed' };
-      }
-
-      cleanupDirectMemberIds.push(...directInvitees.map((entry) => entry.userId));
-    }
-
-    if (pendingInvitees.length > 0) {
+    if (invitees.length > 0) {
       const { data: insertedInvites, error: inviteError } = await adminClient
         .schema('public')
         .from('group_invites')
         .insert(
-          pendingInvitees.map((entry) => ({
+          invitees.map((entry) => ({
             group_id: groupId!,
             invited_by: founderId!,
             invitee_email: entry.email,
-            invitee_user_id: null,
+            invitee_user_id: entry.userId,
           })),
         )
         .select('id, invitee_email');
@@ -327,8 +307,8 @@ export async function completeFounderOnboardingAction(formData: FormData): Promi
         exam_type: draft.examType,
         exam_session: draft.examSession,
         question_banks: draft.questionBanks,
-        invite_count: pendingInvitees.length,
-        direct_member_count: directInvitees.length,
+        invite_count: invitees.length,
+        existing_user_invite_count: invitees.filter((entry) => Boolean(entry.userId)).length,
         schedule_count: draft.schedule.length,
       },
       useAdmin: true,
@@ -345,8 +325,8 @@ export async function completeFounderOnboardingAction(formData: FormData): Promi
       }
 
       await Promise.all(
-        pendingInvitees.map(async (entry) => {
-          const inviteId = cleanupInviteIds[pendingInvitees.findIndex((pendingInvitee) => pendingInvitee.email === entry.email)];
+        invitees.map(async (entry) => {
+          const inviteId = cleanupInviteIds[invitees.findIndex((invitee) => invitee.email === entry.email)];
 
           if (!inviteId) {
             return;
@@ -363,20 +343,6 @@ export async function completeFounderOnboardingAction(formData: FormData): Promi
             inviterName: draft.displayName,
           });
         }),
-      );
-
-      await Promise.all(
-        directInvitees.map((entry) =>
-          sendGroupMemberAddedEmail({
-            locale,
-            groupId: groupId!,
-            groupName: draft.groupName,
-            memberEmail: entry.email,
-            memberName: entry.displayName,
-            inviterUserId: founderId!,
-            inviterName: draft.displayName,
-          }),
-        ),
       );
     }
 
@@ -398,15 +364,6 @@ export async function completeFounderOnboardingAction(formData: FormData): Promi
     } else {
       if (cleanupInviteIds.length > 0) {
         await adminClient.schema('public').from('group_invites').delete().in('id', cleanupInviteIds);
-      }
-
-      if (cleanupDirectMemberIds.length > 0 && founderId) {
-        await adminClient
-          .schema('public')
-          .from('group_members')
-          .delete()
-          .eq('group_id', groupId ?? '')
-          .in('user_id', cleanupDirectMemberIds);
       }
     }
 

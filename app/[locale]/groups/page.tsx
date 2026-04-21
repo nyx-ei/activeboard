@@ -19,7 +19,7 @@ export default async function GroupsIndexPage({
     .from('group_members')
     .select('group_id')
     .eq('user_id', user.id)
-    .order('joined_at', { ascending: true })
+    .order('joined_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 

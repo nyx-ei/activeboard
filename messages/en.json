@@ -18,7 +18,7 @@
     "dashboard": "Dashboard",
     "navSessions": "Sessions",
     "navPerformance": "Performance",
-    "navGroup": "Join",
+    "navGroup": "Groups",
     "navSettings": "Settings",
     "signingOut": "Signing out...",
     "loading": "Loading..."
@@ -774,6 +774,8 @@
     "upgradeToUnlimited": "Upgrade to unlimited",
     "comingSoon": "Coming soon",
     "paymentAvailableSoon": "Payment will be available shortly.",
+    "unlimitedCheckoutHint": "You will be redirected to secure Stripe checkout to activate unlimited access.",
+    "unlimitedActiveHint": "Your unlimited plan is active. You can manage billing details in Stripe.",
     "founderOffer": "Founder group offer — ends May 1",
     "backToDashboard": "Back to dashboard",
     "backToSettings": "Back to settings",

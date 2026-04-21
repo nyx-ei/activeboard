@@ -18,7 +18,7 @@
                    "dashboard":  "Tableau de bord",
                    "navSessions":  "Sessions",
                    "navPerformance":  "Performance",
-                   "navGroup":  "Rejoindre",
+                   "navGroup":  "Groupes",
                    "navSettings":  "Réglages",
                    "signingOut":  "Déconnexion...",
                    "loading":  "Chargement..."
@@ -774,6 +774,8 @@
                     "upgradeToUnlimited":  "Passer au plan illimité",
                     "comingSoon":  "Bientôt disponible",
                     "paymentAvailableSoon":  "Le paiement sera disponible sous peu.",
+                    "unlimitedCheckoutHint":  "Tu vas être redirigé vers le checkout Stripe sécurisé pour activer l'accès illimité.",
+                    "unlimitedActiveHint":  "Ton plan illimité est actif. Tu peux gérer la facturation dans Stripe.",
                     "founderOffer":  "Offre groupe fondateur — se termine le 1er mai",
                     "backToDashboard":  "Retour au tableau de bord",
                     "backToSettings":  "Retour aux réglages",
