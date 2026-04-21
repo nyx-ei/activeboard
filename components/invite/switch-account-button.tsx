@@ -21,7 +21,7 @@ export function SwitchAccountButton({ nextPath, label }: SwitchAccountButtonProp
         startTransition(async () => {
           const supabase = createSupabaseBrowserClient();
           await supabase.auth.signOut();
-          router.push(nextPath);
+          window.location.assign(nextPath);
           router.refresh();
         })
       }
