@@ -11,6 +11,7 @@ import { logAppEvent } from '@/lib/logging/logger';
 import { sendTrialWarningEmailIfNeeded } from '@/lib/notifications/trial-progress';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { isConfidenceLevel } from '@/lib/demo/confidence';
+import { refreshDashboardProfileAnalytics } from '@/lib/demo/profile-analytics';
 import {
   ANSWER_OPTIONS,
   DIMENSION_OF_CARE_OPTIONS,
@@ -431,6 +432,8 @@ export async function finishReviewSessionAction(formData: FormData) {
       source: 'review_flow',
     },
   });
+
+  await refreshDashboardProfileAnalytics();
 
   revalidatePath(`/${locale}/dashboard`);
   revalidatePath(groupPath(locale, session.group_id));
@@ -1082,6 +1085,8 @@ export async function endSessionAction(formData: FormData) {
       ended_by: user.id,
     },
   });
+
+  await refreshDashboardProfileAnalytics();
 
   revalidatePath(`/${locale}/sessions/${sessionId}`);
   redirect(withFeedback(`/${locale}/sessions/${sessionId}/summary`, 'success', t('sessionCompleted')));

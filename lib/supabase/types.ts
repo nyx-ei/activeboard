@@ -560,6 +560,17 @@ type DashboardUserAnswerDailyCountsViewRow = {
   user_id: string | null;
 };
 
+type DashboardUserProfileAnalyticsViewRow = {
+  blueprint_grid: Json | null;
+  confidence_calibration: Json | null;
+  dimension_of_care_accuracy: Json | null;
+  error_type_breakdown: Json | null;
+  heatmap_data: Json | null;
+  physician_activity_accuracy: Json | null;
+  user_id: string | null;
+  weekly_trend: Json | null;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -667,6 +678,10 @@ export type Database = {
         Row: DashboardUserAnswerMetricsViewRow;
         Relationships: [];
       };
+      dashboard_user_profile_analytics: {
+        Row: DashboardUserProfileAnalyticsViewRow;
+        Relationships: [];
+      };
       dashboard_user_session_answer_counts: {
         Row: DashboardUserSessionAnswerCountsViewRow;
         Relationships: [];
@@ -682,6 +697,10 @@ export type Database = {
           max_members: number;
           member_count: number;
         }[];
+      };
+      refresh_dashboard_user_profile_analytics: {
+        Args: Record<PropertyKey, never>;
+        Returns: undefined;
       };
     };
   };
