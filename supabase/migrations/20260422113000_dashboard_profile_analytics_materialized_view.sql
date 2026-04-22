@@ -1,17 +1,21 @@
 create materialized view public.dashboard_user_profile_analytics as
 with physician_activity_options(category, position) as (
   values
-    ('data_gathering'::text, 1),
-    ('diagnosis'::text, 2),
-    ('management'::text, 3)
+    ('history_taking'::text, 1),
+    ('physical_exam'::text, 2),
+    ('investigation'::text, 3),
+    ('management'::text, 4),
+    ('communication'::text, 5),
+    ('ethics'::text, 6)
 ),
 dimension_of_care_options(category, position) as (
   values
-    ('health_promotion'::text, 1),
-    ('disease_prevention'::text, 2),
-    ('diagnosis'::text, 3),
-    ('management'::text, 4),
-    ('follow_up'::text, 5)
+    ('diagnosis'::text, 1),
+    ('acute_care'::text, 2),
+    ('chronic_care'::text, 3),
+    ('prevention'::text, 4),
+    ('follow_up'::text, 5),
+    ('professionalism'::text, 6)
 ),
 confidence_options(confidence, position) as (
   values
@@ -23,9 +27,10 @@ error_type_options(error_type, position) as (
   values
     ('knowledge_gap'::text, 1),
     ('misread_question'::text, 2),
-    ('second_guessing'::text, 3),
-    ('time_pressure'::text, 4),
-    ('pattern_miss'::text, 5)
+    ('premature_closure'::text, 3),
+    ('confidence_mismatch'::text, 4),
+    ('time_pressure'::text, 5),
+    ('careless_mistake'::text, 6)
 ),
 answer_context as (
   select

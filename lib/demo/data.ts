@@ -656,8 +656,19 @@ export const getDashboardSessionsData = cache(async (user: User, activeGroupId?:
   perf.step('dashboard_core_loaded');
 
   const sessionIds = core.sessions.map((session) => session.id);
-  const { questionCountBySession, answeredQuestionCountBySession } = await getDashboardSessionCounts(user.id, sessionIds);
+  const primaryGroup =
+    (activeGroupId ? core.groups.find((group) => group.id === activeGroupId) : null) ??
+    core.groups.find((group) => group.is_founder) ??
+    core.groups[0] ??
+    null;
+
+  const [sessionCounts, groupDashboard] = await Promise.all([
+    getDashboardSessionCounts(user.id, sessionIds),
+    getPrimaryGroupDashboard(primaryGroup, core.sessions),
+  ]);
+  const { questionCountBySession, answeredQuestionCountBySession } = sessionCounts;
   perf.step('session_rollups_loaded');
+  perf.step('group_dashboard_loaded');
 
   const enrichedSessions = core.sessions.map((session) => ({
     ...session,
@@ -665,15 +676,6 @@ export const getDashboardSessionsData = cache(async (user: User, activeGroupId?:
     answeredQuestionCount: answeredQuestionCountBySession.get(session.id) ?? 0,
     questionCount: questionCountBySession.get(session.id) ?? 0,
   }));
-
-  const primaryGroup =
-    (activeGroupId ? core.groups.find((group) => group.id === activeGroupId) : null) ??
-    core.groups.find((group) => group.is_founder) ??
-    core.groups[0] ??
-    null;
-
-  const groupDashboard = await getPrimaryGroupDashboard(primaryGroup, core.sessions);
-  perf.step('group_dashboard_loaded');
 
   const dedupedSessions = dedupeDashboardSessions(enrichedSessions.filter((session) => session.status !== 'cancelled'));
   const nextSession = enrichedSessions.find((session) => session.status !== 'completed' && session.status !== 'cancelled') ?? null;

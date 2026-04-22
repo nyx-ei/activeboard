@@ -61,7 +61,7 @@ export default async function SessionSummaryPage({ params, searchParams }: Sessi
             <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-white">{t('title')}</h1>
             <p className="mt-3 text-base leading-7 text-slate-400">{data.group.name}</p>
           </div>
-          <Link href={`/groups/${data.group.id}`} className="button-primary">
+          <Link href={`/groups/${data.group.id}`} prefetch={false} className="button-primary">
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             {t('backToGroup')}
           </Link>
