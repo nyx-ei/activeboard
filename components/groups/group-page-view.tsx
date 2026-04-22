@@ -30,6 +30,7 @@ type MemberPerformance = {
   completionRate: number;
   averageWeeklyQuestions: number;
   totalAnswers: number;
+  status: 'setup' | 'active';
 };
 
 type LiveGroup = {
@@ -157,6 +158,7 @@ type GroupPageViewProps = {
     memberCompletion: string;
     memberTotal: string;
     captainLabel: string;
+    memberStatusSetup: string;
     memberStatusActive: string;
     groupViewEmpty: string;
     groupAccessHint: string;
@@ -442,7 +444,12 @@ export function GroupPageView({
                       ) : null}
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-white">{member.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-sm font-bold text-white">{member.name}</p>
+                        {member.userId === currentCaptainId ? (
+                          <span className="text-[11px] font-semibold text-amber-300">{labels.captainLabel}</span>
+                        ) : null}
+                      </div>
                       <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
                         <span className="rounded-full bg-white/[0.05] px-2 py-1">{labels.memberAverageWeekly.replace('{value}', String(member.averageWeeklyQuestions))}</span>
                         <span className="rounded-full bg-white/[0.05] px-2 py-1">{labels.memberCompletion.replace('{value}', String(member.completionRate))}</span>
@@ -451,7 +458,7 @@ export function GroupPageView({
                     </div>
                   </div>
                     <span className="rounded-full border border-brand/25 bg-brand/10 px-3 py-1 text-[10px] font-bold text-brand">
-                      {member.userId === currentCaptainId ? labels.captainLabel : labels.memberStatusActive}
+                      {member.status === 'setup' ? labels.memberStatusSetup : labels.memberStatusActive}
                     </span>
                   </div>
                 </div>

@@ -949,7 +949,9 @@ export const getGroupData = cache(async (groupId: string, user: User) => {
       completionRate: totalTrackableQuestions > 0 ? Math.round(((answerStats?.questionIds.size ?? 0) / totalTrackableQuestions) * 100) : 0,
       averageWeeklyQuestions: Math.round(totalAnswers / Math.max(1, activeWeekKeys.size)),
       totalAnswers,
-      status: (answerStats?.sessionIds.size ?? 0) === 0 && (answerStats?.questionIds.size ?? 0) === 0 ? 'setup' : 'active',
+      status: ((answerStats?.sessionIds.size ?? 0) === 0 && (answerStats?.questionIds.size ?? 0) === 0 ? 'setup' : 'active') as
+        | 'setup'
+        | 'active',
     };
   });
 

@@ -344,6 +344,7 @@ export default async function GroupRoutePage({
             memberCompletion: t('memberCompletion', { value: '{value}' }),
             memberTotal: t('memberTotal', { value: '{value}' }),
             captainLabel: t('captainLabel'),
+            memberStatusSetup: t('memberStatusSetup'),
             memberStatusActive: t('memberStatusActive'),
             groupViewEmpty: t('groupViewEmpty'),
             groupAccessHint: t('groupAccessHint'),
