@@ -1,8 +1,7 @@
 'use client';
 
-import { BookOpen, CreditCard, Globe, User } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { BookOpen, CreditCard, User } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Link } from '@/i18n/navigation';
 import { cn } from '@/lib/utils';
@@ -12,14 +11,12 @@ type ProfileMenuProps = {
   name: string;
   email: string;
   isCaptain?: boolean;
-  locale: 'en' | 'fr';
   profileHref?: string | null;
   profileLabel?: string | null;
   examHref?: string | null;
   examLabel?: string | null;
   billingHref?: string | null;
   billingLabel?: string | null;
-  languageLabel: string;
 };
 
 export function ProfileMenu({
@@ -27,21 +24,15 @@ export function ProfileMenu({
   name,
   email,
   isCaptain = false,
-  locale,
   profileHref,
   profileLabel,
   examHref,
   examLabel,
   billingHref,
   billingLabel,
-  languageLabel,
 }: ProfileMenuProps) {
   const [open, setOpen] = useState(false);
-  const [isPending, startTransition] = useTransition();
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const searchParams = useSearchParams();
-  const search = useMemo(() => searchParams.toString(), [searchParams]);
-  const nextLocale = locale === 'en' ? 'fr' : 'en';
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -125,24 +116,6 @@ export function ProfileMenu({
                 <span>{billingLabel}</span>
               </Link>
             ) : null}
-          </div>
-
-          <div className="border-t border-white/[0.06] py-1">
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={() => {
-                setOpen(false);
-                startTransition(() => {
-                  const localizedPath = window.location.pathname.replace(/^\/(en|fr)(?=\/|$)/, `/${nextLocale}`);
-                  window.location.assign(search ? `${localizedPath}?${search}` : localizedPath);
-                });
-              }}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-slate-300 transition hover:bg-white/[0.05] hover:text-white disabled:opacity-60"
-            >
-              <Globe className="h-4 w-4 text-slate-500" aria-hidden="true" strokeWidth={1.7} />
-              <span>{languageLabel}</span>
-            </button>
           </div>
         </div>
       ) : null}

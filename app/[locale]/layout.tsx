@@ -120,6 +120,15 @@ export default async function LocaleLayout({
             <div className="flex min-w-0 shrink-0 items-center justify-end gap-2 sm:gap-3">
               {user ? (
                 <>
+                  <Suspense
+                    fallback={
+                      <div className="inline-flex items-center gap-2 rounded-full border border-border bg-white/[0.04] px-4 py-2 text-sm text-slate-400">
+                        {t('language')}
+                      </div>
+                    }
+                  >
+                    <LanguageSwitcher />
+                  </Suspense>
                   <Link
                     href={shellData.canBrowseLookupLayer ? '/groups?live=1' : '/billing'}
                     className="inline-flex h-10 items-center gap-1.5 rounded-[8px] bg-amber-500/10 px-3 text-xs font-extrabold text-amber-400 ring-1 ring-amber-500/10 transition hover:bg-amber-500/15"
@@ -133,14 +142,12 @@ export default async function LocaleLayout({
                     name={displayName}
                     email={user.email ?? ''}
                     isCaptain={shellData.isCaptain}
-                    locale={locale}
                     profileHref="/profile"
                     profileLabel={profileT('menuLabel')}
                     examHref="/profile?section=exam"
                     examLabel={profileT('examSettingsMenuLabel')}
                     billingHref="/billing"
                     billingLabel={billingT('menuLabel')}
-                    languageLabel={locale === 'fr' ? t('english') : t('french')}
                   />
                 </>
               ) : (
