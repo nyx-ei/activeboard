@@ -66,12 +66,12 @@ export function ProfileMenu({
   }, []);
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative shrink-0">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
         className={cn(
-          'relative flex h-9 w-9 items-center justify-center rounded-full border border-[#176b55] bg-[#053b32] text-[11px] font-extrabold text-[#22e39c] shadow-[inset_0_0_0_1px_rgba(34,227,156,0.14)] transition hover:bg-[#07483d]',
+          'relative flex h-10 w-10 items-center justify-center rounded-full border border-[#176b55] bg-[#053b32] text-[11px] font-extrabold text-[#22e39c] shadow-[inset_0_0_0_1px_rgba(34,227,156,0.14)] transition hover:bg-[#07483d]',
           open && 'ring-2 ring-white/70',
         )}
         aria-expanded={open}
@@ -87,7 +87,7 @@ export function ProfileMenu({
       </button>
 
       {open ? (
-        <div className="absolute right-0 top-[calc(100%+10px)] z-50 w-[238px] overflow-hidden rounded-[12px] border border-white/[0.08] bg-[#11192c] shadow-[0_20px_70px_rgba(0,0,0,0.5)]">
+        <div className="absolute right-0 top-[calc(100%+10px)] z-50 w-[min(280px,calc(100vw-1rem))] overflow-hidden rounded-[12px] border border-white/[0.08] bg-[#11192c] shadow-[0_20px_70px_rgba(0,0,0,0.5)]">
           <div className="px-4 py-4">
             <p className="truncate text-base font-extrabold text-white">{name}</p>
             <p className="mt-1 truncate text-sm font-semibold text-slate-500">{email}</p>

@@ -172,11 +172,12 @@ export default async function LocaleLayout({
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <RegisterServiceWorker />
-      <div className="min-h-screen overflow-x-hidden px-3 pb-24 pt-2 sm:px-6 sm:pt-4">
-        <div className="mx-auto flex min-h-[calc(100vh-2.5rem)] max-w-[1240px] flex-col gap-5">
+      <div className="min-h-screen overflow-x-hidden px-2 pb-24 pt-2 sm:px-6 sm:pt-4">
+        <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-[1240px] flex-col gap-4 sm:gap-5">
           <OfflineStatusBanner />
-          <header className="flex min-w-0 items-center justify-between gap-2 border-b border-[#1f2937]/80 pb-2 pt-1 sm:gap-4">
-            <div className="flex min-w-0 items-center gap-2">
+          <header className="border-b border-[#1f2937]/80 pb-3 pt-1">
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 sm:flex-nowrap sm:gap-4">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
               <Link href="/" className="flex min-w-0 shrink-0 items-center gap-2">
                 <div className="flex h-7 w-7 items-center justify-center rounded-[5px] bg-brand text-xs font-extrabold text-white">
                   AB
@@ -185,7 +186,7 @@ export default async function LocaleLayout({
               </Link>
             </div>
 
-            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <div className="flex min-w-0 w-full items-center justify-between gap-2 sm:w-auto sm:shrink-0 sm:justify-end sm:gap-3">
               {user ? (
                 <>
                   <Suspense
@@ -221,7 +222,7 @@ export default async function LocaleLayout({
                   />
                 </>
               ) : (
-                <div className="flex items-center gap-3">
+                <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end sm:gap-3">
                   <Suspense
                     fallback={
                       <div className="inline-flex items-center gap-2 rounded-full border border-border bg-white/[0.04] px-4 py-2 text-sm text-slate-400">
@@ -234,6 +235,7 @@ export default async function LocaleLayout({
                   <HomeHeaderNav />
                 </div>
               )}
+            </div>
             </div>
           </header>
           {children}

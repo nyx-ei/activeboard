@@ -98,7 +98,11 @@ export async function sendGroupInviteEmail(input: SendGroupInviteEmailInput) {
       },
       useAdmin: true,
     });
+
+    return { ok: true as const };
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown group invite email error';
+
     await logAppEvent({
       eventName: APP_EVENTS.groupInviteEmailFailed,
       level: 'error',
@@ -108,10 +112,12 @@ export async function sendGroupInviteEmail(input: SendGroupInviteEmailInput) {
       metadata: {
         invite_id: input.inviteId,
         invitee_email: input.inviteeEmail,
-        error_message: error instanceof Error ? error.message : 'Unknown group invite email error',
+        error_message: errorMessage,
       },
       useAdmin: true,
     });
+
+    return { ok: false as const, errorMessage };
   }
 }
 

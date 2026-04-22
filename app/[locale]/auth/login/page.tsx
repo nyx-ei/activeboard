@@ -4,8 +4,8 @@ import { getTranslations } from 'next-intl/server';
 
 import { AuthForm } from '@/components/auth/auth-form';
 import { getCurrentUser } from '@/lib/auth';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { AppLocale } from '@/i18n/routing';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 type LoginPageProps = {
   params: { locale: string };
@@ -17,7 +17,6 @@ export default async function LoginPage({ params, searchParams }: LoginPageProps
   const user = await getCurrentUser();
   const t = await getTranslations('Auth');
   const next = searchParams?.next;
-  const isInviteNext = typeof next === 'string' && next.startsWith(`/${locale}/invite/`);
 
   if (user) {
     const supabase = createSupabaseServerClient();
@@ -41,15 +40,7 @@ export default async function LoginPage({ params, searchParams }: LoginPageProps
       redirect(`/${locale}/invite/${pendingInvite.id}`);
     }
 
-    const { data: firstMembership } = await supabase
-      .schema('public')
-      .from('group_members')
-      .select('group_id')
-      .eq('user_id', user.id)
-      .limit(1)
-      .maybeSingle();
-
-    redirect(firstMembership?.group_id ? `/${locale}/dashboard` : `/${locale}/create-group`);
+    redirect(`/${locale}/dashboard`);
   }
 
   return (
@@ -64,8 +55,8 @@ export default async function LoginPage({ params, searchParams }: LoginPageProps
           >
             <AuthForm
               requireExamSessionOnSignUp={false}
-              deferSignUpToRedirect={!isInviteNext}
-              signUpRedirectToOverride={typeof next === 'string' && next.startsWith(`/${locale}/`) ? next : `/${locale}/create-group`}
+              deferSignUpToRedirect={false}
+              signUpRedirectToOverride={typeof next === 'string' && next.startsWith(`/${locale}/`) ? next : `/${locale}/dashboard`}
             />
           </Suspense>
       </div>

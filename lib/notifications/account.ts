@@ -22,20 +22,20 @@ export async function sendAccountWelcomeEmail(input: AccountEmailInput) {
   const isFrench = input.locale === 'fr';
   const emailContent = isFrench
     ? {
-        title: 'Votre compte ActiveBoard est prêt',
-        preheader: 'Bienvenue sur ActiveBoard. Vous pouvez maintenant créer ou rejoindre un groupe.',
+        title: 'Votre compte ActiveBoard est pret',
+        preheader: 'Bienvenue sur ActiveBoard. Vous pouvez maintenant creer ou rejoindre un groupe.',
         intro: [
           `Bonjour ${name},`,
-          'Votre compte ActiveBoard vient d’être créé avec succès.',
-          'ActiveBoard vous aide à structurer les sessions de groupe, suivre les réponses et garder un historique clair de votre constance.',
+          "Votre compte ActiveBoard vient d'etre cree avec succes.",
+          "ActiveBoard vous aide a structurer les sessions de groupe, suivre les reponses et garder un historique clair de votre constance.",
         ],
         details: [
           { label: 'Compte', value: input.email },
-          { label: 'Prochaine étape', value: 'Créer ou rejoindre un groupe' },
+          { label: 'Prochaine etape', value: 'Creer ou rejoindre un groupe' },
         ],
         action: { label: 'Ouvrir ActiveBoard', url: dashboardUrl },
         secondaryNote:
-          'Si vous venez d’utiliser le parcours “Créer un groupe”, connectez-vous pour finaliser la synchronisation de votre groupe et de vos invitations.',
+          "Si vous venez d'utiliser le parcours de creation de groupe, connectez-vous pour finaliser la synchronisation de votre groupe et de vos invitations.",
       }
     : {
         title: 'Your ActiveBoard account is ready',
@@ -51,7 +51,7 @@ export async function sendAccountWelcomeEmail(input: AccountEmailInput) {
         ],
         action: { label: 'Open ActiveBoard', url: dashboardUrl },
         secondaryNote:
-          'If you just used the “Create group” flow, sign in to finish syncing your group and invitations.',
+          'If you just used the create-group flow, sign in to finish syncing your group and invitations.',
       };
 
   try {
@@ -92,12 +92,12 @@ export async function sendPasswordChangedEmail(input: AccountEmailInput) {
   const isFrench = input.locale === 'fr';
   const emailContent = isFrench
     ? {
-        title: 'Votre mot de passe a été modifié',
-        preheader: 'Notification de sécurité ActiveBoard concernant votre mot de passe.',
+        title: 'Votre mot de passe a ete modifie',
+        preheader: 'Notification de securite ActiveBoard concernant votre mot de passe.',
         intro: [
           'Bonjour,',
-          'Le mot de passe de votre compte ActiveBoard vient d’être modifié.',
-          'Cette notification est envoyée pour vous permettre de réagir rapidement si vous n’êtes pas à l’origine de cette action.',
+          "Le mot de passe de votre compte ActiveBoard vient d'etre modifie.",
+          "Cette notification est envoyee pour vous permettre de reagir rapidement si vous n'etes pas a l'origine de cette action.",
         ],
         details: [
           { label: 'Compte', value: input.email },
@@ -106,7 +106,7 @@ export async function sendPasswordChangedEmail(input: AccountEmailInput) {
         ],
         action: { label: 'Ouvrir ActiveBoard', url: `${getAppUrl()}/fr/profile` },
         safetyNote:
-          'Si vous n’avez pas demandé cette modification, changez immédiatement votre mot de passe et contactez le support ActiveBoard.',
+          "Si vous n'avez pas demande cette modification, changez immediatement votre mot de passe et contactez le support ActiveBoard.",
       }
     : {
         title: 'Your password was changed',
@@ -129,7 +129,7 @@ export async function sendPasswordChangedEmail(input: AccountEmailInput) {
   try {
     const response = await sendEmail({
       to: input.email,
-      subject: isFrench ? 'Votre mot de passe ActiveBoard a été modifié' : 'Your ActiveBoard password was changed',
+      subject: isFrench ? 'Votre mot de passe ActiveBoard a ete modifie' : 'Your ActiveBoard password was changed',
       text: renderPlainTextEmail(emailContent),
       html: renderTransactionalEmail(emailContent),
     });

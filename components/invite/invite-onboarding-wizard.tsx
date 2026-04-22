@@ -112,9 +112,7 @@ export function InviteOnboardingWizard({
   const [timezone, setTimezone] = useState(initialTimezone || 'UTC');
   const [selectedBanks, setSelectedBanks] = useState<Set<string>>(() => new Set(initialQuestionBanks));
   const [setScheduleNow, setSetScheduleNow] = useState(
-    AVAILABILITY_WEEKDAYS.some(
-      (weekday: AvailabilityWeekday) => (initialAvailabilityGrid[weekday] ?? []).length > 0,
-    ),
+    AVAILABILITY_WEEKDAYS.some((weekday: AvailabilityWeekday) => (initialAvailabilityGrid[weekday] ?? []).length > 0),
   );
   const [grid, setGrid] = useState<AvailabilityGrid>(initialAvailabilityGrid ?? DEFAULT_AVAILABILITY_GRID);
 
@@ -177,7 +175,7 @@ export function InviteOnboardingWizard({
   }
 
   return (
-    <section className="surface-mockup w-full max-w-[620px] p-6">
+    <section className="surface-mockup w-full max-w-[620px] p-4 sm:p-6">
       <div className="grid grid-cols-3 gap-2">
         {renderStepPill(1, labels.stepExam)}
         {renderStepPill(2, labels.stepSchedule)}
@@ -237,7 +235,7 @@ export function InviteOnboardingWizard({
 
             <div>
               <p className="mb-2 text-sm font-semibold text-slate-300">{labels.questionBanks}</p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {QUESTION_BANKS.map((bank) => {
                   const label = 'label' in bank ? bank.label : labels[bank.labelKey];
                   const selected = selectedBanks.has(bank.value);
@@ -268,7 +266,7 @@ export function InviteOnboardingWizard({
               type="button"
               onClick={() => setStep(2)}
               disabled={!examSession}
-              className="button-primary h-11 rounded-[8px] px-5 text-sm disabled:cursor-not-allowed disabled:opacity-45"
+              className="button-primary h-11 w-full rounded-[8px] px-5 text-sm disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
             >
               {labels.next}
             </button>
@@ -377,7 +375,7 @@ export function InviteOnboardingWizard({
 
           <div className="mt-5 rounded-[12px] border border-white/[0.06] bg-white/[0.03] p-4">
             <p className="text-base font-semibold text-white">{groupName}</p>
-            <p className="mt-2 text-xs text-slate-400">{labels.invitationCode.replace('{code}', inviteCode)}</p>
+            <p className="mt-2 break-all text-xs text-slate-400">{labels.invitationCode.replace('{code}', inviteCode)}</p>
             {inviteSchedules.length > 0 ? (
               <div className="mt-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{labels.groupSchedule}</p>

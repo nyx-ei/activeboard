@@ -62,9 +62,9 @@ export function GroupEditModal({
 
       {open ? (
         <ModalPortal>
-        <div className="fixed inset-0 flex items-center justify-center bg-black/72 px-4 py-6 backdrop-blur-[2px]" style={{ zIndex: 1000 }} role="dialog" aria-modal="true">
+        <div className="fixed inset-0 flex items-end justify-center bg-black/72 px-0 py-0 backdrop-blur-[2px] sm:items-center sm:px-4 sm:py-6" style={{ zIndex: 1000 }} role="dialog" aria-modal="true">
           <button type="button" className="absolute inset-0 cursor-default" aria-label={labels.close} onClick={() => setOpen(false)} />
-          <section className="relative max-h-[min(88vh,620px)] w-full max-w-[480px] overflow-y-auto rounded-[10px] border border-white/[0.06] bg-[#11192c] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.55)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <section className="relative max-h-[min(88vh,620px)] w-full max-w-[480px] overflow-y-auto rounded-t-[16px] border border-white/[0.06] bg-[#11192c] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.55)] [scrollbar-width:none] sm:rounded-[10px] sm:p-6 [&::-webkit-scrollbar]:hidden">
             <div className="flex items-center justify-between gap-4">
               <h2 className="flex items-center gap-2 text-xl font-extrabold tracking-tight text-white">
                 <Pencil className="h-4 w-4 text-brand" aria-hidden="true" strokeWidth={1.8} />
@@ -102,7 +102,7 @@ export function GroupEditModal({
                 <span className="mt-2 block text-[11px] font-semibold text-slate-500">{labels.helper}</span>
               </label>
 
-              <div className="grid grid-cols-2 gap-4 pt-2">
+              <div className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-2 sm:gap-4">
                 <button type="button" onClick={() => setOpen(false)} className="button-secondary h-10 rounded-[6px] text-sm font-bold">
                   {labels.cancel}
                 </button>

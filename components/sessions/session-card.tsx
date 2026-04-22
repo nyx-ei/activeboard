@@ -94,9 +94,9 @@ export function SessionCard({
       }}
       className="group cursor-pointer rounded-[10px] border border-white/[0.07] bg-[#0f1628] px-4 py-3 transition hover:border-brand/70 hover:bg-[#111b30]"
     >
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <h2 className="truncate text-sm font-extrabold text-white">{session.name ?? session.groupName ?? 'ActiveBoard'}</h2>
             <StatusBadge status={session.status} labels={labels} />
           </div>
