@@ -908,13 +908,18 @@ export async function inviteDashboardGroupMemberAction(formData: FormData) {
     },
   });
 
+  if (!hasEmailEnv()) {
+    revalidatePath(`/${locale}/dashboard`);
+    redirect(withFeedback(settingsPath, 'error', t('inviteCreatedEmailFailed')));
+  }
+
   if (hasEmailEnv()) {
     const [{ data: group }, { data: inviter }] = await Promise.all([
       supabase.schema('public').from('groups').select('name, invite_code').eq('id', groupId).maybeSingle(),
       supabase.schema('public').from('users').select('display_name, email').eq('id', user.id).maybeSingle(),
     ]);
 
-    await sendGroupInviteEmail({
+    const inviteEmailResult = await sendGroupInviteEmail({
       locale,
       inviteId: insertedInvite?.id ?? '',
       groupId,
@@ -924,6 +929,10 @@ export async function inviteDashboardGroupMemberAction(formData: FormData) {
       inviterUserId: user.id,
       inviterName: inviter?.display_name ?? inviter?.email ?? user.email ?? 'ActiveBoard',
     });
+
+    if (!inviteEmailResult.ok) {
+      redirect(withFeedback(settingsPath, 'error', t('inviteCreatedEmailFailed')));
+    }
   }
 
   revalidatePath(`/${locale}/dashboard`);
@@ -1017,7 +1026,7 @@ export async function addDashboardExistingMemberAction(formData: FormData) {
       .eq('id', user.id)
       .maybeSingle();
 
-    await sendGroupInviteEmail({
+    const inviteEmailResult = await sendGroupInviteEmail({
       locale,
       inviteId: insertedInvite?.id ?? '',
       groupId,
@@ -1027,6 +1036,10 @@ export async function addDashboardExistingMemberAction(formData: FormData) {
       inviterUserId: user.id,
       inviterName: inviter?.display_name ?? inviter?.email ?? user.email ?? 'ActiveBoard',
     });
+
+    if (!inviteEmailResult.ok) {
+      redirect(withFeedback(groupPath, 'error', t('inviteCreatedEmailFailed')));
+    }
   }
 
   revalidatePath(`/${locale}/dashboard`);

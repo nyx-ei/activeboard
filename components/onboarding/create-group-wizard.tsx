@@ -75,6 +75,7 @@ type CreateGroupWizardLabels = {
   inviteCode: string;
   copyInviteLink: string;
   completionRule: string;
+  inviteEmailWarning: string;
   goToDashboard: string;
   signInToContinue: string;
   missingFields: string;
@@ -153,6 +154,7 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
   const [inviteCode, setInviteCode] = useState('');
   const [createdGroupId, setCreatedGroupId] = useState<string | null>(null);
   const [requiresLogin, setRequiresLogin] = useState(false);
+  const [emailDeliveryFailed, setEmailDeliveryFailed] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -300,6 +302,7 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
       setCreatedGroupId(result.groupId);
       setInviteCode(result.inviteCode);
       setRequiresLogin(result.requiresLogin);
+      setEmailDeliveryFailed(result.emailDeliveryFailed);
       setStep(5);
     });
   }
@@ -586,6 +589,11 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
             </div>
             <h1 className="mt-8 text-2xl font-semibold tracking-[-0.02em]">{labels.createdTitle}</h1>
             <p className="mt-4 max-w-[560px] text-base font-medium leading-7 text-slate-400">{labels.createdDescription}</p>
+            {emailDeliveryFailed ? (
+              <div className="mt-5 w-full rounded-[7px] border border-amber-400/20 bg-amber-400/[0.08] px-5 py-4 text-sm font-semibold leading-6 text-amber-300">
+                {labels.inviteEmailWarning}
+              </div>
+            ) : null}
             <div className="mt-8 w-full rounded-[7px] bg-[#111827] px-6 py-6">
               <p className="text-sm font-semibold text-slate-500">{labels.inviteCode}</p>
               <p className="mt-3 text-3xl font-semibold tracking-[0.25em] text-brand">{inviteCode}</p>

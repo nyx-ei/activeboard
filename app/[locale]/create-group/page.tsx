@@ -126,6 +126,7 @@ export default async function CreateGroupPage({ params }: CreateGroupPageProps) 
         inviteCode: t('inviteCode'),
         copyInviteLink: t('copyInviteLink'),
         completionRule: t('completionRule'),
+        inviteEmailWarning: t('inviteEmailWarning'),
         goToDashboard: t('goToDashboard'),
         signInToContinue: t('signInToContinue'),
         missingFields: t('missingFields'),

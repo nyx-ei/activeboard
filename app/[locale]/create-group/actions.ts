@@ -41,7 +41,7 @@ type FounderOnboardingDraft = {
 };
 
 type FounderOnboardingResult =
-  | { ok: true; groupId: string; inviteCode: string; requiresLogin: boolean }
+  | { ok: true; groupId: string; inviteCode: string; requiresLogin: boolean; emailDeliveryFailed: boolean }
   | {
       ok: false;
       reason:
@@ -314,6 +314,8 @@ export async function completeFounderOnboardingAction(formData: FormData): Promi
       useAdmin: true,
     });
 
+    let emailDeliveryFailed = invitees.length > 0 && !hasEmailEnv();
+
     if (hasEmailEnv()) {
       if (createdAuthUserId) {
         await sendAccountWelcomeEmail({
@@ -324,15 +326,15 @@ export async function completeFounderOnboardingAction(formData: FormData): Promi
         });
       }
 
-      await Promise.all(
+      const inviteEmailResults = await Promise.all(
         invitees.map(async (entry) => {
           const inviteId = cleanupInviteIds[invitees.findIndex((invitee) => invitee.email === entry.email)];
 
           if (!inviteId) {
-            return;
+            return { ok: false as const, errorMessage: 'Missing invite id for email delivery.' };
           }
 
-          await sendGroupInviteEmail({
+          return sendGroupInviteEmail({
             locale,
             inviteId,
             groupId: groupId!,
@@ -344,6 +346,10 @@ export async function completeFounderOnboardingAction(formData: FormData): Promi
           });
         }),
       );
+
+      if (inviteEmailResults.some((result) => !result.ok)) {
+        emailDeliveryFailed = true;
+      }
     }
 
     revalidatePath(`/${locale}/dashboard`);
@@ -354,6 +360,7 @@ export async function completeFounderOnboardingAction(formData: FormData): Promi
       groupId,
       inviteCode,
       requiresLogin: !authUser,
+      emailDeliveryFailed,
     };
   } catch {
     if (groupId) {
