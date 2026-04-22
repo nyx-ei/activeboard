@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Clock } from 'lucide-react';
 
 import { SubmitButton } from '@/components/ui/submit-button';
@@ -46,6 +46,14 @@ export function CreateSessionModal({
   const [timerMode, setTimerMode] = useState<'per_question' | 'global'>('per_question');
   const [timerSeconds, setTimerSeconds] = useState('90');
 
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
   const updateTimerMode = (value: 'per_question' | 'global') => {
     setTimerMode(value);
     setTimerSeconds(value === 'global' ? '600' : '90');
@@ -59,8 +67,8 @@ export function CreateSessionModal({
     Number(timerSeconds) > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 px-0 backdrop-blur-[2px] sm:items-center sm:px-4">
-      <div className="max-h-[90vh] w-full max-w-[478px] overflow-y-auto rounded-t-[18px] bg-[#111827] p-4 shadow-2xl ring-1 ring-white/[0.08] sm:rounded-[14px] sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-black/60 px-0 backdrop-blur-[2px] [scrollbar-width:none] sm:items-center sm:px-4 [&::-webkit-scrollbar]:hidden">
+      <div className="max-h-[90vh] w-full max-w-[478px] overflow-y-auto rounded-t-[18px] bg-[#111827] p-4 shadow-2xl ring-1 ring-white/[0.08] [scrollbar-width:none] sm:rounded-[14px] sm:p-6 [&::-webkit-scrollbar]:hidden">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-extrabold text-white">{labels.newSession}</h2>
           <button type="button" onClick={onClose} className="rounded-md p-1 text-slate-400 hover:text-white" aria-label={labels.close}>

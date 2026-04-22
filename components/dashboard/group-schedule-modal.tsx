@@ -53,11 +53,6 @@ function timeValue(value: string) {
   return value.slice(0, 5);
 }
 
-function getMeridiem(value: string) {
-  const hour = Number(value.slice(0, 2));
-  return hour >= 12 ? 'pm' : 'am';
-}
-
 function createDraft(index: number): ScheduleDraft {
   return {
     id: `new-${Date.now()}-${index}`,
@@ -225,7 +220,6 @@ export function GroupScheduleModal({
                           )}
                         </div>
                       </div>
-                      <p className="mt-2 text-xs font-semibold text-slate-500">{getMeridiem(draft.endTime)}</p>
                     </div>
                   ))}
                 </div>

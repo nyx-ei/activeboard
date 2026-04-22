@@ -159,7 +159,7 @@ function formatMeridiemTime(value: string) {
   const hour = Number(rawHour);
   const suffix = hour >= 12 ? 'pm' : 'am';
   const twelveHour = hour % 12 === 0 ? 12 : hour % 12;
-  return `${String(twelveHour).padStart(2, '0')}:${minute} ${suffix}`;
+  return `${twelveHour}:${minute}${suffix}`;
 }
 
 export function GroupPageView({
