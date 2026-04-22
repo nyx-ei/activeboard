@@ -286,7 +286,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
           },
           reviewStepTitle: t('reviewStepTitle'),
           reviewStepDescription: t('reviewStepDescription'),
-          invitationCode: t('inviteCodeLabel'),
+          invitationCode: t('inviteCodeLabel', { code: '{code}' }),
           groupSchedule: t('groupSchedule'),
           noSchedule: t('noSchedule'),
           conflictTitle: t('conflictTitle'),
