@@ -955,10 +955,14 @@ export const getGroupData = cache(async (groupId: string, user: User) => {
     };
   });
 
-  const currentCaptainId =
+  const founderCaptainId =
+    safeMembers.find((member) => member.is_founder)?.user_id ??
+    null;
+  const sessionLeaderId =
     safeSessions.find((session) => session.status === 'active')?.leader_id ??
     safeSessions.find((session) => session.status === 'scheduled')?.leader_id ??
     null;
+  const currentCaptainId = founderCaptainId ?? sessionLeaderId ?? null;
 
   perf.done({
     members: safeMembers.length,
