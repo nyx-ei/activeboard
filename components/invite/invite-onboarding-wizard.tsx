@@ -349,18 +349,18 @@ export function InviteOnboardingWizard({
             </div>
           ) : null}
 
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-between">
+          <div className="mt-6 flex items-center justify-between gap-3">
             <button
               type="button"
               onClick={() => setStep(1)}
-              className="h-11 rounded-[8px] border border-white/10 bg-transparent px-5 text-sm font-semibold text-white transition hover:bg-white/[0.04]"
+              className="h-11 shrink-0 rounded-[8px] border border-white/10 bg-transparent px-5 text-sm font-semibold text-white transition hover:bg-white/[0.04]"
             >
               {labels.back}
             </button>
             <button
               type="button"
               onClick={() => setStep(3)}
-              className="button-primary h-11 rounded-[8px] px-5 text-sm"
+              className="button-primary h-11 shrink-0 rounded-[8px] px-5 text-sm"
             >
               {setScheduleNow ? labels.next : labels.continueWithoutSchedule}
             </button>

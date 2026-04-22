@@ -138,10 +138,6 @@ function Progress({ step }: { step: WizardStep }) {
 
 export function CreateGroupWizard({ locale, labels, initialProfile, isAuthenticated }: CreateGroupWizardProps) {
   const router = useRouter();
-  const mobileScheduleLabels =
-    locale === 'fr'
-      ? { day: 'Jour', start: 'Début', end: 'Fin' }
-      : { day: 'Day', start: 'Start', end: 'End' };
   const [step, setStep] = useState<WizardStep>(0);
   const [displayName, setDisplayName] = useState(initialProfile?.displayName ?? '');
   const [email, setEmail] = useState(initialProfile?.email ?? '');
@@ -192,9 +188,6 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
       if (draft.examSession) setExamSession(draft.examSession);
       if (draft.locale) setSelectedLocale(draft.locale);
       if (draft.timezone) setTimezone(draft.timezone);
-      if (draft.displayName && draft.email && draft.password) {
-        setStep(1);
-      }
     } catch {
       window.sessionStorage.removeItem(ACCOUNT_DRAFT_KEY);
     }
@@ -334,7 +327,7 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
   return (
     <main className="flex min-h-screen flex-col bg-background text-white">
       <header className="border-b border-white/[0.08] px-3 py-3 sm:px-7">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={goBack}
@@ -346,7 +339,9 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
               <span className="block truncate text-sm font-semibold text-white sm:text-xl">{labels.title}</span>
             </span>
           </button>
-          <Progress step={step} />
+          <div className="w-[110px] shrink-0 sm:w-auto">
+            <Progress step={step} />
+          </div>
         </div>
       </header>
 
@@ -376,7 +371,7 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
                   <span className="mt-1 block text-xs text-slate-500">{labels.passwordHint}</span>
                 </label>
               ) : null}
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-4">
                 <label className="block">
                   <span className="mb-2 block text-sm font-semibold text-slate-300">{labels.examType}</span>
                   <select value={examType} onChange={(event) => setExamType(event.target.value as ExamType)} className="field h-10 rounded-[6px] px-3 text-sm">
@@ -398,7 +393,7 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
                   </select>
                 </label>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-4">
                 <label className="block">
                   <span className="mb-2 block text-sm font-semibold text-slate-300">{labels.language}</span>
                   <select value={selectedLocale} onChange={(event) => setSelectedLocale(event.target.value === 'fr' ? 'fr' : 'en')} className="field h-10 rounded-[6px] px-3 text-sm">
@@ -471,13 +466,17 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
               </label>
               {scheduleEnabled ? (
                 <div className="space-y-3">
+                  <div className="grid grid-cols-[minmax(96px,1.2fr)_minmax(72px,0.85fr)_minmax(72px,0.85fr)_minmax(56px,0.65fr)_20px] items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                    <span>{locale === 'fr' ? 'Jour' : 'Day'}</span>
+                    <span>{locale === 'fr' ? 'Début' : 'Start'}</span>
+                    <span>{locale === 'fr' ? 'Fin' : 'End'}</span>
+                    <span className="text-center">Q</span>
+                    <span />
+                  </div>
                   {slots.map((slot) => (
                     <div key={slot.id} className="rounded-[10px] bg-[#111827] p-3 sm:p-4">
-                      <div className="grid gap-3 sm:grid-cols-[1.2fr_0.9fr_16px_0.9fr_0.7fr_16px_24px] sm:items-center sm:gap-2">
-                        <label className="block">
-                          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 sm:hidden">
-                            {mobileScheduleLabels.day}
-                          </span>
+                      <div className="grid grid-cols-[minmax(96px,1.2fr)_minmax(72px,0.85fr)_minmax(72px,0.85fr)_minmax(56px,0.65fr)_20px] items-center gap-2">
+                        <label className="block min-w-0">
                           <select value={slot.weekday} onChange={(event) => updateSlot(slot.id, { weekday: event.target.value })} className="field-compact rounded-[6px] px-3 text-sm">
                             {WEEKDAYS.map((weekday) => (
                               <option key={weekday} value={weekday}>
@@ -486,28 +485,15 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
                             ))}
                           </select>
                         </label>
-                        <div className="grid grid-cols-2 gap-3 sm:contents">
-                          <label className="block">
-                            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 sm:hidden">
-                              {mobileScheduleLabels.start}
-                            </span>
-                            <input value={slot.startTime} onChange={(event) => updateSlot(slot.id, { startTime: event.target.value })} type="time" className="field-compact rounded-[6px] px-3 text-sm" />
-                          </label>
-                          <label className="block">
-                            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 sm:hidden">
-                              {mobileScheduleLabels.end}
-                            </span>
-                            <input value={slot.endTime} onChange={(event) => updateSlot(slot.id, { endTime: event.target.value })} type="time" className="field-compact rounded-[6px] px-3 text-sm" />
-                          </label>
-                        </div>
-                        <span className="hidden text-center text-slate-500 sm:block">-&gt;</span>
-                        <label className="block">
-                          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 sm:hidden">
-                            Q
-                          </span>
+                        <label className="block min-w-0">
+                          <input value={slot.startTime} onChange={(event) => updateSlot(slot.id, { startTime: event.target.value })} type="time" className="field-compact rounded-[6px] px-2 text-sm" />
+                        </label>
+                        <label className="block min-w-0">
+                          <input value={slot.endTime} onChange={(event) => updateSlot(slot.id, { endTime: event.target.value })} type="time" className="field-compact rounded-[6px] px-2 text-sm" />
+                        </label>
+                        <label className="block min-w-0">
                           <input value={slot.questionGoal} onChange={(event) => updateSlot(slot.id, { questionGoal: event.target.value })} type="number" min="1" className="field-compact rounded-[6px] px-3 text-center text-sm" />
                         </label>
-                        <span className="hidden text-xs font-bold text-slate-500 sm:block">Q</span>
                         <button type="button" onClick={() => setSlots((current) => (current.length > 1 ? current.filter((item) => item.id !== slot.id) : current))} className="justify-self-end rounded-md p-1 text-slate-500 hover:text-white">
                           <Trash2 className="h-4 w-4" aria-hidden="true" />
                         </button>
@@ -536,7 +522,7 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
               </div>
             </div>
             <div className="mt-7 space-y-5">
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-3">
                 {BANK_OPTIONS.map((bank) => {
                   const selected = questionBanks.includes(bank);
                   return (
