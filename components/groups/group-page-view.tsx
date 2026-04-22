@@ -9,6 +9,7 @@ import { GroupEditModal } from '@/components/dashboard/group-edit-modal';
 import { GroupScheduleModal } from '@/components/dashboard/group-schedule-modal';
 import { InviteMemberForm } from '@/components/dashboard/group-settings-forms';
 import { LiveGroupsModal } from '@/components/dashboard/live-groups-modal';
+import { GroupSwitcherMenu } from '@/components/layout/group-switcher-menu';
 import { CalendarIcon, UsersIcon } from '@/components/ui/dashboard-icons';
 import type { AppLocale } from '@/i18n/routing';
 
@@ -47,6 +48,19 @@ type LiveGroup = {
 
 type GroupPageViewProps = {
   locale: AppLocale;
+  shellGroups: Array<{
+    id: string;
+    name: string;
+    language: string;
+    scheduleLabel: string;
+    weeklyQuestions: number;
+    membersPreview: Array<{
+      id: string;
+      initials: string;
+      avatarUrl: string | null;
+    }>;
+  }>;
+  currentUserInitials: string;
   canBrowseLookupLayer: boolean;
   initialLiveOpen: boolean;
   primaryGroup: {
@@ -68,6 +82,10 @@ type GroupPageViewProps = {
   canCreateSession: boolean;
   liveGroups: LiveGroup[];
   labels: {
+    myGroups: string;
+    activeGroup: string;
+    selectGroupHint: string;
+    noSchedule: string;
     newSession: string;
     createSession: string;
     createSessionPending: string;
@@ -164,6 +182,8 @@ function formatMeridiemTime(value: string) {
 
 export function GroupPageView({
   locale,
+  shellGroups,
+  currentUserInitials,
   canBrowseLookupLayer,
   initialLiveOpen,
   primaryGroup,
@@ -186,6 +206,20 @@ export function GroupPageView({
 
   return (
     <>
+      {shellGroups.length > 0 ? (
+        <GroupSwitcherMenu
+          groups={shellGroups}
+          userInitials={currentUserInitials}
+          labels={{
+            myGroups: labels.myGroups,
+            active: labels.activeGroup,
+            selectHint: labels.selectGroupHint,
+            noSchedule: labels.noSchedule,
+            averageWeekly: labels.averageWeeklyShort,
+          }}
+        />
+      ) : null}
+
       {canBrowseLookupLayer ? (
         <LiveGroupsModal
           locale={locale}

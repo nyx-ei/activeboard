@@ -72,6 +72,7 @@ export default async function GroupRoutePage({
 
   const examSession =
     currentProfile?.exam_session ?? (typeof user.user_metadata.exam_session === 'string' ? user.user_metadata.exam_session : '');
+  const displayName = user.user_metadata.full_name ?? user.email ?? 'ActiveBoard';
   const examSessionLabel =
     examSession === 'april_may_2026'
       ? t('examAprilMay2026')
@@ -97,6 +98,69 @@ export default async function GroupRoutePage({
   };
 
   const currentGroupIds = new Set(memberships.map((membership) => membership.group_id));
+  const shellGroups =
+    memberships.length > 0
+      ? await (async () => {
+          const supabase = createSupabaseServerClient();
+          const supabaseAdmin = createSupabaseAdminClient();
+          const groupIds = [...new Set(memberships.map((membership) => membership.group_id))];
+          const [{ data: groups }, { data: schedules }, { data: membershipsWithUsers }] = await Promise.all([
+            supabase
+              .schema('public')
+              .from('groups')
+              .select('id, name')
+              .in('id', groupIds)
+              .order('created_at', { ascending: false }),
+            supabase
+              .schema('public')
+              .from('group_weekly_schedules')
+              .select('group_id, start_time, end_time, question_goal')
+              .in('group_id', groupIds),
+            supabaseAdmin.schema('public').from('group_members').select('group_id, user_id').in('group_id', groupIds),
+          ]);
+
+          const memberIds = [...new Set((membershipsWithUsers ?? []).map((membership) => membership.user_id))];
+          const { data: memberProfiles } =
+            memberIds.length > 0
+              ? await supabaseAdmin
+                  .schema('public')
+                  .from('users')
+                  .select('id, display_name, email, avatar_url')
+                  .in('id', memberIds)
+              : { data: [] };
+
+          const memberProfileById = new Map((memberProfiles ?? []).map((profile) => [profile.id, profile]));
+
+          return (groups ?? []).map((group) => {
+            const groupSchedules = (schedules ?? []).filter((schedule) => schedule.group_id === group.id);
+            const firstSchedule = groupSchedules[0];
+            const weeklyQuestions = groupSchedules.reduce((sum, schedule) => sum + (schedule.question_goal ?? 0), 0);
+            const membersPreview = (membershipsWithUsers ?? [])
+              .filter((membership) => membership.group_id === group.id)
+              .slice(0, 4)
+              .map((membership) => {
+                const profile = memberProfileById.get(membership.user_id);
+                const displayLabel = profile?.display_name ?? profile?.email ?? 'AB';
+                return {
+                  id: membership.user_id,
+                  initials: getInitials(displayLabel),
+                  avatarUrl: profile?.avatar_url ?? null,
+                };
+              });
+
+            return {
+              id: group.id,
+              name: group.name,
+              language: locale.toUpperCase(),
+              scheduleLabel: firstSchedule
+                ? `${firstSchedule.start_time?.slice(0, 5) ?? '--:--'} - ${firstSchedule.end_time?.slice(0, 5) ?? '--:--'}`
+                : '',
+              weeklyQuestions,
+              membersPreview,
+            };
+          });
+        })()
+      : [];
   const liveGroups =
     canBrowseLookupLayer && primaryGroup
       ? await (async () => {
@@ -187,6 +251,8 @@ export default async function GroupRoutePage({
       <section className="mx-auto w-full max-w-[620px] space-y-4">
         <GroupPageView
           locale={locale}
+          shellGroups={shellGroups}
+          currentUserInitials={getInitials(displayName)}
           canBrowseLookupLayer={canBrowseLookupLayer}
           initialLiveOpen={searchParams.live === '1'}
           primaryGroup={primaryGroup}
@@ -202,6 +268,10 @@ export default async function GroupRoutePage({
           canCreateSession={canCreateSession}
           liveGroups={liveGroups}
           labels={{
+            myGroups: t('myGroups'),
+            activeGroup: t('activeGroup'),
+            selectGroupHint: t('selectGroupHint'),
+            noSchedule: t('noSchedule'),
             newSession: t('newSession'),
             createSession: t('createSession'),
             createSessionPending: t('createSessionPending'),
