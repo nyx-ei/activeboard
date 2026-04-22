@@ -466,7 +466,7 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
               </label>
               {scheduleEnabled ? (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-[minmax(96px,1.2fr)_minmax(72px,0.85fr)_minmax(72px,0.85fr)_minmax(56px,0.65fr)_20px] items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                  <div className="grid grid-cols-[minmax(88px,1fr)_minmax(64px,0.72fr)_minmax(64px,0.72fr)_minmax(50px,0.5fr)_28px] items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
                     <span>{locale === 'fr' ? 'Jour' : 'Day'}</span>
                     <span>{locale === 'fr' ? 'Début' : 'Start'}</span>
                     <span>{locale === 'fr' ? 'Fin' : 'End'}</span>
@@ -475,7 +475,7 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
                   </div>
                   {slots.map((slot) => (
                     <div key={slot.id} className="rounded-[10px] bg-[#111827] p-3 sm:p-4">
-                      <div className="grid grid-cols-[minmax(96px,1.2fr)_minmax(72px,0.85fr)_minmax(72px,0.85fr)_minmax(56px,0.65fr)_20px] items-center gap-2">
+                      <div className="grid grid-cols-[minmax(88px,1fr)_minmax(64px,0.72fr)_minmax(64px,0.72fr)_minmax(50px,0.5fr)_28px] items-center gap-2">
                         <label className="block min-w-0">
                           <select value={slot.weekday} onChange={(event) => updateSlot(slot.id, { weekday: event.target.value })} className="field-compact rounded-[6px] px-3 text-sm">
                             {WEEKDAYS.map((weekday) => (
@@ -494,7 +494,11 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
                         <label className="block min-w-0">
                           <input value={slot.questionGoal} onChange={(event) => updateSlot(slot.id, { questionGoal: event.target.value })} type="number" min="1" className="field-compact rounded-[6px] px-3 text-center text-sm" />
                         </label>
-                        <button type="button" onClick={() => setSlots((current) => (current.length > 1 ? current.filter((item) => item.id !== slot.id) : current))} className="justify-self-end rounded-md p-1 text-slate-500 hover:text-white">
+                        <button
+                          type="button"
+                          onClick={() => setSlots((current) => (current.length > 1 ? current.filter((item) => item.id !== slot.id) : current))}
+                          className="flex h-8 w-8 items-center justify-center justify-self-center rounded-md text-slate-500 transition hover:bg-white/[0.06] hover:text-white"
+                        >
                           <Trash2 className="h-4 w-4" aria-hidden="true" />
                         </button>
                       </div>

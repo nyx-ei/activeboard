@@ -149,7 +149,7 @@ export function GroupScheduleModal({
                 <input type="hidden" name="groupId" value={groupId} />
 
                 <div className="space-y-2">
-                  <div className="grid grid-cols-[minmax(96px,1fr)_minmax(72px,0.8fr)_minmax(72px,0.8fr)_minmax(56px,0.6fr)_22px] items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                  <div className="grid grid-cols-[minmax(88px,1fr)_minmax(68px,0.75fr)_minmax(68px,0.75fr)_minmax(52px,0.55fr)_28px] items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
                     <span>{locale === 'fr' ? 'Jour' : 'Day'}</span>
                     <span>{locale === 'fr' ? 'Début' : 'Start'}</span>
                     <span>{locale === 'fr' ? 'Fin' : 'End'}</span>
@@ -159,7 +159,7 @@ export function GroupScheduleModal({
                   {drafts.map((draft) => (
                     <div key={draft.id} className="rounded-[9px] bg-white/[0.045] p-3 text-sm">
                       {mode === 'edit' ? <input type="hidden" name="scheduleId" value={draft.id} /> : null}
-                      <div className="grid grid-cols-[minmax(96px,1fr)_minmax(72px,0.8fr)_minmax(72px,0.8fr)_minmax(56px,0.6fr)_22px] items-center gap-2">
+                      <div className="grid grid-cols-[minmax(88px,1fr)_minmax(68px,0.75fr)_minmax(68px,0.75fr)_minmax(52px,0.55fr)_28px] items-center gap-2">
                         <label className="block min-w-0">
                           <select
                             name="weekday"
@@ -208,13 +208,13 @@ export function GroupScheduleModal({
                             aria-label={labels.questionGoal}
                           />
                         </label>
-                        <div className="flex justify-end">
+                        <div className="flex justify-center">
                           {draft.persisted ? (
-                            <button type="submit" formAction={deleteAction} name="deleteScheduleId" value={draft.id} className="button-ghost px-0 py-1 text-slate-500 hover:text-white" aria-label={labels.removeDay}>
+                            <button type="submit" formAction={deleteAction} name="deleteScheduleId" value={draft.id} className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition hover:bg-white/[0.06] hover:text-white" aria-label={labels.removeDay}>
                               <Trash2 className="h-4 w-4" aria-hidden="true" />
                             </button>
                           ) : (
-                            <button type="button" onClick={() => removeDraft(draft.id)} className="button-ghost px-0 py-1 text-slate-500 hover:text-white" aria-label={labels.removeDay}>
+                            <button type="button" onClick={() => removeDraft(draft.id)} className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition hover:bg-white/[0.06] hover:text-white" aria-label={labels.removeDay}>
                               <Trash2 className="h-4 w-4" aria-hidden="true" />
                             </button>
                           )}

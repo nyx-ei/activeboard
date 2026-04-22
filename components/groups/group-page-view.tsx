@@ -218,7 +218,7 @@ export function GroupPageView({
       ) : null}
 
       <section className="surface-mockup p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="truncate text-sm font-bold text-white">{primaryGroup?.name ?? labels.unknownGroup}</p>
             <p className="mt-1 break-words text-xs leading-5 text-slate-500">{groupInfoSummary}</p>
@@ -302,13 +302,13 @@ export function GroupPageView({
       </section>
 
       <section className="surface-mockup p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <CalendarIcon />
             <p className="text-sm font-bold text-white">{labels.scheduleAndGoalTitle}</p>
           </div>
           {isPrimaryGroupFounder && primaryGroup ? (
-            <div className="flex items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1">
               <GroupScheduleModal
                 addAction={actions.addWeeklyScheduleAction}
                 updateAction={actions.updateWeeklySchedulesAction}
