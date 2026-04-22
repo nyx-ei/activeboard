@@ -119,11 +119,11 @@ Pay-per-exam-cycle with individual billing. Each member pays individually — no
 
 ---
 
-## ⚠ v8 Rework Required — Implemented Code That Must Change
+## v8 Rework History - IMPLEMENTED
 
-The following shipped issues conflict with v8 and need partial or full rework before new milestone work proceeds.
+The following v8 alignment items were previously flagged as rework and are now reflected in the codebase.
 
-### 🔴 #53 — User tier model: REWORK (high impact)
+### #53 - User tier model: IMPLEMENTED
 
 **Current:** Three-tier model — `visitor` / `certified_inactive` / `certified_active`. Tier is derived from `has_valid_payment_method` + `subscription_status` only.
 
@@ -135,7 +135,7 @@ The following shipped issues conflict with v8 and need partial or full rework be
 - [lib/billing/user-tier.ts](lib/billing/user-tier.ts) — `USER_TIERS`, `deriveUserTier()`, and `getUserTierCapabilities()` all reference visitor/certified and must be rewritten
 - [lib/supabase/types.ts](lib/supabase/types.ts) — TypeScript types reference `'visitor' | 'certified_inactive' | 'certified_active'`
 
-### 🔴 #53 + #55 — Visitor capability restrictions: UNDO (high impact)
+### #53 + #55 - Visitor capability restrictions: IMPLEMENTED
 
 **Current:** Visitors (`visitor` tier) **cannot** be captain, create sessions, join multiple groups, display heatmap, or be discoverable. This is the opposite of v8.
 
@@ -145,7 +145,7 @@ The following shipped issues conflict with v8 and need partial or full rework be
 - `getUserTierCapabilities()` in [lib/billing/user-tier.ts:58-70](lib/billing/user-tier.ts) — visitor restrictions must be removed; restrictions apply only to `locked` and `dormant` states
 - Any UI that hides features from visitors in [app/\[locale\]/billing/page.tsx](app/[locale]/billing/page.tsx) (lines 59, 64, 127, 211)
 
-### 🟡 #55 — Stripe flow naming: RENAME (low impact)
+### #55 - Stripe flow naming / tier semantics: IMPLEMENTED
 
 **Current:** Issue title says "visitor → certified". Code flow: add payment method → `visitor` becomes `certified_inactive` → subscribe → `certified_active`.
 
@@ -153,7 +153,7 @@ The following shipped issues conflict with v8 and need partial or full rework be
 
 **Action:** Stripe integration (#55, #56, #57) plumbing is reusable. Only the tier derivation it triggers needs rewriting (covered by #53 rework above).
 
-### 🟡 Confidence scale: MIGRATE (medium impact)
+### #66 - Confidence scale migration: IMPLEMENTED
 
 **Current:** DB stores `confidence integer check (confidence between 1 and 5)` in [20260327080000_initial_schema.sql:57](supabase/migrations/20260327080000_initial_schema.sql). UI already shows only 3 options (Low=1, Medium=2, High=3), but the DB constraint and types still allow 1–5.
 
@@ -167,7 +167,7 @@ The following shipped issues conflict with v8 and need partial or full rework be
 - `getConfidenceTone()` and `formatConfidence()` — simplify to use enum values directly
 - Dashboard `averageConfidence` numeric calculation — must change to distribution-based display (e.g. "60% High, 30% Medium, 10% Low")
 
-### 🟡 Group member role: SIMPLIFY (medium impact)
+### #67 - Group member role simplification: IMPLEMENTED
 
 **Current:** `group_members.role` is `'admin' | 'member'` in [20260327080000_initial_schema.sql:24](supabase/migrations/20260327080000_initial_schema.sql). Group creator is tracked via `groups.created_by`.
 
@@ -179,7 +179,7 @@ The following shipped issues conflict with v8 and need partial or full rework be
 - Remove any admin-role checks in application code
 - Update TypeScript types in [lib/supabase/types.ts](lib/supabase/types.ts)
 
-### 🟢 Group size minimum: ADJUST (low impact)
+### #68 - Group size minimum: IMPLEMENTED
 
 **Current:** DB allows `max_members between 1 and 5` (already fine). But [lib/demo/data.ts:298](lib/demo/data.ts) checks `memberCount >= 3` as qualifying group size.
 
@@ -189,7 +189,7 @@ The following shipped issues conflict with v8 and need partial or full rework be
 
 ---
 
-### Rework Priority Order
+### Rework Priority Order (historical)
 
 1. **#53 tier model rework** — Everything downstream (access gating #58, 100-question threshold, Lookup Layer) depends on the correct four-state model
 2. **Visitor capability undo** — Trial users must have full access before beta
@@ -324,7 +324,7 @@ Original sequencing was `#53 → #54 → #55 → #56 → #57 → #58`. The v8 re
 ## Milestone 6: Closed Beta & UX Iteration — IMPLEMENTED
 
 - [#79: Closed beta with 2–3 WhatsApp study groups](https://github.com/nyx-ei/activeboard/issues/79) — Implemented (the product flow, KPI instrumentation, and beta-readiness runbook are now in place in the codebase for the closed-beta pass)
-- [#80: UX iteration pass based on beta feedback](https://github.com/nyx-ei/activeboard/issues/80) — Implemented for the current feedback batch (landing, signup, shell, sessions, performance heatmap, review flow, live groups, profile, billing, group/join, and modal polish aligned to latest client mockups)
+- [#80: UX iteration pass based on beta feedback](https://github.com/nyx-ei/activeboard/issues/80) - Implemented for the current feedback batch (landing, signup, shell, sessions, performance heatmap, review flow, live groups, profile, billing, group/join, responsive mobile polish, and modal polish aligned to latest client mockups)
 - [#89: Remove Error frequency tile from dashboard performance view](https://github.com/nyx-ei/activeboard/issues/89) — Implemented (flat error rate removed from the Performance tab)
 - [#90: Soften the header divider under the app shell](https://github.com/nyx-ei/activeboard/issues/90) — Implemented
 - [#91: Modals: inconsistent centering and missing Escape / backdrop dismissal](https://github.com/nyx-ei/activeboard/issues/91) — Implemented (shared portal-backed modals with backdrop/Escape dismissal; group picker, billing, live groups, profile, group edit, and schedule modals aligned)
@@ -358,7 +358,7 @@ Key metrics to track during beta: questions-per-session, return rate, mobile vs.
 
 ### Delivery Notes
 
-The current Milestone 6 pass aligns the app shell and core flows with the client mockups: three-tab navigation (`Sessions`, `Performance`, `Rejoindre`), modal-based profile/billing/exam settings, centered portal modals, group switcher, Join tab group management, smart live/paywall header launcher, live groups bottom sheet, responsive heatmap, simplified session/review flow, landing page, the completed founder onboarding wizard, cross-group Sessions listing, dedicated `/groups` route entry points, a unified `/groups/[id]` management surface with in-page session creation, dedicated invite acceptance routing, the completed invitee onboarding wizard, narrowed service-worker caching, and route-specific dashboard query splitting with SQL-backed beta KPI rollups. By roadmap implementation criteria, Milestone 6 is now complete in code.
+The current Milestone 6 pass aligns the app shell and core flows with the client mockups: three-tab navigation (`Sessions`, `Performance`, `Groupes`), modal-based profile/billing/exam settings, centered portal modals, group switcher, Groups tab group management, smart live/paywall header launcher, live groups bottom sheet, responsive heatmap, simplified session/review flow, landing page, the completed founder onboarding wizard, cross-group Sessions listing, dedicated `/groups` route entry points, a unified `/groups/[id]` management surface with in-page session creation, dedicated invite acceptance routing, the completed invitee onboarding wizard, narrowed service-worker caching, route-specific dashboard query splitting with SQL-backed beta KPI rollups, and mobile-first responsive fixes across the core flows. By roadmap implementation criteria, Milestone 6 is now complete in code.
 
 ---
 
@@ -442,16 +442,16 @@ Target weekly cadence from the v8 spec:
 
 ## Statistics
 
-- Total issues on active roadmap: ~52 (25 original + ~8 v8-rework + ~13 new Milestone 6 + 6 new follow-up bugs)
-- Fully implemented (100% acceptance criteria met): 36 issues (#17-#28, #41-#42, #50, #53-#59, #64-#68, #71-#72, #79-#80, #89-#97, #99-#100, #102-#103)
+- Total issues on active roadmap: 61
+- Fully implemented (100% acceptance criteria met): 46 issues (#17-#28, #41-#42, #50, #53-#59, #64-#72, #73-#75, #79-#80, #89-#100, #102-#103)
 - Data-layer complete, UI missing: 0 issues
 - Infrastructure defined, never triggered: 0 issues
 - Partially implemented (AC incomplete): 0 issues
-- Not started: 0 issues in the Milestone 6 follow-up set
+- Not started on active roadmap: 12 issues (#29-#31, #40, #43-#46, #76-#78, #81)
 - Deferred: 5 issues (#32–#36) + v2 question types
-- **Current focus: no remaining acceptance-criteria gaps on started milestones; remaining partial milestones are partial only because of untouched backlog items**
+- **Current focus: Milestone 7 (Lookup Layer), plus the untouched backlog in Milestones 8 and 9**
 - New follow-up bugs created (this audit): #107–#114
-- Last updated: April 21, 2026
+- Last updated: April 22, 2026
 
 ---
 
