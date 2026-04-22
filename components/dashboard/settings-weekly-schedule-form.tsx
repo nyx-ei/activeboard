@@ -30,11 +30,6 @@ type SettingsWeeklyScheduleFormProps = {
 
 const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
-function getMeridiem(value: string) {
-  const hour = Number(value.slice(0, 2));
-  return hour >= 12 ? 'pm' : 'am';
-}
-
 function createDraft(index: number): ScheduleDraft {
   return {
     id: `${Date.now()}-${index}`,
@@ -103,7 +98,6 @@ export function SettingsWeeklyScheduleForm({ action, locale, groupId, inline = f
                       value={draft.startTime}
                       onChange={(event) => updateDraft(draft.id, { startTime: event.target.value })}
                     />
-                    <span className="ml-1 text-[10px] font-bold text-slate-400">{getMeridiem(draft.startTime)}</span>
                   </div>
                 </label>
                 <label className="block">
@@ -116,7 +110,6 @@ export function SettingsWeeklyScheduleForm({ action, locale, groupId, inline = f
                       value={draft.endTime}
                       onChange={(event) => updateDraft(draft.id, { endTime: event.target.value })}
                     />
-                    <span className="ml-1 text-[10px] font-bold text-slate-400">{getMeridiem(draft.endTime)}</span>
                   </div>
                 </label>
               </div>

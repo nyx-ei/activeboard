@@ -53,11 +53,6 @@ function timeValue(value: string) {
   return value.slice(0, 5);
 }
 
-function getMeridiem(value: string) {
-  const hour = Number(value.slice(0, 2));
-  return hour >= 12 ? 'pm' : 'am';
-}
-
 function createDraft(index: number): ScheduleDraft {
   return {
     id: `new-${Date.now()}-${index}`,
@@ -94,7 +89,6 @@ export function GroupScheduleModal({
   const [mode, setMode] = useState<ModalMode>('add');
   const [drafts, setDrafts] = useState<ScheduleDraft[]>([]);
   const slotLabel = locale === 'fr' ? 'Ajouter un créneau' : 'Add slot';
-  const mobileFieldLabels = locale === 'fr' ? { day: 'Jour', start: 'Début', end: 'Fin' } : { day: 'Day', start: 'Start', end: 'End' };
 
   useEffect(() => {
     if (!open) return;
@@ -155,15 +149,21 @@ export function GroupScheduleModal({
                 <input type="hidden" name="groupId" value={groupId} />
 
                 <div className="space-y-2">
+                  <div className="grid grid-cols-[minmax(96px,1fr)_minmax(72px,0.8fr)_minmax(72px,0.8fr)_minmax(56px,0.6fr)_22px] items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                    <span>{locale === 'fr' ? 'Jour' : 'Day'}</span>
+                    <span>{locale === 'fr' ? 'Début' : 'Start'}</span>
+                    <span>{locale === 'fr' ? 'Fin' : 'End'}</span>
+                    <span className="text-center">Q</span>
+                    <span />
+                  </div>
                   {drafts.map((draft) => (
                     <div key={draft.id} className="rounded-[9px] bg-white/[0.045] p-3 text-sm">
                       {mode === 'edit' ? <input type="hidden" name="scheduleId" value={draft.id} /> : null}
-                      <div className="grid gap-3 sm:grid-cols-[minmax(76px,1fr)_minmax(74px,0.9fr)_12px_minmax(74px,0.9fr)_24px_minmax(58px,0.65fr)_14px_22px] sm:items-center sm:gap-2">
-                        <label className="block">
-                          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 sm:hidden">{mobileFieldLabels.day}</span>
+                      <div className="grid grid-cols-[minmax(96px,1fr)_minmax(72px,0.8fr)_minmax(72px,0.8fr)_minmax(56px,0.6fr)_22px] items-center gap-2">
+                        <label className="block min-w-0">
                           <select
                             name="weekday"
-                            className="h-10 w-full min-w-0 rounded-[6px] border border-white/[0.08] bg-white/[0.08] px-2 text-xs font-bold text-white outline-none focus:border-brand sm:h-8"
+                            className="h-10 w-full min-w-0 rounded-[6px] border border-white/[0.08] bg-white/[0.08] px-2 text-xs font-bold text-white outline-none focus:border-brand"
                             value={draft.weekday}
                             onChange={(event) => updateDraft(draft.id, { weekday: event.target.value })}
                           >
@@ -174,48 +174,41 @@ export function GroupScheduleModal({
                             ))}
                           </select>
                         </label>
-                        <div className="grid grid-cols-2 gap-3 sm:contents">
-                          <label className="block">
-                            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 sm:hidden">{mobileFieldLabels.start}</span>
-                            <div className="flex h-10 min-w-0 items-center rounded-[6px] border border-white/[0.08] bg-white/[0.08] px-2 focus-within:border-brand sm:h-8">
-                              <input
-                                name="startTime"
-                                type="time"
-                                className="min-w-0 flex-1 bg-transparent p-0 text-xs font-bold text-white outline-none"
-                                value={draft.startTime}
-                                onChange={(event) => updateDraft(draft.id, { startTime: event.target.value })}
-                              />
-                            </div>
-                          </label>
-                          <label className="block">
-                            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 sm:hidden">{mobileFieldLabels.end}</span>
-                            <div className="flex h-10 min-w-0 items-center rounded-[6px] border border-white/[0.08] bg-white/[0.08] px-2 focus-within:border-brand sm:h-8">
-                              <input
-                                name="endTime"
-                                type="time"
-                                className="min-w-0 flex-1 bg-transparent p-0 text-xs font-bold text-white outline-none"
-                                value={draft.endTime}
-                                onChange={(event) => updateDraft(draft.id, { endTime: event.target.value })}
-                              />
-                            </div>
-                          </label>
-                        </div>
-                        <span className="hidden text-center text-xs text-slate-500 sm:block">-&gt;</span>
-                        <label className="block">
-                          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 sm:hidden">{labels.questionGoal}</span>
+                        <label className="block min-w-0">
+                          <div className="flex h-10 min-w-0 items-center rounded-[6px] border border-white/[0.08] bg-white/[0.08] px-2 focus-within:border-brand">
+                            <input
+                              name="startTime"
+                              type="time"
+                              className="min-w-0 flex-1 bg-transparent p-0 text-xs font-bold text-white outline-none"
+                              value={draft.startTime}
+                              onChange={(event) => updateDraft(draft.id, { startTime: event.target.value })}
+                            />
+                          </div>
+                        </label>
+                        <label className="block min-w-0">
+                          <div className="flex h-10 min-w-0 items-center rounded-[6px] border border-white/[0.08] bg-white/[0.08] px-2 focus-within:border-brand">
+                            <input
+                              name="endTime"
+                              type="time"
+                              className="min-w-0 flex-1 bg-transparent p-0 text-xs font-bold text-white outline-none"
+                              value={draft.endTime}
+                              onChange={(event) => updateDraft(draft.id, { endTime: event.target.value })}
+                            />
+                          </div>
+                        </label>
+                        <label className="block min-w-0">
                           <input
                             name="questionGoal"
                             type="number"
                             min="1"
                             max="500"
-                            className="h-10 w-full min-w-0 rounded-[6px] border border-white/[0.08] bg-white/[0.08] px-2 text-center text-xs font-bold text-white outline-none focus:border-brand sm:h-8"
+                            className="h-10 w-full min-w-0 rounded-[6px] border border-white/[0.08] bg-white/[0.08] px-2 text-center text-xs font-bold text-white outline-none focus:border-brand"
                             value={draft.questionGoal}
                             onChange={(event) => updateDraft(draft.id, { questionGoal: event.target.value })}
                             aria-label={labels.questionGoal}
                           />
                         </label>
-                        <span className="hidden text-xs font-bold text-slate-500 sm:block">Q</span>
-                        <div className="flex justify-end pt-1 sm:pt-0">
+                        <div className="flex justify-end">
                           {draft.persisted ? (
                             <button type="submit" formAction={deleteAction} name="deleteScheduleId" value={draft.id} className="button-ghost px-0 py-1 text-slate-500 hover:text-white" aria-label={labels.removeDay}>
                               <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -227,7 +220,6 @@ export function GroupScheduleModal({
                           )}
                         </div>
                       </div>
-                      <p className="mt-2 text-xs font-semibold text-slate-500 sm:hidden">{getMeridiem(draft.endTime)}</p>
                     </div>
                   ))}
                 </div>
@@ -236,7 +228,7 @@ export function GroupScheduleModal({
                   + {slotLabel}
                 </button>
 
-                <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+                <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4">
                   <button type="button" onClick={() => setOpen(false)} className="button-secondary h-10 rounded-[6px] text-sm font-bold">
                     {labels.cancel}
                   </button>

@@ -89,6 +89,15 @@ function formatHourLabel(hour: number) {
   return `${String(hour).padStart(2, '0')}:00`;
 }
 
+function formatScheduleTime(value: string) {
+  return value.slice(0, 5);
+}
+
+function formatWeekdayLabel(value: string) {
+  if (!value) return value;
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
 export function InviteOnboardingWizard({
   locale,
   inviteId,
@@ -128,6 +137,8 @@ export function InviteOnboardingWizard({
     (sum: number, weekday: AvailabilityWeekday) => sum + grid[weekday].length,
     0,
   );
+  const uniqueConflictGroups = [...new Set(scheduleConflicts.map((conflict) => conflict.groupName))];
+  const displayedConflicts = scheduleConflicts.slice(0, 3);
 
   function toggleBank(value: string) {
     setSelectedBanks((current) => {
@@ -349,18 +360,18 @@ export function InviteOnboardingWizard({
             </div>
           ) : null}
 
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-between">
+          <div className="mt-6 flex items-center justify-between gap-3">
             <button
               type="button"
               onClick={() => setStep(1)}
-              className="h-11 rounded-[8px] border border-white/10 bg-transparent px-5 text-sm font-semibold text-white transition hover:bg-white/[0.04]"
+              className="h-11 shrink-0 rounded-[8px] border border-white/10 bg-transparent px-5 text-sm font-semibold text-white transition hover:bg-white/[0.04]"
             >
               {labels.back}
             </button>
             <button
               type="button"
               onClick={() => setStep(3)}
-              className="button-primary h-11 rounded-[8px] px-5 text-sm"
+              className="button-primary h-11 shrink-0 rounded-[8px] px-5 text-sm"
             >
               {setScheduleNow ? labels.next : labels.continueWithoutSchedule}
             </button>
@@ -379,10 +390,15 @@ export function InviteOnboardingWizard({
             {inviteSchedules.length > 0 ? (
               <div className="mt-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{labels.groupSchedule}</p>
-                <ul className="mt-2 space-y-1 text-xs text-slate-400">
+                <ul className="mt-2 space-y-1.5 text-xs text-slate-300">
                   {inviteSchedules.map((schedule, index) => (
-                    <li key={`${schedule.weekday}-${schedule.start_time}-${index}`}>
-                      {schedule.weekday} · {schedule.start_time}–{schedule.end_time}
+                    <li key={`${schedule.weekday}-${schedule.start_time}-${index}`} className="flex items-center gap-2 whitespace-nowrap">
+                      <span className="rounded-full bg-white/[0.05] px-2 py-1 font-semibold text-brand">
+                        {formatWeekdayLabel(schedule.weekday)}
+                      </span>
+                      <span>
+                        {formatScheduleTime(schedule.start_time)} - {formatScheduleTime(schedule.end_time)}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -394,15 +410,30 @@ export function InviteOnboardingWizard({
 
           {scheduleConflicts.length > 0 ? (
             <div className="mt-4 rounded-[12px] border border-amber-400/20 bg-amber-400/[0.08] p-4">
-              <p className="text-sm font-semibold text-amber-300">{labels.conflictTitle}</p>
-              <p className="mt-2 text-sm leading-6 text-amber-100/80">{labels.conflictDescription}</p>
-              <ul className="mt-3 space-y-1 text-xs text-amber-100/75">
-                {scheduleConflicts.slice(0, 4).map((conflict, index) => (
-                  <li key={`${conflict.groupName}-${conflict.weekday}-${index}`}>
-                    {conflict.groupName} · {conflict.weekday} · {conflict.startTime}–{conflict.endTime}
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-amber-300">{labels.conflictTitle}</p>
+                  <p className="mt-1 text-xs text-amber-100/80">
+                    {uniqueConflictGroups.length} groupe{uniqueConflictGroups.length > 1 ? 's' : ''} concerné{uniqueConflictGroups.length > 1 ? 's' : ''}
+                  </p>
+                </div>
+                <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2.5 py-1 text-[11px] font-semibold text-amber-200">
+                  {scheduleConflicts.length}
+                </span>
+              </div>
+              <ul className="mt-3 space-y-2 text-xs text-amber-100/75">
+                {displayedConflicts.map((conflict, index) => (
+                  <li key={`${conflict.groupName}-${conflict.weekday}-${index}`} className="flex items-center justify-between gap-3 rounded-[10px] bg-black/10 px-3 py-2">
+                    <span className="truncate font-semibold text-amber-100">{conflict.groupName}</span>
+                    <span className="shrink-0 text-right">
+                      {formatWeekdayLabel(conflict.weekday)} · {formatScheduleTime(conflict.startTime)} - {formatScheduleTime(conflict.endTime)}
+                    </span>
                   </li>
                 ))}
               </ul>
+              {scheduleConflicts.length > displayedConflicts.length ? (
+                <p className="mt-3 text-xs text-amber-100/70">+ {scheduleConflicts.length - displayedConflicts.length} autre(s) conflit(s)</p>
+              ) : null}
               <p className="mt-3 text-xs font-medium text-amber-200">{labels.conflictNote}</p>
             </div>
           ) : null}

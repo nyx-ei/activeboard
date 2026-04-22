@@ -102,7 +102,7 @@ export function GroupEditModal({
                 <span className="mt-2 block text-[11px] font-semibold text-slate-500">{labels.helper}</span>
               </label>
 
-              <div className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-2 sm:gap-4">
+              <div className="grid grid-cols-2 gap-3 pt-2 sm:gap-4">
                 <button type="button" onClick={() => setOpen(false)} className="button-secondary h-10 rounded-[6px] text-sm font-bold">
                   {labels.cancel}
                 </button>

@@ -159,7 +159,7 @@ function formatMeridiemTime(value: string) {
   const hour = Number(rawHour);
   const suffix = hour >= 12 ? 'pm' : 'am';
   const twelveHour = hour % 12 === 0 ? 12 : hour % 12;
-  return `${String(twelveHour).padStart(2, '0')}:${minute} ${suffix}`;
+  return `${twelveHour}:${minute}${suffix}`;
 }
 
 export function GroupPageView({
@@ -259,13 +259,13 @@ export function GroupPageView({
       </section>
 
       <section className="surface-mockup p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center justify-between gap-3">
           <p className="text-sm font-bold text-white">{labels.sessionsTitle}</p>
           {primaryGroup ? (
             <button
               type="button"
               onClick={() => setIsCreateSessionOpen(true)}
-              className="button-primary h-10 w-full rounded-[7px] px-4 text-sm sm:w-auto"
+              className="button-primary h-10 shrink-0 rounded-[7px] px-4 text-sm"
               disabled={!canCreateSession}
             >
               <span className="mr-2 text-lg leading-none">+</span>
@@ -326,7 +326,7 @@ export function GroupPageView({
                   addDay: locale === 'fr' ? 'Ajouter' : 'Add',
                   saveSchedule: labels.save,
                   saveSchedulePending: labels.saveSchedulePending,
-                  questionGoal: labels.questionGoalValue,
+                  questionGoal: 'Q',
                   removeDay: labels.removeDay,
                 }}
               />
@@ -338,17 +338,19 @@ export function GroupPageView({
           {schedules.length > 0 ? (
             schedules.map((schedule) => (
               <div key={schedule.id} className="rounded-[10px] bg-white/[0.04] p-3">
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="rounded-full bg-brand/12 px-3 py-1 text-xs font-semibold text-brand">
-                  {weekdayLabels[schedule.weekday]}
-                </span>
-                <span className="font-semibold text-slate-300">
-                  {formatMeridiemTime(schedule.start_time)} - {formatMeridiemTime(schedule.end_time)}
-                </span>
+                <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <div className="flex min-w-max items-center gap-3 whitespace-nowrap text-sm">
+                    <span className="rounded-full bg-brand/12 px-3 py-1 text-xs font-semibold text-brand">
+                      {weekdayLabels[schedule.weekday]}
+                    </span>
+                    <span className="font-semibold text-slate-300">
+                      {formatMeridiemTime(schedule.start_time)} - {formatMeridiemTime(schedule.end_time)}
+                    </span>
+                    <span className="inline-flex rounded-[7px] bg-white/[0.05] px-3 py-1 text-xs font-extrabold text-white">
+                      {labels.questionGoalValue.replace('{count}', String(schedule.question_goal))}
+                    </span>
+                  </div>
                 </div>
-                <span className="mt-3 inline-flex rounded-[7px] bg-white/[0.05] px-3 py-1 text-xs font-extrabold text-white">
-                  {labels.questionGoalValue.replace('{count}', String(schedule.question_goal))}
-                </span>
               </div>
             ))
           ) : (
@@ -392,8 +394,9 @@ export function GroupPageView({
           {memberPerformance.length > 0 ? (
             memberPerformance.map((member) => (
               <div key={member.userId} className="rounded-[12px] bg-white/[0.04] px-3 py-3">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex min-w-0 items-center gap-3">
+                <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <div className="flex min-w-max items-center justify-between gap-4 whitespace-nowrap">
+                    <div className="flex min-w-0 items-center gap-3">
                     <span className="h-2 w-2 shrink-0 rounded-full bg-brand" />
                     <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/20 text-xs font-bold text-brand">
                       {member.initials}
@@ -405,16 +408,17 @@ export function GroupPageView({
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-bold text-white">{member.name}</p>
-                      <div className="mt-1 flex flex-wrap gap-2 text-xs text-slate-400">
+                      <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
                         <span className="rounded-full bg-white/[0.05] px-2 py-1">{labels.memberAverageWeekly.replace('{value}', String(member.averageWeeklyQuestions))}</span>
                         <span className="rounded-full bg-white/[0.05] px-2 py-1">{labels.memberCompletion.replace('{value}', String(member.completionRate))}</span>
                         <span className="rounded-full bg-white/[0.05] px-2 py-1">{labels.memberTotal.replace('{value}', String(member.totalAnswers))}</span>
                       </div>
                     </div>
                   </div>
-                  <span className="self-start rounded-full border border-brand/25 bg-brand/10 px-3 py-1 text-[10px] font-bold text-brand sm:self-auto">
-                    {member.userId === currentCaptainId ? labels.captainLabel : labels.memberStatusActive}
-                  </span>
+                    <span className="rounded-full border border-brand/25 bg-brand/10 px-3 py-1 text-[10px] font-bold text-brand">
+                      {member.userId === currentCaptainId ? labels.captainLabel : labels.memberStatusActive}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))

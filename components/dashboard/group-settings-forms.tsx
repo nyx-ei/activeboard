@@ -108,7 +108,7 @@ export function InviteMemberForm({
         <input type="hidden" name="groupId" value={groupId} />
         <label className="block">
           <span className={compact ? 'sr-only' : 'mb-2 block text-sm font-medium text-slate-300'}>{emailLabel}</span>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-2">
             <input
               name="email"
               type="email"
@@ -121,7 +121,7 @@ export function InviteMemberForm({
             <SubmitButton
               pendingLabel={pendingLabel}
               disabled={!isValid}
-              className="button-primary min-h-[44px] w-full px-4 text-white disabled:bg-white/[0.08] disabled:text-slate-500 disabled:hover:bg-white/[0.08] sm:min-w-[44px] sm:w-auto"
+              className="button-primary h-10 min-w-[44px] shrink-0 px-3 text-white disabled:bg-white/[0.08] disabled:text-slate-500 disabled:hover:bg-white/[0.08]"
             >
               <span aria-label={submitLabel}>
                 <Send className="h-4 w-4" aria-hidden="true" />
@@ -173,7 +173,7 @@ export function GroupMeetingLinkForm({
           <LinkIcon className="h-3.5 w-3.5 text-slate-500" aria-hidden="true" />
           {label}
         </span>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-2">
           <input
             name="meetingLink"
             type="url"
@@ -187,7 +187,7 @@ export function GroupMeetingLinkForm({
           <SubmitButton
             pendingLabel={pendingLabel}
             disabled={!isValid || !isChanged}
-            className="button-primary h-10 w-full rounded-[5px] px-2.5 text-white disabled:bg-white/[0.08] disabled:text-slate-500 disabled:hover:bg-white/[0.08] sm:h-8 sm:min-w-9 sm:w-auto"
+            className="button-primary h-10 min-w-9 shrink-0 rounded-[5px] px-2.5 text-white disabled:bg-white/[0.08] disabled:text-slate-500 disabled:hover:bg-white/[0.08] sm:h-8"
           >
             <span aria-label={submitLabel}>
               <Check className="h-3.5 w-3.5" aria-hidden="true" />
