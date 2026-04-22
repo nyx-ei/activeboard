@@ -51,6 +51,7 @@ export function AppBottomNav({ locale, labels }: AppBottomNavProps) {
             <Link
               key={item.key}
               href={item.href}
+              prefetch={false}
               className={cn(
                 'flex min-h-[60px] flex-col items-center justify-center gap-1 rounded-[10px] border px-1.5 text-[10px] font-medium transition sm:text-[11px]',
                 active && 'border-brand/80 bg-brand/[0.12] text-brand shadow-[inset_0_0_0_1px_rgba(16,185,129,0.42),0_0_18px_rgba(16,185,129,0.12)]',
