@@ -107,18 +107,6 @@ export async function GET(request: Request, { params }: RouteContext) {
 
     if (pendingInvite?.id) {
       redirectPath = `/${locale}/invite/${pendingInvite.id}`;
-    } else {
-    const { data: firstMembership } = await supabase
-      .schema('public')
-      .from('group_members')
-      .select('group_id')
-      .eq('user_id', user.id)
-      .limit(1)
-      .maybeSingle();
-
-      if (!firstMembership?.group_id) {
-        redirectPath = `/${locale}/create-group`;
-      }
     }
   }
 

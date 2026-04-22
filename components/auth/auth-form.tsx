@@ -100,6 +100,18 @@ export function AuthForm({
   function resolveAuthError(message: string) {
     const normalizedMessage = message.toLowerCase();
 
+    if (normalizedMessage.includes('already registered') || normalizedMessage.includes('already been registered')) {
+      return t('accountExists');
+    }
+
+    if (normalizedMessage.includes('password should be at least') || normalizedMessage.includes('weak password')) {
+      return t('weakPassword');
+    }
+
+    if (normalizedMessage.includes('invalid email') || normalizedMessage.includes('email address is invalid')) {
+      return t('invalidEmail');
+    }
+
     if (
       normalizedMessage.includes('invalid login credentials') ||
       normalizedMessage.includes('email not confirmed') ||
@@ -136,15 +148,7 @@ export function AuthForm({
         window.location.assign(redirectTo);
         return;
       }
-
-      const { data: firstMembership } = await supabase
-        .schema('public')
-        .from('group_members')
-        .select('group_id')
-        .limit(1)
-        .maybeSingle();
-
-      window.location.assign(firstMembership?.group_id ? redirectTo : `/${locale}/create-group`);
+      window.location.assign(redirectTo);
       return;
     }
 
@@ -199,53 +203,45 @@ export function AuthForm({
         return;
       }
     } else {
-      const { data, error } = await supabase.auth.signUp({
-        email: normalizedEmail,
-        password,
-        options: {
-          data: {
-            full_name: displayName,
-            ...(examSession ? { exam_session: examSession } : {}),
-            locale,
-          },
-          emailRedirectTo: `${window.location.origin}/${locale}/auth/callback?next=${encodeURIComponent(signUpRedirectTo)}`,
-        },
-      });
-
-      if (error) {
-        setMessageTone('error');
-        setMessage(resolveAuthError(error.message));
-        return;
-      }
-
-      if (!data.session) {
-        const { error: signInAfterSignUpError } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
-        
-        if (!signInAfterSignUpError) {
-          fetch('/api/auth/welcome', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: normalizedEmail, displayName, locale }),
-          }).catch(() => {
-            // Email delivery is tracked server-side and must not block account creation.
-          });
-
-          setMessageTone('success');
-          setMessage(t('signUpSuccess'));
-          window.location.assign(signUpRedirectTo);
-          return;
-        }
-        setMessageTone('success');
-        setMessage(t('signUpSuccess'));
-        return;
-      }
-      fetch('/api/auth/welcome', {
+      const signUpResponse = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: normalizedEmail, displayName, locale }),
-      }).catch(() => {
-        // Email delivery is tracked server-side and must not block account creation.
+        body: JSON.stringify({
+          email: normalizedEmail,
+          password,
+          displayName,
+          examSession,
+          locale,
+        }),
       });
+
+      const signUpPayload = (await signUpResponse.json().catch(() => null)) as
+        | { ok?: boolean; reason?: string }
+        | null;
+
+      if (!signUpResponse.ok || !signUpPayload?.ok) {
+        setMessageTone('error');
+        if (signUpPayload?.reason === 'account_exists') {
+          setMessage(t('accountExists'));
+        } else if (signUpPayload?.reason === 'weak_password') {
+          setMessage(t('weakPassword'));
+        } else if (signUpPayload?.reason === 'invalid_email') {
+          setMessage(t('invalidEmail'));
+        } else if (signUpPayload?.reason === 'missing_fields') {
+          setMessage(t('missingFields'));
+        } else {
+          setMessage(t('unexpectedError'));
+        }
+        return;
+      }
+
+      const { error: signInAfterSignUpError } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
+
+      if (signInAfterSignUpError) {
+        setMessageTone('error');
+        setMessage(resolveAuthError(signInAfterSignUpError.message));
+        return;
+      }
     }
 
     setMessageTone('success');
