@@ -33,6 +33,7 @@ type CreateGroupWizardLabels = {
   examOctober2026: string;
   examPlanningAhead: string;
   stepAccount: string;
+  continueToPlan: string;
   planTitle: string;
   planSubtitle: string;
   stepPlan: string;
@@ -141,7 +142,7 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
     locale === 'fr'
       ? { day: 'Jour', start: 'Début', end: 'Fin' }
       : { day: 'Day', start: 'Start', end: 'End' };
-  const [step, setStep] = useState<WizardStep>(isAuthenticated ? 1 : 0);
+  const [step, setStep] = useState<WizardStep>(0);
   const [displayName, setDisplayName] = useState(initialProfile?.displayName ?? '');
   const [email, setEmail] = useState(initialProfile?.email ?? '');
   const [password, setPassword] = useState('');
@@ -417,7 +418,7 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
                 </label>
               </div>
               <button type="button" onClick={handleAccountNext} disabled={!validAccount} className="button-primary h-14 w-full rounded-[7px] text-sm sm:h-16 sm:text-base disabled:opacity-45">
-                {labels.stepPlan}
+                {labels.continueToPlan}
               </button>
             </div>
           </div>

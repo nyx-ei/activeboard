@@ -76,6 +76,7 @@ export default async function CreateGroupPage({ params }: CreateGroupPageProps) 
         examOctober2026: t('examOctober2026'),
         examPlanningAhead: t('examPlanningAhead'),
         stepAccount: t('stepAccount'),
+        continueToPlan: t('continueToPlan'),
         planTitle: t('planTitle'),
         planSubtitle: t('planSubtitle'),
         stepPlan: t('stepPlan'),
