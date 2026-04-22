@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
+import { Lock } from 'lucide-react';
 
 import { AppBottomNav } from '@/components/layout/app-bottom-nav';
 import { HomeHeaderNav } from '@/components/layout/home-header-nav';
@@ -12,6 +13,8 @@ import { RegisterServiceWorker } from '@/components/pwa/register-service-worker'
 import { Link } from '@/i18n/navigation';
 import { routing, type AppLocale } from '@/i18n/routing';
 import { getCurrentUser } from '@/lib/auth';
+import { getUserAccessState, hasUserTierCapability } from '@/lib/billing/gating';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export function generateStaticParams() {
@@ -34,12 +37,40 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
   const messages = await getMessages();
   const t = await getTranslations('Common');
+  const dashboardT = await getTranslations('Dashboard');
   const billingT = await getTranslations('Billing');
   const profileT = await getTranslations('Profile');
   const user = await getCurrentUser();
   const shellData = user
       ? await (async () => {
         const supabase = createSupabaseServerClient();
+        const supabaseAdmin = createSupabaseAdminClient();
+        const accessState = await getUserAccessState(user.id);
+        const canBrowseLookupLayer = hasUserTierCapability(accessState, 'canBrowseLookupLayer');
+        const { data: memberships } = await supabase
+          .schema('public')
+          .from('group_members')
+          .select('group_id')
+          .eq('user_id', user.id);
+        const groupIds = [...new Set((memberships ?? []).map((membership) => membership.group_id))];
+        const { data: candidateGroups } = await supabaseAdmin
+          .schema('public')
+          .from('groups')
+          .select('id, max_members')
+          .order('created_at', { ascending: false })
+          .limit(30);
+        const candidateGroupIds = (candidateGroups ?? []).map((group) => group.id);
+        const { data: candidateMemberships } =
+          candidateGroupIds.length > 0
+            ? await supabaseAdmin.schema('public').from('group_members').select('group_id').in('group_id', candidateGroupIds)
+            : { data: [] };
+        const candidateCounts = new Map<string, number>();
+        for (const membership of candidateMemberships ?? []) {
+          candidateCounts.set(membership.group_id, (candidateCounts.get(membership.group_id) ?? 0) + 1);
+        }
+        const liveGroupCount = (candidateGroups ?? []).filter(
+          (group) => !groupIds.includes(group.id) && (candidateCounts.get(group.id) ?? 0) < (group.max_members ?? 5),
+        ).length;
         const { data: captainSession } = await supabase
           .schema('public')
           .from('sessions')
@@ -50,9 +81,11 @@ export default async function LocaleLayout({
           .maybeSingle();
         return {
           isCaptain: Boolean(captainSession),
+          liveGroupCount,
+          canBrowseLookupLayer,
         };
       })()
-    : { isCaptain: false };
+    : { isCaptain: false, liveGroupCount: 0, canBrowseLookupLayer: false };
   const displayName = user?.user_metadata.full_name ?? user?.email ?? 'ActiveBoard';
   const initials =
     displayName
@@ -87,6 +120,14 @@ export default async function LocaleLayout({
             <div className="flex min-w-0 shrink-0 items-center justify-end gap-2 sm:gap-3">
               {user ? (
                 <>
+                  <Link
+                    href={shellData.canBrowseLookupLayer ? '/groups?live=1' : '/billing'}
+                    className="inline-flex h-10 items-center gap-1.5 rounded-[8px] bg-amber-500/10 px-3 text-xs font-extrabold text-amber-400 ring-1 ring-amber-500/10 transition hover:bg-amber-500/15"
+                    aria-label={`${dashboardT('joinLiveGroups')} ${shellData.liveGroupCount}`}
+                  >
+                    <Lock className="h-3.5 w-3.5" aria-hidden="true" strokeWidth={1.8} />
+                    {shellData.liveGroupCount}
+                  </Link>
                   <ProfileMenu
                     initials={initials}
                     name={displayName}

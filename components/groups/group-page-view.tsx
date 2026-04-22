@@ -52,6 +52,7 @@ type GroupPageViewProps = {
     id: string;
     name: string;
     language: string;
+    memberCount: number;
     scheduleLabel: string;
     weeklyQuestions: number;
     membersPreview: Array<{
@@ -465,15 +466,19 @@ export function GroupPageView({
       {isCreateSessionOpen && primaryGroup ? (
         <CreateSessionModal
           locale={locale}
-          groupId={primaryGroup.id}
-          memberCount={primaryGroup.memberCount}
+          groups={shellGroups.map((group) => ({
+            id: group.id,
+            name: group.name,
+            memberCount: group.memberCount,
+          }))}
+          initialGroupId={primaryGroup.id}
           canCreateSession={canCreateSession}
           action={actions.createSessionAction}
-          returnTo={groupPath}
           labels={{
             newSession: labels.newSession,
             createSession: labels.createSession,
             createSessionPending: labels.createSessionPending,
+            groupName: labels.groupName,
             sessionName: labels.sessionName,
             sessionNamePlaceholder: labels.sessionNamePlaceholder,
             questionCount: labels.questionCount,

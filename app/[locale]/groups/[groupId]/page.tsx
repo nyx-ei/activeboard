@@ -135,6 +135,7 @@ export default async function GroupRoutePage({
             const groupSchedules = (schedules ?? []).filter((schedule) => schedule.group_id === group.id);
             const firstSchedule = groupSchedules[0];
             const weeklyQuestions = groupSchedules.reduce((sum, schedule) => sum + (schedule.question_goal ?? 0), 0);
+            const groupMemberships = (membershipsWithUsers ?? []).filter((membership) => membership.group_id === group.id);
             const membersPreview = (membershipsWithUsers ?? [])
               .filter((membership) => membership.group_id === group.id)
               .slice(0, 4)
@@ -152,6 +153,7 @@ export default async function GroupRoutePage({
               id: group.id,
               name: group.name,
               language: locale.toUpperCase(),
+              memberCount: groupMemberships.length,
               scheduleLabel: firstSchedule
                 ? `${firstSchedule.start_time?.slice(0, 5) ?? '--:--'} - ${firstSchedule.end_time?.slice(0, 5) ?? '--:--'}`
                 : '',
