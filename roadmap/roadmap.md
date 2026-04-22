@@ -331,6 +331,7 @@ Original sequencing was `#53 → #54 → #55 → #56 → #57 → #58`. The v8 re
 - [#92: Header: duplicate avatar — one decorative, one interactive, visually identical](https://github.com/nyx-ei/activeboard/issues/92) — Implemented (decorative avatar removed; functional profile avatar/menu kept)
 - [#93: Hide 'Join live groups' entirely when user can't join](https://github.com/nyx-ei/activeboard/issues/93) — Implemented (group CTA gated on `canBrowseLookupLayer`)
 - [#94: Rebrand header live-groups pill: smart click → live modal or paywall modal](https://github.com/nyx-ei/activeboard/issues/94) — Implemented (the header live-groups pill is now separate from group switching; eligible users land directly in the live groups bottom sheet, gated users go to billing)
+- [#118: Language toggle placement — move out of profile menu](https://github.com/nyx-ei/activeboard/issues/118) — Not started (language is a group-level setting per v8 spec; should not appear in user profile dropdown)
 
 ### Multi-group rework — kill the global "active group" concept
 
@@ -442,7 +443,7 @@ Target weekly cadence from the v8 spec:
 
 ## Statistics
 
-- Total issues on active roadmap: ~52 (25 original + ~8 v8-rework + ~13 new Milestone 6 + 6 new follow-up bugs)
+- Total issues on active roadmap: ~53 (25 original + ~8 v8-rework + ~13 new Milestone 6 + 7 new follow-up bugs)
 - Fully implemented (100% acceptance criteria met): 36 issues (#17-#28, #41-#42, #50, #53-#59, #64-#68, #71-#72, #79-#80, #89-#97, #99-#100, #102-#103)
 - Data-layer complete, UI missing: 0 issues
 - Infrastructure defined, never triggered: 0 issues
@@ -450,7 +451,7 @@ Target weekly cadence from the v8 spec:
 - Not started: 0 issues in the Milestone 6 follow-up set
 - Deferred: 5 issues (#32–#36) + v2 question types
 - **Current focus: no remaining acceptance-criteria gaps on started milestones; remaining partial milestones are partial only because of untouched backlog items**
-- New follow-up bugs created (this audit): #107–#114
+- New follow-up bugs created (this audit): #107–#114, #118
 - Last updated: April 21, 2026
 
 ---
