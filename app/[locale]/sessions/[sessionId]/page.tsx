@@ -205,14 +205,14 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
         <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} />
         <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
         <header className="sticky top-0 z-20 border-b border-white/[0.07] bg-background/95 backdrop-blur">
-          <div className="mx-auto flex h-16 w-full max-w-[700px] items-center justify-between px-4">
+          <div className="mx-auto flex min-h-16 w-full max-w-[700px] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:h-16 sm:flex-nowrap sm:py-0">
             <Link href={`/groups/${data.group.id}`} className="text-sm font-bold text-slate-500 hover:text-white">
               <span className="inline-flex items-center gap-2">
                 <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                 {data.group.name}
               </span>
             </Link>
-            <p className="text-lg font-extrabold text-white">{data.session.name ?? data.group.name} - {t('reviewShort')}</p>
+            <p className="min-w-0 flex-1 text-center text-base font-extrabold text-white sm:text-lg">{data.session.name ?? data.group.name} - {t('reviewShort')}</p>
             <p className="text-sm font-bold text-slate-500">Q{currentIndex + 1}/{questionGoal}</p>
           </div>
         </header>
@@ -326,7 +326,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
         }}
       />
       <header className="border-b border-white/[0.07]">
-        <div className="mx-auto flex h-16 w-full max-w-[560px] items-center justify-between px-4">
+        <div className="mx-auto flex min-h-16 w-full max-w-[560px] items-center justify-between gap-3 px-4 py-3 sm:h-16 sm:py-0">
           <Link href={`/groups/${data.group.id}`} className="text-slate-500 hover:text-white">
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           </Link>

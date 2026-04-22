@@ -94,6 +94,7 @@ export function GroupScheduleModal({
   const [mode, setMode] = useState<ModalMode>('add');
   const [drafts, setDrafts] = useState<ScheduleDraft[]>([]);
   const slotLabel = locale === 'fr' ? 'Ajouter un créneau' : 'Add slot';
+  const mobileFieldLabels = locale === 'fr' ? { day: 'Jour', start: 'Début', end: 'Fin' } : { day: 'Day', start: 'Start', end: 'End' };
 
   useEffect(() => {
     if (!open) return;
@@ -133,9 +134,9 @@ export function GroupScheduleModal({
 
       {open ? (
         <ModalPortal>
-          <div className="fixed inset-0 flex items-center justify-center bg-black/72 px-4 py-6 backdrop-blur-[2px]" style={{ zIndex: 1000 }} role="dialog" aria-modal="true">
+          <div className="fixed inset-0 flex items-end justify-center bg-black/72 px-0 py-0 backdrop-blur-[2px] sm:items-center sm:px-4 sm:py-6" style={{ zIndex: 1000 }} role="dialog" aria-modal="true">
             <button type="button" className="absolute inset-0 cursor-default" aria-label={labels.close} onClick={() => setOpen(false)} />
-            <section className="relative max-h-[min(88vh,620px)] w-full max-w-[540px] overflow-y-auto rounded-[10px] border border-white/[0.06] bg-[#11192c] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.55)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <section className="relative max-h-[min(88vh,620px)] w-full max-w-[540px] overflow-y-auto rounded-t-[16px] border border-white/[0.06] bg-[#11192c] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.55)] [scrollbar-width:none] sm:rounded-[10px] sm:p-6 [&::-webkit-scrollbar]:hidden">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h2 className="flex items-center gap-2 text-xl font-extrabold tracking-tight text-white">
@@ -155,60 +156,78 @@ export function GroupScheduleModal({
 
                 <div className="space-y-2">
                   {drafts.map((draft) => (
-                    <div key={draft.id} className="grid grid-cols-[minmax(64px,1fr)_minmax(56px,0.8fr)_8px_minmax(56px,0.8fr)_18px_minmax(44px,0.6fr)_10px_18px] items-center gap-1 rounded-[7px] bg-white/[0.045] p-1.5 text-sm min-[480px]:grid-cols-[minmax(76px,1fr)_minmax(74px,0.9fr)_12px_minmax(74px,0.9fr)_24px_minmax(58px,0.65fr)_14px_22px] min-[480px]:gap-2 min-[480px]:p-2">
+                    <div key={draft.id} className="rounded-[9px] bg-white/[0.045] p-3 text-sm">
                       {mode === 'edit' ? <input type="hidden" name="scheduleId" value={draft.id} /> : null}
-                      <select
-                        name="weekday"
-                        className="h-8 min-w-0 rounded-[5px] border border-white/[0.08] bg-white/[0.08] px-1.5 text-[11px] font-bold text-white outline-none focus:border-brand min-[480px]:px-2 min-[480px]:text-xs"
-                        value={draft.weekday}
-                        onChange={(event) => updateDraft(draft.id, { weekday: event.target.value })}
-                      >
-                        {WEEKDAYS.map((weekday) => (
-                          <option key={weekday} value={weekday}>
-                            {weekdayLabels[weekday]}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="flex h-8 min-w-0 items-center rounded-[5px] border border-white/[0.08] bg-white/[0.08] px-1 focus-within:border-brand min-[480px]:px-2">
-                        <input
-                          name="startTime"
-                          type="time"
-                          className="min-w-0 flex-1 bg-transparent p-0 text-[11px] font-bold text-white outline-none min-[480px]:text-xs"
-                          value={draft.startTime}
-                          onChange={(event) => updateDraft(draft.id, { startTime: event.target.value })}
-                        />
+                      <div className="grid gap-3 sm:grid-cols-[minmax(76px,1fr)_minmax(74px,0.9fr)_12px_minmax(74px,0.9fr)_24px_minmax(58px,0.65fr)_14px_22px] sm:items-center sm:gap-2">
+                        <label className="block">
+                          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 sm:hidden">{mobileFieldLabels.day}</span>
+                          <select
+                            name="weekday"
+                            className="h-10 w-full min-w-0 rounded-[6px] border border-white/[0.08] bg-white/[0.08] px-2 text-xs font-bold text-white outline-none focus:border-brand sm:h-8"
+                            value={draft.weekday}
+                            onChange={(event) => updateDraft(draft.id, { weekday: event.target.value })}
+                          >
+                            {WEEKDAYS.map((weekday) => (
+                              <option key={weekday} value={weekday}>
+                                {weekdayLabels[weekday]}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <div className="grid grid-cols-2 gap-3 sm:contents">
+                          <label className="block">
+                            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 sm:hidden">{mobileFieldLabels.start}</span>
+                            <div className="flex h-10 min-w-0 items-center rounded-[6px] border border-white/[0.08] bg-white/[0.08] px-2 focus-within:border-brand sm:h-8">
+                              <input
+                                name="startTime"
+                                type="time"
+                                className="min-w-0 flex-1 bg-transparent p-0 text-xs font-bold text-white outline-none"
+                                value={draft.startTime}
+                                onChange={(event) => updateDraft(draft.id, { startTime: event.target.value })}
+                              />
+                            </div>
+                          </label>
+                          <label className="block">
+                            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 sm:hidden">{mobileFieldLabels.end}</span>
+                            <div className="flex h-10 min-w-0 items-center rounded-[6px] border border-white/[0.08] bg-white/[0.08] px-2 focus-within:border-brand sm:h-8">
+                              <input
+                                name="endTime"
+                                type="time"
+                                className="min-w-0 flex-1 bg-transparent p-0 text-xs font-bold text-white outline-none"
+                                value={draft.endTime}
+                                onChange={(event) => updateDraft(draft.id, { endTime: event.target.value })}
+                              />
+                            </div>
+                          </label>
+                        </div>
+                        <span className="hidden text-center text-xs text-slate-500 sm:block">-&gt;</span>
+                        <label className="block">
+                          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 sm:hidden">{labels.questionGoal}</span>
+                          <input
+                            name="questionGoal"
+                            type="number"
+                            min="1"
+                            max="500"
+                            className="h-10 w-full min-w-0 rounded-[6px] border border-white/[0.08] bg-white/[0.08] px-2 text-center text-xs font-bold text-white outline-none focus:border-brand sm:h-8"
+                            value={draft.questionGoal}
+                            onChange={(event) => updateDraft(draft.id, { questionGoal: event.target.value })}
+                            aria-label={labels.questionGoal}
+                          />
+                        </label>
+                        <span className="hidden text-xs font-bold text-slate-500 sm:block">Q</span>
+                        <div className="flex justify-end pt-1 sm:pt-0">
+                          {draft.persisted ? (
+                            <button type="submit" formAction={deleteAction} name="deleteScheduleId" value={draft.id} className="button-ghost px-0 py-1 text-slate-500 hover:text-white" aria-label={labels.removeDay}>
+                              <Trash2 className="h-4 w-4" aria-hidden="true" />
+                            </button>
+                          ) : (
+                            <button type="button" onClick={() => removeDraft(draft.id)} className="button-ghost px-0 py-1 text-slate-500 hover:text-white" aria-label={labels.removeDay}>
+                              <Trash2 className="h-4 w-4" aria-hidden="true" />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <span className="text-center text-xs text-slate-500">-&gt;</span>
-                      <div className="flex h-8 min-w-0 items-center rounded-[5px] border border-white/[0.08] bg-white/[0.08] px-1 focus-within:border-brand min-[480px]:px-2">
-                        <input
-                          name="endTime"
-                          type="time"
-                          className="min-w-0 flex-1 bg-transparent p-0 text-[11px] font-bold text-white outline-none min-[480px]:text-xs"
-                          value={draft.endTime}
-                          onChange={(event) => updateDraft(draft.id, { endTime: event.target.value })}
-                        />
-                      </div>
-                      <span className="text-[10px] font-bold text-slate-400">{getMeridiem(draft.endTime)}</span>
-                      <input
-                        name="questionGoal"
-                        type="number"
-                        min="1"
-                        max="500"
-                        className="h-8 min-w-0 rounded-[5px] border border-white/[0.08] bg-white/[0.08] px-1 text-center text-[11px] font-bold text-white outline-none focus:border-brand min-[480px]:px-2 min-[480px]:text-xs"
-                        value={draft.questionGoal}
-                        onChange={(event) => updateDraft(draft.id, { questionGoal: event.target.value })}
-                        aria-label={labels.questionGoal}
-                      />
-                      <span className="text-xs font-bold text-slate-500">Q</span>
-                      {draft.persisted ? (
-                        <button type="submit" formAction={deleteAction} name="deleteScheduleId" value={draft.id} className="button-ghost px-0 py-1 text-slate-500 hover:text-white" aria-label={labels.removeDay}>
-                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                        </button>
-                      ) : (
-                        <button type="button" onClick={() => removeDraft(draft.id)} className="button-ghost px-0 py-1 text-slate-500 hover:text-white" aria-label={labels.removeDay}>
-                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                        </button>
-                      )}
+                      <p className="mt-2 text-xs font-semibold text-slate-500 sm:hidden">{getMeridiem(draft.endTime)}</p>
                     </div>
                   ))}
                 </div>
@@ -217,7 +236,7 @@ export function GroupScheduleModal({
                   + {slotLabel}
                 </button>
 
-                <div className="mt-6 grid grid-cols-2 gap-4">
+                <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                   <button type="button" onClick={() => setOpen(false)} className="button-secondary h-10 rounded-[6px] text-sm font-bold">
                     {labels.cancel}
                   </button>

@@ -155,7 +155,6 @@ export function LiveGroupsModal({ locale, groups, canJoinLiveGroups, initialOpen
 
               {groups.map((group) => {
                 const remaining = Math.max(group.maxMembers - group.memberCount, 0);
-                const groupMeta = [group.name, group.language, `${labels.averageWeekly}: ${group.weeklyQuestions}`].join(' | ');
 
                 return (
                   <article key={group.id} className="rounded-[12px] border border-white/[0.06] bg-[#18243a] p-4">
@@ -196,14 +195,13 @@ export function LiveGroupsModal({ locale, groups, canJoinLiveGroups, initialOpen
                       )}
                     </div>
 
-                    <div className="mt-4 flex items-center justify-between gap-4 text-xs font-semibold text-slate-500">
-                      <p className="truncate">
-                        {groupMeta} |{' '}
-                        <span className={remaining === 1 ? 'text-amber-400' : ''}>
-                          {remaining === 1 ? labels.oneRemainingPlace : labels.remainingPlaces.replace('{count}', String(remaining))}
-                        </span>
-                      </p>
-                      <span className="shrink-0 text-slate-400">{group.language}</span>
+                    <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
+                      <span className="rounded-full bg-white/[0.05] px-2.5 py-1">{group.name}</span>
+                      <span className="rounded-full bg-white/[0.05] px-2.5 py-1">{group.language}</span>
+                      <span className="rounded-full bg-white/[0.05] px-2.5 py-1">{labels.averageWeekly}: {group.weeklyQuestions}</span>
+                      <span className={`rounded-full px-2.5 py-1 ${remaining === 1 ? 'bg-amber-400/10 text-amber-400' : 'bg-white/[0.05]'}`}>
+                        {remaining === 1 ? labels.oneRemainingPlace : labels.remainingPlaces.replace('{count}', String(remaining))}
+                      </span>
                     </div>
                   </article>
                 );

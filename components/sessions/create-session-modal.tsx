@@ -59,8 +59,8 @@ export function CreateSessionModal({
     Number(timerSeconds) > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-[2px]">
-      <div className="w-full max-w-[478px] rounded-[14px] bg-[#111827] p-6 shadow-2xl ring-1 ring-white/[0.08]">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 px-0 backdrop-blur-[2px] sm:items-center sm:px-4">
+      <div className="max-h-[90vh] w-full max-w-[478px] overflow-y-auto rounded-t-[18px] bg-[#111827] p-4 shadow-2xl ring-1 ring-white/[0.08] sm:rounded-[14px] sm:p-6">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-extrabold text-white">{labels.newSession}</h2>
           <button type="button" onClick={onClose} className="rounded-md p-1 text-slate-400 hover:text-white" aria-label={labels.close}>

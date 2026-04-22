@@ -127,9 +127,9 @@ function Progress({ step }: { step: WizardStep }) {
   const activeStep = Math.min(step, 4);
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex w-full items-center gap-1.5 sm:w-auto sm:gap-2">
       {Array.from({ length: 5 }).map((_, index) => (
-        <span key={index} className={cn('h-1 w-7 rounded-full', index <= activeStep ? 'bg-brand' : 'bg-[#233046]')} />
+        <span key={index} className={cn('h-1 flex-1 rounded-full sm:w-7 sm:flex-none', index <= activeStep ? 'bg-brand' : 'bg-[#233046]')} />
       ))}
     </div>
   );
@@ -137,6 +137,10 @@ function Progress({ step }: { step: WizardStep }) {
 
 export function CreateGroupWizard({ locale, labels, initialProfile, isAuthenticated }: CreateGroupWizardProps) {
   const router = useRouter();
+  const mobileScheduleLabels =
+    locale === 'fr'
+      ? { day: 'Jour', start: 'Début', end: 'Fin' }
+      : { day: 'Day', start: 'Start', end: 'End' };
   const [step, setStep] = useState<WizardStep>(isAuthenticated ? 1 : 0);
   const [displayName, setDisplayName] = useState(initialProfile?.displayName ?? '');
   const [email, setEmail] = useState(initialProfile?.email ?? '');
@@ -328,20 +332,24 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
 
   return (
     <main className="flex min-h-screen flex-col bg-background text-white">
-      <header className="flex h-[68px] items-center justify-between border-b border-white/[0.08] px-4 sm:px-7">
-        <button
-          type="button"
-          onClick={goBack}
-          className="flex min-w-0 items-center gap-3 text-slate-500 transition hover:text-white sm:gap-4"
-        >
-          <ArrowLeft className="h-5 w-5 shrink-0" aria-hidden="true" />
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[7px] bg-brand text-sm font-bold text-white">AB</span>
-          <span className="truncate text-lg font-semibold text-white sm:text-xl">{labels.title}</span>
-        </button>
-        <Progress step={step} />
+      <header className="border-b border-white/[0.08] px-3 py-3 sm:px-7">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <button
+            type="button"
+            onClick={goBack}
+            className="flex min-w-0 items-center gap-2 text-slate-500 transition hover:text-white sm:gap-4"
+          >
+            <ArrowLeft className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" aria-hidden="true" />
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] bg-brand text-xs font-bold text-white sm:h-9 sm:w-9 sm:text-sm">AB</span>
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-semibold text-white sm:text-xl">{labels.title}</span>
+            </span>
+          </button>
+          <Progress step={step} />
+        </div>
       </header>
 
-      <section className="mx-auto w-full max-w-[640px] flex-1 px-5 py-10">
+      <section className="mx-auto w-full max-w-[640px] flex-1 px-3 py-6 sm:px-5 sm:py-10">
         {step === 0 ? (
           <div>
             <div className="flex items-start gap-3">
@@ -408,7 +416,7 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
                   </select>
                 </label>
               </div>
-              <button type="button" onClick={handleAccountNext} disabled={!validAccount} className="button-primary h-16 w-full rounded-[7px] text-base disabled:opacity-45">
+              <button type="button" onClick={handleAccountNext} disabled={!validAccount} className="button-primary h-14 w-full rounded-[7px] text-sm sm:h-16 sm:text-base disabled:opacity-45">
                 {labels.stepPlan}
               </button>
             </div>
@@ -439,7 +447,7 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
                   <p className="mt-2 text-sm text-slate-400">{value === 'starter' ? labels.planStarterDescription : labels.planUnlimitedDescription}</p>
                 </button>
               ))}
-              <button type="button" onClick={() => setStep(2)} className="button-primary mt-1 h-16 w-full rounded-[7px] text-base">
+              <button type="button" onClick={() => setStep(2)} className="button-primary mt-1 h-14 w-full rounded-[7px] text-sm sm:h-16 sm:text-base">
                 {labels.continueToSchedule}
               </button>
             </div>
@@ -456,29 +464,53 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
               </div>
             </div>
             <div className="mt-7 space-y-4">
-              <label className="flex h-[68px] items-center gap-4 rounded-[7px] border border-white/10 bg-[#111827] px-5 text-base font-semibold text-slate-300">
+              <label className="flex min-h-[68px] items-center gap-3 rounded-[7px] border border-white/10 bg-[#111827] px-4 py-4 text-sm font-semibold text-slate-300 sm:gap-4 sm:px-5 sm:text-base">
                 <input type="checkbox" checked={scheduleEnabled} onChange={(event) => setScheduleEnabled(event.target.checked)} className="h-5 w-5 rounded border-white/20 bg-[#0f1628] accent-brand" />
                 {labels.setScheduleNow}
               </label>
               {scheduleEnabled ? (
                 <div className="space-y-3">
                   {slots.map((slot) => (
-                    <div key={slot.id} className="grid grid-cols-[1fr_1fr] items-center gap-2 rounded-[7px] bg-[#111827] p-2 sm:grid-cols-[1.2fr_0.9fr_16px_0.9fr_0.7fr_16px_24px]">
-                      <select value={slot.weekday} onChange={(event) => updateSlot(slot.id, { weekday: event.target.value })} className="field-compact rounded-[6px] text-sm">
-                        {WEEKDAYS.map((weekday) => (
-                          <option key={weekday} value={weekday}>
-                            {labels.weekdays[weekday]}
-                          </option>
-                        ))}
-                      </select>
-                      <input value={slot.startTime} onChange={(event) => updateSlot(slot.id, { startTime: event.target.value })} type="time" className="field-compact rounded-[6px] text-sm" />
-                      <span className="hidden text-center text-slate-500 sm:block">-&gt;</span>
-                      <input value={slot.endTime} onChange={(event) => updateSlot(slot.id, { endTime: event.target.value })} type="time" className="field-compact rounded-[6px] text-sm" />
-                      <input value={slot.questionGoal} onChange={(event) => updateSlot(slot.id, { questionGoal: event.target.value })} type="number" min="1" className="field-compact rounded-[6px] text-center text-sm" />
-                      <span className="text-xs font-bold text-slate-500">Q</span>
-                      <button type="button" onClick={() => setSlots((current) => (current.length > 1 ? current.filter((item) => item.id !== slot.id) : current))} className="text-slate-500 hover:text-white">
-                        <Trash2 className="h-4 w-4" aria-hidden="true" />
-                      </button>
+                    <div key={slot.id} className="rounded-[10px] bg-[#111827] p-3 sm:p-4">
+                      <div className="grid gap-3 sm:grid-cols-[1.2fr_0.9fr_16px_0.9fr_0.7fr_16px_24px] sm:items-center sm:gap-2">
+                        <label className="block">
+                          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 sm:hidden">
+                            {mobileScheduleLabels.day}
+                          </span>
+                          <select value={slot.weekday} onChange={(event) => updateSlot(slot.id, { weekday: event.target.value })} className="field-compact rounded-[6px] px-3 text-sm">
+                            {WEEKDAYS.map((weekday) => (
+                              <option key={weekday} value={weekday}>
+                                {labels.weekdays[weekday]}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <div className="grid grid-cols-2 gap-3 sm:contents">
+                          <label className="block">
+                            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 sm:hidden">
+                              {mobileScheduleLabels.start}
+                            </span>
+                            <input value={slot.startTime} onChange={(event) => updateSlot(slot.id, { startTime: event.target.value })} type="time" className="field-compact rounded-[6px] px-3 text-sm" />
+                          </label>
+                          <label className="block">
+                            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 sm:hidden">
+                              {mobileScheduleLabels.end}
+                            </span>
+                            <input value={slot.endTime} onChange={(event) => updateSlot(slot.id, { endTime: event.target.value })} type="time" className="field-compact rounded-[6px] px-3 text-sm" />
+                          </label>
+                        </div>
+                        <span className="hidden text-center text-slate-500 sm:block">-&gt;</span>
+                        <label className="block">
+                          <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 sm:hidden">
+                            Q
+                          </span>
+                          <input value={slot.questionGoal} onChange={(event) => updateSlot(slot.id, { questionGoal: event.target.value })} type="number" min="1" className="field-compact rounded-[6px] px-3 text-center text-sm" />
+                        </label>
+                        <span className="hidden text-xs font-bold text-slate-500 sm:block">Q</span>
+                        <button type="button" onClick={() => setSlots((current) => (current.length > 1 ? current.filter((item) => item.id !== slot.id) : current))} className="justify-self-end rounded-md p-1 text-slate-500 hover:text-white">
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                   <button type="button" onClick={() => setSlots((current) => [...current, createSlot(current.length)])} className="text-sm font-semibold text-brand hover:text-emerald-300">
@@ -486,7 +518,7 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
                   </button>
                 </div>
               ) : null}
-              <button type="button" disabled={!validSchedule} onClick={() => setStep(3)} className="button-primary h-16 w-full rounded-[7px] text-base disabled:opacity-45">
+              <button type="button" disabled={!validSchedule} onClick={() => setStep(3)} className="button-primary h-14 w-full rounded-[7px] text-sm sm:h-16 sm:text-base disabled:opacity-45">
                 {scheduleEnabled ? labels.nextQuestionBanks : labels.continueWithoutSchedule}
               </button>
             </div>
@@ -522,7 +554,7 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
                   );
                 })}
               </div>
-              <button type="button" disabled={!validBanks} onClick={() => setStep(4)} className="button-primary h-16 w-full rounded-[7px] text-base disabled:opacity-45">
+              <button type="button" disabled={!validBanks} onClick={() => setStep(4)} className="button-primary h-14 w-full rounded-[7px] text-sm sm:h-16 sm:text-base disabled:opacity-45">
                 {labels.stepTeam}
               </button>
             </div>
@@ -556,12 +588,12 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
                         onChange={(event) =>
                           setMemberEmails((current) => current.map((value, currentIndex) => (currentIndex === index ? event.target.value : value)))
                         }
-                        className="field h-10 rounded-[6px] px-3 text-sm"
+                        className="field h-10 min-w-0 flex-1 rounded-[6px] px-3 text-sm"
                         type="email"
                         placeholder={labels.memberEmailPlaceholder}
                       />
                       {memberEmails.length > 1 ? (
-                        <button type="button" onClick={() => setMemberEmails((current) => current.filter((_, currentIndex) => currentIndex !== index))} className="text-slate-500 hover:text-white">
+                        <button type="button" onClick={() => setMemberEmails((current) => current.filter((_, currentIndex) => currentIndex !== index))} className="shrink-0 rounded-md p-1 text-slate-500 hover:text-white">
                           <Trash2 className="h-4 w-4" aria-hidden="true" />
                         </button>
                       ) : null}
@@ -575,7 +607,7 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
                 ) : null}
               </div>
               {errorMessage ? <div className="rounded-[7px] border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">{errorMessage}</div> : null}
-              <button type="button" disabled={!validTeam || isPending} onClick={submitFounderOnboarding} className="button-primary h-16 w-full rounded-[7px] text-base disabled:opacity-45">
+              <button type="button" disabled={!validTeam || isPending} onClick={submitFounderOnboarding} className="button-primary h-14 w-full rounded-[7px] text-sm sm:h-16 sm:text-base disabled:opacity-45">
                 {isPending ? labels.createGroupPending : labels.createGroup}
               </button>
             </div>
@@ -594,9 +626,9 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
                 {labels.inviteEmailWarning}
               </div>
             ) : null}
-            <div className="mt-8 w-full rounded-[7px] bg-[#111827] px-6 py-6">
+            <div className="mt-8 w-full rounded-[7px] bg-[#111827] px-4 py-5 sm:px-6 sm:py-6">
               <p className="text-sm font-semibold text-slate-500">{labels.inviteCode}</p>
-              <p className="mt-3 text-3xl font-semibold tracking-[0.25em] text-brand">{inviteCode}</p>
+              <p className="mt-3 break-all text-2xl font-semibold tracking-[0.18em] text-brand sm:text-3xl sm:tracking-[0.25em]">{inviteCode}</p>
               <button type="button" onClick={() => navigator.clipboard.writeText(inviteCode).catch(() => undefined)} className="mt-3 text-sm font-semibold text-brand">
                 {labels.copyInviteLink}
               </button>
@@ -604,7 +636,7 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
             <div className="mt-7 w-full rounded-[7px] border border-amber-400/20 bg-amber-400/[0.08] px-5 py-4 text-sm font-semibold leading-6 text-amber-300">
               {labels.completionRule}
             </div>
-            <button type="button" onClick={goToWorkspace} className="button-primary mt-7 h-16 w-full rounded-[7px] text-base">
+            <button type="button" onClick={goToWorkspace} className="button-primary mt-7 h-14 w-full rounded-[7px] text-sm sm:h-16 sm:text-base">
               {requiresLogin ? labels.signInToContinue : labels.goToDashboard}
             </button>
           </div>

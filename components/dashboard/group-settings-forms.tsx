@@ -108,7 +108,7 @@ export function InviteMemberForm({
         <input type="hidden" name="groupId" value={groupId} />
         <label className="block">
           <span className={compact ? 'sr-only' : 'mb-2 block text-sm font-medium text-slate-300'}>{emailLabel}</span>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <input
               name="email"
               type="email"
@@ -116,12 +116,12 @@ export function InviteMemberForm({
               onChange={(event) => setEmail(event.target.value)}
               placeholder={emailPlaceholder}
               autoComplete="email"
-              className={compact ? 'field h-10 rounded-[7px] px-3 py-2 text-sm' : 'field'}
+              className={compact ? 'field h-10 w-full rounded-[7px] px-3 py-2 text-sm' : 'field'}
             />
             <SubmitButton
               pendingLabel={pendingLabel}
               disabled={!isValid}
-              className="button-primary min-w-[44px] px-4 text-white disabled:bg-white/[0.08] disabled:text-slate-500 disabled:hover:bg-white/[0.08]"
+              className="button-primary min-h-[44px] w-full px-4 text-white disabled:bg-white/[0.08] disabled:text-slate-500 disabled:hover:bg-white/[0.08] sm:min-w-[44px] sm:w-auto"
             >
               <span aria-label={submitLabel}>
                 <Send className="h-4 w-4" aria-hidden="true" />
@@ -173,7 +173,7 @@ export function GroupMeetingLinkForm({
           <LinkIcon className="h-3.5 w-3.5 text-slate-500" aria-hidden="true" />
           {label}
         </span>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <input
             name="meetingLink"
             type="url"
@@ -181,13 +181,13 @@ export function GroupMeetingLinkForm({
             onChange={(event) => setMeetingLink(event.target.value)}
             placeholder={placeholder}
             autoComplete="url"
-            className="h-8 min-w-0 flex-1 rounded-[5px] border border-white/[0.08] bg-white/[0.08] px-3 text-[13px] font-semibold text-white outline-none transition placeholder:text-slate-500 focus:border-brand"
+            className="h-10 min-w-0 flex-1 rounded-[5px] border border-white/[0.08] bg-white/[0.08] px-3 text-[13px] font-semibold text-white outline-none transition placeholder:text-slate-500 focus:border-brand sm:h-8"
             required
           />
           <SubmitButton
             pendingLabel={pendingLabel}
             disabled={!isValid || !isChanged}
-            className="button-primary h-8 min-w-9 rounded-[5px] px-2.5 text-white disabled:bg-white/[0.08] disabled:text-slate-500 disabled:hover:bg-white/[0.08]"
+            className="button-primary h-10 w-full rounded-[5px] px-2.5 text-white disabled:bg-white/[0.08] disabled:text-slate-500 disabled:hover:bg-white/[0.08] sm:h-8 sm:min-w-9 sm:w-auto"
           >
             <span aria-label={submitLabel}>
               <Check className="h-3.5 w-3.5" aria-hidden="true" />
