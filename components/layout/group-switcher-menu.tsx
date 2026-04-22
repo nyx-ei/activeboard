@@ -168,7 +168,6 @@ export function GroupSwitcherMenu({ groups, liveGroupCount, liveHref, userInitia
                             {group.membersPreview.length > 0 ? (
                               group.membersPreview.map((member, index) =>
                                 member.avatarUrl && !failedAvatarSet.has(member.id) ? (
-                                  // Real member avatars take precedence over initials-only placeholders.
                                   <img
                                     key={member.id}
                                     src={member.avatarUrl}

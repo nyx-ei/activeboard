@@ -315,7 +315,6 @@ export async function completeFounderOnboardingAction(formData: FormData): Promi
     });
 
     let emailDeliveryFailed = invitees.length > 0 && !hasEmailEnv();
-
     if (hasEmailEnv()) {
       if (createdAuthUserId) {
         await sendAccountWelcomeEmail({
