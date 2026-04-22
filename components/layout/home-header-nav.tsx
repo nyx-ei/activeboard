@@ -10,11 +10,10 @@ export function HomeHeaderNav() {
   const locale = useLocale();
   const t = useTranslations('Landing');
   const isHome = pathname === `/${locale}` || pathname === '/';
-  const isAuth = pathname?.startsWith(`/${locale}/auth`);
   const howItWorksHref = isHome ? '#how-it-works' : `/${locale}#how-it-works`;
   const pricingHref = isHome ? '#pricing' : `/${locale}#pricing`;
 
-  if (!isHome && !isAuth) {
+  if (!isHome) {
     return null;
   }
 
