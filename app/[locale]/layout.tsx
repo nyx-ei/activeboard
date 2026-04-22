@@ -177,13 +177,18 @@ export default async function LocaleLayout({
           <OfflineStatusBanner />
           <header className="border-b border-[#1f2937]/80 pb-3 pt-1">
             <div className="flex min-w-0 items-start justify-between gap-3 sm:items-center sm:gap-4">
-            <div className="flex min-w-0 flex-1 items-center gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
               <Link href="/" className="flex min-w-0 shrink-0 items-center gap-2">
                 <div className="flex h-7 w-7 items-center justify-center rounded-[5px] bg-brand text-xs font-extrabold text-white">
                   AB
                 </div>
                 <p className="truncate text-base font-extrabold tracking-tight text-white sm:text-lg">{t('appName')}</p>
               </Link>
+              {!user ? (
+                <div className="hidden min-w-0 flex-1 items-center sm:flex">
+                  <HomeHeaderNav />
+                </div>
+              ) : null}
             </div>
 
             <div className="flex min-w-0 shrink-0 items-center justify-end gap-2 sm:gap-3">
@@ -237,7 +242,7 @@ export default async function LocaleLayout({
             </div>
             </div>
             {!user ? (
-              <div className="mt-3">
+              <div className="mt-3 sm:hidden">
                 <HomeHeaderNav />
               </div>
             ) : null}
