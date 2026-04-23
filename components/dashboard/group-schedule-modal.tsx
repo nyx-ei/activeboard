@@ -1,7 +1,7 @@
 'use client';
 
 import { CalendarDays, Pencil, Trash2, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Modal, ModalTitle } from '@/components/ui/modal';
 import { SubmitButton } from '@/components/ui/submit-button';
@@ -90,6 +90,10 @@ export function GroupScheduleModal({
   const [drafts, setDrafts] = useState<ScheduleDraft[]>([]);
   const slotLabel = locale === 'fr' ? 'Ajouter un créneau' : 'Add slot';
 
+  useEffect(() => {
+    if (!open || mode !== 'edit') return;
+    setDrafts(schedules.map(scheduleToDraft));
+  }, [mode, open, schedules]);
   function openModal(nextMode: ModalMode) {
     setMode(nextMode);
     setDrafts(nextMode === 'edit' && schedules.length > 0 ? schedules.map(scheduleToDraft) : [createDraft(0)]);
@@ -236,3 +240,4 @@ export function GroupScheduleModal({
     </>
   );
 }
+

@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useEffect, useId, useRef } from 'react';
+import { type MouseEvent as ReactMouseEvent, type ReactNode, useEffect, useId, useRef } from 'react';
 
 import { ModalPortal } from '@/components/ui/modal-portal';
 import { cn } from '@/lib/utils';
@@ -130,13 +130,16 @@ export function Modal({
           className,
         )}
         style={{ zIndex: 1000 }}
+        onMouseDown={(event: ReactMouseEvent<HTMLDivElement>) => {
+          if (!closeOnBackdrop) {
+            return;
+          }
+
+          if (event.target === event.currentTarget) {
+            onClose();
+          }
+        }}
       >
-        <button
-          type="button"
-          className="absolute inset-0 cursor-default"
-          aria-label={backdropLabel}
-          onClick={closeOnBackdrop ? onClose : undefined}
-        />
         <section
           ref={(node) => {
             dialogRef.current = node;
@@ -146,7 +149,11 @@ export function Modal({
           aria-labelledby={labelledBy ?? internalTitleId}
           aria-describedby={describedBy}
           tabIndex={-1}
-          className={cn(contentClassName)}
+          className={cn('relative z-[1]', contentClassName)}
+          data-backdrop-label={backdropLabel}
+          onMouseDown={(event) => {
+            event.stopPropagation();
+          }}
         >
           {children}
         </section>
