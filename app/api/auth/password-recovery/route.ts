@@ -5,7 +5,6 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 type PasswordRecoveryPayload = {
   email?: string;
   locale?: string;
-  origin?: string;
 };
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -24,9 +23,7 @@ export async function POST(request: Request) {
   }
 
   const requestUrl = new URL(request.url);
-  const origin = typeof payload?.origin === 'string' && payload.origin.startsWith('http')
-    ? payload.origin
-    : requestUrl.origin;
+  const origin = requestUrl.origin;
   const supabase = createSupabaseServerClient();
 
   const { data: existingUser } = await supabase.schema('public').from('users').select('id').eq('email', email).maybeSingle();

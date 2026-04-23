@@ -280,7 +280,6 @@ export function AuthForm({
       body: JSON.stringify({
         email: normalizedEmail,
         locale,
-        origin: window.location.origin,
       }),
     });
 

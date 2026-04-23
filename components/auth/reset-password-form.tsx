@@ -7,6 +7,8 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { AppLocale } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
 
+const PASSWORD_RECOVERY_SESSION_KEY = 'activeboard:password-recovery';
+
 function PendingInlineLabel({ pending, label, pendingLabel }: { pending: boolean; label: string; pendingLabel: string }) {
   return (
     <span className="relative inline-flex items-center justify-center">
@@ -36,6 +38,37 @@ export function ResetPasswordForm() {
     let isMounted = true;
 
     async function bootstrapRecoverySession() {
+      const hash = window.location.hash.startsWith('#') ? new URLSearchParams(window.location.hash.slice(1)) : null;
+      const accessToken = hash?.get('access_token');
+      const refreshToken = hash?.get('refresh_token');
+      const recoveryType = hash?.get('type');
+
+      if (accessToken && refreshToken) {
+        if (recoveryType !== 'recovery') {
+          setIsRecoveryReady(false);
+          return;
+        }
+
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (error) {
+          setIsRecoveryReady(false);
+          return;
+        }
+
+        window.sessionStorage.setItem(PASSWORD_RECOVERY_SESSION_KEY, '1');
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setIsRecoveryReady(true);
+        return;
+      }
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -44,36 +77,11 @@ export function ResetPasswordForm() {
         return;
       }
 
-      if (session) {
+      if (session && window.sessionStorage.getItem(PASSWORD_RECOVERY_SESSION_KEY) === '1') {
         setIsRecoveryReady(true);
         return;
       }
-
-      const hash = window.location.hash.startsWith('#') ? new URLSearchParams(window.location.hash.slice(1)) : null;
-      const accessToken = hash?.get('access_token');
-      const refreshToken = hash?.get('refresh_token');
-
-      if (!accessToken || !refreshToken) {
-        setIsRecoveryReady(false);
-        return;
-      }
-
-      const { error } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      });
-
-      if (!isMounted) {
-        return;
-      }
-
-      if (error) {
-        setIsRecoveryReady(false);
-        return;
-      }
-
-      window.history.replaceState({}, document.title, window.location.pathname);
-      setIsRecoveryReady(true);
+      setIsRecoveryReady(false);
     }
 
     bootstrapRecoverySession();
@@ -114,6 +122,8 @@ export function ResetPasswordForm() {
 
     setMessageTone('success');
     setMessage(t('resetPasswordSuccess'));
+    window.sessionStorage.removeItem(PASSWORD_RECOVERY_SESSION_KEY);
+    await supabase.auth.signOut();
     window.setTimeout(() => {
       window.location.assign(`/${locale}/auth/login`);
     }, 700);
