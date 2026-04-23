@@ -47,11 +47,6 @@ export function GroupEditModal({
     if (!open) return;
     setNameValue(initialName);
     setMeetingLinkValue(initialMeetingLink);
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') setOpen(false);
-    }
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
   }, [initialMeetingLink, initialName, open]);
 
   return (
