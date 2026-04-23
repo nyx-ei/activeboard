@@ -63,7 +63,7 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
           <p className="inline-flex rounded-full border border-white/[0.08] px-4 py-2 text-sm font-semibold text-slate-400">
             {t('heroEyebrow')}
           </p>
-          <h1 className="mt-4 max-w-[640px] text-[44px] font-medium leading-[0.98] tracking-[-0.052em] text-white sm:mt-6 sm:text-[68px] lg:text-[76px]">
+          <h1 className="mt-4 max-w-[620px] text-[40px] font-medium leading-[1] tracking-[-0.05em] text-white [text-align:justify] sm:mt-5 sm:text-[60px] lg:text-[68px]">
             {t('heroTitle')}
           </h1>
           <p className="mt-3 max-w-[650px] text-base font-medium leading-7 text-slate-400 sm:mt-5 sm:text-lg sm:leading-8">{t('heroDescription')}</p>
