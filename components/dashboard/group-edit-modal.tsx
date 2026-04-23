@@ -3,7 +3,7 @@
 import { Pencil, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { ModalPortal } from '@/components/ui/modal-portal';
+import { Modal, ModalTitle } from '@/components/ui/modal';
 import { SubmitButton } from '@/components/ui/submit-button';
 
 type GroupEditModalProps = {
@@ -61,15 +61,18 @@ export function GroupEditModal({
       </button>
 
       {open ? (
-        <ModalPortal>
-        <div className="fixed inset-0 flex items-end justify-center bg-black/72 px-0 py-0 backdrop-blur-[2px] sm:items-center sm:px-4 sm:py-6" style={{ zIndex: 1000 }} role="dialog" aria-modal="true">
-          <button type="button" className="absolute inset-0 cursor-default" aria-label={labels.close} onClick={() => setOpen(false)} />
-          <section className="relative max-h-[min(88vh,620px)] w-full max-w-[480px] overflow-y-auto rounded-t-[16px] border border-white/[0.06] bg-[#11192c] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.55)] [scrollbar-width:none] sm:rounded-[10px] sm:p-6 [&::-webkit-scrollbar]:hidden">
+        <Modal
+          open={open}
+          onClose={() => setOpen(false)}
+          backdropLabel={labels.close}
+          mobileSheet
+          contentClassName="relative max-h-[min(88vh,620px)] w-full max-w-[480px] overflow-y-auto rounded-t-[16px] border border-white/[0.06] bg-[#11192c] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.55)] [scrollbar-width:none] sm:rounded-[10px] sm:p-6 [&::-webkit-scrollbar]:hidden"
+        >
             <div className="flex items-center justify-between gap-4">
-              <h2 className="flex items-center gap-2 text-xl font-extrabold tracking-tight text-white">
+              <ModalTitle className="flex items-center gap-2 text-xl font-extrabold tracking-tight text-white">
                 <Pencil className="h-4 w-4 text-brand" aria-hidden="true" strokeWidth={1.8} />
                 {labels.title}
-              </h2>
+              </ModalTitle>
               <button type="button" onClick={() => setOpen(false)} className="rounded-md p-1 text-slate-400 transition hover:bg-white/[0.06] hover:text-white" aria-label={labels.close}>
                 <X className="h-5 w-5" aria-hidden="true" strokeWidth={1.8} />
               </button>
@@ -111,9 +114,7 @@ export function GroupEditModal({
                 </SubmitButton>
               </div>
             </form>
-          </section>
-        </div>
-        </ModalPortal>
+        </Modal>
       ) : null}
     </>
   );
