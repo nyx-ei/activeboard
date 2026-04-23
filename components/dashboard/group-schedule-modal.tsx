@@ -1,9 +1,9 @@
 'use client';
 
 import { CalendarDays, Pencil, Trash2, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
-import { ModalPortal } from '@/components/ui/modal-portal';
+import { Modal, ModalTitle } from '@/components/ui/modal';
 import { SubmitButton } from '@/components/ui/submit-button';
 
 type Schedule = {
@@ -90,15 +90,6 @@ export function GroupScheduleModal({
   const [drafts, setDrafts] = useState<ScheduleDraft[]>([]);
   const slotLabel = locale === 'fr' ? 'Ajouter un créneau' : 'Add slot';
 
-  useEffect(() => {
-    if (!open) return;
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') setOpen(false);
-    }
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [open]);
-
   function openModal(nextMode: ModalMode) {
     setMode(nextMode);
     setDrafts(nextMode === 'edit' && schedules.length > 0 ? schedules.map(scheduleToDraft) : [createDraft(0)]);
@@ -127,16 +118,19 @@ export function GroupScheduleModal({
       </button>
 
       {open ? (
-        <ModalPortal>
-          <div className="fixed inset-0 flex items-end justify-center bg-black/72 px-0 py-0 backdrop-blur-[2px] sm:items-center sm:px-4 sm:py-6" style={{ zIndex: 1000 }} role="dialog" aria-modal="true">
-            <button type="button" className="absolute inset-0 cursor-default" aria-label={labels.close} onClick={() => setOpen(false)} />
-            <section className="relative max-h-[min(88vh,620px)] w-full max-w-[540px] overflow-y-auto rounded-t-[16px] border border-white/[0.06] bg-[#11192c] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.55)] [scrollbar-width:none] sm:rounded-[10px] sm:p-6 [&::-webkit-scrollbar]:hidden">
+        <Modal
+          open={open}
+          onClose={() => setOpen(false)}
+          backdropLabel={labels.close}
+          mobileSheet
+          contentClassName="relative max-h-[min(88vh,620px)] w-full max-w-[540px] overflow-y-auto rounded-t-[16px] border border-white/[0.06] bg-[#11192c] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.55)] [scrollbar-width:none] sm:rounded-[10px] sm:p-6 [&::-webkit-scrollbar]:hidden"
+        >
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h2 className="flex items-center gap-2 text-xl font-extrabold tracking-tight text-white">
+                  <ModalTitle className="flex items-center gap-2 text-xl font-extrabold tracking-tight text-white">
                     <CalendarDays className="h-4 w-4 text-brand" aria-hidden="true" strokeWidth={1.8} />
                     {labels.title}
-                  </h2>
+                  </ModalTitle>
                   <p className="mt-2 text-sm font-medium text-slate-400">{labels.description}</p>
                 </div>
                 <button type="button" onClick={() => setOpen(false)} className="rounded-md p-1 text-slate-400 transition hover:bg-white/[0.06] hover:text-white" aria-label={labels.close}>
@@ -237,9 +231,7 @@ export function GroupScheduleModal({
                   </SubmitButton>
                 </div>
               </form>
-            </section>
-          </div>
-        </ModalPortal>
+        </Modal>
       ) : null}
     </>
   );
