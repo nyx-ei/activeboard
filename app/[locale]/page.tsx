@@ -58,12 +58,12 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
 
   return (
     <main className="-mx-3 flex flex-1 flex-col sm:-mx-6">
-      <section className="grid min-h-[unset] items-center gap-4 px-4 pb-10 pt-4 sm:min-h-[590px] sm:gap-7 sm:px-6 sm:pb-14 sm:pt-7 lg:grid-cols-[1fr_0.96fr] lg:px-10">
+      <section className="grid min-h-[unset] items-center gap-4 px-4 pb-10 pt-2 sm:min-h-[590px] sm:gap-7 sm:px-6 sm:pb-14 sm:pt-3 lg:grid-cols-[1fr_0.96fr] lg:px-10">
         <div>
-          <p className="inline-flex rounded-full border border-white/[0.08] px-4 py-2 text-sm font-semibold text-slate-400">
+          <p className="inline-flex max-w-full rounded-full border border-white/[0.08] px-3 py-1.5 text-[11px] font-semibold text-slate-400 sm:px-4 sm:py-2 sm:text-xs lg:whitespace-nowrap">
             {t('heroEyebrow')}
           </p>
-          <h1 className="mt-4 max-w-[640px] text-[44px] font-medium leading-[0.98] tracking-[-0.052em] text-white sm:mt-6 sm:text-[68px] lg:text-[76px]">
+          <h1 className="mt-4 max-w-[640px] text-[42px] font-medium leading-[0.98] tracking-[-0.052em] text-white sm:mt-6 sm:text-[64px] lg:text-[72px]">
             {t('heroTitle')}
           </h1>
           <p className="mt-3 max-w-[650px] text-base font-medium leading-7 text-slate-400 sm:mt-5 sm:text-lg sm:leading-8">{t('heroDescription')}</p>

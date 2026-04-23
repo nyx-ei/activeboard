@@ -8,7 +8,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { AppLocale } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
 
-type Mode = 'sign-in' | 'sign-up';
+type Mode = 'sign-in' | 'sign-up' | 'recover';
 
 type AuthFormProps = {
   initialMode?: Mode;
@@ -54,7 +54,22 @@ export function AuthForm({
   const redirectTo = redirectToOverride ?? searchNext ?? `/${locale}/dashboard`;
   const signUpRedirectTo = signUpRedirectToOverride ?? redirectTo;
   const hasExplicitRedirectTarget = Boolean(redirectToOverride ?? signUpRedirectToOverride ?? searchNext);
-  const [mode, setMode] = useState<Mode>(initialMode ?? (searchParams.get('mode') === 'sign-up' ? 'sign-up' : 'sign-in'));
+  const [mode, setMode] = useState<Mode>(() => {
+    if (initialMode) {
+      return initialMode;
+    }
+
+    const requestedMode = searchParams.get('mode');
+    if (requestedMode === 'sign-up') {
+      return 'sign-up';
+    }
+
+    if (requestedMode === 'recover') {
+      return 'recover';
+    }
+
+    return 'sign-in';
+  });
   const [email, setEmail] = useState(lockedEmail ?? '');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -249,6 +264,47 @@ export function AuthForm({
     window.location.assign(signUpRedirectTo);
   }
 
+  async function handlePasswordRecovery() {
+    setMessage(null);
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      setMessageTone('error');
+      setMessage(t('missingFields'));
+      return;
+    }
+
+    const response = await fetch('/api/auth/password-recovery', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: normalizedEmail,
+        locale,
+      }),
+    });
+
+    const payload = (await response.json().catch(() => null)) as { ok?: boolean; reason?: string } | null;
+
+    if (!response.ok || !payload?.ok) {
+      setMessageTone('error');
+
+      if (payload?.reason === 'missing_email') {
+        setMessage(t('missingFields'));
+      } else if (payload?.reason === 'invalid_email') {
+        setMessage(t('invalidEmail'));
+      } else if (payload?.reason === 'account_not_found') {
+        setMessage(t('accountNotFound'));
+      } else {
+        setMessage(t('unexpectedError'));
+      }
+
+      return;
+    }
+
+    setMessageTone('success');
+    setMessage(t('recoverPasswordSuccess'));
+  }
+
   async function handleGoogle() {
     const nextUrl = mode === 'sign-up' ? signUpRedirectTo : redirectTo;
     const { error } = await supabase.auth.signInWithOAuth({
@@ -282,10 +338,22 @@ export function AuthForm({
       )}
       <div className={cn(variant === 'page' ? 'mt-5 text-center' : 'mt-4 text-left')}>
         <h1 className={cn('font-extrabold tracking-tight text-white', variant === 'page' ? 'text-2xl' : 'text-xl')}>
-          {mode === 'sign-in' ? t('welcomeBack') : requireExamSessionOnSignUp || !deferSignUpToRedirect ? t('createAccountTitle') : t('createGroupTitle')}
+          {mode === 'sign-in'
+            ? t('welcomeBack')
+            : mode === 'recover'
+              ? t('recoverPasswordTitle')
+              : requireExamSessionOnSignUp || !deferSignUpToRedirect
+                ? t('createAccountTitle')
+                : t('createGroupTitle')}
         </h1>
         <p className="mt-2 text-sm font-medium text-slate-400">
-          {mode === 'sign-in' ? t('welcomeBackSubtitle') : requireExamSessionOnSignUp || !deferSignUpToRedirect ? t('createAccountSubtitle') : t('createGroupSubtitle')}
+          {mode === 'sign-in'
+            ? t('welcomeBackSubtitle')
+            : mode === 'recover'
+              ? t('recoverPasswordSubtitle')
+              : requireExamSessionOnSignUp || !deferSignUpToRedirect
+                ? t('createAccountSubtitle')
+                : t('createGroupSubtitle')}
         </p>
       </div>
 
@@ -314,16 +382,31 @@ export function AuthForm({
           />
         </label>
 
-        <label className="block">
-          <span className="mb-2 block text-sm font-bold text-slate-300">{t('password')}</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="field h-10 rounded-[6px] px-3 text-sm"
-          />
-          {mode === 'sign-up' ? <span className="mt-1 block text-xs text-slate-500">{t('passwordHint')}</span> : null}
-        </label>
+        {mode !== 'recover' ? (
+          <label className="block">
+            <span className="mb-2 block text-sm font-bold text-slate-300">{t('password')}</span>
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="field h-10 rounded-[6px] px-3 text-sm"
+            />
+            {mode === 'sign-up' ? <span className="mt-1 block text-xs text-slate-500">{t('passwordHint')}</span> : null}
+          </label>
+        ) : null}
+        
+        {mode === 'sign-in' ? (
+          <button
+            type="button"
+            onClick={() => {
+              setMode('recover');
+              setMessage(null);
+            }}
+            className="-mt-1 ml-auto block text-sm font-semibold text-slate-400 transition hover:text-white"
+          >
+            {t('recoverPassword')}
+          </button>
+        ) : null}
 
         {mode === 'sign-up' && requireExamSessionOnSignUp ? (
           <label className="block">
@@ -360,32 +443,48 @@ export function AuthForm({
       <div className="mt-6 grid gap-3">
         <button
           type="button"
-          onClick={() => startTransition(handlePasswordAuth)}
+          onClick={() => startTransition(mode === 'recover' ? handlePasswordRecovery : handlePasswordAuth)}
           className="button-primary h-16 w-full rounded-[6px] text-base"
           disabled={isPending}
         >
           <PendingInlineLabel
             pending={isPending}
-            label={mode === 'sign-in' ? t('signIn') : t('signUp')}
-            pendingLabel={mode === 'sign-in' ? t('signInPending') : t('signUpPending')}
+            label={mode === 'sign-in' ? t('signIn') : mode === 'recover' ? t('recoverPasswordAction') : t('signUp')}
+            pendingLabel={
+              mode === 'sign-in'
+                ? t('signInPending')
+                : mode === 'recover'
+                  ? t('recoverPasswordPending')
+                  : t('signUpPending')
+            }
           />
         </button>
-        <button
-          type="button"
-          onClick={() => startTransition(handleGoogle)}
-          className="h-12 w-full rounded-[6px] border border-white/10 bg-[#0f1628] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#141d33]"
-          disabled={isPending}
-        >
-          <PendingInlineLabel pending={isPending} label={t('google')} pendingLabel={t('googlePending')} />
-        </button>
+        {mode !== 'recover' ? (
+          <button
+            type="button"
+            onClick={() => startTransition(handleGoogle)}
+            className="h-12 w-full rounded-[6px] border border-white/10 bg-[#0f1628] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#141d33]"
+            disabled={isPending}
+          >
+            <PendingInlineLabel pending={isPending} label={t('google')} pendingLabel={t('googlePending')} />
+          </button>
+        ) : null}
       </div>
 
       <button
         type="button"
-        onClick={() => setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in')}
+        onClick={() => {
+          setMessage(null);
+          if (mode === 'recover') {
+            setMode('sign-in');
+            return;
+          }
+
+          setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in');
+        }}
         className="mx-auto mt-6 block text-sm font-bold text-brand underline-offset-4 transition hover:underline"
       >
-        {mode === 'sign-in' ? t('switchToSignUp') : t('switchToSignIn')}
+        {mode === 'recover' ? t('recoverPasswordBack') : mode === 'sign-in' ? t('switchToSignUp') : t('switchToSignIn')}
       </button>
     </div>
   );

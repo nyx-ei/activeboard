@@ -13,6 +13,7 @@ import { getDashboardPerformanceData, getDashboardSessionsData } from '@/lib/dem
 
 import {
   cancelDashboardSessionAction,
+  createDashboardSessionAction,
   joinSessionByCodeAction,
 } from './actions';
 
@@ -49,6 +50,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   ]);
 
   const canJoinSessions = hasUserTierCapability(accessState, 'canJoinSessions');
+  const canCreateSession = hasUserTierCapability(accessState, 'canCreateSession');
   const trialProgress = {
     current: Math.min(billingSnapshot?.questions_answered ?? 0, TRIAL_QUESTION_LIMIT),
     total: TRIAL_QUESTION_LIMIT,
@@ -80,18 +82,33 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
           <DashboardSessionsView
             locale={locale}
             sessions={sessionsData?.sessions ?? []}
+            groups={(sessionsData?.groups ?? []).map((group) => ({
+              id: group.id,
+              name: group.name,
+              memberCount: group.memberCount,
+            }))}
             trialProgress={trialProgress}
-            weeklyCompletedQuestions={sessionsData?.groupDashboard.weeklyCompletedQuestions ?? 0}
-            weeklyTargetQuestions={sessionsData?.groupDashboard.weeklyTargetQuestions ?? 0}
-            weeklyProgressPercentage={sessionsData?.groupDashboard.weeklyProgressPercentage ?? 0}
             canJoinSessions={canJoinSessions}
+            canCreateSession={canCreateSession}
             cancelSessionAction={cancelDashboardSessionAction}
             joinSessionAction={joinSessionByCodeAction}
+            createSessionAction={createDashboardSessionAction}
             labels={{
-              weeklyProgressTitle: t('weeklyProgressTitle'),
-              prequalification: t('prequalificationBadge'),
-              classGoal: t('classGoal'),
               sessions: t('sessions'),
+              newSession: t('newSession'),
+              createSession: t('createSession'),
+              createSessionPending: t('createSessionPending'),
+              groupName: t('groupName'),
+              sessionName: t('sessionName'),
+              sessionNamePlaceholder: t('sessionNamePlaceholder'),
+              questionCount: t('questionCount'),
+              timerMode: t('timerMode'),
+              perQuestionMode: t('perQuestionMode'),
+              globalMode: t('globalMode'),
+              timerSeconds: t('timerSeconds'),
+              totalTimerSeconds: t('totalTimerSeconds'),
+              modalHint: t('modalHint'),
+              close: t('close'),
               noSessionCta: t('noSessionCta'),
               sessionCodePlaceholder: t('sessionCodePlaceholder'),
               go: t('go'),
@@ -105,9 +122,6 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
               statusCompleted: t('statusCompleted'),
               statusIncomplete: t('statusIncomplete'),
               statusCancelled: t('statusCancelled'),
-              questionCounter: '{completed} / {total}',
-              reliableGroupsGoal: t('reliableGroupsGoal'),
-              minimumMembersWarning: t('minimumMembersWarning'),
               soloSessionProgressHint: t('soloSessionProgressHint'),
               groupAccessHint: t('groupAccessHint'),
               trialProgressTitle: t('trialProgressTitle'),

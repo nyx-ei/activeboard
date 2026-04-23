@@ -1,13 +1,16 @@
 'use client';
 
+import { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
+import { CreateSessionModal } from '@/components/sessions/create-session-modal';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { SessionCard, type SessionCardLabels, type SessionListItem } from '@/components/sessions/session-card';
 
 type DashboardSessionsViewProps = {
   locale: string;
   sessions: SessionListItem[];
+  groups: Array<{ id: string; name: string; memberCount: number }>;
   trialProgress: {
     current: number;
     total: number;
@@ -15,25 +18,32 @@ type DashboardSessionsViewProps = {
     showWarning: boolean;
     isComplete: boolean;
   };
-  weeklyCompletedQuestions: number;
-  weeklyTargetQuestions: number;
-  weeklyProgressPercentage: number;
   canJoinSessions: boolean;
+  canCreateSession: boolean;
   cancelSessionAction: (formData: FormData) => void | Promise<void>;
   joinSessionAction: (formData: FormData) => void | Promise<void>;
+  createSessionAction: (formData: FormData) => void | Promise<void>;
   labels: SessionCardLabels & {
-    weeklyProgressTitle: string;
-    prequalification: string;
-    classGoal: string;
     sessions: string;
+    newSession: string;
+    createSession: string;
+    createSessionPending: string;
+    groupName: string;
+    sessionName: string;
+    sessionNamePlaceholder: string;
+    questionCount: string;
+    timerMode: string;
+    perQuestionMode: string;
+    globalMode: string;
+    timerSeconds: string;
+    totalTimerSeconds: string;
+    modalHint: string;
+    close: string;
     noSessionCta: string;
     sessionCodePlaceholder: string;
     go: string;
     goPending: string;
     upgradeRequiredToJoinSession: string;
-    questionCounter: string;
-    reliableGroupsGoal: string;
-    minimumMembersWarning: string;
     soloSessionProgressHint: string;
     groupAccessHint: string;
     trialProgressTitle: string;
@@ -47,16 +57,17 @@ type DashboardSessionsViewProps = {
 export function DashboardSessionsView({
   locale,
   sessions,
+  groups,
   trialProgress,
-  weeklyCompletedQuestions,
-  weeklyTargetQuestions,
-  weeklyProgressPercentage,
   canJoinSessions,
+  canCreateSession,
   cancelSessionAction,
   joinSessionAction,
+  createSessionAction,
   labels,
 }: DashboardSessionsViewProps) {
-  const progressTotal = weeklyTargetQuestions > 0 ? weeklyTargetQuestions : 100;
+  const [isCreateSessionOpen, setIsCreateSessionOpen] = useState(false);
+  const initialGroupId = groups[0]?.id ?? '';
 
   return (
     <>
@@ -87,29 +98,19 @@ export function DashboardSessionsView({
         </p>
       </section>
 
-      <section className="surface-mockup p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-bold text-slate-300">{labels.weeklyProgressTitle}</p>
-            <p className="mt-2 text-2xl font-extrabold text-white">
-              {weeklyCompletedQuestions}
-              <span className="ml-2 text-sm font-bold text-slate-500">/ {progressTotal}</span>
-            </p>
-          </div>
-          <p className="text-2xl font-extrabold text-brand">{weeklyProgressPercentage}%</p>
+      {groups.length > 0 ? (
+        <div className="w-full">
+          <button
+            type="button"
+            onClick={() => setIsCreateSessionOpen(true)}
+            className="button-primary h-10 w-full rounded-[7px] px-4 text-sm"
+            disabled={!canCreateSession}
+          >
+            <span className="mr-2 text-lg leading-none">+</span>
+            {labels.newSession}
+          </button>
         </div>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/[0.08]">
-          <div className="h-full rounded-full bg-brand" style={{ width: `${weeklyProgressPercentage}%` }} />
-        </div>
-        <div className="mt-3 flex items-center justify-between gap-3 text-xs text-slate-500">
-          <span className="rounded-full border border-white/[0.08] bg-white/[0.05] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-300">
-            {labels.questionCounter
-              .replace('{completed}', String(weeklyCompletedQuestions))
-              .replace('{total}', String(progressTotal))}
-          </span>
-          <span>{labels.reliableGroupsGoal}</span>
-        </div>
-      </section>
+      ) : null}
 
       <div className="flex items-start gap-3 rounded-[7px] border border-white/[0.06] bg-[#121b2e] px-4 py-2.5 text-[11px] font-semibold leading-snug text-slate-500">
         <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" aria-hidden="true" />
@@ -153,6 +154,34 @@ export function DashboardSessionsView({
           </form>
           {!canJoinSessions ? <p className="text-center text-sm text-amber-300">{labels.upgradeRequiredToJoinSession}</p> : null}
         </>
+      ) : null}
+
+      {isCreateSessionOpen && groups.length > 0 ? (
+        <CreateSessionModal
+          locale={locale}
+          groups={groups}
+          initialGroupId={initialGroupId}
+          canCreateSession={canCreateSession}
+          action={createSessionAction}
+          labels={{
+            newSession: labels.newSession,
+            createSession: labels.createSession,
+            createSessionPending: labels.createSessionPending,
+            groupName: labels.groupName,
+            sessionName: labels.sessionName,
+            sessionNamePlaceholder: labels.sessionNamePlaceholder,
+            questionCount: labels.questionCount,
+            timerMode: labels.timerMode,
+            perQuestionMode: labels.perQuestionMode,
+            globalMode: labels.globalMode,
+            timerSeconds: labels.timerSeconds,
+            totalTimerSeconds: labels.totalTimerSeconds,
+            modalHint: labels.modalHint,
+            close: labels.close,
+            groupAccessHint: labels.groupAccessHint,
+          }}
+          onClose={() => setIsCreateSessionOpen(false)}
+        />
       ) : null}
     </>
   );
