@@ -60,7 +60,7 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
         <section className="max-h-[min(78vh,680px)] overflow-y-auto rounded-[15px] border border-white/[0.06] bg-[#11192c] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.55)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex items-center justify-between gap-4">
             <h1 className="text-xl font-extrabold tracking-tight text-white">{section === 'exam' ? t('examSettingsTitle') : t('title')}</h1>
-            <Link href="/dashboard?view=sessions" className="text-2xl leading-none text-slate-400 transition hover:text-white" aria-label={t('close')}>
+            <Link href="/dashboard?view=sessions" prefetch={false} className="text-2xl leading-none text-slate-400 transition hover:text-white" aria-label={t('close')}>
               &times;
             </Link>
           </div>

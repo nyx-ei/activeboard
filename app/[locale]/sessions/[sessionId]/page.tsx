@@ -159,7 +159,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
               {t('startSession')}
             </SubmitButton>
           </form>
-          <Link href={`/groups/${data.group.id}`} className="button-ghost mt-4 px-4 py-2 text-sm text-slate-500">
+          <Link href={`/groups/${data.group.id}`} prefetch={false} className="button-ghost mt-4 px-4 py-2 text-sm text-slate-500">
             {t('quitSession')}
           </Link>
         </section>
@@ -178,7 +178,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
           </div>
           <h1 className="mt-8 text-2xl font-extrabold text-white">{t('allAnswersSubmitted')}</h1>
           <p className="mt-3 text-lg font-medium text-slate-400">{t('questionsCompletedValue', { current: questionGoal, total: questionGoal })}</p>
-          <Link href={`/sessions/${params.sessionId}?stage=review&q=0`} className="button-primary mt-7 rounded-[7px] px-5 py-2.5 text-sm">
+          <Link href={`/sessions/${params.sessionId}?stage=review&q=0`} prefetch={false} className="button-primary mt-7 rounded-[7px] px-5 py-2.5 text-sm">
             {t('goToReview')} <span aria-hidden="true">{'>'}</span>
           </Link>
           <form action={quitIncompleteSessionAction} className="mt-4">
@@ -206,7 +206,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
         <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
         <header className="sticky top-0 z-20 border-b border-white/[0.07] bg-background/95 backdrop-blur">
           <div className="mx-auto flex min-h-16 w-full max-w-[700px] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:h-16 sm:flex-nowrap sm:py-0">
-            <Link href={`/groups/${data.group.id}`} className="text-sm font-bold text-slate-500 hover:text-white">
+            <Link href={`/groups/${data.group.id}`} prefetch={false} className="text-sm font-bold text-slate-500 hover:text-white">
               <span className="inline-flex items-center gap-2">
                 <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                 {data.group.name}
@@ -220,11 +220,11 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
 
         <section className="mx-auto w-full max-w-[700px] space-y-6 px-4 py-7">
           <div className="flex items-center justify-between text-sm font-bold text-slate-500">
-            <Link href={`/sessions/${params.sessionId}?stage=review&q=${Math.max(0, currentIndex - 1)}`} className="hover:text-white">
+            <Link href={`/sessions/${params.sessionId}?stage=review&q=${Math.max(0, currentIndex - 1)}`} prefetch={false} className="hover:text-white">
               {'<'} {t('previous')}
             </Link>
             <h1 className="text-2xl font-extrabold text-white">{t('questionNumber', { number: currentIndex + 1 })}</h1>
-            <Link href={`/sessions/${params.sessionId}?stage=review&q=${Math.min(questionGoal - 1, currentIndex + 1)}`} className="hover:text-white">
+            <Link href={`/sessions/${params.sessionId}?stage=review&q=${Math.min(questionGoal - 1, currentIndex + 1)}`} prefetch={false} className="hover:text-white">
               {t('next')} {'>'}
             </Link>
           </div>
@@ -328,7 +328,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
       />
       <header className="border-b border-white/[0.07]">
         <div className="mx-auto flex min-h-16 w-full max-w-[560px] items-center justify-between gap-3 px-4 py-3 sm:h-16 sm:py-0">
-        <Link href={`/groups/${data.group.id}`} className="text-slate-500 hover:text-white">
+        <Link href={`/groups/${data.group.id}`} prefetch={false} className="text-slate-500 hover:text-white">
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         </Link>
           <div className="text-center">

@@ -106,6 +106,7 @@ export function GroupSwitcherMenu({ groups, userInitials, labels }: GroupSwitche
                     <Link
                       key={group.id}
                       href={`/groups/${group.id}`}
+                      prefetch={false}
                       onClick={() => setOpen(false)}
                       className={cn(
                         'block rounded-[10px] border p-3 transition',

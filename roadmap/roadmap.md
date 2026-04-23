@@ -345,7 +345,7 @@ Tracked as epic **[#98](https://github.com/nyx-ei/activeboard/issues/98)**. Prod
 
 Tracked as epic **[#101](https://github.com/nyx-ei/activeboard/issues/101)**. HAR capture from production shows two independent causes of perceived lag on navigation: heavy dashboard SSR and a broad-but-shallow service worker.
 
-- [#99: Dashboard RSC slowness — 2+ second response on navigation](https://github.com/nyx-ei/activeboard/issues/99) — Implemented (route-specific dashboard loaders are split by Sessions / Performance / Profile needs, profile schedule loading no longer routes through the global dashboard loader, and analytics/session counters are backed by SQL views instead of broad answer/question fetches)
+- [#99: Dashboard RSC slowness — 2+ second response on navigation](https://github.com/nyx-ei/activeboard/issues/99) — Implemented on the optimization side (route-specific dashboard loaders are split by Sessions / Performance / Profile needs, profile schedule loading no longer routes through the global dashboard loader, performance analytics now read from a materialized source instead of per-request recomputation, and heavy-route prefetch is bounded)
 - [#100: Service worker adds overhead to every request without meaningful cache coverage](https://github.com/nyx-ei/activeboard/issues/100) — Implemented (service worker now skips dynamic/RSC/auth/dashboard requests and only cache-firsts static same-origin assets)
 
 ### Signup flow rework (v2)
@@ -464,3 +464,5 @@ Target weekly cadence from the v8 spec:
 - **`NEW`** — v8 work item without a GitHub issue yet; needs fresh issue creation
 - **DEFERRED** — not started and deprioritized; may return later
 - **Needs verification** — may already be implemented but needs audit against v8 spec
+
+

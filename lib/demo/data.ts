@@ -9,9 +9,6 @@ import { confidenceToScore, scoreToConfidenceLevel, type ConfidenceLevel } from 
 import { createPerfTracker } from '@/lib/observability/perf';
 import { getAvailabilitySlotCount, normalizeAvailabilityGrid } from '@/lib/schedule/availability';
 import {
-  DIMENSION_OF_CARE_OPTIONS,
-  ERROR_TYPE_OPTIONS,
-  PHYSICIAN_ACTIVITY_OPTIONS,
   type DimensionOfCare,
   type ErrorType,
   type PhysicianActivity,
@@ -146,6 +143,16 @@ type ProfileAnalyticsData = {
   weeklyTrend: TrendPoint[];
 };
 
+type MaterializedProfileAnalyticsRow = {
+  heatmap_data: unknown;
+  physician_activity_accuracy: unknown;
+  dimension_of_care_accuracy: unknown;
+  blueprint_grid: unknown;
+  confidence_calibration: unknown;
+  error_type_breakdown: unknown;
+  weekly_trend: unknown;
+};
+
 const TRIAL_WARNING_THRESHOLD = 85;
 
 async function getUsersMap(supabase: PublicClient, userIds: string[]) {
@@ -220,41 +227,6 @@ function startOfWeek(date: Date) {
   return next;
 }
 
-function computeHeatmapFromDailyCounts(dailyCounts: { answered_on: string | null; answer_count: number | null }[]): HeatmapDay[] {
-  const countsByDay = new Map<string, number>();
-
-  for (const row of dailyCounts) {
-    if (!row.answered_on) continue;
-    countsByDay.set(row.answered_on, row.answer_count ?? 0);
-  }
-
-  const days: HeatmapDay[] = [];
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-
-  const range = 112;
-  let maxCount = 0;
-
-  for (let offset = range - 1; offset >= 0; offset -= 1) {
-    const current = new Date(today);
-    current.setUTCDate(today.getUTCDate() - offset);
-    const date = toIsoDay(current);
-    const count = countsByDay.get(date) ?? 0;
-    maxCount = Math.max(maxCount, count);
-    days.push({ date, count, intensity: 0 });
-  }
-
-  return days.map((day) => {
-    if (day.count === 0 || maxCount === 0) {
-      return day;
-    }
-
-    const ratio = day.count / maxCount;
-    const intensity = ratio >= 0.75 ? 4 : ratio >= 0.5 ? 3 : ratio >= 0.25 ? 2 : 1;
-    return { ...day, intensity };
-  });
-}
-
 function buildEmptyProfileAnalytics(answeredCount = 0, heatmap: HeatmapDay[] = []): ProfileAnalyticsData {
   return {
     trialProgress: {
@@ -275,176 +247,188 @@ function buildEmptyProfileAnalytics(answeredCount = 0, heatmap: HeatmapDay[] = [
   };
 }
 
-async function getProfileAnalytics(userId: string, answeredCount: number, heatmap: HeatmapDay[]) {
-  const supabase = createSupabaseServerClient();
-  const { data: answers } = await supabase
-    .schema('public')
-    .from('answers')
-    .select('question_id, answered_at, is_correct, confidence')
-    .eq('user_id', userId);
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
-  const safeAnswers = answers ?? [];
-  if (safeAnswers.length === 0) {
-    return buildEmptyProfileAnalytics(answeredCount, heatmap);
+function parseArray<T>(value: unknown, mapper: (item: unknown) => T | null): T[] {
+  if (!Array.isArray(value)) {
+    return [];
   }
 
-  const questionIds = [...new Set(safeAnswers.map((answer) => answer.question_id))];
-  const [{ data: questions }, { data: classifications }, { data: reflections }] = await Promise.all([
-    supabase
-      .schema('public')
-      .from('questions')
-      .select('id, session_id')
-      .in('id', questionIds),
-    supabase
-      .schema('public')
-      .from('question_classifications')
-      .select('question_id, physician_activity, dimension_of_care')
-      .in('question_id', questionIds),
-    supabase
-      .schema('public')
-      .from('personal_reflections')
-      .select('question_id, error_type')
-      .eq('user_id', userId)
-      .in('question_id', questionIds),
-  ]);
+  return value
+    .map((item) => mapper(item))
+    .filter((item): item is T => item !== null);
+}
 
-  const sessionIds = [...new Set((questions ?? []).map((question) => question.session_id))];
-  const { data: sessions } =
-    sessionIds.length > 0
-      ? await supabase.schema('public').from('sessions').select('id, scheduled_at').in('id', sessionIds)
-      : { data: [] as { id: string; scheduled_at: string }[] };
+function readNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
 
-  const questionById = new Map((questions ?? []).map((question) => [question.id, question]));
-  const classificationByQuestionId = new Map((classifications ?? []).map((classification) => [classification.question_id, classification]));
-  const sessionById = new Map((sessions ?? []).map((session) => [session.id, session]));
+function readString(value: unknown): string | null {
+  return typeof value === 'string' ? value : null;
+}
 
-  const physicianActivityTotals = new Map<PhysicianActivity, { total: number; correct: number }>();
-  const dimensionOfCareTotals = new Map<DimensionOfCare, { total: number; correct: number }>();
-  const blueprintTotals = new Map<string, { total: number; correct: number }>();
-  const confidenceTotals = new Map<ConfidenceLevel, { total: number; correct: number }>();
-  const errorTypeTotals = new Map<ErrorType, number>();
-  const weeklyTotals = new Map<string, { total: number; correct: number }>();
+function parseHeatmapDay(value: unknown): HeatmapDay | null {
+  if (!isRecord(value)) return null;
 
-  for (const reflection of reflections ?? []) {
-    if (!reflection.error_type) continue;
-    errorTypeTotals.set(reflection.error_type, (errorTypeTotals.get(reflection.error_type) ?? 0) + 1);
+  const date = readString(value.date);
+  const count = readNumber(value.count);
+  const intensity = readNumber(value.intensity);
+
+  if (!date || count === null || intensity === null || intensity < 0 || intensity > 4) {
+    return null;
   }
-
-  for (const answer of safeAnswers) {
-    const classification = classificationByQuestionId.get(answer.question_id);
-    const isCorrect = Boolean(answer.is_correct);
-
-    if (classification) {
-      const physicianTotals = physicianActivityTotals.get(classification.physician_activity) ?? { total: 0, correct: 0 };
-      physicianTotals.total += 1;
-      physicianTotals.correct += isCorrect ? 1 : 0;
-      physicianActivityTotals.set(classification.physician_activity, physicianTotals);
-
-      const dimensionTotals = dimensionOfCareTotals.get(classification.dimension_of_care) ?? { total: 0, correct: 0 };
-      dimensionTotals.total += 1;
-      dimensionTotals.correct += isCorrect ? 1 : 0;
-      dimensionOfCareTotals.set(classification.dimension_of_care, dimensionTotals);
-
-      const blueprintKey = `${classification.physician_activity}:${classification.dimension_of_care}`;
-      const blueprintCell = blueprintTotals.get(blueprintKey) ?? { total: 0, correct: 0 };
-      blueprintCell.total += 1;
-      blueprintCell.correct += isCorrect ? 1 : 0;
-      blueprintTotals.set(blueprintKey, blueprintCell);
-    }
-
-    if (answer.confidence) {
-      const confidenceTotal = confidenceTotals.get(answer.confidence) ?? { total: 0, correct: 0 };
-      confidenceTotal.total += 1;
-      confidenceTotal.correct += isCorrect ? 1 : 0;
-      confidenceTotals.set(answer.confidence, confidenceTotal);
-    }
-
-    const sessionId = questionById.get(answer.question_id)?.session_id;
-    const scheduledAt = sessionId ? sessionById.get(sessionId)?.scheduled_at : null;
-    const weekSource = scheduledAt ?? answer.answered_at;
-    const weekKey = toIsoDay(startOfWeek(new Date(weekSource)));
-    const weeklyTotal = weeklyTotals.get(weekKey) ?? { total: 0, correct: 0 };
-    weeklyTotal.total += 1;
-    weeklyTotal.correct += isCorrect ? 1 : 0;
-    weeklyTotals.set(weekKey, weeklyTotal);
-  }
-
-  const physicianActivityAccuracy = PHYSICIAN_ACTIVITY_OPTIONS.map((category) => {
-    const totals = physicianActivityTotals.get(category) ?? { total: 0, correct: 0 };
-    return {
-      category,
-      total: totals.total,
-      correct: totals.correct,
-      accuracy: totals.total > 0 ? Math.round((totals.correct / totals.total) * 100) : 0,
-    };
-  });
-
-  const dimensionOfCareAccuracy = DIMENSION_OF_CARE_OPTIONS.map((category) => {
-    const totals = dimensionOfCareTotals.get(category) ?? { total: 0, correct: 0 };
-    return {
-      category,
-      total: totals.total,
-      correct: totals.correct,
-      accuracy: totals.total > 0 ? Math.round((totals.correct / totals.total) * 100) : 0,
-    };
-  });
-
-  const blueprintGrid = PHYSICIAN_ACTIVITY_OPTIONS.flatMap((physicianActivity) =>
-    DIMENSION_OF_CARE_OPTIONS.map((dimensionOfCare) => {
-      const totals = blueprintTotals.get(`${physicianActivity}:${dimensionOfCare}`) ?? { total: 0, correct: 0 };
-      return {
-        physicianActivity,
-        dimensionOfCare,
-        total: totals.total,
-        correct: totals.correct,
-        accuracy: totals.total > 0 ? Math.round((totals.correct / totals.total) * 100) : null,
-      };
-    }),
-  );
-
-  const confidenceCalibration = (['low', 'medium', 'high'] as ConfidenceLevel[]).map((confidence) => {
-    const totals = confidenceTotals.get(confidence) ?? { total: 0, correct: 0 };
-    return {
-      confidence,
-      total: totals.total,
-      correct: totals.correct,
-      accuracy: totals.total > 0 ? Math.round((totals.correct / totals.total) * 100) : 0,
-    };
-  });
-
-  const errorTypeBreakdown = ERROR_TYPE_OPTIONS.map((errorType) => ({
-    errorType,
-    count: errorTypeTotals.get(errorType) ?? 0,
-  }))
-    .filter((item) => item.count > 0)
-    .sort((left, right) => right.count - left.count);
-
-  const weeklyTrend = [...weeklyTotals.entries()]
-    .sort(([left], [right]) => left.localeCompare(right))
-    .slice(-8)
-    .map(([label, totals]) => ({
-      label,
-      total: totals.total,
-      accuracy: totals.total > 0 ? Math.round((totals.correct / totals.total) * 100) : null,
-    }));
 
   return {
-    trialProgress: {
-      current: Math.min(answeredCount, TRIAL_QUESTION_LIMIT),
-      total: TRIAL_QUESTION_LIMIT,
-      remaining: Math.max(TRIAL_QUESTION_LIMIT - answeredCount, 0),
-      warningThreshold: TRIAL_WARNING_THRESHOLD,
-      showWarning: answeredCount >= TRIAL_WARNING_THRESHOLD && answeredCount < TRIAL_QUESTION_LIMIT,
-      isComplete: answeredCount >= TRIAL_QUESTION_LIMIT,
-    },
-    heatmap,
-    physicianActivityAccuracy,
-    dimensionOfCareAccuracy,
-    blueprintGrid,
-    confidenceCalibration,
-    errorTypeBreakdown,
-    weeklyTrend,
-  } satisfies ProfileAnalyticsData;
+    date,
+    count,
+    intensity: intensity as HeatmapDay['intensity'],
+  };
+}
+
+function parseCategoryAccuracyItem<TCategory extends string>(
+  value: unknown,
+  key: 'category',
+): CategoryAccuracyItem<TCategory> | null {
+  if (!isRecord(value)) return null;
+
+  const category = readString(value[key]);
+  const total = readNumber(value.total);
+  const correct = readNumber(value.correct);
+  const accuracy = readNumber(value.accuracy);
+
+  if (!category || total === null || correct === null || accuracy === null) {
+    return null;
+  }
+
+  return {
+    category: category as TCategory,
+    total,
+    correct,
+    accuracy,
+  };
+}
+
+function parseBlueprintGridCell(value: unknown): BlueprintGridCell | null {
+  if (!isRecord(value)) return null;
+
+  const physicianActivity = readString(value.physicianActivity);
+  const dimensionOfCare = readString(value.dimensionOfCare);
+  const total = readNumber(value.total);
+  const correct = readNumber(value.correct);
+  const accuracyValue = value.accuracy;
+  const accuracy = accuracyValue === null ? null : readNumber(accuracyValue);
+
+  if (!physicianActivity || !dimensionOfCare || total === null || correct === null || accuracy === undefined) {
+    return null;
+  }
+
+  return {
+    physicianActivity: physicianActivity as PhysicianActivity,
+    dimensionOfCare: dimensionOfCare as DimensionOfCare,
+    total,
+    correct,
+    accuracy,
+  };
+}
+
+function parseConfidenceCalibrationItem(value: unknown): ConfidenceCalibrationItem | null {
+  if (!isRecord(value)) return null;
+
+  const confidence = readString(value.confidence);
+  const total = readNumber(value.total);
+  const correct = readNumber(value.correct);
+  const accuracy = readNumber(value.accuracy);
+
+  if (!confidence || total === null || correct === null || accuracy === null) {
+    return null;
+  }
+
+  return {
+    confidence: confidence as ConfidenceLevel,
+    total,
+    correct,
+    accuracy,
+  };
+}
+
+function parseErrorTypeBreakdownItem(value: unknown): ErrorTypeBreakdownItem | null {
+  if (!isRecord(value)) return null;
+
+  const errorType = readString(value.errorType);
+  const count = readNumber(value.count);
+
+  if (!errorType || count === null) {
+    return null;
+  }
+
+  return {
+    errorType: errorType as ErrorType,
+    count,
+  };
+}
+
+function parseTrendPoint(value: unknown): TrendPoint | null {
+  if (!isRecord(value)) return null;
+
+  const label = readString(value.label);
+  const total = readNumber(value.total);
+  const accuracyValue = value.accuracy;
+  const accuracy = accuracyValue === null ? null : readNumber(accuracyValue);
+
+  if (!label || total === null || accuracy === undefined) {
+    return null;
+  }
+
+  return {
+    label,
+    total,
+    accuracy,
+  };
+}
+
+function buildTrialProgress(answeredCount: number): TrialProgressData {
+  return {
+    current: Math.min(answeredCount, TRIAL_QUESTION_LIMIT),
+    total: TRIAL_QUESTION_LIMIT,
+    remaining: Math.max(TRIAL_QUESTION_LIMIT - answeredCount, 0),
+    warningThreshold: TRIAL_WARNING_THRESHOLD,
+    showWarning: answeredCount >= TRIAL_WARNING_THRESHOLD && answeredCount < TRIAL_QUESTION_LIMIT,
+    isComplete: answeredCount >= TRIAL_QUESTION_LIMIT,
+  };
+}
+
+function parseMaterializedProfileAnalytics(
+  row: {
+    heatmap_data: unknown;
+    physician_activity_accuracy: unknown;
+    dimension_of_care_accuracy: unknown;
+    blueprint_grid: unknown;
+    confidence_calibration: unknown;
+    error_type_breakdown: unknown;
+    weekly_trend: unknown;
+  } | null,
+  answeredCount: number,
+): ProfileAnalyticsData {
+  if (!row) {
+    return buildEmptyProfileAnalytics(answeredCount, []);
+  }
+
+  return {
+    trialProgress: buildTrialProgress(answeredCount),
+    heatmap: parseArray(row.heatmap_data, parseHeatmapDay),
+    physicianActivityAccuracy: parseArray(row.physician_activity_accuracy, (item) =>
+      parseCategoryAccuracyItem<PhysicianActivity>(item, 'category'),
+    ),
+    dimensionOfCareAccuracy: parseArray(row.dimension_of_care_accuracy, (item) =>
+      parseCategoryAccuracyItem<DimensionOfCare>(item, 'category'),
+    ),
+    blueprintGrid: parseArray(row.blueprint_grid, parseBlueprintGridCell),
+    confidenceCalibration: parseArray(row.confidence_calibration, parseConfidenceCalibrationItem),
+    errorTypeBreakdown: parseArray(row.error_type_breakdown, parseErrorTypeBreakdownItem),
+    weeklyTrend: parseArray(row.weekly_trend, parseTrendPoint),
+  };
 }
 
 async function getUserSchedule(userId: string) {
@@ -672,8 +656,19 @@ export const getDashboardSessionsData = cache(async (user: User, activeGroupId?:
   perf.step('dashboard_core_loaded');
 
   const sessionIds = core.sessions.map((session) => session.id);
-  const { questionCountBySession, answeredQuestionCountBySession } = await getDashboardSessionCounts(user.id, sessionIds);
+  const primaryGroup =
+    (activeGroupId ? core.groups.find((group) => group.id === activeGroupId) : null) ??
+    core.groups.find((group) => group.is_founder) ??
+    core.groups[0] ??
+    null;
+
+  const [sessionCounts, groupDashboard] = await Promise.all([
+    getDashboardSessionCounts(user.id, sessionIds),
+    getPrimaryGroupDashboard(primaryGroup, core.sessions),
+  ]);
+  const { questionCountBySession, answeredQuestionCountBySession } = sessionCounts;
   perf.step('session_rollups_loaded');
+  perf.step('group_dashboard_loaded');
 
   const enrichedSessions = core.sessions.map((session) => ({
     ...session,
@@ -681,15 +676,6 @@ export const getDashboardSessionsData = cache(async (user: User, activeGroupId?:
     answeredQuestionCount: answeredQuestionCountBySession.get(session.id) ?? 0,
     questionCount: questionCountBySession.get(session.id) ?? 0,
   }));
-
-  const primaryGroup =
-    (activeGroupId ? core.groups.find((group) => group.id === activeGroupId) : null) ??
-    core.groups.find((group) => group.is_founder) ??
-    core.groups[0] ??
-    null;
-
-  const groupDashboard = await getPrimaryGroupDashboard(primaryGroup, core.sessions);
-  perf.step('group_dashboard_loaded');
 
   const dedupedSessions = dedupeDashboardSessions(enrichedSessions.filter((session) => session.status !== 'cancelled'));
   const nextSession = enrichedSessions.find((session) => session.status !== 'completed' && session.status !== 'cancelled') ?? null;
@@ -711,23 +697,39 @@ export const getDashboardSessionsData = cache(async (user: User, activeGroupId?:
 export const getDashboardPerformanceData = cache(async (userId: string) => {
   const perf = createPerfTracker(`getDashboardPerformanceData:${userId}`);
   const supabase = createSupabaseServerClient();
-  const completedSessionsCount = await getCompletedSessionsCount(userId);
-  perf.step('completed_sessions_loaded');
+  const completedSessionsCountPromise = getCompletedSessionsCount(userId);
+  const metricsPromise = supabase
+    .schema('public')
+    .from('dashboard_user_answer_metrics')
+    .select('answered_count, correct_count, incorrect_count, average_confidence_score')
+    .eq('user_id', userId)
+    .maybeSingle();
+  const profileAnalyticsPromise = supabase
+    .schema('public')
+    .from('dashboard_user_profile_analytics')
+    .select(
+      [
+        'heatmap_data',
+        'physician_activity_accuracy',
+        'dimension_of_care_accuracy',
+        'blueprint_grid',
+        'confidence_calibration',
+        'error_type_breakdown',
+        'weekly_trend',
+      ].join(', '),
+    )
+    .eq('user_id', userId)
+    .maybeSingle();
 
-  const [{ data: metricsRow }, { data: dailyCounts }] = await Promise.all([
-    supabase
-      .schema('public')
-      .from('dashboard_user_answer_metrics')
-      .select('answered_count, correct_count, incorrect_count, average_confidence_score')
-      .eq('user_id', userId)
-      .maybeSingle(),
-    supabase
-      .schema('public')
-      .from('dashboard_user_answer_daily_counts')
-      .select('answered_on, answer_count')
-      .eq('user_id', userId),
+  const [completedSessionsCount, metricsResult, profileAnalyticsResult] = await Promise.all([
+    completedSessionsCountPromise,
+    metricsPromise,
+    profileAnalyticsPromise,
   ]);
   perf.step('analytics_views_loaded');
+
+  const metricsRow = metricsResult.data;
+  const profileAnalyticsRow = profileAnalyticsResult.data as MaterializedProfileAnalyticsRow | null;
 
   const answeredCount = metricsRow?.answered_count ?? 0;
   const correctCount = metricsRow?.correct_count ?? 0;
@@ -737,8 +739,7 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
       ? scoreToConfidenceLevel(metricsRow.average_confidence_score)
       : null;
 
-  const heatmap = computeHeatmapFromDailyCounts(dailyCounts ?? []);
-  const profileAnalytics = await getProfileAnalytics(userId, answeredCount, heatmap);
+  const profileAnalytics = parseMaterializedProfileAnalytics(profileAnalyticsRow, answeredCount);
   perf.done({
     answeredCount,
     completedSessionsCount,
