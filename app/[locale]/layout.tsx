@@ -2,9 +2,9 @@ import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
+import { Lock } from 'lucide-react';
 
 import { AppBottomNav } from '@/components/layout/app-bottom-nav';
-import { GroupSwitcherMenu } from '@/components/layout/group-switcher-menu';
 import { HomeHeaderNav } from '@/components/layout/home-header-nav';
 import { LanguageSwitcher } from '@/components/layout/language-switcher';
 import { ProfileMenu } from '@/components/layout/profile-menu';
@@ -71,70 +71,6 @@ export default async function LocaleLayout({
         const liveGroupCount = (candidateGroups ?? []).filter(
           (group) => !groupIds.includes(group.id) && (candidateCounts.get(group.id) ?? 0) < (group.max_members ?? 5),
         ).length;
-        if (groupIds.length === 0) return { groups: [], isCaptain: false, liveGroupCount, canBrowseLookupLayer };
-        const { data: groups } = await supabase
-          .schema('public')
-          .from('groups')
-          .select('id, name')
-          .in('id', groupIds)
-          .order('created_at', { ascending: false });
-        const { data: schedules } = await supabase
-          .schema('public')
-          .from('group_weekly_schedules')
-          .select('group_id, weekday, start_time, end_time, question_goal')
-          .in('group_id', groupIds)
-          .order('weekday', { ascending: true });
-        const { data: membershipsWithUsers } = await supabaseAdmin
-          .schema('public')
-          .from('group_members')
-          .select('group_id, user_id')
-          .in('group_id', groupIds);
-        const memberIds = [...new Set((membershipsWithUsers ?? []).map((membership) => membership.user_id))];
-        const { data: memberProfiles } =
-          memberIds.length > 0
-            ? await supabaseAdmin
-                .schema('public')
-                .from('users')
-                .select('id, display_name, email, avatar_url')
-                .in('id', memberIds)
-            : { data: [] };
-        const scheduleByGroup = new Map<string, { scheduleLabel: string; weeklyQuestions: number }>();
-        const memberProfileById = new Map((memberProfiles ?? []).map((profile) => [profile.id, profile]));
-        const membersPreviewByGroup = new Map<
-          string,
-          Array<{ id: string; initials: string; avatarUrl: string | null }>
-        >();
-        for (const groupId of groupIds) {
-          const groupSchedules = (schedules ?? []).filter((schedule) => schedule.group_id === groupId);
-          const weeklyQuestions = groupSchedules.reduce((sum, schedule) => sum + (schedule.question_goal ?? 0), 0);
-          const firstSchedule = groupSchedules[0];
-          scheduleByGroup.set(groupId, {
-            scheduleLabel: firstSchedule
-              ? `${firstSchedule.start_time?.slice(0, 5) ?? '--:--'} - ${firstSchedule.end_time?.slice(0, 5) ?? '--:--'}`
-              : '',
-            weeklyQuestions,
-          });
-
-          const memberPreview = (membershipsWithUsers ?? [])
-            .filter((membership) => membership.group_id === groupId)
-            .slice(0, 4)
-            .map((membership) => {
-              const profile = memberProfileById.get(membership.user_id);
-              const displayLabel = profile?.display_name ?? profile?.email ?? 'AB';
-              return {
-                id: membership.user_id,
-                initials: displayLabel
-                  .split(' ')
-                  .filter(Boolean)
-                  .map((part) => part[0])
-                  .join('')
-                  .slice(0, 2)
-                  .toUpperCase(),
-                avatarUrl: profile?.avatar_url ?? null,
-              };
-            });
-          membersPreviewByGroup.set(groupId, memberPreview);
-        }
         const { data: captainSession } = await supabase
           .schema('public')
           .from('sessions')
@@ -144,22 +80,12 @@ export default async function LocaleLayout({
           .limit(1)
           .maybeSingle();
         return {
-          groups: (groups ?? []).map((group) => {
-            const scheduleMeta = scheduleByGroup.get(group.id);
-            return {
-              ...group,
-              language: locale.toUpperCase(),
-              scheduleLabel: scheduleMeta?.scheduleLabel ?? '',
-              weeklyQuestions: scheduleMeta?.weeklyQuestions ?? 0,
-              membersPreview: membersPreviewByGroup.get(group.id) ?? [],
-            };
-          }),
           isCaptain: Boolean(captainSession),
           liveGroupCount,
           canBrowseLookupLayer,
         };
       })()
-    : { groups: [], isCaptain: false, liveGroupCount: 0, canBrowseLookupLayer: false };
+    : { isCaptain: false, liveGroupCount: 0, canBrowseLookupLayer: false };
   const displayName = user?.user_metadata.full_name ?? user?.email ?? 'ActiveBoard';
   const initials =
     displayName
@@ -175,54 +101,25 @@ export default async function LocaleLayout({
       <div className="min-h-screen overflow-x-hidden px-2 pb-24 pt-2 sm:px-6 sm:pt-4">
         <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-[1240px] flex-col gap-4 sm:gap-5">
           <OfflineStatusBanner />
-          <header className="border-b border-[#1f2937]/80 pb-3 pt-1">
-            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 sm:flex-nowrap sm:gap-4">
-            <div className="flex min-w-0 flex-1 items-center gap-2">
+          <header className="border-b border-[#1f2937]/80 pb-2 pt-1">
+            <div className="flex min-w-0 items-start justify-between gap-3 sm:items-center sm:gap-4">
+            <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
               <Link href="/" className="flex min-w-0 shrink-0 items-center gap-2">
                 <div className="flex h-7 w-7 items-center justify-center rounded-[5px] bg-brand text-xs font-extrabold text-white">
                   AB
                 </div>
                 <p className="truncate text-base font-extrabold tracking-tight text-white sm:text-lg">{t('appName')}</p>
               </Link>
+              {!user ? (
+                <div className="hidden min-w-0 flex-1 items-center justify-end sm:flex">
+                  <HomeHeaderNav />
+                </div>
+              ) : null}
             </div>
 
-            <div className="flex min-w-0 w-full items-center justify-between gap-2 sm:w-auto sm:shrink-0 sm:justify-end sm:gap-3">
+            <div className="flex min-w-0 shrink-0 items-center justify-end gap-2 sm:gap-3">
               {user ? (
                 <>
-                  <Suspense
-                    fallback={null}
-                  >
-                    <GroupSwitcherMenu
-                      groups={shellData.groups}
-                      liveGroupCount={shellData.liveGroupCount}
-                      liveHref={shellData.canBrowseLookupLayer ? '/groups?live=1' : '/billing'}
-                      userInitials={initials}
-                      labels={{
-                        myGroups: dashboardT('myGroups'),
-                        active: dashboardT('activeGroup'),
-                        selectHint: dashboardT('selectGroupHint'),
-                        noSchedule: dashboardT('noSchedule'),
-                        averageWeekly: dashboardT('averageWeeklyShort'),
-                      }}
-                    />
-                  </Suspense>
-                  <ProfileMenu
-                    initials={initials}
-                    name={displayName}
-                    email={user.email ?? ''}
-                    isCaptain={shellData.isCaptain}
-                    locale={locale}
-                    profileHref="/profile"
-                    profileLabel={profileT('menuLabel')}
-                    examHref="/profile?section=exam"
-                    examLabel={profileT('examSettingsMenuLabel')}
-                    billingHref="/billing"
-                    billingLabel={billingT('menuLabel')}
-                    languageLabel={locale === 'fr' ? t('english') : t('french')}
-                  />
-                </>
-              ) : (
-                <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end sm:gap-3">
                   <Suspense
                     fallback={
                       <div className="inline-flex items-center gap-2 rounded-full border border-border bg-white/[0.04] px-4 py-2 text-sm text-slate-400">
@@ -232,11 +129,47 @@ export default async function LocaleLayout({
                   >
                     <LanguageSwitcher />
                   </Suspense>
-                  <HomeHeaderNav />
+                  <Link
+                    href={shellData.canBrowseLookupLayer ? '/groups?live=1' : '/billing'}
+                    className="inline-flex h-10 items-center gap-1.5 rounded-[8px] bg-amber-500/10 px-3 text-xs font-extrabold text-amber-400 ring-1 ring-amber-500/10 transition hover:bg-amber-500/15"
+                    aria-label={`${dashboardT('joinLiveGroups')} ${shellData.liveGroupCount}`}
+                  >
+                    <Lock className="h-3.5 w-3.5" aria-hidden="true" strokeWidth={1.8} />
+                    {shellData.liveGroupCount}
+                  </Link>
+                  <ProfileMenu
+                    initials={initials}
+                    name={displayName}
+                    email={user.email ?? ''}
+                    isCaptain={shellData.isCaptain}
+                    profileHref="/profile"
+                    profileLabel={profileT('menuLabel')}
+                    examHref="/profile?section=exam"
+                    examLabel={profileT('examSettingsMenuLabel')}
+                    billingHref="/billing"
+                    billingLabel={billingT('menuLabel')}
+                  />
+                </>
+              ) : (
+                <div className="flex shrink-0 items-center gap-3">
+                  <Suspense
+                    fallback={
+                      <div className="inline-flex items-center gap-2 rounded-full border border-border bg-white/[0.04] px-4 py-2 text-sm text-slate-400">
+                        {t('language')}
+                      </div>
+                    }
+                  >
+                    <LanguageSwitcher />
+                  </Suspense>
                 </div>
               )}
             </div>
             </div>
+            {!user ? (
+              <div className="mt-2.5 sm:hidden">
+                <HomeHeaderNav />
+              </div>
+            ) : null}
           </header>
           {children}
         </div>

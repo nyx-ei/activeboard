@@ -137,7 +137,7 @@ export function DashboardSessionsView({
 
       {sessions.length > 0 ? (
         <>
-          <form action={joinSessionAction} className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+          <form action={joinSessionAction} className="flex items-center gap-2 sm:justify-center">
             <input type="hidden" name="locale" value={locale} />
             <input
               name="sessionCode"
@@ -145,9 +145,9 @@ export function DashboardSessionsView({
               placeholder={labels.sessionCodePlaceholder}
               autoCapitalize="characters"
               autoComplete="off"
-              className="field h-10 w-full rounded-[7px] px-4 py-2 text-center text-xs uppercase tracking-[0.18em] sm:h-9 sm:max-w-[210px]"
+              className="field h-10 min-w-0 flex-1 rounded-[7px] px-4 py-2 text-center text-xs uppercase tracking-[0.18em] sm:h-9 sm:max-w-[210px] sm:flex-none"
             />
-            <SubmitButton pendingLabel={labels.goPending} className="button-primary h-10 rounded-[7px] px-4 py-2 text-xs sm:h-9" disabled={!canJoinSessions}>
+            <SubmitButton pendingLabel={labels.goPending} className="button-primary h-10 w-[96px] shrink-0 rounded-[7px] px-4 py-2 text-xs sm:h-9 sm:w-auto" disabled={!canJoinSessions}>
               {labels.go}
             </SubmitButton>
           </form>

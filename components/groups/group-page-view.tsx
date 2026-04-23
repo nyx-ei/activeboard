@@ -9,6 +9,7 @@ import { GroupEditModal } from '@/components/dashboard/group-edit-modal';
 import { GroupScheduleModal } from '@/components/dashboard/group-schedule-modal';
 import { InviteMemberForm } from '@/components/dashboard/group-settings-forms';
 import { LiveGroupsModal } from '@/components/dashboard/live-groups-modal';
+import { GroupSwitcherMenu } from '@/components/layout/group-switcher-menu';
 import { CalendarIcon, UsersIcon } from '@/components/ui/dashboard-icons';
 import type { AppLocale } from '@/i18n/routing';
 
@@ -29,6 +30,7 @@ type MemberPerformance = {
   completionRate: number;
   averageWeeklyQuestions: number;
   totalAnswers: number;
+  status: 'setup' | 'active';
 };
 
 type LiveGroup = {
@@ -47,6 +49,20 @@ type LiveGroup = {
 
 type GroupPageViewProps = {
   locale: AppLocale;
+  shellGroups: Array<{
+    id: string;
+    name: string;
+    language: string;
+    memberCount: number;
+    scheduleLabel: string;
+    weeklyQuestions: number;
+    membersPreview: Array<{
+      id: string;
+      initials: string;
+      avatarUrl: string | null;
+    }>;
+  }>;
+  currentUserInitials: string;
   canBrowseLookupLayer: boolean;
   initialLiveOpen: boolean;
   primaryGroup: {
@@ -68,6 +84,10 @@ type GroupPageViewProps = {
   canCreateSession: boolean;
   liveGroups: LiveGroup[];
   labels: {
+    myGroups: string;
+    activeGroup: string;
+    selectGroupHint: string;
+    noSchedule: string;
     newSession: string;
     createSession: string;
     createSessionPending: string;
@@ -138,6 +158,7 @@ type GroupPageViewProps = {
     memberCompletion: string;
     memberTotal: string;
     captainLabel: string;
+    memberStatusSetup: string;
     memberStatusActive: string;
     groupViewEmpty: string;
     groupAccessHint: string;
@@ -164,6 +185,8 @@ function formatMeridiemTime(value: string) {
 
 export function GroupPageView({
   locale,
+  shellGroups,
+  currentUserInitials,
   canBrowseLookupLayer,
   initialLiveOpen,
   primaryGroup,
@@ -186,6 +209,20 @@ export function GroupPageView({
 
   return (
     <>
+      {shellGroups.length > 0 ? (
+        <GroupSwitcherMenu
+          groups={shellGroups}
+          userInitials={currentUserInitials}
+          labels={{
+            myGroups: labels.myGroups,
+            active: labels.activeGroup,
+            selectHint: labels.selectGroupHint,
+            noSchedule: labels.noSchedule,
+            averageWeekly: labels.averageWeeklyShort,
+          }}
+        />
+      ) : null}
+
       {canBrowseLookupLayer ? (
         <LiveGroupsModal
           locale={locale}
@@ -218,7 +255,7 @@ export function GroupPageView({
       ) : null}
 
       <section className="surface-mockup p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="truncate text-sm font-bold text-white">{primaryGroup?.name ?? labels.unknownGroup}</p>
             <p className="mt-1 break-words text-xs leading-5 text-slate-500">{groupInfoSummary}</p>
@@ -302,13 +339,13 @@ export function GroupPageView({
       </section>
 
       <section className="surface-mockup p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <CalendarIcon />
             <p className="text-sm font-bold text-white">{labels.scheduleAndGoalTitle}</p>
           </div>
           {isPrimaryGroupFounder && primaryGroup ? (
-            <div className="flex items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1">
               <GroupScheduleModal
                 addAction={actions.addWeeklyScheduleAction}
                 updateAction={actions.updateWeeklySchedulesAction}
@@ -407,7 +444,12 @@ export function GroupPageView({
                       ) : null}
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-white">{member.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-sm font-bold text-white">{member.name}</p>
+                        {member.userId === currentCaptainId ? (
+                          <span className="text-[11px] font-semibold text-amber-300">{labels.captainLabel}</span>
+                        ) : null}
+                      </div>
                       <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
                         <span className="rounded-full bg-white/[0.05] px-2 py-1">{labels.memberAverageWeekly.replace('{value}', String(member.averageWeeklyQuestions))}</span>
                         <span className="rounded-full bg-white/[0.05] px-2 py-1">{labels.memberCompletion.replace('{value}', String(member.completionRate))}</span>
@@ -416,7 +458,7 @@ export function GroupPageView({
                     </div>
                   </div>
                     <span className="rounded-full border border-brand/25 bg-brand/10 px-3 py-1 text-[10px] font-bold text-brand">
-                      {member.userId === currentCaptainId ? labels.captainLabel : labels.memberStatusActive}
+                      {member.status === 'setup' ? labels.memberStatusSetup : labels.memberStatusActive}
                     </span>
                   </div>
                 </div>
@@ -431,15 +473,19 @@ export function GroupPageView({
       {isCreateSessionOpen && primaryGroup ? (
         <CreateSessionModal
           locale={locale}
-          groupId={primaryGroup.id}
-          memberCount={primaryGroup.memberCount}
+          groups={shellGroups.map((group) => ({
+            id: group.id,
+            name: group.name,
+            memberCount: group.memberCount,
+          }))}
+          initialGroupId={primaryGroup.id}
           canCreateSession={canCreateSession}
           action={actions.createSessionAction}
-          returnTo={groupPath}
           labels={{
             newSession: labels.newSession,
             createSession: labels.createSession,
             createSessionPending: labels.createSessionPending,
+            groupName: labels.groupName,
             sessionName: labels.sessionName,
             sessionNamePlaceholder: labels.sessionNamePlaceholder,
             questionCount: labels.questionCount,

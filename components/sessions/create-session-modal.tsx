@@ -9,6 +9,7 @@ export type CreateSessionModalLabels = {
   newSession: string;
   createSession: string;
   createSessionPending: string;
+  groupName: string;
   sessionName: string;
   sessionNamePlaceholder: string;
   questionCount: string;
@@ -24,24 +25,23 @@ export type CreateSessionModalLabels = {
 
 export function CreateSessionModal({
   locale,
-  groupId,
-  memberCount,
+  groups,
+  initialGroupId,
   canCreateSession,
   action,
-  returnTo,
   labels,
   onClose,
 }: {
   locale: string;
-  groupId: string;
-  memberCount: number;
+  groups: Array<{ id: string; name: string; memberCount: number }>;
+  initialGroupId: string;
   canCreateSession: boolean;
   action: (formData: FormData) => void | Promise<void>;
-  returnTo: string;
   labels: CreateSessionModalLabels;
   onClose: () => void;
 }) {
   const [name, setName] = useState('');
+  const [selectedGroupId, setSelectedGroupId] = useState(initialGroupId);
   const [questionGoal, setQuestionGoal] = useState('10');
   const [timerMode, setTimerMode] = useState<'per_question' | 'global'>('per_question');
   const [timerSeconds, setTimerSeconds] = useState('90');
@@ -59,8 +59,13 @@ export function CreateSessionModal({
     setTimerSeconds(value === 'global' ? '600' : '90');
   };
 
+  const selectedGroup = groups.find((group) => group.id === selectedGroupId) ?? groups[0] ?? null;
+  const memberCount = selectedGroup?.memberCount ?? 0;
+  const returnTo = selectedGroup ? `/${locale}/groups/${selectedGroup.id}` : `/${locale}/groups`;
+
   const isValid =
     canCreateSession &&
+    Boolean(selectedGroupId) &&
     memberCount >= 2 &&
     name.trim().length > 0 &&
     Number(questionGoal) > 0 &&
@@ -78,8 +83,23 @@ export function CreateSessionModal({
 
         <form action={action} className="mt-5 space-y-4">
           <input type="hidden" name="locale" value={locale} />
-          <input type="hidden" name="groupId" value={groupId} />
           <input type="hidden" name="returnTo" value={returnTo} />
+
+          <label className="block">
+            <span className="text-sm font-bold text-slate-300">{labels.groupName}</span>
+            <select
+              name="groupId"
+              value={selectedGroupId}
+              onChange={(event) => setSelectedGroupId(event.target.value)}
+              className="field mt-2 h-10 rounded-[7px] px-3 py-2 text-sm"
+            >
+              {groups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.name}
+                </option>
+              ))}
+            </select>
+          </label>
 
           <label className="block">
             <span className="text-sm font-bold text-slate-300">{labels.sessionName}</span>

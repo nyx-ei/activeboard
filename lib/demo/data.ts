@@ -949,14 +949,20 @@ export const getGroupData = cache(async (groupId: string, user: User) => {
       completionRate: totalTrackableQuestions > 0 ? Math.round(((answerStats?.questionIds.size ?? 0) / totalTrackableQuestions) * 100) : 0,
       averageWeeklyQuestions: Math.round(totalAnswers / Math.max(1, activeWeekKeys.size)),
       totalAnswers,
-      status: (answerStats?.sessionIds.size ?? 0) === 0 && (answerStats?.questionIds.size ?? 0) === 0 ? 'setup' : 'active',
+      status: ((answerStats?.sessionIds.size ?? 0) === 0 && (answerStats?.questionIds.size ?? 0) === 0 ? 'setup' : 'active') as
+        | 'setup'
+        | 'active',
     };
   });
 
-  const currentCaptainId =
+  const founderCaptainId =
+    safeMembers.find((member) => member.is_founder)?.user_id ??
+    null;
+  const sessionLeaderId =
     safeSessions.find((session) => session.status === 'active')?.leader_id ??
     safeSessions.find((session) => session.status === 'scheduled')?.leader_id ??
     null;
+  const currentCaptainId = founderCaptainId ?? sessionLeaderId ?? null;
 
   perf.done({
     members: safeMembers.length,

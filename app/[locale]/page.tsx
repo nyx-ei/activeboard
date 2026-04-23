@@ -58,16 +58,16 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
 
   return (
     <main className="-mx-3 flex flex-1 flex-col sm:-mx-6">
-      <section className="grid min-h-[unset] items-center gap-6 px-4 pb-10 pt-6 sm:min-h-[660px] sm:gap-10 sm:px-6 sm:pb-16 sm:pt-14 lg:grid-cols-[1fr_0.96fr] lg:px-10">
+      <section className="grid min-h-[unset] items-center gap-4 px-4 pb-10 pt-4 sm:min-h-[590px] sm:gap-7 sm:px-6 sm:pb-14 sm:pt-7 lg:grid-cols-[1fr_0.96fr] lg:px-10">
         <div>
           <p className="inline-flex rounded-full border border-white/[0.08] px-4 py-2 text-sm font-semibold text-slate-400">
             {t('heroEyebrow')}
           </p>
-          <h1 className="mt-6 max-w-[640px] text-[44px] font-medium leading-[0.98] tracking-[-0.052em] text-white sm:mt-8 sm:text-[68px] lg:text-[76px]">
+          <h1 className="mt-4 max-w-[640px] text-[44px] font-medium leading-[0.98] tracking-[-0.052em] text-white sm:mt-6 sm:text-[68px] lg:text-[76px]">
             {t('heroTitle')}
           </h1>
-          <p className="mt-5 max-w-[650px] text-base font-medium leading-7 text-slate-400 sm:mt-7 sm:text-lg sm:leading-8">{t('heroDescription')}</p>
-          <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2.5 text-base font-semibold text-slate-300 sm:mt-8 sm:gap-x-7 sm:gap-y-3">
+          <p className="mt-3 max-w-[650px] text-base font-medium leading-7 text-slate-400 sm:mt-5 sm:text-lg sm:leading-8">{t('heroDescription')}</p>
+          <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2.5 text-base font-semibold text-slate-300 sm:mt-6 sm:gap-x-7 sm:gap-y-3">
             {[t('heroProof1'), t('heroProof2'), t('heroProof3')].map((proof) => (
               <span key={proof} className="inline-flex items-center gap-2">
                 <Check className="h-4 w-4 text-brand" aria-hidden="true" />
@@ -75,7 +75,7 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
               </span>
             ))}
           </div>
-          <LandingSignupModal locale={locale} closeLabel={t('close')} className="mt-6 inline-flex rounded-[7px] bg-brand px-5 py-4 text-base font-bold text-white shadow-[0_20px_50px_rgba(16,185,129,0.22)] transition hover:bg-brand-strong sm:mt-8">
+          <LandingSignupModal locale={locale} closeLabel={t('close')} className="mt-4 inline-flex rounded-[7px] bg-brand px-5 py-4 text-base font-bold text-white shadow-[0_20px_50px_rgba(16,185,129,0.22)] transition hover:bg-brand-strong sm:mt-6">
             {t('primaryCta')}
           </LandingSignupModal>
           <p className="mt-3 text-sm font-medium text-slate-500 sm:mt-4">{t('noCreditCard')}</p>

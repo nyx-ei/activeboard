@@ -83,7 +83,7 @@ select optgroup {
   }
 
   .field-compact {
-    @apply h-12 rounded-[16px] border border-border bg-white/[0.06] px-4 text-[15px] font-medium text-white outline-none transition placeholder:text-slate-500 focus:border-brand focus:ring-2 focus:ring-emerald-400/20;
+    @apply h-12 w-full min-w-0 rounded-[16px] border border-border bg-white/[0.06] px-4 text-[15px] font-medium text-white outline-none transition placeholder:text-slate-500 focus:border-brand focus:ring-2 focus:ring-emerald-400/20;
   }
 
   .button-primary {

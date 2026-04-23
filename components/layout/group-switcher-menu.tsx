@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Lock, Users, X } from 'lucide-react';
+import { ChevronDown, Users, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 
@@ -23,8 +23,6 @@ type ShellGroup = {
 
 type GroupSwitcherMenuProps = {
   groups: ShellGroup[];
-  liveGroupCount: number;
-  liveHref: string;
   userInitials: string;
   labels: {
     myGroups: string;
@@ -37,14 +35,12 @@ type GroupSwitcherMenuProps = {
 
 const MEMBER_AVATAR_COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#ef4444', '#f59e0b'];
 
-export function GroupSwitcherMenu({ groups, liveGroupCount, liveHref, userInitials, labels }: GroupSwitcherMenuProps) {
+export function GroupSwitcherMenu({ groups, userInitials, labels }: GroupSwitcherMenuProps) {
   const [open, setOpen] = useState(false);
   const [failedAvatarIds, setFailedAvatarIds] = useState<string[]>([]);
   const pathname = usePathname();
   const pathGroupId = pathname.match(/\/groups\/([^/?#]+)/)?.[1] ?? null;
   const selectedGroup = useMemo(() => groups.find((group) => group.id === pathGroupId) ?? null, [groups, pathGroupId]);
-  const resolvedLiveHref =
-    liveHref === '/groups?live=1' && selectedGroup ? `/groups/${selectedGroup.id}?live=1` : liveHref;
   const failedAvatarSet = useMemo(() => new Set(failedAvatarIds), [failedAvatarIds]);
 
   useEffect(() => {
@@ -62,59 +58,22 @@ export function GroupSwitcherMenu({ groups, liveGroupCount, liveHref, userInitia
 
   return (
     <>
-      <div className="hidden items-center gap-2 sm:flex">
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="flex h-10 min-w-0 max-w-[290px] items-center gap-3 rounded-[10px] border border-white/[0.08] bg-[#11192c] px-3 text-left shadow-[inset_0_0_0_1px_rgba(255,255,255,0.015)] transition hover:border-white/15 hover:bg-[#131d32]"
-          aria-haspopup="dialog"
-          aria-expanded={open}
-        >
-          <span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#176b55] bg-[#053b32] text-[10px] font-extrabold text-[#22e39c]">
-            {userInitials}
-            <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-[#11192c] bg-brand" />
-          </span>
-          <span className="min-w-0 flex-1 truncate text-sm font-extrabold text-white">
-            {selectedGroup?.name ?? labels.myGroups}
-          </span>
-          <ChevronDown className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" strokeWidth={1.8} />
-        </button>
-        <Link
-          href={resolvedLiveHref}
-          className="inline-flex h-10 items-center gap-1.5 rounded-[8px] bg-amber-500/10 px-3 text-xs font-extrabold text-amber-400 ring-1 ring-amber-500/10 transition hover:bg-amber-500/15"
-          aria-label={`${liveGroupCount}`}
-        >
-          <Lock className="h-3.5 w-3.5" aria-hidden="true" strokeWidth={1.8} />
-          {liveGroupCount}
-        </Link>
-      </div>
-
-      <div className="flex min-w-0 flex-1 items-center gap-2 sm:hidden">
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-[10px] border border-white/[0.08] bg-[#11192c] px-3 text-left shadow-[inset_0_0_0_1px_rgba(255,255,255,0.015)] transition hover:border-white/15 hover:bg-[#131d32]"
-          aria-haspopup="dialog"
-          aria-expanded={open}
-        >
-          <span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#176b55] bg-[#053b32] text-[10px] font-extrabold text-[#22e39c]">
-            {userInitials}
-            <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-[#11192c] bg-brand" />
-          </span>
-          <span className="min-w-0 flex-1 truncate text-sm font-extrabold text-white">
-            {selectedGroup?.name ?? labels.myGroups}
-          </span>
-          <ChevronDown className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" strokeWidth={1.8} />
-        </button>
-        <Link
-          href={resolvedLiveHref}
-          className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-[8px] bg-amber-500/10 px-3 text-xs font-extrabold text-amber-400 ring-1 ring-amber-500/10 transition hover:bg-amber-500/15"
-          aria-label={`${liveGroupCount}`}
-        >
-          <Lock className="h-3.5 w-3.5" aria-hidden="true" strokeWidth={1.8} />
-          {liveGroupCount}
-        </Link>
-      </div>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="flex h-10 min-w-0 w-full items-center gap-3 rounded-[10px] border border-white/[0.08] bg-[#11192c] px-3 text-left shadow-[inset_0_0_0_1px_rgba(255,255,255,0.015)] transition hover:border-white/15 hover:bg-[#131d32]"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+      >
+        <span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#176b55] bg-[#053b32] text-[10px] font-extrabold text-[#22e39c]">
+          {userInitials}
+          <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-[#11192c] bg-brand" />
+        </span>
+        <span className="min-w-0 flex-1 truncate text-sm font-extrabold text-white">
+          {selectedGroup?.name ?? labels.myGroups}
+        </span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" strokeWidth={1.8} />
+      </button>
 
       {open ? (
         <ModalPortal>
