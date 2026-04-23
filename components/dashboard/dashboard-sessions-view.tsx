@@ -99,11 +99,11 @@ export function DashboardSessionsView({
       </section>
 
       {groups.length > 0 ? (
-        <div className="flex items-center justify-end">
+        <div className="w-full">
           <button
             type="button"
             onClick={() => setIsCreateSessionOpen(true)}
-            className="button-primary h-10 shrink-0 rounded-[7px] px-4 text-sm"
+            className="button-primary h-10 w-full rounded-[7px] px-4 text-sm"
             disabled={!canCreateSession}
           >
             <span className="mr-2 text-lg leading-none">+</span>
