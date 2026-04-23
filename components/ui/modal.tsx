@@ -13,6 +13,7 @@ type ModalProps = {
   contentClassName?: string;
   mobileSheet?: boolean;
   closeOnBackdrop?: boolean;
+  backdropLabel?: string;
   labelledBy?: string;
   describedBy?: string;
   initialFocusRef?: React.RefObject<HTMLElement>;
@@ -41,6 +42,7 @@ export function Modal({
   contentClassName,
   mobileSheet = true,
   closeOnBackdrop = true,
+  backdropLabel = 'Close',
   labelledBy,
   describedBy,
   initialFocusRef,
@@ -132,7 +134,7 @@ export function Modal({
         <button
           type="button"
           className="absolute inset-0 cursor-default"
-          aria-label="Close"
+          aria-label={backdropLabel}
           onClick={closeOnBackdrop ? onClose : undefined}
         />
         <section
