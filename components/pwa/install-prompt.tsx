@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { AppLocale } from '@/i18n/routing';
 import { APP_EVENTS } from '@/lib/logging/events';
@@ -11,23 +11,75 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 };
 
+const DISMISS_KEY = 'activeboard:pwa-install-dismissed-at';
+const SESSION_HIDE_KEY = 'activeboard:pwa-install-hidden-session';
+const SESSION_SHOWN_KEY = 'activeboard:pwa-install-shown-session';
+const DISMISS_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+const PROMPT_DELAY_MS = 12_000;
+
+function isStandaloneDisplayMode() {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const standaloneMatch = window.matchMedia?.('(display-mode: standalone)').matches ?? false;
+  const iosStandalone = 'standalone' in window.navigator && Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone);
+  return standaloneMatch || iosStandalone;
+}
+
 export function InstallPrompt({ locale }: { locale: AppLocale }) {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [dismissed, setDismissed] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const promptTimerRef = useRef<number | null>(null);
+  const hasLoggedShownRef = useRef(false);
+
+  const shouldSuppressPrompt = useMemo(() => {
+    if (typeof window === 'undefined' || isStandaloneDisplayMode()) {
+      return true;
+    }
+
+    if (window.sessionStorage.getItem(SESSION_HIDE_KEY) === '1') {
+      return true;
+    }
+
+    const dismissedAt = Number(window.localStorage.getItem(DISMISS_KEY) ?? 0);
+    return Number.isFinite(dismissedAt) && dismissedAt > 0 && Date.now() - dismissedAt < DISMISS_COOLDOWN_MS;
+  }, []);
+
+  useEffect(() => {
+    if (!deferredPrompt || shouldSuppressPrompt) {
+      setIsVisible(false);
+      return undefined;
+    }
+
+    if (window.sessionStorage.getItem(SESSION_SHOWN_KEY) === '1') {
+      setIsVisible(true);
+      return undefined;
+    }
+
+    promptTimerRef.current = window.setTimeout(() => {
+      window.sessionStorage.setItem(SESSION_SHOWN_KEY, '1');
+      setIsVisible(true);
+    }, PROMPT_DELAY_MS);
+
+    return () => {
+      if (promptTimerRef.current) {
+        window.clearTimeout(promptTimerRef.current);
+        promptTimerRef.current = null;
+      }
+    };
+  }, [deferredPrompt, shouldSuppressPrompt]);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
       setDeferredPrompt(event as BeforeInstallPromptEvent);
-      setDismissed(false);
-      void postClientAppEvent(APP_EVENTS.pwaInstallPromptShown, locale, {
-        display_mode: window.matchMedia?.('(display-mode: standalone)').matches ? 'standalone' : 'browser',
-      });
     };
 
     const handleInstalled = () => {
       setDeferredPrompt(null);
-      setDismissed(true);
+      setIsVisible(false);
+      window.sessionStorage.setItem(SESSION_HIDE_KEY, '1');
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -39,7 +91,18 @@ export function InstallPrompt({ locale }: { locale: AppLocale }) {
     };
   }, [locale]);
 
-  if (!deferredPrompt || dismissed) {
+  useEffect(() => {
+    if (!isVisible || hasLoggedShownRef.current) {
+      return;
+    }
+
+    hasLoggedShownRef.current = true;
+    void postClientAppEvent(APP_EVENTS.pwaInstallPromptShown, locale, {
+      display_mode: isStandaloneDisplayMode() ? 'standalone' : 'browser',
+    });
+  }, [isVisible, locale]);
+
+  if (!deferredPrompt || !isVisible) {
     return null;
   }
 
@@ -53,7 +116,11 @@ export function InstallPrompt({ locale }: { locale: AppLocale }) {
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
-            onClick={() => setDismissed(true)}
+            onClick={() => {
+              window.localStorage.setItem(DISMISS_KEY, String(Date.now()));
+              window.sessionStorage.setItem(SESSION_HIDE_KEY, '1');
+              setIsVisible(false);
+            }}
             className="rounded-[8px] px-3 py-2 text-xs font-bold text-slate-400 transition hover:text-white"
           >
             Later
@@ -68,6 +135,8 @@ export function InstallPrompt({ locale }: { locale: AppLocale }) {
                   platform: choice.platform,
                 });
               }
+              window.sessionStorage.setItem(SESSION_HIDE_KEY, '1');
+              setIsVisible(false);
               setDeferredPrompt(null);
             }}
             className="button-primary h-9 rounded-[8px] px-4 text-xs font-extrabold"
