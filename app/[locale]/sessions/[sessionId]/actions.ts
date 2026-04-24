@@ -33,6 +33,10 @@ function isCustomAnswerLetter(value: string) {
   return /^[A-Z]$/.test(value) && !ANSWER_OPTIONS.includes(value as (typeof ANSWER_OPTIONS)[number]);
 }
 
+function runDeferredTasks(tasks: Array<Promise<unknown>>) {
+  void Promise.allSettled(tasks);
+}
+
 async function getCurrentAuthUser() {
   const supabase = createSupabaseServerClient();
   const {
@@ -227,7 +231,7 @@ export async function submitSessionStepAction(formData: FormData) {
     { onConflict: 'question_id,user_id' },
   );
 
-  await Promise.allSettled([
+  runDeferredTasks([
     logAppEvent({
       eventName: APP_EVENTS.answerSubmitted,
       locale,
@@ -371,18 +375,20 @@ export async function saveReviewAnswerAction(formData: FormData) {
     ),
   );
 
-  await logAppEvent({
-    eventName: APP_EVENTS.answerRevealed,
-    locale,
-    userId: user.id,
-    groupId: session.group_id,
-    sessionId,
-    metadata: {
-      question_id: questionId,
-      correct_option: correctOption,
-      source: 'review_flow',
-    },
-  });
+  runDeferredTasks([
+    logAppEvent({
+      eventName: APP_EVENTS.answerRevealed,
+      locale,
+      userId: user.id,
+      groupId: session.group_id,
+      sessionId,
+      metadata: {
+        question_id: questionId,
+        correct_option: correctOption,
+        source: 'review_flow',
+      },
+    }),
+  ]);
 
   const targetQuestionIndex =
     advanceAfterSave && Number.isInteger(nextQuestionIndex)
@@ -786,18 +792,20 @@ export async function revealAnswerAction(formData: FormData) {
     ),
   );
 
-  await logAppEvent({
-    eventName: APP_EVENTS.answerRevealed,
-    locale,
-    userId: user.id,
-    groupId: safeSession.group_id,
-    sessionId,
-    metadata: {
-      question_id: questionId,
-      correct_option: correctOption,
-      answer_count: answers?.length ?? 0,
-    },
-  });
+  runDeferredTasks([
+    logAppEvent({
+      eventName: APP_EVENTS.answerRevealed,
+      locale,
+      userId: user.id,
+      groupId: safeSession.group_id,
+      sessionId,
+      metadata: {
+        question_id: questionId,
+        correct_option: correctOption,
+        answer_count: answers?.length ?? 0,
+      },
+    }),
+  ]);
 
   revalidatePath(`/${locale}/sessions/${sessionId}`);
   redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'success', t('answerRevealed')));
