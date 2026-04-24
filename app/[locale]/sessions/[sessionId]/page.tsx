@@ -9,7 +9,6 @@ import { SubmitButton } from '@/components/ui/submit-button';
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
-import { getTrialProgressSnapshot, getUserBillingSnapshot } from '@/lib/billing/user-tier';
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
 import { getSessionPageData } from '@/lib/demo/data';
 import { ANSWER_OPTIONS } from '@/lib/types/demo';
@@ -60,48 +59,6 @@ function getDistribution(answers: Array<{ selected_option: string | null; confid
   const submitted = answers.length;
   distribution.set('?', Math.max(distribution.get('?') ?? 0, Math.max(0, memberCount - submitted)));
   return distribution;
-}
-
-function TrialProgressPanel({
-  current,
-  total,
-  remaining,
-  showWarning,
-  isComplete,
-  labels,
-}: {
-  current: number;
-  total: number;
-  remaining: number;
-  showWarning: boolean;
-  isComplete: boolean;
-  labels: {
-    title: string;
-    summary: string;
-    description: string;
-    warning: string;
-    complete: string;
-  };
-}) {
-  const progressPercentage = Math.min(100, Math.round((current / Math.max(1, total)) * 100));
-
-  return (
-    <section className="mx-auto mb-4 w-full max-w-[560px] rounded-[12px] border border-white/[0.06] bg-[#11192c] px-4 py-4">
-      <div className="flex items-start justify-between gap-4">
-        <p className="text-sm font-bold text-white">{labels.title}</p>
-        <p className="text-sm font-extrabold text-white">
-          {current} / {total}
-        </p>
-      </div>
-      <p className="mt-2 text-sm text-slate-400">{labels.summary.replace('{current}', String(current)).replace('{total}', String(total))}</p>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.08]">
-        <div className="h-full rounded-full bg-brand" style={{ width: `${progressPercentage}%` }} />
-      </div>
-      <p className={`mt-3 text-sm ${isComplete || showWarning ? 'font-bold text-amber-300' : 'text-slate-500'}`}>
-        {isComplete ? labels.complete : showWarning ? labels.warning.replace('{remaining}', String(remaining)) : labels.description.replace('{remaining}', String(remaining))}
-      </p>
-    </section>
-  );
 }
 
 export default async function SessionPage({ params, searchParams }: SessionPageProps) {
@@ -326,9 +283,6 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
     );
   }
 
-  const dashboardT = await getTranslations('Dashboard');
-  const billingSnapshot = await getUserBillingSnapshot(user.id);
-  const trialProgress = getTrialProgressSnapshot(billingSnapshot?.questions_answered ?? 0);
   const myAnswer = data.currentQuestionAnswers.find((answer) => answer.user_id === user.id) ?? null;
   const questionAnswers = data.currentQuestionAnswers;
   const isQuestionExpired =
@@ -339,20 +293,6 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
     <main className="flex flex-1 flex-col">
       <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} />
       <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
-      <TrialProgressPanel
-        current={trialProgress.current}
-        total={trialProgress.total}
-        remaining={trialProgress.remaining}
-        showWarning={trialProgress.showWarning}
-        isComplete={trialProgress.isComplete}
-        labels={{
-          title: dashboardT('trialProgressTitle'),
-          summary: dashboardT('trialProgressSummary', { current: '{current}', total: '{total}' }),
-          description: dashboardT('trialProgressDescription', { remaining: '{remaining}' }),
-          warning: dashboardT('trialProgressWarning', { remaining: '{remaining}' }),
-          complete: dashboardT('trialProgressComplete'),
-        }}
-      />
       <header className="border-b border-white/[0.07]">
         <div className="mx-auto flex min-h-16 w-full max-w-[560px] items-center justify-between gap-3 px-4 py-3 sm:h-16 sm:py-0">
           <Link href={`/groups/${data.group.id}`} prefetch={false} className="text-slate-500 hover:text-white">
