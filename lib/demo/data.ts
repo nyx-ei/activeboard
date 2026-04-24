@@ -587,97 +587,16 @@ async function getDashboardSessionCounts(userId: string, sessionIds: string[]) {
   };
 }
 
-async function getPrimaryGroupDashboard(primaryGroup: DashboardGroup | null, sessions: DashboardSession[]) {
-  if (!primaryGroup) {
-    return {
-      group: null,
-      schedules: [],
-      weeklyProgressPercentage: 0,
-      weeklyCompletedQuestions: 0,
-      weeklyTargetQuestions: 0,
-      memberPerformance: [],
-    } satisfies GroupDashboardData;
-  }
-
-  const supabase = createSupabaseServerClient();
-  const primaryGroupSessions = sessions.filter((session) => session.group_id === primaryGroup.id);
-  const currentWeekStart = new Date();
-  const currentDay = currentWeekStart.getDay();
-  const offsetToMonday = currentDay === 0 ? 6 : currentDay - 1;
-  currentWeekStart.setDate(currentWeekStart.getDate() - offsetToMonday);
-  currentWeekStart.setHours(0, 0, 0, 0);
-
-  const weeklySessions = primaryGroupSessions.filter((session) => {
-    if (session.status === 'cancelled') return false;
-    return new Date(session.scheduled_at).getTime() >= currentWeekStart.getTime();
-  });
-
-  const weeklySessionIds = weeklySessions.map((session) => session.id);
-  const [{ data: schedules }, { data: weeklyQuestions }] = await Promise.all([
-    supabase
-      .schema('public')
-      .from('group_weekly_schedules')
-      .select('id, weekday, start_time, end_time, question_goal')
-      .eq('group_id', primaryGroup.id)
-      .order('weekday', { ascending: true })
-      .order('start_time', { ascending: true }),
-    weeklySessionIds.length > 0
-      ? supabase.schema('public').from('questions').select('id, session_id').in('session_id', weeklySessionIds)
-      : Promise.resolve({ data: [] as { id: string; session_id: string }[] }),
-  ]);
-
-  const safeWeeklyQuestions = weeklyQuestions ?? [];
-  const weeklyQuestionIds = safeWeeklyQuestions.map((question) => question.id);
-  const { data: weeklyAnswers } =
-    weeklyQuestionIds.length > 0
-      ? await supabase
-          .schema('public')
-          .from('answers')
-          .select('question_id')
-          .in('question_id', weeklyQuestionIds)
-      : { data: [] as { question_id: string }[] };
-
-  const weeklyTargetQuestions = (schedules ?? []).reduce((sum, schedule) => sum + schedule.question_goal, 0);
-  const qualifyingGroupSize = primaryGroup.memberCount >= 2 && primaryGroup.memberCount <= 5;
-  const questionAnswerCounts = new Map<string, number>();
-  for (const answer of weeklyAnswers ?? []) {
-    questionAnswerCounts.set(answer.question_id, (questionAnswerCounts.get(answer.question_id) ?? 0) + 1);
-  }
-
-  const weeklyCompletedQuestions = qualifyingGroupSize
-    ? safeWeeklyQuestions.filter((question) => (questionAnswerCounts.get(question.id) ?? 0) >= primaryGroup.memberCount).length
-    : 0;
-
-  return {
-    group: primaryGroup,
-    schedules: sortWeeklySchedules(schedules ?? []),
-    weeklyProgressPercentage:
-      weeklyTargetQuestions > 0 ? Math.min(100, Math.round((weeklyCompletedQuestions / weeklyTargetQuestions) * 100)) : 0,
-    weeklyCompletedQuestions,
-    weeklyTargetQuestions,
-    memberPerformance: [],
-  } satisfies GroupDashboardData;
-}
-
 export const getDashboardSessionsData = cache(async (user: User, activeGroupId?: string | null) => {
   const perf = createPerfTracker(`getDashboardSessionsData:${user.id}`);
   const core = await getDashboardCore(user.id);
   perf.step('dashboard_core_loaded');
 
   const sessionIds = core.sessions.map((session) => session.id);
-  const primaryGroup =
-    (activeGroupId ? core.groups.find((group) => group.id === activeGroupId) : null) ??
-    core.groups.find((group) => group.is_founder) ??
-    core.groups[0] ??
-    null;
-
-  const [sessionCounts, groupDashboard] = await Promise.all([
-    getDashboardSessionCounts(user.id, sessionIds),
-    getPrimaryGroupDashboard(primaryGroup, core.sessions),
-  ]);
+  void activeGroupId;
+  const sessionCounts = await getDashboardSessionCounts(user.id, sessionIds);
   const { questionCountBySession, answeredQuestionCountBySession } = sessionCounts;
   perf.step('session_rollups_loaded');
-  perf.step('group_dashboard_loaded');
 
   const enrichedSessions = core.sessions.map((session) => ({
     ...session,
@@ -699,7 +618,14 @@ export const getDashboardSessionsData = cache(async (user: User, activeGroupId?:
     sessions: dedupedSessions,
     activeSessions: core.activeSessions,
     nextSession,
-    groupDashboard,
+    groupDashboard: {
+      group: null,
+      schedules: [],
+      weeklyProgressPercentage: 0,
+      weeklyCompletedQuestions: 0,
+      weeklyTargetQuestions: 0,
+      memberPerformance: [],
+    } satisfies GroupDashboardData,
   };
 });
 
@@ -959,51 +885,6 @@ export const getGroupCoreData = cache(async (groupId: string, user: User) => {
   const safeMembers = members ?? [];
   const safeSessions = sessions ?? [];
   const safeWeeklySchedules = sortWeeklySchedules(weeklySchedules ?? []);
-  const sessionIds = safeSessions.map((session) => session.id);
-  const currentWeekStart = new Date();
-  const currentDay = currentWeekStart.getDay();
-  const offsetToMonday = currentDay === 0 ? 6 : currentDay - 1;
-  currentWeekStart.setDate(currentWeekStart.getDate() - offsetToMonday);
-  currentWeekStart.setHours(0, 0, 0, 0);
-
-  const weeklySessions = safeSessions.filter((session) => {
-    if (session.status === 'cancelled') return false;
-    return new Date(session.scheduled_at).getTime() >= currentWeekStart.getTime();
-  });
-  const weeklySessionIds = new Set(weeklySessions.map((session) => session.id));
-
-  const { data: groupQuestions } =
-    sessionIds.length > 0
-      ? await supabase.schema('public').from('questions').select('id, session_id').in('session_id', sessionIds)
-      : { data: [] as { id: string; session_id: string }[] };
-  const weeklyQuestionIds = new Set(
-    (groupQuestions ?? [])
-      .filter((question) => weeklySessionIds.has(question.session_id))
-      .map((question) => question.id),
-  );
-
-  const { data: weeklyAnswers } =
-    weeklyQuestionIds.size > 0
-      ? await supabase
-          .schema('public')
-          .from('answers')
-          .select('question_id')
-          .in('question_id', [...weeklyQuestionIds])
-      : { data: [] as { question_id: string }[] };
-
-  const questionAnswerCounts = new Map<string, number>();
-  for (const answer of weeklyAnswers ?? []) {
-    questionAnswerCounts.set(answer.question_id, (questionAnswerCounts.get(answer.question_id) ?? 0) + 1);
-  }
-
-  const weeklyTargetQuestions = safeWeeklySchedules.reduce((sum, schedule) => sum + schedule.question_goal, 0);
-  const qualifyingGroupSize = safeMembers.length >= 2 && safeMembers.length <= 5;
-  const weeklyCompletedQuestions = qualifyingGroupSize
-    ? (groupQuestions ?? []).filter(
-        (question) => weeklyQuestionIds.has(question.id) && (questionAnswerCounts.get(question.id) ?? 0) >= safeMembers.length,
-      ).length
-    : 0;
-
   const founderCaptainId = safeMembers.find((member) => member.is_founder)?.user_id ?? null;
   const sessionLeaderId =
     safeSessions.find((session) => session.status === 'active')?.leader_id ??
@@ -1027,10 +908,6 @@ export const getGroupCoreData = cache(async (groupId: string, user: User) => {
     membership,
     sessions: safeSessions,
     weeklySchedules: safeWeeklySchedules,
-    weeklyCompletedQuestions,
-    weeklyTargetQuestions,
-    weeklyProgressPercentage:
-      weeklyTargetQuestions > 0 ? Math.min(100, Math.round((weeklyCompletedQuestions / weeklyTargetQuestions) * 100)) : 0,
     currentCaptainId: founderCaptainId ?? sessionLeaderId ?? null,
   };
 });

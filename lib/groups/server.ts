@@ -165,6 +165,82 @@ export async function getGroupMemberPerformance(groupId: string, fallbackEmail =
   });
 }
 
+export async function getGroupWeeklyProgress(groupId: string) {
+  const supabase = createSupabaseServerClient();
+  const [{ data: members }, { data: sessions }, { data: schedules }] = await Promise.all([
+    supabase.schema('public').from('group_members').select('user_id').eq('group_id', groupId),
+    supabase
+      .schema('public')
+      .from('sessions')
+      .select('id, scheduled_at, status')
+      .eq('group_id', groupId),
+    supabase
+      .schema('public')
+      .from('group_weekly_schedules')
+      .select('question_goal')
+      .eq('group_id', groupId),
+  ]);
+
+  const safeMembers = members ?? [];
+  const safeSessions = sessions ?? [];
+  const weeklyTargetQuestions = (schedules ?? []).reduce((sum, schedule) => sum + (schedule.question_goal ?? 0), 0);
+  const qualifyingGroupSize = safeMembers.length >= 2 && safeMembers.length <= 5;
+
+  if (!qualifyingGroupSize || safeSessions.length === 0) {
+    return {
+      weeklyCompletedQuestions: 0,
+      weeklyTargetQuestions,
+    };
+  }
+
+  const currentWeekStart = new Date();
+  const currentDay = currentWeekStart.getDay();
+  const offsetToMonday = currentDay === 0 ? 6 : currentDay - 1;
+  currentWeekStart.setDate(currentWeekStart.getDate() - offsetToMonday);
+  currentWeekStart.setHours(0, 0, 0, 0);
+
+  const weeklySessionIds = safeSessions
+    .filter((session) => session.status !== 'cancelled' && new Date(session.scheduled_at).getTime() >= currentWeekStart.getTime())
+    .map((session) => session.id);
+
+  if (weeklySessionIds.length === 0) {
+    return {
+      weeklyCompletedQuestions: 0,
+      weeklyTargetQuestions,
+    };
+  }
+
+  const { data: questions } = await supabase
+    .schema('public')
+    .from('questions')
+    .select('id')
+    .in('session_id', weeklySessionIds);
+
+  const questionIds = (questions ?? []).map((question) => question.id);
+  if (questionIds.length === 0) {
+    return {
+      weeklyCompletedQuestions: 0,
+      weeklyTargetQuestions,
+    };
+  }
+
+  const { data: answers } = await supabase
+    .schema('public')
+    .from('answers')
+    .select('question_id')
+    .in('question_id', questionIds);
+
+  const questionAnswerCounts = new Map<string, number>();
+  for (const answer of answers ?? []) {
+    questionAnswerCounts.set(answer.question_id, (questionAnswerCounts.get(answer.question_id) ?? 0) + 1);
+  }
+
+  return {
+    weeklyCompletedQuestions: questionIds.filter((questionId) => (questionAnswerCounts.get(questionId) ?? 0) >= safeMembers.length).length,
+    weeklyTargetQuestions,
+  };
+}
+
 export async function getLiveGroupsForUser(userId: string, locale: string) {
   const supabase = createSupabaseServerClient();
   const supabaseAdmin = createSupabaseAdminClient();

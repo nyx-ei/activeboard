@@ -103,8 +103,7 @@ export default async function GroupRoutePage({
           isPrimaryGroupFounder={Boolean(data.membership.is_founder)}
           currentCaptainId={currentCaptainId}
           schedules={data.weeklySchedules}
-          weeklyCompletedQuestions={data.weeklyCompletedQuestions}
-          weeklyTargetQuestions={data.weeklyTargetQuestions}
+          initialWeeklyProgress={null}
           memberPerformance={[]}
           weekdayLabels={weekdayLabels}
           groupInfoSummary={groupInfoSummary}
