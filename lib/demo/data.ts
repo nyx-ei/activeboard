@@ -171,6 +171,12 @@ type MaterializedSessionConfidenceBreakdownRow = {
   high_count: number | null;
 };
 
+type GroupMemberStatsRow = {
+  group_id: string | null;
+  member_count: number | null;
+  founder_user_id: string | null;
+};
+
 const TRIAL_WARNING_THRESHOLD = 85;
 
 async function getUsersMap(supabase: PublicClient, userIds: string[]) {
@@ -484,19 +490,30 @@ async function getDashboardCore(userId: string) {
     };
   }
 
-  const [groups, memberCounts, sessions] = await Promise.all([
+  const memberStatsPromise = (supabase as unknown as {
+    schema: (schemaName: string) => {
+      from: (relation: string) => {
+        select: (columns: string) => {
+          in: (column: string, values: string[]) => Promise<{
+            data: GroupMemberStatsRow[] | null;
+          }>;
+        };
+      };
+    };
+  })
+    .schema('public')
+    .from('group_member_stats')
+    .select('group_id, member_count')
+    .in('group_id', groupIds);
+
+  const [groups, memberStatsRows, sessions] = await Promise.all([
     supabase
       .schema('public')
       .from('groups')
       .select('id, name, invite_code, created_by, created_at, meeting_link, max_members')
       .in('id', groupIds)
       .then((result) => result.data ?? []),
-    supabase
-      .schema('public')
-      .from('group_members')
-      .select('group_id')
-      .in('group_id', groupIds)
-      .then((result) => result.data ?? []),
+    memberStatsPromise.then((result) => result.data ?? []),
     supabase
       .schema('public')
       .from('sessions')
@@ -508,8 +525,12 @@ async function getDashboardCore(userId: string) {
 
   const groupsById = new Map(groups.map((group) => [group.id, group]));
   const countsByGroup = new Map<string, number>();
-  for (const item of memberCounts) {
-    countsByGroup.set(item.group_id, (countsByGroup.get(item.group_id) ?? 0) + 1);
+  for (const item of memberStatsRows) {
+    if (!item.group_id) {
+      continue;
+    }
+
+    countsByGroup.set(item.group_id, item.member_count ?? 0);
   }
 
   const upcomingByGroup = new Map(
@@ -804,14 +825,33 @@ export const getGroupCoreData = cache(async (groupId: string, user: User) => {
     return null;
   }
 
-  const [{ data: group }, { data: members }, { data: sessions }, { data: weeklySchedules }] = await Promise.all([
+  const memberStatsPromise = (supabase as unknown as {
+    schema: (schemaName: string) => {
+      from: (relation: string) => {
+        select: (columns: string) => {
+          eq: (column: string, value: string) => {
+            maybeSingle: () => Promise<{
+              data: GroupMemberStatsRow | null;
+            }>;
+          };
+        };
+      };
+    };
+  })
+    .schema('public')
+    .from('group_member_stats')
+    .select('group_id, member_count, founder_user_id')
+    .eq('group_id', groupId)
+    .maybeSingle();
+
+  const [{ data: group }, { data: memberStats }, { data: sessions }, { data: weeklySchedules }] = await Promise.all([
     supabase
       .schema('public')
       .from('groups')
       .select('id, name, invite_code, created_by, created_at, meeting_link, max_members')
       .eq('id', groupId)
       .single(),
-    supabase.schema('public').from('group_members').select('user_id, is_founder').eq('group_id', groupId),
+    memberStatsPromise,
     supabase
       .schema('public')
       .from('sessions')
@@ -827,17 +867,17 @@ export const getGroupCoreData = cache(async (groupId: string, user: User) => {
       .order('start_time', { ascending: true }),
   ]);
 
-  const safeMembers = members ?? [];
   const safeSessions = sessions ?? [];
   const safeWeeklySchedules = sortWeeklySchedules(weeklySchedules ?? []);
-  const founderCaptainId = safeMembers.find((member) => member.is_founder)?.user_id ?? null;
+  const memberCount = memberStats?.member_count ?? 0;
+  const founderCaptainId = memberStats?.founder_user_id ?? null;
   const sessionLeaderId =
     safeSessions.find((session) => session.status === 'active')?.leader_id ??
     safeSessions.find((session) => session.status === 'scheduled')?.leader_id ??
     null;
 
   perf.done({
-    members: safeMembers.length,
+    members: memberCount,
     sessions: safeSessions.length,
     weeklySchedules: safeWeeklySchedules.length,
   });
@@ -847,7 +887,7 @@ export const getGroupCoreData = cache(async (groupId: string, user: User) => {
       ? {
           ...group,
           is_founder: membership.is_founder,
-          memberCount: safeMembers.length,
+          memberCount,
         }
       : null,
     membership,
