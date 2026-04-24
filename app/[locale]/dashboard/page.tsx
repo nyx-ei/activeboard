@@ -155,7 +155,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
               none: t('heatmapNone'),
               less: t('heatmapLess'),
               more: t('heatmapMore'),
-              sessionsFinished: t('sessionsFinished', { count: '{count}' }),
+              sessionsFinished: t('sessionsFinished', { count: performanceData?.metrics.completedSessionsCount ?? 0 }),
               averagePerWeek: t('averagePerWeek'),
               completion: t('completion'),
               confidenceCalibrationTitle: t('confidenceCalibrationTitle'),

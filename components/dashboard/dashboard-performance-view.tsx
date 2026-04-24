@@ -137,9 +137,7 @@ export function DashboardPerformanceView({
           </div>
           <div className="text-right">
             <p className="text-[42px] font-extrabold leading-none text-brand">{completedSessionsCount}</p>
-            <p className="mt-2 text-sm font-semibold text-slate-500">
-              {labels.sessionsFinished.replace('{count}', String(completedSessionsCount))}
-            </p>
+            <p className="mt-2 text-sm font-semibold text-slate-500">{labels.sessionsFinished}</p>
           </div>
         </div>
 
