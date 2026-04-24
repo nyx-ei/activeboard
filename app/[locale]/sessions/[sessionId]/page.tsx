@@ -295,7 +295,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
       <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
       <header className="border-b border-white/[0.07]">
         <div className="mx-auto flex min-h-16 w-full max-w-[560px] items-center justify-between gap-3 px-4 py-3 sm:h-16 sm:py-0">
-          <Link href={`/groups/${data.group.id}`} prefetch={false} className="text-slate-500 hover:text-white">
+          <Link href="/dashboard?view=sessions" prefetch={false} className="text-slate-500 hover:text-white">
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           </Link>
           <div className="text-center">
