@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
-import { NextIntlClientProvider } from 'next-intl';
+import { NextIntlClientProvider, type AbstractIntlMessages } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
 
 import { AppBottomNav } from '@/components/layout/app-bottom-nav';
@@ -22,6 +22,16 @@ export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
 
+function pickClientMessages(
+  messages: Awaited<ReturnType<typeof getMessages>>,
+  keys: Array<keyof Awaited<ReturnType<typeof getMessages>>>,
+) {
+  return keys.reduce<AbstractIntlMessages>((accumulator, key) => {
+    accumulator[String(key)] = messages[key] as AbstractIntlMessages[string];
+    return accumulator;
+  }, {});
+}
+
 export default async function LocaleLayout({
   children,
   params,
@@ -36,40 +46,40 @@ export default async function LocaleLayout({
   }
 
   setRequestLocale(locale);
-  const messages = await getMessages();
-  const t = await getTranslations('Common');
-  const dashboardT = await getTranslations('Dashboard');
-  const billingT = await getTranslations('Billing');
-  const profileT = await getTranslations('Profile');
   const user = await getCurrentUser();
-  const shellData = user
-      ? await (async () => {
-        const supabase = createSupabaseServerClient();
-        const accessState = await getUserAccessState(user.id);
-        const canBrowseLookupLayer = hasUserTierCapability(accessState, 'canBrowseLookupLayer');
-        const { data: memberships } = await supabase
-          .schema('public')
-          .from('group_members')
-          .select('group_id, joined_at')
-          .eq('user_id', user.id);
-        const preferredGroupId =
-          [...(memberships ?? [])]
-            .sort((left, right) => new Date(right.joined_at).getTime() - new Date(left.joined_at).getTime())[0]?.group_id ?? null;
-        const { data: captainSession } = await supabase
-          .schema('public')
-          .from('sessions')
-          .select('id')
-          .eq('leader_id', user.id)
-          .in('status', ['scheduled', 'active', 'incomplete'])
-          .limit(1)
-          .maybeSingle();
-        return {
-          isCaptain: Boolean(captainSession),
-          canBrowseLookupLayer,
-          preferredGroupId,
-        };
-      })()
-    : { isCaptain: false, canBrowseLookupLayer: false, preferredGroupId: null as string | null };
+  const [messages, t, dashboardT, billingT, profileT, shellData] = await Promise.all([
+    getMessages(),
+    getTranslations('Common'),
+    getTranslations('Dashboard'),
+    getTranslations('Billing'),
+    getTranslations('Profile'),
+    user
+      ? (async () => {
+          const supabase = createSupabaseServerClient();
+          const [accessState, membershipsResult] = await Promise.all([
+            getUserAccessState(user.id),
+            supabase
+              .schema('public')
+              .from('group_members')
+              .select('group_id, joined_at, is_founder')
+              .eq('user_id', user.id)
+              .order('joined_at', { ascending: false }),
+          ]);
+          const memberships = membershipsResult.data ?? [];
+
+          return {
+            isCaptain: memberships.some((membership) => membership.is_founder),
+            canBrowseLookupLayer: hasUserTierCapability(accessState, 'canBrowseLookupLayer'),
+            preferredGroupId: memberships[0]?.group_id ?? null,
+          };
+        })()
+      : Promise.resolve({
+          isCaptain: false,
+          canBrowseLookupLayer: false,
+          preferredGroupId: null as string | null,
+        }),
+  ]);
+  const clientMessages = pickClientMessages(messages, ['Auth', 'Common', 'Landing', 'Offline']);
   const displayName = user?.user_metadata.full_name ?? user?.email ?? 'ActiveBoard';
   const initials =
     displayName
@@ -80,7 +90,7 @@ export default async function LocaleLayout({
       .toUpperCase() ??
     'AB';
   return (
-    <NextIntlClientProvider locale={locale} messages={messages}>
+    <NextIntlClientProvider locale={locale} messages={clientMessages}>
       <RegisterServiceWorker />
       <div className="min-h-screen overflow-x-hidden px-2 pb-24 pt-2 sm:px-6 sm:pt-4">
         <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-[1240px] flex-col gap-4 sm:gap-5">

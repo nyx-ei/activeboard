@@ -38,6 +38,7 @@ export const APP_EVENTS = {
   pwaInstallPromptShown: 'pwa_install_prompt_shown',
   pwaInstallAccepted: 'pwa_install_accepted',
   pwaLaunchedFromHomeScreen: 'pwa_launched_from_home_screen',
+  performanceTraceRecorded: 'performance_trace_recorded',
   stripeWebhookReceived: 'stripe_webhook_received',
   stripeWebhookSynced: 'stripe_webhook_synced',
   stripeWebhookIgnored: 'stripe_webhook_ignored',

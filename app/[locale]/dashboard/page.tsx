@@ -113,6 +113,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
         {isPerformanceView ? (
           <DashboardPerformanceView
             answeredCount={performanceData?.metrics.answeredCount ?? 0}
+            completedSessionsCount={performanceData?.metrics.completedSessionsCount ?? 0}
             successRate={performanceData?.metrics.successRate ?? null}
             averageConfidence={performanceData?.metrics.averageConfidence ?? null}
             heatmap={performanceData?.profileAnalytics.heatmap ?? []}
@@ -154,7 +155,9 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
               none: t('heatmapNone'),
               less: t('heatmapLess'),
               more: t('heatmapMore'),
+              sessionsFinished: t('sessionsFinished', { count: performanceData?.metrics.completedSessionsCount ?? 0 }),
               averagePerWeek: t('averagePerWeek'),
+              completion: t('completion'),
               confidenceCalibrationTitle: t('confidenceCalibrationTitle'),
             }}
           />

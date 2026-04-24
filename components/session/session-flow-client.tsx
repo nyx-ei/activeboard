@@ -1,7 +1,7 @@
 'use client';
 
 import { Check, Clock, Users } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { SubmitButton } from '@/components/ui/submit-button';
@@ -14,6 +14,13 @@ import {
 import { ANSWER_OPTIONS, type AnswerOption } from '@/lib/types/demo';
 
 type ServerAction = (formData: FormData) => void | Promise<void>;
+type SubmitAnswerResponse = {
+  ok: boolean;
+  message?: string;
+  redirectTo?: string;
+  selectedOption?: string | null;
+  confidence?: ConfidenceLevel | null;
+};
 
 function isCustomLetter(value: string) {
   return /^[A-Z]$/.test(value) && !ANSWER_OPTIONS.includes(value as AnswerOption);
@@ -58,8 +65,6 @@ export function SessionHeaderMeta({
 }
 
 export function SessionAnswerForm({
-  action,
-  timeoutAction,
   advanceAction,
   locale,
   sessionId,
@@ -70,10 +75,10 @@ export function SessionAnswerForm({
   answerDeadlineAt,
   submittedCount,
   memberCount,
+  onSubmissionStateChange,
+  onAnswerPersisted,
   labels,
 }: {
-  action: ServerAction;
-  timeoutAction: ServerAction;
   advanceAction: ServerAction;
   locale: string;
   sessionId: string;
@@ -84,6 +89,8 @@ export function SessionAnswerForm({
   answerDeadlineAt: string | null;
   submittedCount: number;
   memberCount: number;
+  onSubmissionStateChange?: (isSubmitting: boolean) => void;
+  onAnswerPersisted?: (selectedOption: string, confidence: ConfidenceLevel | null) => void;
   labels: {
     confidenceTitle: string;
     confidenceLow: string;
@@ -98,6 +105,8 @@ export function SessionAnswerForm({
     allAnswersReceived: string;
   };
 }) {
+  const router = useRouter();
+  const [isHydrated, setIsHydrated] = useState(false);
   const initialSelectedOption =
     initialAnswer && !ANSWER_OPTIONS.includes(initialAnswer as AnswerOption) && initialAnswer !== '?'
       ? '?'
@@ -112,10 +121,10 @@ export function SessionAnswerForm({
   const [remainingSeconds, setRemainingSeconds] = useState(() =>
     answerDeadlineAt ? Math.max(0, Math.ceil((new Date(answerDeadlineAt).getTime() - Date.now()) / 1000)) : 0,
   );
-  const router = useRouter();
-  const timeoutFormRef = useRef<HTMLFormElement>(null);
   const customOptionInputRef = useRef<HTMLInputElement>(null);
   const timeoutSubmittedRef = useRef(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [isPending, setIsPending] = useState(false);
   const hasAnswer = Boolean(initialAnswer);
   const isExpired = remainingSeconds <= 0;
   const hasAllAnswers = submittedCount >= memberCount || isExpired;
@@ -125,6 +134,10 @@ export function SessionAnswerForm({
     (selectedOption !== '?' || isCustomLetter(normalizedCustomOption)) &&
     !hasAnswer &&
     !isExpired;
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   useEffect(() => {
     setSelectedOption(
@@ -141,8 +154,74 @@ export function SessionAnswerForm({
     setRemainingSeconds(
       answerDeadlineAt ? Math.max(0, Math.ceil((new Date(answerDeadlineAt).getTime() - Date.now()) / 1000)) : 0,
     );
+    setSubmissionError(null);
+    setIsPending(false);
     timeoutSubmittedRef.current = false;
   }, [answerDeadlineAt, initialAnswer, initialConfidence, questionId]);
+
+  useEffect(() => {
+    if (!hasAnswer) {
+      onSubmissionStateChange?.(false);
+    }
+  }, [hasAnswer, onSubmissionStateChange, questionId]);
+
+  const submitAnswer = useCallback(async (mode: 'submit' | 'timeout') => {
+    setSubmissionError(null);
+    setIsPending(true);
+    onSubmissionStateChange?.(true);
+
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/answer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          locale,
+          sessionId,
+          questionId,
+          questionIndex,
+          selectedOption,
+          customOption: normalizedCustomOption,
+          confidence,
+          mode,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => ({ ok: false }))) as SubmitAnswerResponse;
+
+      if (!response.ok || !payload.ok) {
+        if (payload.redirectTo) {
+          router.replace(payload.redirectTo as never);
+          return;
+        }
+
+        setSubmissionError(payload.message ?? labels.submitPending);
+        setIsPending(false);
+        onSubmissionStateChange?.(false);
+        return;
+      }
+
+      onAnswerPersisted?.(payload.selectedOption ?? '?', payload.confidence ?? null);
+    } catch {
+      setSubmissionError(labels.submitPending);
+      setIsPending(false);
+      onSubmissionStateChange?.(false);
+    }
+  }, [
+    confidence,
+    labels.submitPending,
+    locale,
+    normalizedCustomOption,
+    onAnswerPersisted,
+    onSubmissionStateChange,
+    questionId,
+    questionIndex,
+    router,
+    selectedOption,
+    sessionId,
+  ]);
 
   useEffect(() => {
     if (selectedOption === '?' && !hasAnswer && !isExpired) {
@@ -159,22 +238,14 @@ export function SessionAnswerForm({
       setRemainingSeconds(nextRemaining);
       if (nextRemaining <= 0 && !hasAnswer && !timeoutSubmittedRef.current) {
         timeoutSubmittedRef.current = true;
-        timeoutFormRef.current?.requestSubmit();
+        void submitAnswer('timeout');
       }
     };
 
     tick();
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
-  }, [answerDeadlineAt, hasAnswer]);
-
-  useEffect(() => {
-    if (!hasAnswer || hasAllAnswers) return undefined;
-    const id = window.setInterval(() => {
-      router.refresh();
-    }, 1200);
-    return () => window.clearInterval(id);
-  }, [hasAnswer, hasAllAnswers, router]);
+  }, [answerDeadlineAt, hasAnswer, submitAnswer]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -231,12 +302,6 @@ export function SessionAnswerForm({
 
   return (
     <div className="mx-auto w-full max-w-[496px] space-y-7">
-      <form ref={timeoutFormRef} action={timeoutAction}>
-        <input type="hidden" name="locale" value={locale} />
-        <input type="hidden" name="sessionId" value={sessionId} />
-        <input type="hidden" name="questionIndex" value={questionIndex} />
-      </form>
-
       <div className="grid grid-cols-3 gap-2 min-[420px]:grid-cols-6">
         {[...ANSWER_OPTIONS, '?'].map((option) => (
           <label
@@ -260,7 +325,7 @@ export function SessionAnswerForm({
                   setCustomOption('');
                 }
               }}
-              disabled={hasAnswer || isExpired}
+              disabled={hasAnswer || isExpired || isPending}
               className="sr-only"
             />
             {option}
@@ -288,7 +353,7 @@ export function SessionAnswerForm({
               const nextValue = event.target.value.replace(/[^a-z]/gi, '').slice(-1).toUpperCase();
               setCustomOption(ANSWER_OPTIONS.includes(nextValue as AnswerOption) ? '' : nextValue);
             }}
-            disabled={hasAnswer || isExpired}
+            disabled={hasAnswer || isExpired || isPending}
             placeholder={labels.customOptionPlaceholder}
             className="field w-full rounded-[7px] text-center text-lg font-extrabold uppercase tracking-[0.12em]"
           />
@@ -321,7 +386,7 @@ export function SessionAnswerForm({
                 value={value}
                 checked={confidence === value}
                 onChange={() => setConfidence(value as ConfidenceLevel)}
-                disabled={hasAnswer || isExpired}
+                disabled={hasAnswer || isExpired || isPending}
                 className="sr-only"
               />
               {label}
@@ -331,24 +396,37 @@ export function SessionAnswerForm({
       </div>
 
       {!hasAnswer && canSubmit ? (
-        <form action={action}>
-          <input type="hidden" name="locale" value={locale} />
-          <input type="hidden" name="sessionId" value={sessionId} />
-          <input type="hidden" name="questionId" value={questionId} />
-          <input type="hidden" name="questionIndex" value={questionIndex} />
-          <input type="hidden" name="selectedOption" value={selectedOption} />
-          <input type="hidden" name="customOption" value={normalizedCustomOption} />
-          <input type="hidden" name="confidence" value={confidence} />
-          <SubmitButton pendingLabel={labels.submitPending} className="button-primary h-16 w-full rounded-[7px] text-base">
-            {labels.submit}
-          </SubmitButton>
-        </form>
+        <button
+          type="button"
+          disabled={isPending || !isHydrated}
+          onClick={() => {
+            void submitAnswer('submit');
+          }}
+          className="button-primary relative h-16 w-full rounded-[7px] text-base disabled:cursor-not-allowed disabled:opacity-70"
+          aria-disabled={isPending || !isHydrated}
+          aria-busy={isPending}
+        >
+          <span className={isPending ? 'text-transparent' : ''}>{labels.submit}</span>
+          {isPending ? (
+            <span className="absolute inset-0 inline-flex items-center justify-center gap-2">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true" />
+              {labels.submitPending}
+            </span>
+          ) : null}
+        </button>
       ) : null}
+
+      {submissionError ? <p className="text-center text-sm font-bold text-red-400">{submissionError}</p> : null}
 
       {hasAllAnswers ? (
         <>
           <div className="text-center text-sm font-bold text-brand">{labels.allAnswersReceived}</div>
-          <form action={advanceAction}>
+          <form
+            action={advanceAction}
+            onSubmitCapture={() => {
+              onSubmissionStateChange?.(true);
+            }}
+          >
             <input type="hidden" name="locale" value={locale} />
             <input type="hidden" name="sessionId" value={sessionId} />
             <input type="hidden" name="questionIndex" value={questionIndex} />

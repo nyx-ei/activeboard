@@ -1,9 +1,8 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-
-import { AuthForm } from '@/components/auth/auth-form';
 
 type LandingSignupModalProps = {
   locale: string;
@@ -11,6 +10,11 @@ type LandingSignupModalProps = {
   className?: string;
   closeLabel: string;
 };
+
+const AuthForm = dynamic(() => import('@/components/auth/auth-form').then((module) => module.AuthForm), {
+  ssr: false,
+  loading: () => <div className="h-[520px] animate-pulse rounded-[6px] bg-white/[0.03]" aria-hidden="true" />,
+});
 
 export function LandingSignupModal({ locale, children, className, closeLabel }: LandingSignupModalProps) {
   const [open, setOpen] = useState(false);

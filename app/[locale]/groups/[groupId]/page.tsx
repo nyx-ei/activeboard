@@ -6,7 +6,6 @@ import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
 import { getUserAccessState, hasUserTierCapability } from '@/lib/billing/gating';
 import { getGroupCoreData } from '@/lib/demo/data';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 import {
   addDashboardExistingMemberAction,
@@ -44,16 +43,7 @@ export default async function GroupRoutePage({
   const canBrowseLookupLayer = hasUserTierCapability(accessState, 'canBrowseLookupLayer');
   const canCreateSession = hasUserTierCapability(accessState, 'canCreateSession');
 
-  const [data, currentProfile] = await Promise.all([
-    getGroupCoreData(params.groupId, user),
-    createSupabaseServerClient()
-      .schema('public')
-      .from('users')
-      .select('exam_session')
-      .eq('id', user.id)
-      .maybeSingle()
-      .then((result) => result.data),
-  ]);
+  const data = await getGroupCoreData(params.groupId, user);
 
   if (!data) {
     return null;
@@ -62,8 +52,7 @@ export default async function GroupRoutePage({
   const primaryGroup = data.group;
   const currentCaptainId = data.currentCaptainId;
 
-  const examSession =
-    currentProfile?.exam_session ?? (typeof user.user_metadata.exam_session === 'string' ? user.user_metadata.exam_session : '');
+  const examSession = typeof user.user_metadata.exam_session === 'string' ? user.user_metadata.exam_session : '';
   const displayName = user.user_metadata.full_name ?? user.email ?? 'ActiveBoard';
   const examSessionLabel =
     examSession === 'april_may_2026'
@@ -103,8 +92,7 @@ export default async function GroupRoutePage({
           isPrimaryGroupFounder={Boolean(data.membership.is_founder)}
           currentCaptainId={currentCaptainId}
           schedules={data.weeklySchedules}
-          weeklyCompletedQuestions={data.weeklyCompletedQuestions}
-          weeklyTargetQuestions={data.weeklyTargetQuestions}
+          initialWeeklyProgress={null}
           memberPerformance={[]}
           weekdayLabels={weekdayLabels}
           groupInfoSummary={groupInfoSummary}

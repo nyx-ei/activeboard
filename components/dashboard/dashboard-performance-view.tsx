@@ -21,6 +21,7 @@ type SessionConfidenceBreakdownItem = {
 
 type DashboardPerformanceViewProps = {
   answeredCount: number;
+  completedSessionsCount: number;
   successRate: number | null;
   averageConfidence: 'low' | 'medium' | 'high' | null;
   heatmap: HeatmapDay[];
@@ -41,7 +42,9 @@ type DashboardPerformanceViewProps = {
     none: string;
     less: string;
     more: string;
+    sessionsFinished: string;
     averagePerWeek: string;
+    completion: string;
     confidenceCalibrationTitle: string;
   };
 };
@@ -86,6 +89,8 @@ function startOfUtcWeek(date: Date) {
 
 export function DashboardPerformanceView({
   answeredCount,
+  completedSessionsCount,
+  successRate,
   heatmap,
   confidenceCalibration,
   sessionConfidenceBreakdown,
@@ -129,6 +134,10 @@ export function DashboardPerformanceView({
               {answeredCount}
               <span className="ml-2 text-sm font-bold text-slate-500">{labels.questionsAnswered}</span>
             </p>
+          </div>
+          <div className="text-right">
+            <p className="text-[42px] font-extrabold leading-none text-brand">{completedSessionsCount}</p>
+            <p className="mt-2 text-sm font-semibold text-slate-500">{labels.sessionsFinished}</p>
           </div>
         </div>
 
@@ -185,6 +194,8 @@ export function DashboardPerformanceView({
             <div className="grid grid-cols-[1fr_auto] gap-x-5 gap-y-2 text-sm">
               <span className="font-semibold text-slate-500">{labels.averagePerWeek}</span>
               <span className="font-extrabold text-white">{averagePerWeek}</span>
+              <span className="font-semibold text-slate-500">{labels.completion}</span>
+              <span className="font-extrabold text-white">{successRate !== null ? `${successRate}%` : labels.noData}</span>
             </div>
           </aside>
         </div>

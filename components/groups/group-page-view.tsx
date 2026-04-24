@@ -61,8 +61,10 @@ type GroupPageViewProps = {
   isPrimaryGroupFounder: boolean;
   currentCaptainId: string | null;
   schedules: Schedule[];
-  weeklyCompletedQuestions: number;
-  weeklyTargetQuestions: number;
+  initialWeeklyProgress: {
+    weeklyCompletedQuestions: number;
+    weeklyTargetQuestions: number;
+  } | null;
   memberPerformance: MemberPerformance[];
   weekdayLabels: Record<string, string>;
   groupInfoSummary: string;
@@ -178,8 +180,7 @@ export function GroupPageView({
   isPrimaryGroupFounder,
   currentCaptainId,
   schedules,
-  weeklyCompletedQuestions,
-  weeklyTargetQuestions,
+  initialWeeklyProgress,
   memberPerformance,
   weekdayLabels,
   groupInfoSummary,
@@ -192,6 +193,13 @@ export function GroupPageView({
   const [resolvedShellGroups, setResolvedShellGroups] = useState(shellGroups);
   const [resolvedMemberPerformance, setResolvedMemberPerformance] = useState(memberPerformance);
   const [memberPerformanceLoaded, setMemberPerformanceLoaded] = useState(memberPerformance.length > 0);
+  const [weeklyProgress, setWeeklyProgress] = useState(
+    initialWeeklyProgress ?? {
+      weeklyCompletedQuestions: 0,
+      weeklyTargetQuestions: schedules.reduce((sum, schedule) => sum + schedule.question_goal, 0),
+    },
+  );
+  const [weeklyProgressLoaded, setWeeklyProgressLoaded] = useState(Boolean(initialWeeklyProgress));
   const groupPath = primaryGroup ? `/${locale}/groups/${primaryGroup.id}` : `/${locale}/groups`;
   const sessionGroupChoices =
     resolvedShellGroups.length > 0
@@ -231,6 +239,16 @@ export function GroupPageView({
   }, [locale, resolvedShellGroups.length]);
 
   useEffect(() => {
+    setWeeklyProgress(
+      initialWeeklyProgress ?? {
+        weeklyCompletedQuestions: 0,
+        weeklyTargetQuestions: schedules.reduce((sum, schedule) => sum + schedule.question_goal, 0),
+      },
+    );
+    setWeeklyProgressLoaded(Boolean(initialWeeklyProgress));
+  }, [initialWeeklyProgress, schedules]);
+
+  useEffect(() => {
     if (!primaryGroup || memberPerformanceLoaded) {
       return;
     }
@@ -254,6 +272,39 @@ export function GroupPageView({
       cancelled = true;
     };
   }, [memberPerformanceLoaded, primaryGroup]);
+
+  useEffect(() => {
+    if (!primaryGroup || weeklyProgressLoaded) {
+      return;
+    }
+
+    let cancelled = false;
+    fetch(`/api/groups/weekly-progress?groupId=${primaryGroup.id}`, { credentials: 'include' })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (
+          !cancelled &&
+          payload?.ok &&
+          typeof payload.weeklyCompletedQuestions === 'number' &&
+          typeof payload.weeklyTargetQuestions === 'number'
+        ) {
+          setWeeklyProgress({
+            weeklyCompletedQuestions: payload.weeklyCompletedQuestions,
+            weeklyTargetQuestions: payload.weeklyTargetQuestions,
+          });
+          setWeeklyProgressLoaded(true);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setWeeklyProgressLoaded(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [primaryGroup, weeklyProgressLoaded]);
 
   return (
     <>
@@ -444,9 +495,13 @@ export function GroupPageView({
 
         <div className="mt-4 flex items-center justify-between border-t border-white/[0.06] pt-4 text-sm">
           <span className="font-semibold text-slate-500">{labels.weeklyTotal}</span>
-          <span className="font-extrabold text-white">
-            {weeklyCompletedQuestions} / {weeklyTargetQuestions || 100} Q
-          </span>
+          {weeklyProgressLoaded ? (
+            <span className="font-extrabold text-white">
+              {weeklyProgress.weeklyCompletedQuestions} / {weeklyProgress.weeklyTargetQuestions || 100} Q
+            </span>
+          ) : (
+            <span className="h-5 w-24 animate-pulse rounded bg-white/[0.06]" aria-hidden="true" />
+          )}
         </div>
       </section>
 

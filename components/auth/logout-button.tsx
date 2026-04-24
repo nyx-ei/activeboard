@@ -5,7 +5,6 @@ import { useTransition } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { AppLocale } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
 
@@ -25,8 +24,10 @@ export function LogoutButton({ className, showIcon = false }: LogoutButtonProps)
       type="button"
       onClick={() =>
         startTransition(async () => {
-          const supabase = createSupabaseBrowserClient();
-          await supabase.auth.signOut();
+          await fetch('/api/auth/logout', {
+            method: 'POST',
+            cache: 'no-store',
+          });
           router.push(`/${locale}/auth/login`);
           router.refresh();
         })

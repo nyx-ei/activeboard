@@ -1,9 +1,6 @@
 'use client';
 
 import { useTransition } from 'react';
-import { useRouter } from 'next/navigation';
-
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 type SwitchAccountButtonProps = {
   nextPath: string;
@@ -11,7 +8,6 @@ type SwitchAccountButtonProps = {
 };
 
 export function SwitchAccountButton({ nextPath, label }: SwitchAccountButtonProps) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   return (
@@ -19,10 +15,11 @@ export function SwitchAccountButton({ nextPath, label }: SwitchAccountButtonProp
       type="button"
       onClick={() =>
         startTransition(async () => {
-          const supabase = createSupabaseBrowserClient();
-          await supabase.auth.signOut();
+          await fetch('/api/auth/logout', {
+            method: 'POST',
+            cache: 'no-store',
+          });
           window.location.assign(nextPath);
-          router.refresh();
         })
       }
       className="button-primary mt-6 inline-flex h-12 items-center justify-center rounded-[8px] px-5 text-sm"
