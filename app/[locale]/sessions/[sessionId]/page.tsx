@@ -3,9 +3,9 @@ import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
-import { RealtimeRefresh } from '@/components/app/realtime-refresh';
 import { SessionActiveRuntime } from '@/components/session/session-active-runtime';
 import { ReviewAnswerForm } from '@/components/session/session-flow-client';
+import { SessionStageRefresh } from '@/components/session/session-stage-refresh';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
@@ -83,12 +83,6 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
   const currentIndex = Math.max(0, Math.min(data.resolvedQuestionIndex ?? requestedQuestionIndex ?? 0, questionGoal - 1));
   const questions = [...data.questions].sort((left, right) => left.order_index - right.order_index);
   const question = questions.find((item) => item.order_index === currentIndex) ?? questions[currentIndex] ?? questions[0] ?? null;
-  const realtimeTables = [
-    { table: 'sessions', filter: `id=eq.${params.sessionId}` },
-    { table: 'questions', filter: `session_id=eq.${params.sessionId}` },
-    ...(question ? [{ table: 'answers', filter: `question_id=eq.${question.id}` }] : []),
-    { table: 'question_classifications', filter: `session_id=eq.${params.sessionId}` },
-  ];
   const answeredCount = data.answeredCount;
   const memberCount = Math.max(data.members.length, 1);
   const shouldShowCompletion =
@@ -106,7 +100,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
 
     return (
       <main className="flex flex-1 items-center justify-center px-4">
-        <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} />
+        <SessionStageRefresh sessionId={params.sessionId} expectedStatus="scheduled" />
         <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
         <section className="flex w-full max-w-md flex-col items-center text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 text-brand">
@@ -275,7 +269,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
   if (!question) {
     return (
       <main className="flex flex-1 flex-col">
-        <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} />
+        <SessionStageRefresh sessionId={params.sessionId} expectedStatus={data.session.status} expectedQuestionId={null} />
         <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
         <section className="flex flex-1 items-center justify-center px-4 text-center text-sm font-bold text-slate-500">
           {t('loadingSession')}

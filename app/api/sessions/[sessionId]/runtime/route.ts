@@ -10,7 +10,7 @@ export async function GET(request: Request, { params }: RouteContext) {
   const questionId = new URL(request.url).searchParams.get('questionId');
   const sessionId = params.sessionId;
 
-  if (!sessionId || !questionId) {
+  if (!sessionId) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
 
@@ -46,25 +46,40 @@ export async function GET(request: Request, { params }: RouteContext) {
     return NextResponse.json({ ok: false }, { status: 403 });
   }
 
-  const [{ data: question }, { count: submittedCount }, { count: memberCount }] = await Promise.all([
-    supabase
-      .schema('public')
-      .from('questions')
-      .select('id, phase, answer_deadline_at')
-      .eq('id', questionId)
-      .eq('session_id', sessionId)
-      .maybeSingle(),
-    supabase
-      .schema('public')
-      .from('answers')
-      .select('*', { count: 'exact', head: true })
-      .eq('question_id', questionId),
+  const questionQuery = questionId
+    ? supabase
+        .schema('public')
+        .from('questions')
+        .select('id, phase, answer_deadline_at')
+        .eq('id', questionId)
+        .eq('session_id', sessionId)
+        .maybeSingle()
+    : supabase
+        .schema('public')
+        .from('questions')
+        .select('id, phase, answer_deadline_at')
+        .eq('session_id', sessionId)
+        .not('launched_at', 'is', null)
+        .order('order_index', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+  const [{ data: question }, { count: memberCount }] = await Promise.all([
+    questionQuery,
     supabase
       .schema('public')
       .from('group_members')
       .select('*', { count: 'exact', head: true })
       .eq('group_id', session.group_id),
   ]);
+
+  const { count: submittedCount } = question?.id
+    ? await supabase
+        .schema('public')
+        .from('answers')
+        .select('*', { count: 'exact', head: true })
+        .eq('question_id', question.id)
+    : { count: 0 };
 
   return NextResponse.json({
     ok: true,
