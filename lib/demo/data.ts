@@ -1000,6 +1000,217 @@ export const getGroupData = cache(async (groupId: string, user: User) => {
   };
 });
 
+async function getSessionShellData(sessionId: string, user: User) {
+  const supabase = createSupabaseServerClient();
+
+  const { data: session } = await supabase
+    .schema('public')
+    .from('sessions')
+    .select(
+      'id, group_id, name, scheduled_at, share_code, started_at, ended_at, timer_mode, timer_seconds, status, meeting_link, leader_id, question_goal',
+    )
+    .eq('id', sessionId)
+    .single();
+
+  if (!session) {
+    return null;
+  }
+
+  const { data: membership } = await supabase
+    .schema('public')
+    .from('group_members')
+    .select('group_id, is_founder')
+    .eq('group_id', session.group_id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (!membership) {
+    return null;
+  }
+
+  const [{ data: group }, { data: members }] = await Promise.all([
+    supabase.schema('public').from('groups').select('id, name, invite_code').eq('id', session.group_id).single(),
+    supabase.schema('public').from('group_members').select('user_id, is_founder').eq('group_id', session.group_id),
+  ]);
+
+  return {
+    supabase,
+    session,
+    group,
+    membership,
+    members: members ?? [],
+  };
+}
+
+export const getSessionPageData = cache(
+  async (sessionId: string, user: User, stage: string | undefined, questionIndex: number) => {
+    const shell = await getSessionShellData(sessionId, user);
+
+    if (!shell?.group) {
+      return null;
+    }
+
+    const { supabase, session, group, membership, members } = shell;
+    const answeredCountPromise = supabase
+      .schema('public')
+      .from('dashboard_user_session_answer_counts')
+      .select('answered_question_count')
+      .eq('user_id', user.id)
+      .eq('session_id', sessionId)
+      .maybeSingle();
+    const normalizedStage = stage === 'review' ? 'review' : 'answer';
+
+    if (session.status === 'scheduled') {
+      return {
+        session,
+        group,
+        membership,
+        members,
+        answeredCount: 0,
+        questionGoal: session.question_goal ?? 10,
+        questions: [] as Array<{
+          id: string;
+          body: string | null;
+          options: unknown;
+          order_index: number;
+          phase: string | null;
+          launched_at: string | null;
+          answer_deadline_at: string | null;
+          correct_option?: string | null;
+        }>,
+        currentQuestion: null,
+        currentQuestionAnswers: [] as Array<{
+          id: string;
+          user_id: string;
+          selected_option: string | null;
+          confidence: string | null;
+          is_correct: boolean | null;
+          answered_at: string | null;
+        }>,
+        allAnswers: [] as Array<{
+          id: string;
+          question_id: string;
+          user_id: string;
+          selected_option: string | null;
+          confidence: string | null;
+          is_correct: boolean | null;
+          answered_at: string | null;
+        }>,
+      };
+    }
+
+    if (normalizedStage === 'review') {
+      const [{ data: questions }, answeredCountResult] = await Promise.all([
+        supabase
+          .schema('public')
+          .from('questions')
+          .select('id, body, options, order_index, phase, launched_at, answer_deadline_at, correct_option, asked_by')
+          .eq('session_id', sessionId)
+          .order('order_index', { ascending: true }),
+        answeredCountPromise,
+      ]);
+
+      const safeQuestions = questions ?? [];
+      const safeQuestionIds = safeQuestions.map((question) => question.id);
+      const safeAllAnswers =
+        safeQuestionIds.length > 0
+          ? (
+              await supabase
+                .schema('public')
+                .from('answers')
+                .select('id, question_id, user_id, selected_option, confidence, is_correct, answered_at')
+                .in('question_id', safeQuestionIds)
+            ).data ?? []
+          : [];
+
+      return {
+        session,
+        group,
+        membership,
+        members,
+        answeredCount: answeredCountResult.data?.answered_question_count ?? 0,
+        questionGoal: session.question_goal ?? Math.max(safeQuestions.length, 10),
+        questions: safeQuestions,
+        currentQuestion: null,
+        currentQuestionAnswers: [] as Array<{
+          id: string;
+          user_id: string;
+          selected_option: string | null;
+          confidence: string | null;
+          is_correct: boolean | null;
+          answered_at: string | null;
+        }>,
+        allAnswers: safeAllAnswers,
+      };
+    }
+
+    const normalizedIndex = Number.isFinite(questionIndex) ? Math.max(0, questionIndex) : 0;
+    let currentQuestion =
+      (
+        await supabase
+          .schema('public')
+          .from('questions')
+          .select('id, body, options, order_index, phase, launched_at, answer_deadline_at')
+          .eq('session_id', sessionId)
+          .eq('order_index', normalizedIndex)
+          .maybeSingle()
+      ).data ?? null;
+
+    if (!currentQuestion) {
+      currentQuestion =
+        (
+          await supabase
+            .schema('public')
+            .from('questions')
+            .select('id, body, options, order_index, phase, launched_at, answer_deadline_at')
+            .eq('session_id', sessionId)
+            .order('order_index', { ascending: true })
+            .limit(1)
+            .maybeSingle()
+        ).data ?? null;
+    }
+
+    const [questionAnswersResult, answeredCountResult] = await Promise.all([
+      currentQuestion
+        ? supabase
+            .schema('public')
+            .from('answers')
+            .select('id, user_id, selected_option, confidence, is_correct, answered_at')
+            .eq('question_id', currentQuestion.id)
+        : Promise.resolve({ data: [] as Array<{
+            id: string;
+            user_id: string;
+            selected_option: string | null;
+            confidence: string | null;
+            is_correct: boolean | null;
+            answered_at: string | null;
+          }> }),
+      answeredCountPromise,
+    ]);
+
+    return {
+      session,
+      group,
+      membership,
+      members,
+      answeredCount: answeredCountResult.data?.answered_question_count ?? 0,
+      questionGoal: session.question_goal ?? Math.max((currentQuestion?.order_index ?? 0) + 1, 10),
+      questions: currentQuestion ? [currentQuestion] : [],
+      currentQuestion,
+      currentQuestionAnswers: questionAnswersResult.data ?? [],
+      allAnswers: [] as Array<{
+        id: string;
+        question_id: string;
+        user_id: string;
+        selected_option: string | null;
+        confidence: string | null;
+        is_correct: boolean | null;
+        answered_at: string | null;
+      }>,
+    };
+  },
+);
+
 export const getSessionData = cache(async (sessionId: string, user: User) => {
   const supabase = createSupabaseServerClient();
 
