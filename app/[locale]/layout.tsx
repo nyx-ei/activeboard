@@ -9,6 +9,8 @@ import { HomeHeaderNav } from '@/components/layout/home-header-nav';
 import { LanguageSwitcher } from '@/components/layout/language-switcher';
 import { ProfileMenu } from '@/components/layout/profile-menu';
 import { OfflineStatusBanner } from '@/components/pwa/offline-status-banner';
+import { InstallPrompt } from '@/components/pwa/install-prompt';
+import { PwaLaunchTracker } from '@/components/pwa/pwa-launch-tracker';
 import { RegisterServiceWorker } from '@/components/pwa/register-service-worker';
 import { Link } from '@/i18n/navigation';
 import { routing, type AppLocale } from '@/i18n/routing';
@@ -101,6 +103,8 @@ export default async function LocaleLayout({
       <div className="min-h-screen overflow-x-hidden px-2 pb-24 pt-2 sm:px-6 sm:pt-4">
         <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-[1240px] flex-col gap-4 sm:gap-5">
           <OfflineStatusBanner />
+          <InstallPrompt locale={locale} />
+          {user ? <PwaLaunchTracker locale={locale} /> : null}
           <header className="border-b border-[#1f2937]/80 pb-2 pt-1">
             <div className="flex min-w-0 items-start justify-between gap-3 sm:items-center sm:gap-4">
             <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
