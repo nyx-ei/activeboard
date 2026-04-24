@@ -5,13 +5,11 @@ import { Camera } from 'lucide-react';
 import { FeedbackBanner } from '@/components/app/feedback-banner';
 import { LogoutButton } from '@/components/auth/logout-button';
 import { UserScheduleForm } from '@/components/dashboard/user-schedule-form';
-import { PwaAdoptionReportCard } from '@/components/profile/pwa-adoption-report-card';
 import { ExamSettingsForm, PasswordUpdateForm, ProfileDetailsForm } from '@/components/profile/profile-settings-forms';
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
 import { getUserScheduleData } from '@/lib/demo/data';
-import { getPwaAdoptionReport } from '@/lib/monitoring/pwa-adoption';
 import { DEFAULT_AVAILABILITY_GRID } from '@/lib/schedule/availability';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -39,14 +37,7 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
     .select('display_name, exam_session, question_banks')
     .eq('id', user.id)
     .maybeSingle();
-  const { count: founderGroupCount } = await supabase
-    .schema('public')
-    .from('group_members')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .eq('is_founder', true);
   const userSchedule = await getUserScheduleData(user.id);
-  const pwaAdoptionReport = founderGroupCount ? await getPwaAdoptionReport() : null;
   const section = searchParams.section === 'exam' ? 'exam' : 'profile';
   const displayName = profile?.display_name ?? user.user_metadata.full_name ?? user.email?.split('@')[0] ?? 'ActiveBoard';
   const examSession = profile?.exam_session ?? (typeof user.user_metadata.exam_session === 'string' ? user.user_metadata.exam_session : '');
@@ -136,31 +127,6 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
                   className="min-h-0 border-none bg-transparent px-3 py-1 text-sm font-bold text-[#ff4d5e] shadow-none hover:bg-transparent hover:text-[#ff7a86]"
                 />
               </div>
-
-              {pwaAdoptionReport ? (
-                <PwaAdoptionReportCard
-                  report={pwaAdoptionReport}
-                  labels={{
-                    title: t('pwaMonitoringTitle'),
-                    description: t('pwaMonitoringDescription'),
-                    loggingDisabled: t('pwaMonitoringDisabled'),
-                    promptShown: t('pwaPromptShown'),
-                    installAccepted: t('pwaInstallAccepted'),
-                    homeScreenLaunch: t('pwaHomeScreenLaunch'),
-                    events: t('pwaEvents'),
-                    users: t('pwaUsers'),
-                    sessionDeviceSplit: t('pwaSessionDeviceSplit'),
-                    emptyState: t('pwaEmptyState'),
-                    deviceLabels: {
-                      mobile: t('pwaDeviceMobile'),
-                      desktop: t('pwaDeviceDesktop'),
-                      tablet: t('pwaDeviceTablet'),
-                      unknown: t('pwaDeviceUnknown'),
-                      bot: t('pwaDeviceUnknown'),
-                    },
-                  }}
-                />
-              ) : null}
             </>
           ) : (
             <>
