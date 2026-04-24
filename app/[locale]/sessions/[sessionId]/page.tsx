@@ -9,7 +9,7 @@ import { SubmitButton } from '@/components/ui/submit-button';
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
-import { getUserBillingSnapshot, TRIAL_QUESTION_LIMIT } from '@/lib/billing/user-tier';
+import { getTrialProgressSnapshot, getUserBillingSnapshot } from '@/lib/billing/user-tier';
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
 import { getSessionPageData } from '@/lib/demo/data';
 import { ANSWER_OPTIONS } from '@/lib/types/demo';
@@ -310,13 +310,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
 
   const dashboardT = await getTranslations('Dashboard');
   const billingSnapshot = await getUserBillingSnapshot(user.id);
-  const trialProgress = {
-    current: Math.min(billingSnapshot?.questions_answered ?? 0, TRIAL_QUESTION_LIMIT),
-    total: TRIAL_QUESTION_LIMIT,
-    remaining: Math.max(TRIAL_QUESTION_LIMIT - (billingSnapshot?.questions_answered ?? 0), 0),
-    showWarning: (billingSnapshot?.questions_answered ?? 0) >= 85 && (billingSnapshot?.questions_answered ?? 0) < TRIAL_QUESTION_LIMIT,
-    isComplete: (billingSnapshot?.questions_answered ?? 0) >= TRIAL_QUESTION_LIMIT,
-  };
+  const trialProgress = getTrialProgressSnapshot(billingSnapshot?.questions_answered ?? 0);
   const myAnswer = data.currentQuestionAnswers.find((answer) => answer.user_id === user.id) ?? null;
   const questionAnswers = data.currentQuestionAnswers;
   const isQuestionExpired =
