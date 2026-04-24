@@ -40,8 +40,9 @@ function getDistribution(answers: Array<{ selected_option: string | null; confid
   }
 
   for (const answer of answers) {
-    const option = answer.selected_option ?? '?';
-    distribution.set(option, (distribution.get(option) ?? 0) + 1);
+    const option = (answer.selected_option ?? '?').toUpperCase();
+    const normalizedOption = ANSWER_OPTIONS.includes(option as (typeof ANSWER_OPTIONS)[number]) ? option : '?';
+    distribution.set(normalizedOption, (distribution.get(normalizedOption) ?? 0) + 1);
   }
 
   const submitted = answers.length;
@@ -161,7 +162,6 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
                 {data.group.name}
               </span>
             </Link>
-            <p className="min-w-0 flex-1 text-center text-base font-extrabold text-white sm:text-lg">{data.session.name ?? data.group.name} - {t('reviewShort')}</p>
             <p className="min-w-0 flex-1 text-center text-base font-extrabold text-white sm:text-lg">{data.session.name ?? data.group.name} - {t('reviewShort')}</p>
             <p className="text-sm font-bold text-slate-500">Q{currentIndex + 1}/{questionGoal}</p>
           </div>
