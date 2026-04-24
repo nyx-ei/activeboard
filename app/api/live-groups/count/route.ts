@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
 
 import { getUserAccessState, hasUserTierCapability } from '@/lib/billing/gating';
-import { type AppLocale, routing } from '@/i18n/routing';
-import { getLiveGroupsForUser } from '@/lib/live-groups/server';
+import { getLiveGroupCountForUser } from '@/lib/live-groups/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
-export async function GET(request: Request) {
+export async function GET() {
   const supabase = createSupabaseServerClient();
   const {
     data: { user },
@@ -19,14 +18,9 @@ export async function GET(request: Request) {
   const canBrowseLookupLayer = hasUserTierCapability(accessState, 'canBrowseLookupLayer');
 
   if (!canBrowseLookupLayer) {
-    return NextResponse.json({ ok: true, groups: [] });
+    return NextResponse.json({ ok: true, count: 0 });
   }
 
-  const url = new URL(request.url);
-  const localeParam = url.searchParams.get('locale');
-  const locale: AppLocale = routing.locales.includes(localeParam as AppLocale)
-    ? (localeParam as AppLocale)
-    : routing.defaultLocale;
-  const groups = await getLiveGroupsForUser(user.id, locale);
-  return NextResponse.json({ ok: true, groups });
+  const count = await getLiveGroupCountForUser(user.id);
+  return NextResponse.json({ ok: true, count });
 }

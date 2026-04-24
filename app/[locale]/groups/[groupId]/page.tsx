@@ -1,7 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
-import { RealtimeRefresh } from '@/components/app/realtime-refresh';
 import { GroupPageView } from '@/components/groups/group-page-view';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
@@ -89,21 +88,8 @@ export default async function GroupRoutePage({
     saturday: t('weekdaySaturday'),
     sunday: t('weekdaySunday'),
   };
-
   return (
     <main className="flex flex-1 flex-col gap-5">
-      {primaryGroup ? (
-        <RealtimeRefresh
-          channelName={`dashboard:${primaryGroup.id}`}
-          tables={[
-            { table: 'group_members', filter: `group_id=eq.${primaryGroup.id}` },
-            { table: 'group_weekly_schedules', filter: `group_id=eq.${primaryGroup.id}` },
-            { table: 'sessions', filter: `group_id=eq.${primaryGroup.id}` },
-          ]}
-          throttleMs={700}
-        />
-      ) : null}
-
       <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
 
       <section className="mx-auto w-full max-w-[620px] space-y-4">
@@ -124,7 +110,6 @@ export default async function GroupRoutePage({
           groupInfoSummary={groupInfoSummary}
           sessions={data.sessions}
           canCreateSession={canCreateSession}
-          liveGroups={[]}
           labels={{
             myGroups: t('myGroups'),
             activeGroup: t('activeGroup'),

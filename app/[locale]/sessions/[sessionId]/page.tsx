@@ -177,7 +177,6 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
   if (shouldShowCompletion) {
     return (
       <main className="flex flex-1 items-center justify-center px-4">
-        <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} />
         <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
         <section className="flex w-full max-w-md flex-col items-center text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 text-brand">
@@ -210,7 +209,6 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
 
     return (
       <main className="flex flex-1 flex-col">
-        <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} />
         <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
         <header className="sticky top-0 z-20 border-b border-white/[0.07] bg-background/95 backdrop-blur">
           <div className="mx-auto flex min-h-16 w-full max-w-[700px] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:h-16 sm:flex-nowrap sm:py-0">
