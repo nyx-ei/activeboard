@@ -1161,7 +1161,7 @@ async function getSessionShellData(sessionId: string, user: User) {
 }
 
 export const getSessionPageData = cache(
-  async (sessionId: string, user: User, stage: string | undefined, questionIndex: number) => {
+  async (sessionId: string, user: User, stage: string | undefined, questionIndex?: number | null) => {
     const shell = await getSessionShellData(sessionId, user);
 
     if (!shell?.group) {
@@ -1185,6 +1185,7 @@ export const getSessionPageData = cache(
         membership,
         members,
         answeredCount: 0,
+        resolvedQuestionIndex: 0,
         questionGoal: session.question_goal ?? 10,
         questions: [] as Array<{
           id: string;
@@ -1230,6 +1231,12 @@ export const getSessionPageData = cache(
 
       const safeQuestions = questions ?? [];
       const safeQuestionIds = safeQuestions.map((question) => question.id);
+      const hasExplicitQuestionIndex = Number.isFinite(questionIndex);
+      const firstPendingReviewQuestion =
+        safeQuestions.find((question) => !question.correct_option) ?? safeQuestions[0] ?? null;
+      const resolvedReviewIndex = hasExplicitQuestionIndex
+        ? Math.max(0, Math.min(questionIndex as number, Math.max((session.question_goal ?? safeQuestions.length ?? 1) - 1, 0)))
+        : (firstPendingReviewQuestion?.order_index ?? 0);
       const safeAllAnswers =
         safeQuestionIds.length > 0
           ? (
@@ -1247,6 +1254,7 @@ export const getSessionPageData = cache(
         membership,
         members,
         answeredCount: answeredCountResult.data?.answered_question_count ?? 0,
+        resolvedQuestionIndex: resolvedReviewIndex,
         questionGoal: session.question_goal ?? Math.max(safeQuestions.length, 10),
         questions: safeQuestions,
         currentQuestion: null,
@@ -1262,17 +1270,20 @@ export const getSessionPageData = cache(
       };
     }
 
-    const normalizedIndex = Number.isFinite(questionIndex) ? Math.max(0, questionIndex) : 0;
+    const hasExplicitQuestionIndex = Number.isFinite(questionIndex);
+    const requestedQuestionIndex = hasExplicitQuestionIndex ? Math.max(0, questionIndex as number) : null;
     let currentQuestion =
-      (
-        await supabase
-          .schema('public')
-          .from('questions')
-          .select('id, body, options, order_index, phase, launched_at, answer_deadline_at')
-          .eq('session_id', sessionId)
-          .eq('order_index', normalizedIndex)
-          .maybeSingle()
-      ).data ?? null;
+      requestedQuestionIndex !== null
+        ? (
+            await supabase
+              .schema('public')
+              .from('questions')
+              .select('id, body, options, order_index, phase, launched_at, answer_deadline_at')
+              .eq('session_id', sessionId)
+              .eq('order_index', requestedQuestionIndex)
+              .maybeSingle()
+          ).data ?? null
+        : null;
 
     if (!currentQuestion) {
       currentQuestion =
@@ -1282,7 +1293,7 @@ export const getSessionPageData = cache(
             .from('questions')
             .select('id, body, options, order_index, phase, launched_at, answer_deadline_at')
             .eq('session_id', sessionId)
-            .order('order_index', { ascending: true })
+            .order('order_index', { ascending: false })
             .limit(1)
             .maybeSingle()
         ).data ?? null;
@@ -1312,6 +1323,7 @@ export const getSessionPageData = cache(
       membership,
       members,
       answeredCount: answeredCountResult.data?.answered_question_count ?? 0,
+      resolvedQuestionIndex: currentQuestion?.order_index ?? 0,
       questionGoal: session.question_goal ?? Math.max((currentQuestion?.order_index ?? 0) + 1, 10),
       questions: currentQuestion ? [currentQuestion] : [],
       currentQuestion,

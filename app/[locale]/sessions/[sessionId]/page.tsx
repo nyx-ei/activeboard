@@ -108,11 +108,13 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
   const locale = params.locale as AppLocale;
   const user = await requireUser(locale);
   const t = await getTranslations('Session');
+  const requestedQuestionIndex =
+    typeof searchParams.q === 'string' && searchParams.q.length > 0 ? Math.max(0, Number(searchParams.q) || 0) : undefined;
   const data = await getSessionPageData(
     params.sessionId,
     user,
     searchParams.stage,
-    Math.max(0, Number(searchParams.q ?? 0) || 0),
+    requestedQuestionIndex,
   );
 
   if (!data?.session || !data.group) {
@@ -120,7 +122,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
   }
 
   const questionGoal = data.questionGoal;
-  const currentIndex = Math.max(0, Math.min(Number(searchParams.q ?? 0) || 0, questionGoal - 1));
+  const currentIndex = Math.max(0, Math.min(data.resolvedQuestionIndex ?? requestedQuestionIndex ?? 0, questionGoal - 1));
   const questions = [...data.questions].sort((left, right) => left.order_index - right.order_index);
   const question = questions.find((item) => item.order_index === currentIndex) ?? questions[currentIndex] ?? questions[0] ?? null;
   const realtimeTables = [
@@ -185,7 +187,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
           </div>
           <h1 className="mt-8 text-2xl font-extrabold text-white">{t('allAnswersSubmitted')}</h1>
           <p className="mt-3 text-lg font-medium text-slate-400">{t('questionsCompletedValue', { current: questionGoal, total: questionGoal })}</p>
-          <Link href={`/sessions/${params.sessionId}?stage=review&q=0`} prefetch={false} className="button-primary mt-7 rounded-[7px] px-5 py-2.5 text-sm">
+          <Link href={`/sessions/${params.sessionId}?stage=review`} prefetch={false} className="button-primary mt-7 rounded-[7px] px-5 py-2.5 text-sm">
             {t('goToReview')} <span aria-hidden="true">{'>'}</span>
           </Link>
           <form action={quitIncompleteSessionAction} className="mt-4">
