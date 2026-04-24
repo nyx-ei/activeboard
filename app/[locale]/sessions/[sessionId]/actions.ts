@@ -6,6 +6,7 @@ import { getTranslations } from 'next-intl/server';
 
 import type { AppLocale } from '@/i18n/routing';
 import { requireUserTierCapability } from '@/lib/billing/gating';
+import { createPerfTracker } from '@/lib/observability/perf';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
 import { sendTrialWarningEmailIfNeeded } from '@/lib/notifications/trial-progress';
@@ -72,6 +73,48 @@ async function requireSessionMember(sessionId: string, locale: AppLocale) {
     .eq('group_id', session.group_id)
     .eq('user_id', user.id)
     .maybeSingle();
+
+  if (!membership) {
+    redirect(withFeedback(`/${locale}/dashboard?view=sessions`, 'error', t('notAuthorized')));
+  }
+
+  return { supabase, user, session, membership, t };
+}
+
+async function requireSessionMemberWithPerf(
+  sessionId: string,
+  locale: AppLocale,
+  perf: ReturnType<typeof createPerfTracker>,
+) {
+  const t = await getTranslations({ locale, namespace: 'Feedback' });
+  perf.step('feedback_loaded');
+  const { supabase, user } = await getCurrentAuthUser();
+  perf.step('auth_loaded');
+
+  if (!user) {
+    redirect(`/${locale}/auth/login`);
+  }
+
+  const { data: session } = await supabase
+    .schema('public')
+    .from('sessions')
+    .select('id, group_id, status, leader_id, timer_mode, timer_seconds, question_goal, started_at')
+    .eq('id', sessionId)
+    .maybeSingle();
+  perf.step('session_loaded');
+
+  if (!session) {
+    redirect(withFeedback(`/${locale}/dashboard?view=sessions`, 'error', t('notAuthorized')));
+  }
+
+  const { data: membership } = await supabase
+    .schema('public')
+    .from('group_members')
+    .select('is_founder')
+    .eq('group_id', session.group_id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+  perf.step('membership_loaded');
 
   if (!membership) {
     redirect(withFeedback(`/${locale}/dashboard?view=sessions`, 'error', t('notAuthorized')));
@@ -183,7 +226,8 @@ export async function submitSessionStepAction(formData: FormData) {
   const confidenceValue = formData.get('confidence');
   const confidence =
     typeof confidenceValue === 'string' && isConfidenceLevel(confidenceValue) ? confidenceValue : null;
-  const { supabase, user, session, t } = await requireSessionMember(sessionId, locale);
+  const perf = createPerfTracker(`submitSessionStepAction:${sessionId}:${questionIndex}`);
+  const { supabase, user, session, t } = await requireSessionMemberWithPerf(sessionId, locale, perf);
   const resolvedSelectedOption = selectedOption === '?' ? customOption : selectedOption;
 
   if (
@@ -204,6 +248,7 @@ export async function submitSessionStepAction(formData: FormData) {
   } catch {
     redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('actionFailed')));
   }
+  perf.step('question_ensured');
 
   const questionId = ensuredQuestion.id;
   const answerDeadlineAt = ensuredQuestion.answerDeadlineAt;
@@ -217,6 +262,8 @@ export async function submitSessionStepAction(formData: FormData) {
       },
       { onConflict: 'question_id,user_id' },
     );
+    perf.step('timeout_answer_upserted');
+    perf.done({ mode: 'expired', questionId });
 
     redirect(`/${locale}/sessions/${sessionId}?q=${questionIndex}`);
   }
@@ -230,6 +277,7 @@ export async function submitSessionStepAction(formData: FormData) {
     },
     { onConflict: 'question_id,user_id' },
   );
+  perf.step('answer_upserted');
 
   runDeferredTasks([
     logAppEvent({
@@ -248,6 +296,13 @@ export async function submitSessionStepAction(formData: FormData) {
     }),
     sendTrialWarningEmailIfNeeded(user.id),
   ]);
+  perf.step('deferred_side_effects_started');
+  perf.done({
+    mode: 'submitted',
+    questionId,
+    selectedOption: resolvedSelectedOption,
+    confidence,
+  });
 
   redirect(`/${locale}/sessions/${sessionId}?q=${questionIndex}`);
 }

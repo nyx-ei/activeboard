@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { createPerfTracker } from '@/lib/observability/perf';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 type RouteContext = {
@@ -9,6 +10,7 @@ type RouteContext = {
 export async function GET(request: Request, { params }: RouteContext) {
   const questionId = new URL(request.url).searchParams.get('questionId');
   const sessionId = params.sessionId;
+  const perf = createPerfTracker(`sessionRuntime:${sessionId}:${questionId ?? 'latest'}`);
 
   if (!sessionId) {
     return NextResponse.json({ ok: false }, { status: 400 });
@@ -18,6 +20,7 @@ export async function GET(request: Request, { params }: RouteContext) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  perf.step('auth_loaded');
 
   if (!user) {
     return NextResponse.json({ ok: false }, { status: 401 });
@@ -29,6 +32,7 @@ export async function GET(request: Request, { params }: RouteContext) {
     .select('id, group_id, status')
     .eq('id', sessionId)
     .maybeSingle();
+  perf.step('session_loaded');
 
   if (!session) {
     return NextResponse.json({ ok: false }, { status: 404 });
@@ -41,6 +45,7 @@ export async function GET(request: Request, { params }: RouteContext) {
     .eq('group_id', session.group_id)
     .eq('user_id', user.id)
     .maybeSingle();
+  perf.step('membership_loaded');
 
   if (!membership) {
     return NextResponse.json({ ok: false }, { status: 403 });
@@ -66,6 +71,13 @@ export async function GET(request: Request, { params }: RouteContext) {
         .select('*', { count: 'exact', head: true })
         .eq('question_id', questionId),
     ]);
+    perf.step('question_and_counts_loaded');
+    perf.done({
+      mode: 'question',
+      questionFound: Boolean(question?.id),
+      submittedCount: submittedCount ?? 0,
+      memberCount: memberCount ?? 0,
+    });
 
     return NextResponse.json({
       ok: true,
@@ -94,6 +106,12 @@ export async function GET(request: Request, { params }: RouteContext) {
       .select('*', { count: 'exact', head: true })
       .eq('group_id', session.group_id),
   ]);
+  perf.step('latest_question_loaded');
+  perf.done({
+    mode: 'latest',
+    questionFound: Boolean(question?.id),
+    memberCount: memberCount ?? 0,
+  });
 
   return NextResponse.json({
     ok: true,
