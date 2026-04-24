@@ -162,6 +162,15 @@ type MaterializedProfileAnalyticsRow = {
   weekly_trend: unknown;
 };
 
+type MaterializedSessionConfidenceBreakdownRow = {
+  session_id: string | null;
+  session_name: string | null;
+  scheduled_at: string | null;
+  low_count: number | null;
+  medium_count: number | null;
+  high_count: number | null;
+};
+
 const TRIAL_WARNING_THRESHOLD = 85;
 
 async function getUsersMap(supabase: PublicClient, userIds: string[]) {
@@ -472,7 +481,6 @@ async function getDashboardCore(userId: string) {
       groupsById: new Map<string, { name: string }>(),
       sessions: [] as DashboardSession[],
       activeSessions: [] as DashboardSession[],
-      completedSessionsCount: 0,
     };
   }
 
@@ -527,7 +535,6 @@ async function getDashboardCore(userId: string) {
     groupsById,
     sessions,
     activeSessions: sessions.filter((session) => session.status === 'active'),
-    completedSessionsCount: sessions.filter((session) => session.status === 'completed').length,
   };
 }
 
@@ -544,14 +551,14 @@ async function getCompletedSessionsCount(userId: string) {
     return 0;
   }
 
-  const { data: sessions } = await supabase
+  const { count } = await supabase
     .schema('public')
     .from('sessions')
-    .select('status')
+    .select('*', { count: 'exact', head: true })
     .in('group_id', groupIds)
     .eq('status', 'completed');
 
-  return sessions?.length ?? 0;
+  return count ?? 0;
 }
 
 async function getDashboardSessionCounts(userId: string, sessionIds: string[]) {
@@ -633,105 +640,24 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
   const perf = createPerfTracker(`getDashboardPerformanceData:${userId}`);
   const supabase = createSupabaseServerClient();
   const completedSessionsCountPromise = getCompletedSessionsCount(userId);
-  const sessionConfidenceBreakdownPromise = (async () => {
-    const { data: answerRows } = await supabase
-      .schema('public')
-      .from('answers')
-      .select('question_id, confidence')
-      .eq('user_id', userId)
-      .not('confidence', 'is', null);
-
-    const safeAnswerRows = (answerRows ?? []).filter(
-      (row): row is { question_id: string; confidence: ConfidenceLevel } =>
-        typeof row.question_id === 'string' &&
-        (row.confidence === 'low' || row.confidence === 'medium' || row.confidence === 'high'),
-    );
-
-    if (safeAnswerRows.length === 0) {
-      return [] as SessionConfidenceBreakdownItem[];
-    }
-
-    const questionIds = [...new Set(safeAnswerRows.map((row) => row.question_id))];
-    const { data: questionRows } = await supabase
-      .schema('public')
-      .from('questions')
-      .select('id, session_id')
-      .in('id', questionIds);
-
-    const questionSessionMap = new Map(
-      (questionRows ?? [])
-        .filter((row): row is { id: string; session_id: string } => typeof row.id === 'string' && typeof row.session_id === 'string')
-        .map((row) => [row.id, row.session_id]),
-    );
-
-    const sessionIds = [...new Set([...questionSessionMap.values()])];
-    if (sessionIds.length === 0) {
-      return [] as SessionConfidenceBreakdownItem[];
-    }
-
-    const { data: sessionRows } = await supabase
-      .schema('public')
-      .from('sessions')
-      .select('id, name, scheduled_at, group_id')
-      .in('id', sessionIds);
-
-    const groupIds = [
-      ...new Set(
-        (sessionRows ?? [])
-          .map((row) => (typeof row.group_id === 'string' ? row.group_id : null))
-          .filter((value): value is string => Boolean(value)),
-      ),
-    ];
-
-    const { data: groupRows } =
-      groupIds.length > 0
-        ? await supabase.schema('public').from('groups').select('id, name').in('id', groupIds)
-        : { data: [] as { id: string; name: string }[] };
-
-    const sessionMetaMap = new Map(
-      (sessionRows ?? [])
-        .filter(
-          (row): row is { id: string; name: string | null; scheduled_at: string; group_id: string } =>
-            typeof row.id === 'string' && typeof row.scheduled_at === 'string',
-        )
-        .map((row) => [row.id, row]),
-    );
-    const groupNameMap = new Map(
-      (groupRows ?? [])
-        .filter((row): row is { id: string; name: string } => typeof row.id === 'string' && typeof row.name === 'string')
-        .map((row) => [row.id, row.name]),
-    );
-
-    const breakdownMap = new Map<string, SessionConfidenceBreakdownItem>();
-    for (const answer of safeAnswerRows) {
-      const sessionId = questionSessionMap.get(answer.question_id);
-      if (!sessionId) continue;
-
-      const sessionMeta = sessionMetaMap.get(sessionId);
-      if (!sessionMeta) continue;
-
-      const existing =
-        breakdownMap.get(sessionId) ??
-        {
-          sessionId,
-          sessionName: sessionMeta.name?.trim() || (sessionMeta.group_id ? groupNameMap.get(sessionMeta.group_id) ?? 'Session' : 'Session'),
-          scheduledAt: sessionMeta.scheduled_at,
-          low: 0,
-          medium: 0,
-          high: 0,
+  const sessionConfidenceBreakdownPromise = (supabase as unknown as {
+    schema: (schemaName: string) => {
+      from: (relation: string) => {
+        select: (columns: string) => {
+          eq: (column: string, value: string) => {
+            order: (column: string, options: { ascending: boolean }) => Promise<{
+              data: MaterializedSessionConfidenceBreakdownRow[] | null;
+            }>;
+          };
         };
-
-      if (answer.confidence === 'low') existing.low += 1;
-      if (answer.confidence === 'medium') existing.medium += 1;
-      if (answer.confidence === 'high') existing.high += 1;
-
-      breakdownMap.set(sessionId, existing);
-    }
-
-    return Array.from(breakdownMap.values()).sort(
-      (left, right) => new Date(right.scheduledAt).getTime() - new Date(left.scheduledAt).getTime(),
-    );
-  })();
+      };
+    };
+  })
+    .schema('public')
+    .from('dashboard_user_session_confidence_breakdown')
+    .select('session_id, session_name, scheduled_at, low_count, medium_count, high_count')
+    .eq('user_id', userId)
+    .order('scheduled_at', { ascending: false });
   const metricsPromise = supabase
     .schema('public')
     .from('dashboard_user_answer_metrics')
@@ -755,7 +681,7 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
     .eq('user_id', userId)
     .maybeSingle();
 
-  const [completedSessionsCount, sessionConfidenceBreakdown, metricsResult, profileAnalyticsResult] = await Promise.all([
+  const [completedSessionsCount, sessionConfidenceBreakdownResult, metricsResult, profileAnalyticsResult] = await Promise.all([
     completedSessionsCountPromise,
     sessionConfidenceBreakdownPromise,
     metricsPromise,
@@ -769,6 +695,25 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
   const answeredCount = metricsRow?.answered_count ?? 0;
   const correctCount = metricsRow?.correct_count ?? 0;
   const incorrectCount = metricsRow?.incorrect_count ?? 0;
+  const sessionConfidenceBreakdown: SessionConfidenceBreakdownItem[] = [];
+  for (const row of sessionConfidenceBreakdownResult.data ?? []) {
+    if (
+      typeof row.session_id !== 'string' ||
+      typeof row.session_name !== 'string' ||
+      typeof row.scheduled_at !== 'string'
+    ) {
+      continue;
+    }
+
+    sessionConfidenceBreakdown.push({
+      sessionId: row.session_id,
+      sessionName: row.session_name,
+      scheduledAt: row.scheduled_at,
+      low: row.low_count ?? 0,
+      medium: row.medium_count ?? 0,
+      high: row.high_count ?? 0,
+    });
+  }
   const averageConfidence =
     answeredCount > 0 && metricsRow?.average_confidence_score
       ? scoreToConfidenceLevel(metricsRow.average_confidence_score)
