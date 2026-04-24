@@ -29,6 +29,10 @@ function groupPath(locale: AppLocale, groupId: string) {
   return `/${locale}/groups/${groupId}`;
 }
 
+function isCustomAnswerLetter(value: string) {
+  return /^[A-Z]$/.test(value) && !ANSWER_OPTIONS.includes(value as (typeof ANSWER_OPTIONS)[number]);
+}
+
 async function getCurrentAuthUser() {
   const supabase = createSupabaseServerClient();
   const {
@@ -180,10 +184,12 @@ export async function submitSessionStepAction(formData: FormData) {
   const sessionId = formData.get('sessionId') as string;
   const questionIndex = Number(formData.get('questionIndex'));
   const selectedOption = (formData.get('selectedOption') as string | null)?.toUpperCase() ?? '';
+  const customOption = (formData.get('customOption') as string | null)?.trim().toUpperCase() ?? '';
   const confidenceValue = formData.get('confidence');
   const confidence =
     typeof confidenceValue === 'string' && isConfidenceLevel(confidenceValue) ? confidenceValue : null;
   const { supabase, user, session, t } = await requireSessionMember(sessionId, locale);
+  const resolvedSelectedOption = selectedOption === '?' ? customOption : selectedOption;
 
   if (
     session.status !== 'active' ||
@@ -191,6 +197,7 @@ export async function submitSessionStepAction(formData: FormData) {
     questionIndex < 0 ||
     questionIndex >= session.question_goal ||
     (!ANSWER_OPTIONS.includes(selectedOption as (typeof ANSWER_OPTIONS)[number]) && selectedOption !== '?') ||
+    (selectedOption === '?' && !isCustomAnswerLetter(customOption)) ||
     !confidence
   ) {
     redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('missingFields')));
@@ -223,7 +230,7 @@ export async function submitSessionStepAction(formData: FormData) {
     {
       question_id: questionId,
       user_id: user.id,
-      selected_option: selectedOption,
+      selected_option: resolvedSelectedOption,
       confidence,
     },
     { onConflict: 'question_id,user_id' },
@@ -238,7 +245,7 @@ export async function submitSessionStepAction(formData: FormData) {
     metadata: {
       question_id: questionId,
       question_index: questionIndex,
-      selected_option: selectedOption,
+      selected_option: resolvedSelectedOption,
       confidence,
       source: 'self_paced_session_flow',
     },
@@ -641,11 +648,13 @@ export async function submitAnswerAction(formData: FormData) {
   const sessionId = formData.get('sessionId') as string;
   const questionId = formData.get('questionId') as string;
   const selectedOption = (formData.get('selectedOption') as string | null)?.toUpperCase() ?? null;
+  const customOption = (formData.get('customOption') as string | null)?.trim().toUpperCase() ?? '';
   const confidenceValue = formData.get('confidence');
   const confidence =
     typeof confidenceValue === 'string' && isConfidenceLevel(confidenceValue) ? confidenceValue : null;
   const t = await getTranslations({ locale, namespace: 'Feedback' });
   const { supabase, user } = await getCurrentAuthUser();
+  const resolvedSelectedOption = selectedOption === '?' ? customOption : selectedOption;
 
   if (!user) {
     redirect(`/${locale}/auth/login`);
@@ -671,11 +680,19 @@ export async function submitAnswerAction(formData: FormData) {
     redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('answerWindowClosed')));
   }
 
+  if (!resolvedSelectedOption || !/^[A-Z]$/.test(resolvedSelectedOption)) {
+    redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('missingFields')));
+  }
+
+  if (selectedOption === '?' && !isCustomAnswerLetter(customOption)) {
+    redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('missingFields')));
+  }
+
   await supabase.schema('public').from('answers').upsert(
     {
       question_id: questionId,
       user_id: user.id,
-      selected_option: selectedOption,
+      selected_option: resolvedSelectedOption,
       confidence,
     },
     { onConflict: 'question_id,user_id' },
@@ -688,7 +705,7 @@ export async function submitAnswerAction(formData: FormData) {
     sessionId,
     metadata: {
       question_id: questionId,
-      selected_option: selectedOption,
+      selected_option: resolvedSelectedOption,
       confidence,
     },
   });

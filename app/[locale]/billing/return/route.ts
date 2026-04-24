@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { getTranslations } from 'next-intl/server';
 
 import { routing, type AppLocale } from '@/i18n/routing';
@@ -9,6 +10,7 @@ import { isFeatureEnabled } from '@/lib/features/flags';
 import { createStripeServerClient } from '@/lib/stripe/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { withFeedback } from '@/lib/utils';
+import { deriveUserTier } from '@/lib/billing/user-tier';
 
 type RouteContext = {
   params: {
@@ -92,6 +94,18 @@ export async function GET(request: Request, { params }: RouteContext) {
     },
   });
 
+  const { data: userBilling } = await supabase
+    .schema('public')
+    .from('users')
+    .select('questions_answered')
+    .eq('id', user.id)
+    .maybeSingle();
+  const nextUserTier = deriveUserTier({
+    questionsAnswered: userBilling?.questions_answered ?? 0,
+    hasValidPaymentMethod: true,
+    subscriptionStatus: 'none',
+  });
+
   await supabase
     .schema('public')
     .from('users')
@@ -100,6 +114,7 @@ export async function GET(request: Request, { params }: RouteContext) {
       stripe_default_payment_method_id: paymentMethodId,
       has_valid_payment_method: true,
       subscription_status: 'none',
+      user_tier: nextUserTier,
     })
     .eq('id', user.id);
 
@@ -112,6 +127,10 @@ export async function GET(request: Request, { params }: RouteContext) {
       stripe_default_payment_method_id: paymentMethodId,
     },
   });
+
+  revalidatePath(`/${locale}/billing`);
+  revalidatePath(`/${locale}/groups`);
+  revalidatePath(`/${locale}/dashboard`);
 
   return NextResponse.redirect(
     new URL(withFeedback(`/${locale}/billing`, 'success', t('paymentMethodAdded')), requestUrl.origin),

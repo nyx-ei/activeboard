@@ -31,7 +31,6 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   const user = await requireUser(locale);
   const t = await getTranslations('Dashboard');
   const feedbackT = await getTranslations('Feedback');
-  const sessionSummaryT = await getTranslations('SessionSummary');
 
   if (searchParams.view === 'group' && searchParams.groupId) {
     redirect(`/${locale}/groups/${searchParams.groupId}`);
@@ -114,30 +113,19 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
         {isPerformanceView ? (
           <DashboardPerformanceView
             answeredCount={performanceData?.metrics.answeredCount ?? 0}
-            completedSessionsCount={performanceData?.metrics.completedSessionsCount ?? 0}
             successRate={performanceData?.metrics.successRate ?? null}
-            errorRate={performanceData?.metrics.errorRate ?? null}
             averageConfidence={performanceData?.metrics.averageConfidence ?? null}
-            trialProgress={performanceData?.profileAnalytics.trialProgress ?? trialProgress}
             heatmap={performanceData?.profileAnalytics.heatmap ?? []}
-            physicianActivityAccuracy={performanceData?.profileAnalytics.physicianActivityAccuracy ?? []}
-            dimensionOfCareAccuracy={performanceData?.profileAnalytics.dimensionOfCareAccuracy ?? []}
-            blueprintGrid={performanceData?.profileAnalytics.blueprintGrid ?? []}
             confidenceCalibration={performanceData?.profileAnalytics.confidenceCalibration ?? []}
-            errorTypeBreakdown={performanceData?.profileAnalytics.errorTypeBreakdown ?? []}
-            weeklyTrend={performanceData?.profileAnalytics.weeklyTrend ?? []}
             labels={{
               sprintActivityTitle: t('sprintActivityTitle'),
               questionsAnswered: t('questionsAnswered'),
-              sessionsFinished: t('sessionsFinished', { count: performanceData?.metrics.completedSessionsCount ?? 0 }),
               heatmapAvailableAfterSessions: t('heatmapAvailableAfterSessions'),
               certaintyTitle: t('certaintyTitle'),
               confidenceLow: t('confidenceLow'),
               confidenceMedium: t('confidenceMedium'),
               confidenceHigh: t('confidenceHigh'),
               confidenceAfterNextSession: t('confidenceAfterNextSession'),
-              errorTitle: t('errorTitle'),
-              errorAfterThreeSessions: t('errorAfterThreeSessions'),
               noData: t('noData'),
               weekdays: [
                 t('weekdayShortMonday'),
@@ -166,50 +154,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
               less: t('heatmapLess'),
               more: t('heatmapMore'),
               averagePerWeek: t('averagePerWeek'),
-              completion: t('completion'),
-              share: t('shareSession'),
-              trialProgressTitle: t('trialProgressTitle'),
-              trialProgressSummary: t('trialProgressSummary', { current: '{current}', total: '{total}' }),
-              trialProgressDescription: t('trialProgressDescription', { remaining: '{remaining}' }),
-              trialProgressWarning: t('trialProgressWarning', { remaining: '{remaining}' }),
-              trialProgressComplete: t('trialProgressComplete'),
-              trendTitle: t('trendTitle'),
-              trendDescription: t('trendDescription'),
-              trendAccuracyValue: t('trendAccuracyValue', { accuracy: '{accuracy}', count: '{count}' }),
-              trendEmpty: t('trendEmpty'),
-              physicianActivityTitle: t('physicianActivityTitle'),
-              dimensionOfCareTitle: t('dimensionOfCareTitle'),
-              accuracyValue: t('accuracyValue', { accuracy: '{accuracy}', count: '{count}' }),
               confidenceCalibrationTitle: t('confidenceCalibrationTitle'),
-              errorTypesTitle: t('errorTypesTitle'),
-              errorTypesEmpty: t('errorTypesEmpty'),
-              errorTypeCount: t('errorTypeCount', { count: '{count}' }),
-              blueprintGridTitle: t('blueprintGridTitle'),
-              blueprintGridDescription: t('blueprintGridDescription'),
-              physicianActivityLabels: {
-                history_taking: sessionSummaryT('physicianActivity.history_taking'),
-                physical_exam: sessionSummaryT('physicianActivity.physical_exam'),
-                investigation: sessionSummaryT('physicianActivity.investigation'),
-                management: sessionSummaryT('physicianActivity.management'),
-                communication: sessionSummaryT('physicianActivity.communication'),
-                ethics: sessionSummaryT('physicianActivity.ethics'),
-              },
-              dimensionOfCareLabels: {
-                diagnosis: sessionSummaryT('dimensionOfCare.diagnosis'),
-                acute_care: sessionSummaryT('dimensionOfCare.acute_care'),
-                chronic_care: sessionSummaryT('dimensionOfCare.chronic_care'),
-                prevention: sessionSummaryT('dimensionOfCare.prevention'),
-                follow_up: sessionSummaryT('dimensionOfCare.follow_up'),
-                professionalism: sessionSummaryT('dimensionOfCare.professionalism'),
-              },
-              errorTypeLabels: {
-                knowledge_gap: sessionSummaryT('errorType.knowledge_gap'),
-                misread_question: sessionSummaryT('errorType.misread_question'),
-                premature_closure: sessionSummaryT('errorType.premature_closure'),
-                confidence_mismatch: sessionSummaryT('errorType.confidence_mismatch'),
-                time_pressure: sessionSummaryT('errorType.time_pressure'),
-                careless_mistake: sessionSummaryT('errorType.careless_mistake'),
-              },
             }}
           />
         ) : null}

@@ -660,6 +660,8 @@
     "correctAnswer": "Choose the correct answer",
     "submitAnswer": "Submit answer",
     "submitAnswerPending": "Submitting answer...",
+    "customOptionLabel": "Type your letter",
+    "customOptionPlaceholder": "E",
     "yourAnswer": "Your answer",
     "yourConfidence": "Confidence level",
     "confidenceLow": "Low",

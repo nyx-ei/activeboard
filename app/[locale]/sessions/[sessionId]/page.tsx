@@ -15,9 +15,9 @@ import { getSessionPageData } from '@/lib/demo/data';
 import { ANSWER_OPTIONS } from '@/lib/types/demo';
 
 import {
+  advanceSessionStepAction,
   finishReviewSessionAction,
   initializeSessionFlowAction,
-  advanceSessionStepAction,
   quitIncompleteSessionAction,
   saveReviewAnswerAction,
   submitSessionStepAction,
@@ -52,8 +52,9 @@ function getDistribution(answers: Array<{ selected_option: string | null; confid
   }
 
   for (const answer of answers) {
-    const option = answer.selected_option ?? '?';
-    distribution.set(option, (distribution.get(option) ?? 0) + 1);
+    const option = (answer.selected_option ?? '?').toUpperCase();
+    const normalizedOption = ANSWER_OPTIONS.includes(option as (typeof ANSWER_OPTIONS)[number]) ? option : '?';
+    distribution.set(normalizedOption, (distribution.get(normalizedOption) ?? 0) + 1);
   }
 
   const submitted = answers.length;
@@ -218,8 +219,9 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
                 {data.group.name}
               </span>
             </Link>
-            <p className="min-w-0 flex-1 text-center text-base font-extrabold text-white sm:text-lg">{data.session.name ?? data.group.name} - {t('reviewShort')}</p>
-            <p className="min-w-0 flex-1 text-center text-base font-extrabold text-white sm:text-lg">{data.session.name ?? data.group.name} - {t('reviewShort')}</p>
+            <p className="min-w-0 flex-1 text-center text-base font-extrabold text-white sm:text-lg">
+              {data.session.name ?? data.group.name} - {t('reviewShort')}
+            </p>
             <p className="text-sm font-bold text-slate-500">Q{currentIndex + 1}/{questionGoal}</p>
           </div>
         </header>
@@ -244,7 +246,8 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
               {[...ANSWER_OPTIONS, '?'].map((option) => (
                 <div key={option} className="flex min-w-7 flex-col items-center gap-1 text-center">
                   <span className={reviewQuestion.correct_option === option ? 'text-sm font-extrabold text-brand' : 'text-sm font-bold text-slate-500'}>
-                    {option}{reviewQuestion.correct_option === option ? ' *' : ''}
+                    {option}
+                    {reviewQuestion.correct_option === option ? ' *' : ''}
                   </span>
                   <span className="text-xs font-bold text-slate-600">{distribution.get(option) ?? 0}</span>
                 </div>
@@ -337,18 +340,17 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
       />
       <header className="border-b border-white/[0.07]">
         <div className="mx-auto flex min-h-16 w-full max-w-[560px] items-center justify-between gap-3 px-4 py-3 sm:h-16 sm:py-0">
-        <Link href={`/groups/${data.group.id}`} prefetch={false} className="text-slate-500 hover:text-white">
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        </Link>
+          <Link href={`/groups/${data.group.id}`} prefetch={false} className="text-slate-500 hover:text-white">
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          </Link>
           <div className="text-center">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">{t('questionUpper')}</p>
-            <p className="text-xl font-extrabold text-white">{currentIndex + 1}<span className="text-sm text-slate-500">/{questionGoal}</span></p>
+            <p className="text-xl font-extrabold text-white">
+              {currentIndex + 1}
+              <span className="text-sm text-slate-500">/{questionGoal}</span>
+            </p>
           </div>
-          <SessionHeaderMeta
-            submittedCount={submittedCount}
-            memberCount={memberCount}
-            answerDeadlineAt={question.answer_deadline_at}
-          />
+          <SessionHeaderMeta submittedCount={submittedCount} memberCount={memberCount} answerDeadlineAt={question.answer_deadline_at} />
         </div>
       </header>
 
@@ -372,6 +374,8 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
             confidenceLow: t('confidenceLow'),
             confidenceMedium: t('confidenceMedium'),
             confidenceHigh: t('confidenceHigh'),
+            customOptionLabel: t('customOptionLabel'),
+            customOptionPlaceholder: t('customOptionPlaceholder'),
             submit: t('submitAnswer'),
             submitPending: t('submitAnswerPending'),
             nextQuestion: t('nextQuestion'),

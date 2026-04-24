@@ -15,6 +15,10 @@ import { ANSWER_OPTIONS, type AnswerOption } from '@/lib/types/demo';
 
 type ServerAction = (formData: FormData) => void | Promise<void>;
 
+function isCustomLetter(value: string) {
+  return /^[A-Z]$/.test(value) && !ANSWER_OPTIONS.includes(value as AnswerOption);
+}
+
 export function SessionHeaderMeta({
   submittedCount,
   memberCount,
@@ -85,6 +89,8 @@ export function SessionAnswerForm({
     confidenceLow: string;
     confidenceMedium: string;
     confidenceHigh: string;
+    customOptionLabel: string;
+    customOptionPlaceholder: string;
     submit: string;
     submitPending: string;
     nextQuestion: string;
@@ -92,27 +98,58 @@ export function SessionAnswerForm({
     allAnswersReceived: string;
   };
 }) {
-  const [selectedOption, setSelectedOption] = useState(initialAnswer ?? '');
+  const initialSelectedOption =
+    initialAnswer && !ANSWER_OPTIONS.includes(initialAnswer as AnswerOption) && initialAnswer !== '?'
+      ? '?'
+      : (initialAnswer ?? '');
+  const initialCustomOption =
+    initialAnswer && !ANSWER_OPTIONS.includes(initialAnswer as AnswerOption) && initialAnswer !== '?'
+      ? initialAnswer.toUpperCase()
+      : '';
+  const [selectedOption, setSelectedOption] = useState(initialSelectedOption);
+  const [customOption, setCustomOption] = useState(initialCustomOption);
   const [confidence, setConfidence] = useState<ConfidenceLevel | ''>(initialConfidence ?? '');
   const [remainingSeconds, setRemainingSeconds] = useState(() =>
     answerDeadlineAt ? Math.max(0, Math.ceil((new Date(answerDeadlineAt).getTime() - Date.now()) / 1000)) : 0,
   );
   const router = useRouter();
   const timeoutFormRef = useRef<HTMLFormElement>(null);
+  const customOptionInputRef = useRef<HTMLInputElement>(null);
   const timeoutSubmittedRef = useRef(false);
   const hasAnswer = Boolean(initialAnswer);
   const isExpired = remainingSeconds <= 0;
   const hasAllAnswers = submittedCount >= memberCount || isExpired;
-  const canSubmit = Boolean(selectedOption && confidence) && !hasAnswer && !isExpired;
+  const normalizedCustomOption = customOption.trim().toUpperCase();
+  const canSubmit =
+    Boolean(selectedOption && confidence) &&
+    (selectedOption !== '?' || isCustomLetter(normalizedCustomOption)) &&
+    !hasAnswer &&
+    !isExpired;
 
   useEffect(() => {
-    setSelectedOption(initialAnswer ?? '');
+    setSelectedOption(
+      initialAnswer && !ANSWER_OPTIONS.includes(initialAnswer as AnswerOption) && initialAnswer !== '?'
+        ? '?'
+        : (initialAnswer ?? ''),
+    );
+    setCustomOption(
+      initialAnswer && !ANSWER_OPTIONS.includes(initialAnswer as AnswerOption) && initialAnswer !== '?'
+        ? initialAnswer.toUpperCase()
+        : '',
+    );
     setConfidence(initialConfidence ?? '');
     setRemainingSeconds(
       answerDeadlineAt ? Math.max(0, Math.ceil((new Date(answerDeadlineAt).getTime() - Date.now()) / 1000)) : 0,
     );
     timeoutSubmittedRef.current = false;
   }, [answerDeadlineAt, initialAnswer, initialConfidence, questionId]);
+
+  useEffect(() => {
+    if (selectedOption === '?' && !hasAnswer && !isExpired) {
+      customOptionInputRef.current?.focus();
+      customOptionInputRef.current?.select();
+    }
+  }, [selectedOption, hasAnswer, isExpired]);
 
   useEffect(() => {
     if (!answerDeadlineAt) return undefined;
@@ -135,9 +172,62 @@ export function SessionAnswerForm({
     if (!hasAnswer || hasAllAnswers) return undefined;
     const id = window.setInterval(() => {
       router.refresh();
-    }, 2500);
+    }, 1200);
     return () => window.clearInterval(id);
   }, [hasAnswer, hasAllAnswers, router]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+
+      if (hasAnswer || isExpired) {
+        return;
+      }
+
+      const key = event.key.toUpperCase();
+      if (selectedOption === '?' && /^[A-Z]$/.test(key)) {
+        event.preventDefault();
+        setCustomOption(ANSWER_OPTIONS.includes(key as AnswerOption) ? '' : key);
+        return;
+      }
+
+      if (ANSWER_OPTIONS.includes(key as AnswerOption)) {
+        event.preventDefault();
+        setSelectedOption(key);
+        setCustomOption('');
+        return;
+      }
+
+      if (event.key === '?') {
+        event.preventDefault();
+        setSelectedOption('?');
+        return;
+      }
+
+      if (event.key === '1') {
+        event.preventDefault();
+        setConfidence('low');
+        return;
+      }
+
+      if (event.key === '2') {
+        event.preventDefault();
+        setConfidence('medium');
+        return;
+      }
+
+      if (event.key === '3') {
+        event.preventDefault();
+        setConfidence('high');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [hasAnswer, isExpired, selectedOption]);
 
   return (
     <div className="mx-auto w-full max-w-[496px] space-y-7">
@@ -164,7 +254,12 @@ export function SessionAnswerForm({
               name="selectedOption"
               value={option}
               checked={selectedOption === option}
-              onChange={() => setSelectedOption(option)}
+              onChange={() => {
+                setSelectedOption(option);
+                if (option !== '?') {
+                  setCustomOption('');
+                }
+              }}
               disabled={hasAnswer || isExpired}
               className="sr-only"
             />
@@ -172,6 +267,33 @@ export function SessionAnswerForm({
           </label>
         ))}
       </div>
+
+      {selectedOption === '?' ? (
+        <div className="space-y-2">
+          <label htmlFor="custom-option" className="block text-sm font-bold text-slate-300">
+            {labels.customOptionLabel}
+          </label>
+          <input
+            ref={customOptionInputRef}
+            id="custom-option"
+            type="text"
+            inputMode="text"
+            autoCapitalize="characters"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            maxLength={1}
+            value={customOption}
+            onChange={(event) => {
+              const nextValue = event.target.value.replace(/[^a-z]/gi, '').slice(-1).toUpperCase();
+              setCustomOption(ANSWER_OPTIONS.includes(nextValue as AnswerOption) ? '' : nextValue);
+            }}
+            disabled={hasAnswer || isExpired}
+            placeholder={labels.customOptionPlaceholder}
+            className="field w-full rounded-[7px] text-center text-lg font-extrabold uppercase tracking-[0.12em]"
+          />
+        </div>
+      ) : null}
 
       <div>
         <p className="mb-3 text-sm font-bold text-slate-400">{labels.confidenceTitle}</p>
@@ -215,6 +337,7 @@ export function SessionAnswerForm({
           <input type="hidden" name="questionId" value={questionId} />
           <input type="hidden" name="questionIndex" value={questionIndex} />
           <input type="hidden" name="selectedOption" value={selectedOption} />
+          <input type="hidden" name="customOption" value={normalizedCustomOption} />
           <input type="hidden" name="confidence" value={confidence} />
           <SubmitButton pendingLabel={labels.submitPending} className="button-primary h-16 w-full rounded-[7px] text-base">
             {labels.submit}
@@ -293,6 +416,24 @@ export function ReviewAnswerForm({
   const reviewTrace = hasCorrectOption
     ? `${normalizedParticipantAnswer} ${isCorrect ? '✓' : '×'} → ${correctOption}`
     : '';
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+
+      const key = event.key.toUpperCase();
+      if (ANSWER_OPTIONS.includes(key as AnswerOption)) {
+        event.preventDefault();
+        setCorrectOption(key as AnswerOption);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <form action={action} className="space-y-4">
