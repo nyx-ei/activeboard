@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 
 type AppBottomNavProps = {
   locale: string;
+  groupsHref?: string;
   labels: {
     sessions: string;
     performance: string;
@@ -15,30 +16,29 @@ type AppBottomNavProps = {
   };
 };
 
-const items = [
-  {
-    key: 'sessions',
-    href: '/dashboard?view=sessions',
-    Icon: Play,
-  },
-  {
-    key: 'performance',
-    href: '/dashboard?view=performance',
-    Icon: BarChart3,
-  },
-  {
-    key: 'group',
-    href: '/groups',
-    Icon: Users,
-  },
-] as const;
-
-export function AppBottomNav({ locale, labels }: AppBottomNavProps) {
+export function AppBottomNav({ locale, groupsHref = '/groups', labels }: AppBottomNavProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const dashboardView = searchParams.get('view') ?? 'sessions';
   const isDashboardPath = pathname === `/${locale}/dashboard` || pathname === '/dashboard';
   const isGroupsPath = pathname === `/${locale}/groups` || pathname.startsWith(`/${locale}/groups/`) || pathname === '/groups';
+  const items = [
+    {
+      key: 'sessions',
+      href: '/dashboard?view=sessions',
+      Icon: Play,
+    },
+    {
+      key: 'performance',
+      href: '/dashboard?view=performance',
+      Icon: BarChart3,
+    },
+    {
+      key: 'group',
+      href: groupsHref,
+      Icon: Users,
+    },
+  ] as const;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#060a16]/95 px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl sm:px-3 sm:pb-[calc(0.75rem+env(safe-area-inset-bottom))]">

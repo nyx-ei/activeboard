@@ -33,20 +33,6 @@ type MemberPerformance = {
   status: 'setup' | 'active';
 };
 
-type LiveGroup = {
-  id: string;
-  name: string;
-  inviteCode: string;
-  memberCount: number;
-  maxMembers: number;
-  language: string;
-  timezone: string;
-  weeklyQuestions: number;
-  minutesAgo: number;
-  compatible: boolean;
-  members: Array<{ id: string; initials: string }>;
-};
-
 type GroupPageViewProps = {
   locale: AppLocale;
   shellGroups: Array<{
@@ -82,7 +68,6 @@ type GroupPageViewProps = {
   groupInfoSummary: string;
   sessions: SessionListItem[];
   canCreateSession: boolean;
-  liveGroups: LiveGroup[];
   labels: {
     myGroups: string;
     activeGroup: string;
@@ -200,7 +185,6 @@ export function GroupPageView({
   groupInfoSummary,
   sessions,
   canCreateSession,
-  liveGroups,
   labels,
   actions,
 }: GroupPageViewProps) {
@@ -226,7 +210,6 @@ export function GroupPageView({
       {canBrowseLookupLayer ? (
         <LiveGroupsModal
           locale={locale}
-          groups={liveGroups}
           canJoinLiveGroups={canBrowseLookupLayer}
           initialOpen={initialLiveOpen}
           joinGroupAction={actions.joinGroupAction}
