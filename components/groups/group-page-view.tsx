@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 import { CreateSessionModal } from '@/components/sessions/create-session-modal';
@@ -31,20 +31,6 @@ type MemberPerformance = {
   averageWeeklyQuestions: number;
   totalAnswers: number;
   status: 'setup' | 'active';
-};
-
-type LiveGroup = {
-  id: string;
-  name: string;
-  inviteCode: string;
-  memberCount: number;
-  maxMembers: number;
-  language: string;
-  timezone: string;
-  weeklyQuestions: number;
-  minutesAgo: number;
-  compatible: boolean;
-  members: Array<{ id: string; initials: string }>;
 };
 
 type GroupPageViewProps = {
@@ -82,7 +68,6 @@ type GroupPageViewProps = {
   groupInfoSummary: string;
   sessions: SessionListItem[];
   canCreateSession: boolean;
-  liveGroups: LiveGroup[];
   labels: {
     myGroups: string;
     activeGroup: string;
@@ -200,18 +185,81 @@ export function GroupPageView({
   groupInfoSummary,
   sessions,
   canCreateSession,
-  liveGroups,
   labels,
   actions,
 }: GroupPageViewProps) {
   const [isCreateSessionOpen, setIsCreateSessionOpen] = useState(false);
+  const [resolvedShellGroups, setResolvedShellGroups] = useState(shellGroups);
+  const [resolvedMemberPerformance, setResolvedMemberPerformance] = useState(memberPerformance);
+  const [memberPerformanceLoaded, setMemberPerformanceLoaded] = useState(memberPerformance.length > 0);
   const groupPath = primaryGroup ? `/${locale}/groups/${primaryGroup.id}` : `/${locale}/groups`;
+  const sessionGroupChoices =
+    resolvedShellGroups.length > 0
+      ? resolvedShellGroups.map((group) => ({
+          id: group.id,
+          name: group.name,
+          memberCount: group.memberCount,
+        }))
+      : primaryGroup
+        ? [
+            {
+              id: primaryGroup.id,
+              name: primaryGroup.name,
+              memberCount: primaryGroup.memberCount,
+            },
+          ]
+        : [];
+
+  useEffect(() => {
+    if (resolvedShellGroups.length > 0) {
+      return;
+    }
+
+    let cancelled = false;
+    fetch(`/api/groups/shell?locale=${locale}`, { credentials: 'include' })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!cancelled && payload?.ok && Array.isArray(payload.groups)) {
+          setResolvedShellGroups(payload.groups);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [locale, resolvedShellGroups.length]);
+
+  useEffect(() => {
+    if (!primaryGroup || memberPerformanceLoaded) {
+      return;
+    }
+
+    let cancelled = false;
+    fetch(`/api/groups/member-performance?groupId=${primaryGroup.id}`, { credentials: 'include' })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!cancelled && payload?.ok && Array.isArray(payload.members)) {
+          setResolvedMemberPerformance(payload.members);
+          setMemberPerformanceLoaded(true);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMemberPerformanceLoaded(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [memberPerformanceLoaded, primaryGroup]);
 
   return (
     <>
-      {shellGroups.length > 0 ? (
+      {resolvedShellGroups.length > 0 ? (
         <GroupSwitcherMenu
-          groups={shellGroups}
+          groups={resolvedShellGroups}
           userInitials={currentUserInitials}
           labels={{
             myGroups: labels.myGroups,
@@ -226,7 +274,6 @@ export function GroupPageView({
       {canBrowseLookupLayer ? (
         <LiveGroupsModal
           locale={locale}
-          groups={liveGroups}
           canJoinLiveGroups={canBrowseLookupLayer}
           initialOpen={initialLiveOpen}
           joinGroupAction={actions.joinGroupAction}
@@ -428,8 +475,8 @@ export function GroupPageView({
         ) : null}
 
         <div className="mt-4 space-y-3">
-          {memberPerformance.length > 0 ? (
-            memberPerformance.map((member) => (
+          {resolvedMemberPerformance.length > 0 ? (
+            resolvedMemberPerformance.map((member) => (
               <div key={member.userId} className="rounded-[12px] bg-white/[0.04] px-3 py-3">
                 <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   <div className="flex min-w-max items-center justify-between gap-4 whitespace-nowrap">
@@ -464,8 +511,14 @@ export function GroupPageView({
                 </div>
               </div>
             ))
-          ) : (
+          ) : memberPerformanceLoaded ? (
             <p className="text-sm text-slate-400">{labels.groupViewEmpty}</p>
+          ) : (
+            <div className="space-y-3">
+              {[0, 1, 2].map((item) => (
+                <div key={item} className="h-[72px] animate-pulse rounded-[12px] bg-white/[0.04]" />
+              ))}
+            </div>
           )}
         </div>
       </section>
@@ -473,11 +526,7 @@ export function GroupPageView({
       {isCreateSessionOpen && primaryGroup ? (
         <CreateSessionModal
           locale={locale}
-          groups={shellGroups.map((group) => ({
-            id: group.id,
-            name: group.name,
-            memberCount: group.memberCount,
-          }))}
+          groups={sessionGroupChoices}
           initialGroupId={primaryGroup.id}
           canCreateSession={canCreateSession}
           action={actions.createSessionAction}

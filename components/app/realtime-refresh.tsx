@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { registerRealtimeSubscription } from '@/lib/realtime/browser';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 type RealtimeTable = {
@@ -32,29 +33,20 @@ export function RealtimeRefresh({ channelName, tables, throttleMs = 450 }: Realt
       }, throttleMs);
     };
 
-    const channel = supabase.channel(channelName);
     const parsedTables = JSON.parse(tablesKey) as RealtimeTable[];
-
-    for (const item of parsedTables) {
-      channel.on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: item.table,
-          filter: item.filter,
-        },
-        scheduleRefresh,
-      );
-    }
-
-    channel.subscribe();
+    const release = registerRealtimeSubscription({
+      supabase,
+      channelName,
+      tables: parsedTables,
+      onEvent: scheduleRefresh,
+    });
 
     return () => {
       if (refreshTimerRef.current !== null) {
         window.clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
       }
-      void supabase.removeChannel(channel);
+      void release();
     };
   }, [channelName, router, supabase, tablesKey, throttleMs]);
 

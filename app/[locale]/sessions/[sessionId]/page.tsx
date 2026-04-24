@@ -9,14 +9,15 @@ import { SubmitButton } from '@/components/ui/submit-button';
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
+import { getTrialProgressSnapshot, getUserBillingSnapshot } from '@/lib/billing/user-tier';
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
-import { getSessionData } from '@/lib/demo/data';
+import { getSessionPageData } from '@/lib/demo/data';
 import { ANSWER_OPTIONS } from '@/lib/types/demo';
 
 import {
+  advanceSessionStepAction,
   finishReviewSessionAction,
   initializeSessionFlowAction,
-  advanceSessionStepAction,
   quitIncompleteSessionAction,
   saveReviewAnswerAction,
   submitSessionStepAction,
@@ -31,6 +32,17 @@ type SessionPageProps = {
     q?: string;
     stage?: string;
   };
+};
+
+type ReviewQuestion = {
+  id: string;
+  body: string | null;
+  options: unknown;
+  order_index: number;
+  phase: string | null;
+  launched_at: string | null;
+  answer_deadline_at: string | null;
+  correct_option?: string | null;
 };
 
 function getDistribution(answers: Array<{ selected_option: string | null; confidence: string | null }>, memberCount: number) {
@@ -50,17 +62,64 @@ function getDistribution(answers: Array<{ selected_option: string | null; confid
   return distribution;
 }
 
+function TrialProgressPanel({
+  current,
+  total,
+  remaining,
+  showWarning,
+  isComplete,
+  labels,
+}: {
+  current: number;
+  total: number;
+  remaining: number;
+  showWarning: boolean;
+  isComplete: boolean;
+  labels: {
+    title: string;
+    summary: string;
+    description: string;
+    warning: string;
+    complete: string;
+  };
+}) {
+  const progressPercentage = Math.min(100, Math.round((current / Math.max(1, total)) * 100));
+
+  return (
+    <section className="mx-auto mb-4 w-full max-w-[560px] rounded-[12px] border border-white/[0.06] bg-[#11192c] px-4 py-4">
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-sm font-bold text-white">{labels.title}</p>
+        <p className="text-sm font-extrabold text-white">
+          {current} / {total}
+        </p>
+      </div>
+      <p className="mt-2 text-sm text-slate-400">{labels.summary.replace('{current}', String(current)).replace('{total}', String(total))}</p>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.08]">
+        <div className="h-full rounded-full bg-brand" style={{ width: `${progressPercentage}%` }} />
+      </div>
+      <p className={`mt-3 text-sm ${isComplete || showWarning ? 'font-bold text-amber-300' : 'text-slate-500'}`}>
+        {isComplete ? labels.complete : showWarning ? labels.warning.replace('{remaining}', String(remaining)) : labels.description.replace('{remaining}', String(remaining))}
+      </p>
+    </section>
+  );
+}
+
 export default async function SessionPage({ params, searchParams }: SessionPageProps) {
   const locale = params.locale as AppLocale;
   const user = await requireUser(locale);
   const t = await getTranslations('Session');
-  const data = await getSessionData(params.sessionId, user);
+  const data = await getSessionPageData(
+    params.sessionId,
+    user,
+    searchParams.stage,
+    Math.max(0, Number(searchParams.q ?? 0) || 0),
+  );
 
   if (!data?.session || !data.group) {
     notFound();
   }
 
-  const questionGoal = data.session.question_goal ?? Math.max(data.questions.length, 10);
+  const questionGoal = data.questionGoal;
   const currentIndex = Math.max(0, Math.min(Number(searchParams.q ?? 0) || 0, questionGoal - 1));
   const questions = [...data.questions].sort((left, right) => left.order_index - right.order_index);
   const question = questions.find((item) => item.order_index === currentIndex) ?? questions[currentIndex] ?? questions[0] ?? null;
@@ -70,8 +129,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
     ...(question ? [{ table: 'answers', filter: `question_id=eq.${question.id}` }] : []),
     { table: 'question_classifications', filter: `session_id=eq.${params.sessionId}` },
   ];
-  const myAnswers = data.allAnswers.filter((answer) => answer.user_id === user.id);
-  const answeredCount = new Set(myAnswers.map((answer) => answer.question_id)).size;
+  const answeredCount = data.answeredCount;
   const memberCount = Math.max(data.members.length, 1);
   const shouldShowCompletion =
     searchParams.stage === 'complete' ||
@@ -88,7 +146,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
 
     return (
       <main className="flex flex-1 items-center justify-center px-4">
-        <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} throttleMs={180} />
+        <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} />
         <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
         <section className="flex w-full max-w-md flex-col items-center text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 text-brand">
@@ -120,7 +178,6 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
   if (shouldShowCompletion) {
     return (
       <main className="flex flex-1 items-center justify-center px-4">
-        <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} throttleMs={180} />
         <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
         <section className="flex w-full max-w-md flex-col items-center text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 text-brand">
@@ -144,15 +201,15 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
   }
 
   if (isReview && question) {
+    const reviewQuestion = question as ReviewQuestion;
     const questionAnswers = data.allAnswers.filter((answer) => answer.question_id === question.id);
     const distribution = getDistribution(questionAnswers, data.members.length);
     const myReviewAnswer = questionAnswers.find((answer) => answer.user_id === user.id) ?? null;
-    const canFinish = questions.filter((item) => item.correct_option).length >= questionGoal;
+    const canFinish = questions.filter((item) => (item as ReviewQuestion).correct_option).length >= questionGoal;
     const isLastQuestion = currentIndex >= questionGoal - 1;
 
     return (
       <main className="flex flex-1 flex-col">
-        <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} throttleMs={180} />
         <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
         <header className="sticky top-0 z-20 border-b border-white/[0.07] bg-background/95 backdrop-blur">
           <div className="mx-auto flex min-h-16 w-full max-w-[700px] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:h-16 sm:flex-nowrap sm:py-0">
@@ -162,7 +219,9 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
                 {data.group.name}
               </span>
             </Link>
-            <p className="min-w-0 flex-1 text-center text-base font-extrabold text-white sm:text-lg">{data.session.name ?? data.group.name} - {t('reviewShort')}</p>
+            <p className="min-w-0 flex-1 text-center text-base font-extrabold text-white sm:text-lg">
+              {data.session.name ?? data.group.name} - {t('reviewShort')}
+            </p>
             <p className="text-sm font-bold text-slate-500">Q{currentIndex + 1}/{questionGoal}</p>
           </div>
         </header>
@@ -186,8 +245,9 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
             <div className="mt-8 flex items-end justify-center gap-8">
               {[...ANSWER_OPTIONS, '?'].map((option) => (
                 <div key={option} className="flex min-w-7 flex-col items-center gap-1 text-center">
-                  <span className={question.correct_option === option ? 'text-sm font-extrabold text-brand' : 'text-sm font-bold text-slate-500'}>
-                    {option}{question.correct_option === option ? ' *' : ''}
+                  <span className={reviewQuestion.correct_option === option ? 'text-sm font-extrabold text-brand' : 'text-sm font-bold text-slate-500'}>
+                    {option}
+                    {reviewQuestion.correct_option === option ? ' *' : ''}
                   </span>
                   <span className="text-xs font-bold text-slate-600">{distribution.get(option) ?? 0}</span>
                 </div>
@@ -202,7 +262,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
                 questionIndex={currentIndex}
                 nextQuestionIndex={Math.min(questionGoal - 1, currentIndex + 1)}
                 isLastQuestion={isLastQuestion}
-                initialCorrectOption={question.correct_option as never}
+                initialCorrectOption={reviewQuestion.correct_option as never}
                 participantAnswer={myReviewAnswer?.selected_option}
                 participantConfidence={myReviewAnswer?.confidence as ConfidenceLevel | null | undefined}
                 labels={{
@@ -242,7 +302,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
   if (!question) {
     return (
       <main className="flex flex-1 flex-col">
-        <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} throttleMs={180} />
+        <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} />
         <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
         <section className="flex flex-1 items-center justify-center px-4 text-center text-sm font-bold text-slate-500">
           {t('loadingSession')}
@@ -251,30 +311,46 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
     );
   }
 
-  const myAnswer = data.allAnswers.find((answer) => answer.question_id === question.id && answer.user_id === user.id) ?? null;
-  const questionAnswers = data.allAnswers.filter((answer) => answer.question_id === question.id);
+  const dashboardT = await getTranslations('Dashboard');
+  const billingSnapshot = await getUserBillingSnapshot(user.id);
+  const trialProgress = getTrialProgressSnapshot(billingSnapshot?.questions_answered ?? 0);
+  const myAnswer = data.currentQuestionAnswers.find((answer) => answer.user_id === user.id) ?? null;
+  const questionAnswers = data.currentQuestionAnswers;
   const isQuestionExpired =
     Boolean(question.answer_deadline_at) && new Date(question.answer_deadline_at ?? '').getTime() <= Date.now();
   const submittedCount = isQuestionExpired ? memberCount : questionAnswers.length;
 
   return (
     <main className="flex flex-1 flex-col">
-      <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} throttleMs={180} />
+      <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} />
       <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
+      <TrialProgressPanel
+        current={trialProgress.current}
+        total={trialProgress.total}
+        remaining={trialProgress.remaining}
+        showWarning={trialProgress.showWarning}
+        isComplete={trialProgress.isComplete}
+        labels={{
+          title: dashboardT('trialProgressTitle'),
+          summary: dashboardT('trialProgressSummary', { current: '{current}', total: '{total}' }),
+          description: dashboardT('trialProgressDescription', { remaining: '{remaining}' }),
+          warning: dashboardT('trialProgressWarning', { remaining: '{remaining}' }),
+          complete: dashboardT('trialProgressComplete'),
+        }}
+      />
       <header className="border-b border-white/[0.07]">
         <div className="mx-auto flex min-h-16 w-full max-w-[560px] items-center justify-between gap-3 px-4 py-3 sm:h-16 sm:py-0">
-        <Link href={`/groups/${data.group.id}`} prefetch={false} className="text-slate-500 hover:text-white">
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        </Link>
+          <Link href={`/groups/${data.group.id}`} prefetch={false} className="text-slate-500 hover:text-white">
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          </Link>
           <div className="text-center">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">{t('questionUpper')}</p>
-            <p className="text-xl font-extrabold text-white">{currentIndex + 1}<span className="text-sm text-slate-500">/{questionGoal}</span></p>
+            <p className="text-xl font-extrabold text-white">
+              {currentIndex + 1}
+              <span className="text-sm text-slate-500">/{questionGoal}</span>
+            </p>
           </div>
-          <SessionHeaderMeta
-            submittedCount={submittedCount}
-            memberCount={memberCount}
-            answerDeadlineAt={question.answer_deadline_at}
-          />
+          <SessionHeaderMeta submittedCount={submittedCount} memberCount={memberCount} answerDeadlineAt={question.answer_deadline_at} />
         </div>
       </header>
 
@@ -289,7 +365,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
           questionId={question.id}
           questionIndex={currentIndex}
           initialAnswer={myAnswer?.selected_option}
-          initialConfidence={myAnswer?.confidence}
+          initialConfidence={myAnswer?.confidence as ConfidenceLevel | null | undefined}
           answerDeadlineAt={question.answer_deadline_at}
           submittedCount={submittedCount}
           memberCount={memberCount}
