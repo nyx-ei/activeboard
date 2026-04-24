@@ -10,12 +10,22 @@ type ConfidenceCalibrationItem = {
   accuracy: number;
 };
 
+type SessionConfidenceBreakdownItem = {
+  sessionId: string;
+  sessionName: string;
+  scheduledAt: string;
+  low: number;
+  medium: number;
+  high: number;
+};
+
 type DashboardPerformanceViewProps = {
   answeredCount: number;
   successRate: number | null;
   averageConfidence: 'low' | 'medium' | 'high' | null;
   heatmap: HeatmapDay[];
   confidenceCalibration: ConfidenceCalibrationItem[];
+  sessionConfidenceBreakdown: SessionConfidenceBreakdownItem[];
   labels: {
     sprintActivityTitle: string;
     questionsAnswered: string;
@@ -80,6 +90,7 @@ export function DashboardPerformanceView({
   averageConfidence,
   heatmap,
   confidenceCalibration,
+  sessionConfidenceBreakdown,
   labels,
 }: DashboardPerformanceViewProps) {
   const heatmapByDate = new Map(heatmap.map((day) => [day.date, day]));
@@ -194,17 +205,41 @@ export function DashboardPerformanceView({
         <p className="mt-2 text-sm text-slate-500">
           {successRate !== null ? `${successRate}% - ${confidenceLabel}` : labels.confidenceAfterNextSession}
         </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          {confidenceCalibration.map((item) => (
-            <div key={item.confidence} className="rounded-[10px] bg-white/[0.035] px-3 py-3">
-              <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-                {item.confidence === 'low' ? labels.confidenceLow : item.confidence === 'medium' ? labels.confidenceMedium : labels.confidenceHigh}
-              </p>
-              <p className="mt-2 text-lg font-extrabold text-white">{item.total > 0 ? `${item.accuracy}%` : labels.noData}</p>
-              <p className="mt-1 text-xs font-semibold text-slate-500">{item.total} answers</p>
-            </div>
-          ))}
-        </div>
+        {sessionConfidenceBreakdown.length > 0 ? (
+          <div className="mt-4 space-y-3">
+            {sessionConfidenceBreakdown.map((item) => (
+              <div key={item.sessionId} className="rounded-[10px] border border-white/[0.05] bg-white/[0.03] px-4 py-3">
+                <p className="text-sm font-bold text-white">{item.sessionName}</p>
+                <div className="mt-3 grid grid-cols-3 gap-3 text-center">
+                  <div className="rounded-[8px] bg-white/[0.03] px-3 py-2">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">L</p>
+                    <p className="mt-1 text-base font-extrabold text-white">{item.low}</p>
+                  </div>
+                  <div className="rounded-[8px] bg-white/[0.03] px-3 py-2">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">M</p>
+                    <p className="mt-1 text-base font-extrabold text-white">{item.medium}</p>
+                  </div>
+                  <div className="rounded-[8px] bg-white/[0.03] px-3 py-2">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">H</p>
+                    <p className="mt-1 text-base font-extrabold text-white">{item.high}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : confidenceCalibration.length > 0 ? (
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {confidenceCalibration.map((item) => (
+              <div key={item.confidence} className="rounded-[10px] bg-white/[0.035] px-3 py-3">
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+                  {item.confidence === 'low' ? labels.confidenceLow : item.confidence === 'medium' ? labels.confidenceMedium : labels.confidenceHigh}
+                </p>
+                <p className="mt-2 text-lg font-extrabold text-white">{item.total > 0 ? `${item.accuracy}%` : labels.noData}</p>
+                <p className="mt-1 text-xs font-semibold text-slate-500">{item.total} answers</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </section>
     </>
   );

@@ -121,6 +121,15 @@ type ConfidenceCalibrationItem = {
   accuracy: number;
 };
 
+type SessionConfidenceBreakdownItem = {
+  sessionId: string;
+  sessionName: string;
+  scheduledAt: string;
+  low: number;
+  medium: number;
+  high: number;
+};
+
 type ErrorTypeBreakdownItem = {
   errorType: ErrorType;
   count: number;
@@ -698,6 +707,84 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
   const perf = createPerfTracker(`getDashboardPerformanceData:${userId}`);
   const supabase = createSupabaseServerClient();
   const completedSessionsCountPromise = getCompletedSessionsCount(userId);
+  const sessionConfidenceBreakdownPromise = (async () => {
+    const { data: answerRows } = await supabase
+      .schema('public')
+      .from('answers')
+      .select('question_id, confidence')
+      .eq('user_id', userId)
+      .not('confidence', 'is', null);
+
+    const safeAnswerRows = (answerRows ?? []).filter(
+      (row): row is { question_id: string; confidence: ConfidenceLevel } =>
+        typeof row.question_id === 'string' &&
+        (row.confidence === 'low' || row.confidence === 'medium' || row.confidence === 'high'),
+    );
+
+    if (safeAnswerRows.length === 0) {
+      return [] as SessionConfidenceBreakdownItem[];
+    }
+
+    const questionIds = [...new Set(safeAnswerRows.map((row) => row.question_id))];
+    const { data: questionRows } = await supabase
+      .schema('public')
+      .from('questions')
+      .select('id, session_id')
+      .in('id', questionIds);
+
+    const questionSessionMap = new Map(
+      (questionRows ?? [])
+        .filter((row): row is { id: string; session_id: string } => typeof row.id === 'string' && typeof row.session_id === 'string')
+        .map((row) => [row.id, row.session_id]),
+    );
+
+    const sessionIds = [...new Set([...questionSessionMap.values()])];
+    if (sessionIds.length === 0) {
+      return [] as SessionConfidenceBreakdownItem[];
+    }
+
+    const { data: sessionRows } = await supabase
+      .schema('public')
+      .from('sessions')
+      .select('id, name, scheduled_at')
+      .in('id', sessionIds);
+
+    const sessionMetaMap = new Map(
+      (sessionRows ?? [])
+        .filter((row): row is { id: string; name: string | null; scheduled_at: string } => typeof row.id === 'string' && typeof row.scheduled_at === 'string')
+        .map((row) => [row.id, row]),
+    );
+
+    const breakdownMap = new Map<string, SessionConfidenceBreakdownItem>();
+    for (const answer of safeAnswerRows) {
+      const sessionId = questionSessionMap.get(answer.question_id);
+      if (!sessionId) continue;
+
+      const sessionMeta = sessionMetaMap.get(sessionId);
+      if (!sessionMeta) continue;
+
+      const existing =
+        breakdownMap.get(sessionId) ??
+        {
+          sessionId,
+          sessionName: sessionMeta.name?.trim() || 'Untitled session',
+          scheduledAt: sessionMeta.scheduled_at,
+          low: 0,
+          medium: 0,
+          high: 0,
+        };
+
+      if (answer.confidence === 'low') existing.low += 1;
+      if (answer.confidence === 'medium') existing.medium += 1;
+      if (answer.confidence === 'high') existing.high += 1;
+
+      breakdownMap.set(sessionId, existing);
+    }
+
+    return Array.from(breakdownMap.values()).sort(
+      (left, right) => new Date(right.scheduledAt).getTime() - new Date(left.scheduledAt).getTime(),
+    );
+  })();
   const metricsPromise = supabase
     .schema('public')
     .from('dashboard_user_answer_metrics')
@@ -721,8 +808,9 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
     .eq('user_id', userId)
     .maybeSingle();
 
-  const [completedSessionsCount, metricsResult, profileAnalyticsResult] = await Promise.all([
+  const [completedSessionsCount, sessionConfidenceBreakdown, metricsResult, profileAnalyticsResult] = await Promise.all([
     completedSessionsCountPromise,
+    sessionConfidenceBreakdownPromise,
     metricsPromise,
     profileAnalyticsPromise,
   ]);
@@ -755,6 +843,7 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
       leagueProgress: Math.min(100, Math.round((answeredCount / 300) * 100)),
     },
     profileAnalytics,
+    sessionConfidenceBreakdown,
   };
 });
 

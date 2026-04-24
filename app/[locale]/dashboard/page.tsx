@@ -117,6 +117,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
             averageConfidence={performanceData?.metrics.averageConfidence ?? null}
             heatmap={performanceData?.profileAnalytics.heatmap ?? []}
             confidenceCalibration={performanceData?.profileAnalytics.confidenceCalibration ?? []}
+            sessionConfidenceBreakdown={performanceData?.sessionConfidenceBreakdown ?? []}
             labels={{
               sprintActivityTitle: t('sprintActivityTitle'),
               questionsAnswered: t('questionsAnswered'),
