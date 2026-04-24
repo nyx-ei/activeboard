@@ -46,26 +46,48 @@ export async function GET(request: Request, { params }: RouteContext) {
     return NextResponse.json({ ok: false }, { status: 403 });
   }
 
-  const questionQuery = questionId
-    ? supabase
+  if (questionId) {
+    const [{ data: question }, { count: memberCount }, { count: submittedCount }] = await Promise.all([
+      supabase
         .schema('public')
         .from('questions')
         .select('id, phase, answer_deadline_at')
         .eq('id', questionId)
         .eq('session_id', sessionId)
-        .maybeSingle()
-    : supabase
+        .maybeSingle(),
+      supabase
         .schema('public')
-        .from('questions')
-        .select('id, phase, answer_deadline_at')
-        .eq('session_id', sessionId)
-        .not('launched_at', 'is', null)
-        .order('order_index', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .from('group_members')
+        .select('*', { count: 'exact', head: true })
+        .eq('group_id', session.group_id),
+      supabase
+        .schema('public')
+        .from('answers')
+        .select('*', { count: 'exact', head: true })
+        .eq('question_id', questionId),
+    ]);
+
+    return NextResponse.json({
+      ok: true,
+      sessionStatus: session.status,
+      questionId: question?.id ?? null,
+      questionPhase: question?.phase ?? null,
+      answerDeadlineAt: question?.answer_deadline_at ?? null,
+      submittedCount: submittedCount ?? 0,
+      memberCount: memberCount ?? 0,
+    });
+  }
 
   const [{ data: question }, { count: memberCount }] = await Promise.all([
-    questionQuery,
+    supabase
+      .schema('public')
+      .from('questions')
+      .select('id, phase, answer_deadline_at')
+      .eq('session_id', sessionId)
+      .not('launched_at', 'is', null)
+      .order('order_index', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
     supabase
       .schema('public')
       .from('group_members')
@@ -73,21 +95,13 @@ export async function GET(request: Request, { params }: RouteContext) {
       .eq('group_id', session.group_id),
   ]);
 
-  const { count: submittedCount } = question?.id
-    ? await supabase
-        .schema('public')
-        .from('answers')
-        .select('*', { count: 'exact', head: true })
-        .eq('question_id', question.id)
-    : { count: 0 };
-
   return NextResponse.json({
     ok: true,
     sessionStatus: session.status,
     questionId: question?.id ?? null,
     questionPhase: question?.phase ?? null,
     answerDeadlineAt: question?.answer_deadline_at ?? null,
-    submittedCount: submittedCount ?? 0,
+    submittedCount: 0,
     memberCount: memberCount ?? 0,
   });
 }
