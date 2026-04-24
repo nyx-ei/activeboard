@@ -29,6 +29,10 @@ function groupPath(locale: AppLocale, groupId: string) {
   return `/${locale}/groups/${groupId}`;
 }
 
+function isCustomAnswerLetter(value: string) {
+  return /^[A-Z]$/.test(value) && !ANSWER_OPTIONS.includes(value as (typeof ANSWER_OPTIONS)[number]);
+}
+
 async function getCurrentAuthUser() {
   const supabase = createSupabaseServerClient();
   const {
@@ -193,7 +197,7 @@ export async function submitSessionStepAction(formData: FormData) {
     questionIndex < 0 ||
     questionIndex >= session.question_goal ||
     (!ANSWER_OPTIONS.includes(selectedOption as (typeof ANSWER_OPTIONS)[number]) && selectedOption !== '?') ||
-    (selectedOption === '?' && !/^[A-Z]$/.test(customOption)) ||
+    (selectedOption === '?' && !isCustomAnswerLetter(customOption)) ||
     !confidence
   ) {
     redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('missingFields')));
@@ -677,6 +681,10 @@ export async function submitAnswerAction(formData: FormData) {
   }
 
   if (!resolvedSelectedOption || !/^[A-Z]$/.test(resolvedSelectedOption)) {
+    redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('missingFields')));
+  }
+
+  if (selectedOption === '?' && !isCustomAnswerLetter(customOption)) {
     redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('missingFields')));
   }
 

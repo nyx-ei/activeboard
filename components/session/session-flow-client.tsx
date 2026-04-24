@@ -15,6 +15,10 @@ import { ANSWER_OPTIONS, type AnswerOption } from '@/lib/types/demo';
 
 type ServerAction = (formData: FormData) => void | Promise<void>;
 
+function isCustomLetter(value: string) {
+  return /^[A-Z]$/.test(value) && !ANSWER_OPTIONS.includes(value as AnswerOption);
+}
+
 export function SessionHeaderMeta({
   submittedCount,
   memberCount,
@@ -118,7 +122,7 @@ export function SessionAnswerForm({
   const normalizedCustomOption = customOption.trim().toUpperCase();
   const canSubmit =
     Boolean(selectedOption && confidence) &&
-    (selectedOption !== '?' || /^[A-Z]$/.test(normalizedCustomOption)) &&
+    (selectedOption !== '?' || isCustomLetter(normalizedCustomOption)) &&
     !hasAnswer &&
     !isExpired;
 
@@ -186,7 +190,7 @@ export function SessionAnswerForm({
       const key = event.key.toUpperCase();
       if (selectedOption === '?' && /^[A-Z]$/.test(key)) {
         event.preventDefault();
-        setCustomOption(key);
+        setCustomOption(ANSWER_OPTIONS.includes(key as AnswerOption) ? '' : key);
         return;
       }
 
@@ -282,7 +286,7 @@ export function SessionAnswerForm({
             value={customOption}
             onChange={(event) => {
               const nextValue = event.target.value.replace(/[^a-z]/gi, '').slice(-1).toUpperCase();
-              setCustomOption(nextValue);
+              setCustomOption(ANSWER_OPTIONS.includes(nextValue as AnswerOption) ? '' : nextValue);
             }}
             disabled={hasAnswer || isExpired}
             placeholder={labels.customOptionPlaceholder}
