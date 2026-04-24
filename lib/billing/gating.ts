@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
@@ -8,7 +9,7 @@ import { withFeedback } from '@/lib/utils';
 
 export type UserTierCapability = keyof ReturnType<typeof getUserTierCapabilities>;
 
-export async function getUserAccessState(userId: string) {
+export const getUserAccessState = cache(async (userId: string) => {
   const [gatingEnabled, snapshot] = await Promise.all([
     isFeatureEnabled('canEnforceUserTierGating'),
     getUserBillingSnapshot(userId),
@@ -20,7 +21,7 @@ export async function getUserAccessState(userId: string) {
     snapshot,
     capabilities,
   };
-}
+});
 
 export function hasUserTierCapability(
   accessState: Awaited<ReturnType<typeof getUserAccessState>>,
