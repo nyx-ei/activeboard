@@ -660,6 +660,8 @@
                     "correctAnswer":  "Choisir la bonne réponse",
                     "submitAnswer":  "Envoyer la réponse",
                     "submitAnswerPending":  "Envoi de la réponse...",
+                    "customOptionLabel":  "Saisissez votre lettre",
+                    "customOptionPlaceholder":  "E",
                     "yourAnswer":  "Ta réponse",
                     "yourConfidence":  "Niveau de confiance",
                     "confidenceLow":  "Faible",

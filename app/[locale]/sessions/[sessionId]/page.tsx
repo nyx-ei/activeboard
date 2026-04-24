@@ -298,6 +298,8 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
             confidenceLow: t('confidenceLow'),
             confidenceMedium: t('confidenceMedium'),
             confidenceHigh: t('confidenceHigh'),
+            customOptionLabel: t('customOptionLabel'),
+            customOptionPlaceholder: t('customOptionPlaceholder'),
             submit: t('submitAnswer'),
             submitPending: t('submitAnswerPending'),
             nextQuestion: t('nextQuestion'),
