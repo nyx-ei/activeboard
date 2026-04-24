@@ -190,6 +190,8 @@ type DashboardUserSessionRow = {
   timer_seconds: number | null;
   leader_id: string | null;
   question_goal: number | null;
+  question_count: number | null;
+  answered_question_count: number | null;
 };
 
 const TRIAL_WARNING_THRESHOLD = 85;
@@ -515,7 +517,9 @@ async function getDashboardCore(userId: string) {
   const dashboardUserSessionsRelation = dashboardViewsClient
     .schema('public')
     .from('dashboard_user_sessions')
-    .select('id, group_id, name, scheduled_at, share_code, status, timer_mode, timer_seconds, leader_id, question_goal') as {
+    .select(
+      'id, group_id, name, scheduled_at, share_code, status, timer_mode, timer_seconds, leader_id, question_goal, question_count, answered_question_count',
+    ) as {
     eq: (
       column: string,
       value: string,
@@ -586,6 +590,8 @@ async function getDashboardCore(userId: string) {
       timer_seconds: row.timer_seconds,
       leader_id: row.leader_id,
       question_goal: row.question_goal,
+      questionCount: row.question_count ?? 0,
+      answeredQuestionCount: row.answered_question_count ?? 0,
     });
   }
 
@@ -629,55 +635,17 @@ async function getCompletedSessionsCount(userId: string) {
   return count ?? 0;
 }
 
-async function getDashboardSessionCounts(userId: string, sessionIds: string[]) {
-  if (sessionIds.length === 0) {
-    return {
-      questionCountBySession: new Map<string, number>(),
-      answeredQuestionCountBySession: new Map<string, number>(),
-    };
-  }
-
-  const supabase = createSupabaseServerClient();
-  const [{ data: questionCounts }, { data: answeredCounts }] = await Promise.all([
-    supabase
-      .schema('public')
-      .from('dashboard_session_question_counts')
-      .select('session_id, question_count')
-      .in('session_id', sessionIds),
-    supabase
-      .schema('public')
-      .from('dashboard_user_session_answer_counts')
-      .select('session_id, answered_question_count')
-      .eq('user_id', userId)
-      .in('session_id', sessionIds),
-  ]);
-
-  return {
-    questionCountBySession: new Map(
-      (questionCounts ?? []).flatMap((row) => (row.session_id ? [[row.session_id, row.question_count]] : [])),
-    ),
-    answeredQuestionCountBySession: new Map(
-      (answeredCounts ?? []).flatMap((row) => (row.session_id ? [[row.session_id, row.answered_question_count]] : [])),
-    ),
-  };
-}
-
 export const getDashboardSessionsData = cache(async (user: User, activeGroupId?: string | null) => {
   const perf = createPerfTracker(`getDashboardSessionsData:${user.id}`);
   const core = await getDashboardCore(user.id);
   perf.step('dashboard_core_loaded');
 
-  const sessionIds = core.sessions.map((session) => session.id);
   void activeGroupId;
-  const sessionCounts = await getDashboardSessionCounts(user.id, sessionIds);
-  const { questionCountBySession, answeredQuestionCountBySession } = sessionCounts;
   perf.step('session_rollups_loaded');
 
   const enrichedSessions = core.sessions.map((session) => ({
     ...session,
     groupName: core.groupsById.get(session.group_id)?.name ?? null,
-    answeredQuestionCount: answeredQuestionCountBySession.get(session.id) ?? 0,
-    questionCount: questionCountBySession.get(session.id) ?? 0,
   }));
 
   const dedupedSessions = dedupeDashboardSessions(enrichedSessions);
