@@ -69,6 +69,7 @@ export function SessionAnswerForm({
   answerDeadlineAt,
   submittedCount,
   memberCount,
+  onSubmissionStateChange,
   labels,
 }: {
   action: ServerAction;
@@ -83,6 +84,7 @@ export function SessionAnswerForm({
   answerDeadlineAt: string | null;
   submittedCount: number;
   memberCount: number;
+  onSubmissionStateChange?: (isSubmitting: boolean) => void;
   labels: {
     confidenceTitle: string;
     confidenceLow: string;
@@ -143,6 +145,12 @@ export function SessionAnswerForm({
   }, [answerDeadlineAt, initialAnswer, initialConfidence, questionId]);
 
   useEffect(() => {
+    if (!hasAnswer) {
+      onSubmissionStateChange?.(false);
+    }
+  }, [hasAnswer, onSubmissionStateChange, questionId]);
+
+  useEffect(() => {
     if (selectedOption === '?' && !hasAnswer && !isExpired) {
       customOptionInputRef.current?.focus();
       customOptionInputRef.current?.select();
@@ -157,6 +165,7 @@ export function SessionAnswerForm({
       setRemainingSeconds(nextRemaining);
       if (nextRemaining <= 0 && !hasAnswer && !timeoutSubmittedRef.current) {
         timeoutSubmittedRef.current = true;
+        onSubmissionStateChange?.(true);
         timeoutFormRef.current?.requestSubmit();
       }
     };
@@ -164,7 +173,7 @@ export function SessionAnswerForm({
     tick();
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
-  }, [answerDeadlineAt, hasAnswer]);
+  }, [answerDeadlineAt, hasAnswer, onSubmissionStateChange]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -321,7 +330,12 @@ export function SessionAnswerForm({
       </div>
 
       {!hasAnswer && canSubmit ? (
-        <form action={action}>
+        <form
+          action={action}
+          onSubmitCapture={() => {
+            onSubmissionStateChange?.(true);
+          }}
+        >
           <input type="hidden" name="locale" value={locale} />
           <input type="hidden" name="sessionId" value={sessionId} />
           <input type="hidden" name="questionId" value={questionId} />
@@ -338,7 +352,12 @@ export function SessionAnswerForm({
       {hasAllAnswers ? (
         <>
           <div className="text-center text-sm font-bold text-brand">{labels.allAnswersReceived}</div>
-          <form action={advanceAction}>
+          <form
+            action={advanceAction}
+            onSubmitCapture={() => {
+              onSubmissionStateChange?.(true);
+            }}
+          >
             <input type="hidden" name="locale" value={locale} />
             <input type="hidden" name="sessionId" value={sessionId} />
             <input type="hidden" name="questionIndex" value={questionIndex} />

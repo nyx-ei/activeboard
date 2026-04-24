@@ -7,6 +7,12 @@ type RouteContext = {
   params: { sessionId: string };
 };
 
+type SessionRuntimeAccessRow = {
+  session_id: string | null;
+  status: string | null;
+  member_count: number | null;
+};
+
 export async function GET(request: Request, { params }: RouteContext) {
   const questionId = new URL(request.url).searchParams.get('questionId');
   const sessionId = params.sessionId;
@@ -18,50 +24,42 @@ export async function GET(request: Request, { params }: RouteContext) {
 
   const supabase = createSupabaseServerClient();
   const {
-    data: { session: authSession },
-  } = await supabase.auth.getSession();
-  const expiresSoon = authSession?.expires_at ? authSession.expires_at * 1000 <= Date.now() + 30_000 : false;
-  let user = authSession?.user ?? null;
-
-  if (!user || expiresSoon) {
-    const {
-      data: { user: refreshedUser },
-    } = await supabase.auth.getUser();
-    user = refreshedUser;
-  }
+    data: { user },
+  } = await supabase.auth.getUser();
   perf.step('auth_loaded');
 
   if (!user) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
-  const { data: session } = await supabase
+  const { data: access } = await (supabase as unknown as {
+    schema: (schemaName: string) => {
+      from: (relation: string) => {
+        select: (columns: string) => {
+          eq: (column: string, value: string) => {
+            eq: (column: string, value: string) => {
+              maybeSingle: () => Promise<{ data: SessionRuntimeAccessRow | null }>;
+            };
+          };
+        };
+      };
+    };
+  })
     .schema('public')
-    .from('sessions')
-    .select('id, group_id, status')
-    .eq('id', sessionId)
+    .from('session_runtime_access')
+    .select('session_id, status, member_count')
+    .eq('session_id', sessionId)
+    .eq('user_id', user.id)
     .maybeSingle();
   perf.step('session_loaded');
 
-  if (!session) {
+  if (!access?.session_id || !access.status) {
     return NextResponse.json({ ok: false }, { status: 404 });
   }
-
-  const { data: membership } = await supabase
-    .schema('public')
-    .from('group_members')
-    .select('user_id')
-    .eq('group_id', session.group_id)
-    .eq('user_id', user.id)
-    .maybeSingle();
   perf.step('membership_loaded');
 
-  if (!membership) {
-    return NextResponse.json({ ok: false }, { status: 403 });
-  }
-
   if (questionId) {
-    const [{ data: question }, { count: memberCount }, { count: submittedCount }] = await Promise.all([
+    const [{ data: question }, { count: submittedCount }] = await Promise.all([
       supabase
         .schema('public')
         .from('questions')
@@ -69,11 +67,6 @@ export async function GET(request: Request, { params }: RouteContext) {
         .eq('id', questionId)
         .eq('session_id', sessionId)
         .maybeSingle(),
-      supabase
-        .schema('public')
-        .from('group_members')
-        .select('*', { count: 'exact', head: true })
-        .eq('group_id', session.group_id),
       supabase
         .schema('public')
         .from('answers')
@@ -85,50 +78,43 @@ export async function GET(request: Request, { params }: RouteContext) {
       mode: 'question',
       questionFound: Boolean(question?.id),
       submittedCount: submittedCount ?? 0,
-      memberCount: memberCount ?? 0,
+      memberCount: access.member_count ?? 0,
     });
 
     return NextResponse.json({
       ok: true,
-      sessionStatus: session.status,
+      sessionStatus: access.status,
       questionId: question?.id ?? null,
       questionPhase: question?.phase ?? null,
       answerDeadlineAt: question?.answer_deadline_at ?? null,
       submittedCount: submittedCount ?? 0,
-      memberCount: memberCount ?? 0,
+      memberCount: access.member_count ?? 0,
     });
   }
 
-  const [{ data: question }, { count: memberCount }] = await Promise.all([
-    supabase
-      .schema('public')
-      .from('questions')
-      .select('id, phase, answer_deadline_at')
-      .eq('session_id', sessionId)
-      .not('launched_at', 'is', null)
-      .order('order_index', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    supabase
-      .schema('public')
-      .from('group_members')
-      .select('*', { count: 'exact', head: true })
-      .eq('group_id', session.group_id),
-  ]);
+  const { data: question } = await supabase
+    .schema('public')
+    .from('questions')
+    .select('id, phase, answer_deadline_at')
+    .eq('session_id', sessionId)
+    .not('launched_at', 'is', null)
+    .order('order_index', { ascending: false })
+    .limit(1)
+    .maybeSingle();
   perf.step('latest_question_loaded');
   perf.done({
     mode: 'latest',
     questionFound: Boolean(question?.id),
-    memberCount: memberCount ?? 0,
+    memberCount: access.member_count ?? 0,
   });
 
   return NextResponse.json({
     ok: true,
-    sessionStatus: session.status,
+    sessionStatus: access.status,
     questionId: question?.id ?? null,
     questionPhase: question?.phase ?? null,
     answerDeadlineAt: question?.answer_deadline_at ?? null,
     submittedCount: 0,
-    memberCount: memberCount ?? 0,
+    memberCount: access.member_count ?? 0,
   });
 }

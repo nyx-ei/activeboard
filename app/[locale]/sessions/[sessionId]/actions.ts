@@ -38,18 +38,21 @@ function runDeferredTasks(tasks: Array<Promise<unknown>>) {
   void Promise.allSettled(tasks);
 }
 
+type SessionRuntimeAccessRow = {
+  session_id: string | null;
+  group_id: string | null;
+  status: string | null;
+  leader_id: string | null;
+  timer_mode: 'per_question' | 'global' | null;
+  timer_seconds: number | null;
+  question_goal: number | null;
+  started_at: string | null;
+  is_founder: boolean | null;
+  member_count: number | null;
+};
+
 async function getCurrentAuthUser() {
   const supabase = createSupabaseServerClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  const expiresSoon = session?.expires_at ? session.expires_at * 1000 <= Date.now() + 30_000 : false;
-
-  if (session?.user && !expiresSoon) {
-    return { supabase, user: session.user };
-  }
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -65,30 +68,58 @@ async function requireSessionMember(sessionId: string, locale: AppLocale) {
     redirect(`/${locale}/auth/login`);
   }
 
-  const { data: session } = await supabase
+  const { data: access } = await (supabase as unknown as {
+    schema: (schemaName: string) => {
+      from: (relation: string) => {
+        select: (columns: string) => {
+          eq: (column: string, value: string) => {
+            eq: (column: string, value: string) => {
+              maybeSingle: () => Promise<{ data: SessionRuntimeAccessRow | null }>;
+            };
+          };
+        };
+      };
+    };
+  })
     .schema('public')
-    .from('sessions')
-    .select('id, group_id, status, leader_id, timer_mode, timer_seconds, question_goal, started_at')
-    .eq('id', sessionId)
-    .maybeSingle();
-
-  if (!session) {
-    redirect(withFeedback(`/${locale}/dashboard?view=sessions`, 'error', t('notAuthorized')));
-  }
-
-  const { data: membership } = await supabase
-    .schema('public')
-    .from('group_members')
-    .select('is_founder')
-    .eq('group_id', session.group_id)
+    .from('session_runtime_access')
+    .select(
+      'session_id, group_id, status, leader_id, timer_mode, timer_seconds, question_goal, started_at, is_founder, member_count',
+    )
+    .eq('session_id', sessionId)
     .eq('user_id', user.id)
     .maybeSingle();
 
-  if (!membership) {
+  if (
+    !access?.session_id ||
+    !access.group_id ||
+    !access.status ||
+    !access.timer_mode ||
+    typeof access.timer_seconds !== 'number' ||
+    typeof access.question_goal !== 'number'
+  ) {
     redirect(withFeedback(`/${locale}/dashboard?view=sessions`, 'error', t('notAuthorized')));
   }
 
-  return { supabase, user, session, membership, t };
+  return {
+    supabase,
+    user,
+    session: {
+      id: access.session_id,
+      group_id: access.group_id,
+      status: access.status,
+      leader_id: access.leader_id,
+      timer_mode: access.timer_mode,
+      timer_seconds: access.timer_seconds,
+      question_goal: access.question_goal,
+      started_at: access.started_at,
+    },
+    membership: {
+      is_founder: Boolean(access.is_founder),
+      member_count: access.member_count ?? 0,
+    },
+    t,
+  };
 }
 
 async function requireSessionMemberWithPerf(
@@ -105,32 +136,60 @@ async function requireSessionMemberWithPerf(
     redirect(`/${locale}/auth/login`);
   }
 
-  const { data: session } = await supabase
+  const { data: access } = await (supabase as unknown as {
+    schema: (schemaName: string) => {
+      from: (relation: string) => {
+        select: (columns: string) => {
+          eq: (column: string, value: string) => {
+            eq: (column: string, value: string) => {
+              maybeSingle: () => Promise<{ data: SessionRuntimeAccessRow | null }>;
+            };
+          };
+        };
+      };
+    };
+  })
     .schema('public')
-    .from('sessions')
-    .select('id, group_id, status, leader_id, timer_mode, timer_seconds, question_goal, started_at')
-    .eq('id', sessionId)
+    .from('session_runtime_access')
+    .select(
+      'session_id, group_id, status, leader_id, timer_mode, timer_seconds, question_goal, started_at, is_founder, member_count',
+    )
+    .eq('session_id', sessionId)
+    .eq('user_id', user.id)
     .maybeSingle();
   perf.step('session_loaded');
 
-  if (!session) {
+  if (
+    !access?.session_id ||
+    !access.group_id ||
+    !access.status ||
+    !access.timer_mode ||
+    typeof access.timer_seconds !== 'number' ||
+    typeof access.question_goal !== 'number'
+  ) {
     redirect(withFeedback(`/${locale}/dashboard?view=sessions`, 'error', t('notAuthorized')));
   }
-
-  const { data: membership } = await supabase
-    .schema('public')
-    .from('group_members')
-    .select('is_founder')
-    .eq('group_id', session.group_id)
-    .eq('user_id', user.id)
-    .maybeSingle();
   perf.step('membership_loaded');
 
-  if (!membership) {
-    redirect(withFeedback(`/${locale}/dashboard?view=sessions`, 'error', t('notAuthorized')));
-  }
-
-  return { supabase, user, session, membership, t };
+  return {
+    supabase,
+    user,
+    session: {
+      id: access.session_id,
+      group_id: access.group_id,
+      status: access.status,
+      leader_id: access.leader_id,
+      timer_mode: access.timer_mode,
+      timer_seconds: access.timer_seconds,
+      question_goal: access.question_goal,
+      started_at: access.started_at,
+    },
+    membership: {
+      is_founder: Boolean(access.is_founder),
+      member_count: access.member_count ?? 0,
+    },
+    t,
+  };
 }
 
 async function ensureQuestion(

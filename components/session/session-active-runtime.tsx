@@ -72,12 +72,14 @@ export function SessionActiveRuntime({
   const [submittedCount, setSubmittedCount] = useState(initialSubmittedCount);
   const [memberCount, setMemberCount] = useState(initialMemberCount);
   const [answerDeadlineAt, setAnswerDeadlineAt] = useState(initialAnswerDeadlineAt);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const refreshInFlightRef = useRef(false);
 
   useEffect(() => {
     setSubmittedCount(initialSubmittedCount);
     setMemberCount(initialMemberCount);
     setAnswerDeadlineAt(initialAnswerDeadlineAt);
+    setIsSubmitting(false);
     refreshInFlightRef.current = false;
   }, [initialAnswerDeadlineAt, initialMemberCount, initialSubmittedCount, questionId]);
 
@@ -86,7 +88,7 @@ export function SessionActiveRuntime({
     let intervalId: number | null = null;
 
     const syncRuntime = async () => {
-      if (document.visibilityState !== 'visible' || refreshInFlightRef.current) {
+      if (document.visibilityState !== 'visible' || refreshInFlightRef.current || isSubmitting) {
         return;
       }
 
@@ -157,7 +159,7 @@ export function SessionActiveRuntime({
         window.clearInterval(intervalId);
       }
     };
-  }, [questionId, router, sessionId]);
+  }, [isSubmitting, questionId, router, sessionId]);
 
   return (
     <>
@@ -192,6 +194,7 @@ export function SessionActiveRuntime({
           answerDeadlineAt={answerDeadlineAt}
           submittedCount={submittedCount}
           memberCount={memberCount}
+          onSubmissionStateChange={setIsSubmitting}
           labels={{
             confidenceTitle: labels.confidenceTitle,
             confidenceLow: labels.confidenceLow,
