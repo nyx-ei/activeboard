@@ -41,6 +41,16 @@ function runDeferredTasks(tasks: Array<Promise<unknown>>) {
 async function getCurrentAuthUser() {
   const supabase = createSupabaseServerClient();
   const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const expiresSoon = session?.expires_at ? session.expires_at * 1000 <= Date.now() + 30_000 : false;
+
+  if (session?.user && !expiresSoon) {
+    return { supabase, user: session.user };
+  }
+
+  const {
     data: { user },
   } = await supabase.auth.getUser();
 

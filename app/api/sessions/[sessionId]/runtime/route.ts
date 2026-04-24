@@ -18,8 +18,17 @@ export async function GET(request: Request, { params }: RouteContext) {
 
   const supabase = createSupabaseServerClient();
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session: authSession },
+  } = await supabase.auth.getSession();
+  const expiresSoon = authSession?.expires_at ? authSession.expires_at * 1000 <= Date.now() + 30_000 : false;
+  let user = authSession?.user ?? null;
+
+  if (!user || expiresSoon) {
+    const {
+      data: { user: refreshedUser },
+    } = await supabase.auth.getUser();
+    user = refreshedUser;
+  }
   perf.step('auth_loaded');
 
   if (!user) {
