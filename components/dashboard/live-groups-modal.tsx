@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Lock } from 'lucide-react';
 
 import { Link, usePathname, useRouter } from '@/i18n/navigation';
@@ -23,7 +23,6 @@ type LiveGroup = {
 
 type LiveGroupsModalProps = {
   locale: string;
-  groups: LiveGroup[];
   canJoinLiveGroups: boolean;
   initialOpen?: boolean;
   joinGroupAction: (formData: FormData) => void | Promise<void>;
@@ -84,10 +83,48 @@ function formatElapsedTime(minutes: number, labels: LiveGroupsModalProps['labels
   return labels.yearsAgo.replace('{count}', String(Math.floor(months / 12)));
 }
 
-export function LiveGroupsModal({ locale, groups, canJoinLiveGroups, initialOpen = false, joinGroupAction, labels }: LiveGroupsModalProps) {
+export function LiveGroupsModal({ locale, canJoinLiveGroups, initialOpen = false, joinGroupAction, labels }: LiveGroupsModalProps) {
   const [open, setOpen] = useState(initialOpen);
+  const [groups, setGroups] = useState<LiveGroup[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+
+  useEffect(() => {
+    if (!open || !canJoinLiveGroups) {
+      return;
+    }
+
+    const controller = new AbortController();
+    setIsLoading(true);
+
+    void fetch(`/api/live-groups?locale=${locale}`, {
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          return null;
+        }
+
+        return (await response.json()) as { ok?: boolean; groups?: LiveGroup[] } | null;
+      })
+      .then((payload) => {
+        if (payload?.ok && Array.isArray(payload.groups)) {
+          setGroups(payload.groups);
+        }
+      })
+      .catch(() => {
+        setGroups([]);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, [canJoinLiveGroups, locale, open]);
 
   function handleClose() {
     setOpen(false);
@@ -135,7 +172,13 @@ export function LiveGroupsModal({ locale, groups, canJoinLiveGroups, initialOpen
             </div>
 
             <div className="mt-5 space-y-3">
-              {groups.length === 0 ? (
+              {isLoading ? (
+                <div className="rounded-[12px] border border-white/[0.06] bg-[#18243a] p-4 text-sm font-semibold text-slate-400">
+                  Loading...
+                </div>
+              ) : null}
+
+              {!isLoading && groups.length === 0 ? (
                 <div className="rounded-[12px] border border-white/[0.06] bg-[#18243a] p-4 text-sm font-semibold text-slate-400">
                   {labels.empty}
                 </div>
