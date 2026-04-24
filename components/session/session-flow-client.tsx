@@ -2,7 +2,6 @@
 
 import { Check, Clock, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 
 import { SubmitButton } from '@/components/ui/submit-button';
 import {
@@ -112,7 +111,6 @@ export function SessionAnswerForm({
   const [remainingSeconds, setRemainingSeconds] = useState(() =>
     answerDeadlineAt ? Math.max(0, Math.ceil((new Date(answerDeadlineAt).getTime() - Date.now()) / 1000)) : 0,
   );
-  const router = useRouter();
   const timeoutFormRef = useRef<HTMLFormElement>(null);
   const customOptionInputRef = useRef<HTMLInputElement>(null);
   const timeoutSubmittedRef = useRef(false);
@@ -167,14 +165,6 @@ export function SessionAnswerForm({
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
   }, [answerDeadlineAt, hasAnswer]);
-
-  useEffect(() => {
-    if (!hasAnswer || hasAllAnswers) return undefined;
-    const id = window.setInterval(() => {
-      router.refresh();
-    }, 1200);
-    return () => window.clearInterval(id);
-  }, [hasAnswer, hasAllAnswers, router]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

@@ -4,7 +4,8 @@ import { getTranslations } from 'next-intl/server';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
 import { RealtimeRefresh } from '@/components/app/realtime-refresh';
-import { ReviewAnswerForm, SessionAnswerForm, SessionHeaderMeta } from '@/components/session/session-flow-client';
+import { SessionActiveRuntime } from '@/components/session/session-active-runtime';
+import { ReviewAnswerForm } from '@/components/session/session-flow-client';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
@@ -291,54 +292,37 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
 
   return (
     <main className="flex flex-1 flex-col">
-      <RealtimeRefresh channelName={`session:${params.sessionId}`} tables={realtimeTables} />
       <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
-      <header className="border-b border-white/[0.07]">
-        <div className="mx-auto flex min-h-16 w-full max-w-[560px] items-center justify-between gap-3 px-4 py-3 sm:h-16 sm:py-0">
-          <Link href="/dashboard?view=sessions" prefetch={false} className="text-slate-500 hover:text-white">
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          </Link>
-          <div className="text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">{t('questionUpper')}</p>
-            <p className="text-xl font-extrabold text-white">
-              {currentIndex + 1}
-              <span className="text-sm text-slate-500">/{questionGoal}</span>
-            </p>
-          </div>
-          <SessionHeaderMeta submittedCount={submittedCount} memberCount={memberCount} answerDeadlineAt={question.answer_deadline_at} />
-        </div>
-      </header>
-
-      <section className="mx-auto w-full max-w-[560px] px-4 py-7">
-        <SessionAnswerForm
-          key={question.id}
-          action={submitSessionStepAction}
-          timeoutAction={timeoutSessionStepAction}
-          advanceAction={advanceSessionStepAction}
-          locale={locale}
-          sessionId={params.sessionId}
-          questionId={question.id}
-          questionIndex={currentIndex}
-          initialAnswer={myAnswer?.selected_option}
-          initialConfidence={myAnswer?.confidence as ConfidenceLevel | null | undefined}
-          answerDeadlineAt={question.answer_deadline_at}
-          submittedCount={submittedCount}
-          memberCount={memberCount}
-          labels={{
-            confidenceTitle: t('confidenceLevel'),
-            confidenceLow: t('confidenceLow'),
-            confidenceMedium: t('confidenceMedium'),
-            confidenceHigh: t('confidenceHigh'),
-            customOptionLabel: t('customOptionLabel'),
-            customOptionPlaceholder: t('customOptionPlaceholder'),
-            submit: t('submitAnswer'),
-            submitPending: t('submitAnswerPending'),
-            nextQuestion: t('nextQuestion'),
-            nextQuestionPending: t('nextQuestionPending'),
-            allAnswersReceived: t('allAnswersSubmitted'),
-          }}
-        />
-      </section>
+      <SessionActiveRuntime
+        key={question.id}
+        action={submitSessionStepAction}
+        timeoutAction={timeoutSessionStepAction}
+        advanceAction={advanceSessionStepAction}
+        locale={locale}
+        sessionId={params.sessionId}
+        questionId={question.id}
+        questionIndex={currentIndex}
+        questionGoal={questionGoal}
+        initialAnswer={myAnswer?.selected_option}
+        initialConfidence={myAnswer?.confidence as ConfidenceLevel | null | undefined}
+        initialSubmittedCount={submittedCount}
+        initialMemberCount={memberCount}
+        initialAnswerDeadlineAt={question.answer_deadline_at}
+        labels={{
+          questionUpper: t('questionUpper'),
+          confidenceTitle: t('confidenceLevel'),
+          confidenceLow: t('confidenceLow'),
+          confidenceMedium: t('confidenceMedium'),
+          confidenceHigh: t('confidenceHigh'),
+          customOptionLabel: t('customOptionLabel'),
+          customOptionPlaceholder: t('customOptionPlaceholder'),
+          submit: t('submitAnswer'),
+          submitPending: t('submitAnswerPending'),
+          nextQuestion: t('nextQuestion'),
+          nextQuestionPending: t('nextQuestionPending'),
+          allAnswersReceived: t('allAnswersSubmitted'),
+        }}
+      />
     </main>
   );
 }
