@@ -2,12 +2,16 @@
 
 import { useEffect, useState } from 'react';
 
+import type { AppLocale } from '@/i18n/routing';
+import { APP_EVENTS } from '@/lib/logging/events';
+import { postClientAppEvent } from '@/lib/logging/client';
+
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 };
 
-export function InstallPrompt() {
+export function InstallPrompt({ locale }: { locale: AppLocale }) {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
@@ -16,6 +20,9 @@ export function InstallPrompt() {
       event.preventDefault();
       setDeferredPrompt(event as BeforeInstallPromptEvent);
       setDismissed(false);
+      void postClientAppEvent(APP_EVENTS.pwaInstallPromptShown, locale, {
+        display_mode: window.matchMedia?.('(display-mode: standalone)').matches ? 'standalone' : 'browser',
+      });
     };
 
     const handleInstalled = () => {
@@ -30,7 +37,7 @@ export function InstallPrompt() {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleInstalled);
     };
-  }, []);
+  }, [locale]);
 
   if (!deferredPrompt || dismissed) {
     return null;
@@ -55,7 +62,12 @@ export function InstallPrompt() {
             type="button"
             onClick={async () => {
               await deferredPrompt.prompt();
-              await deferredPrompt.userChoice.catch(() => undefined);
+              const choice = await deferredPrompt.userChoice.catch(() => undefined);
+              if (choice?.outcome === 'accepted') {
+                void postClientAppEvent(APP_EVENTS.pwaInstallAccepted, locale, {
+                  platform: choice.platform,
+                });
+              }
               setDeferredPrompt(null);
             }}
             className="button-primary h-9 rounded-[8px] px-4 text-xs font-extrabold"
