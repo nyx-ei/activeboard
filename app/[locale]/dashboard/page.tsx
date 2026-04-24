@@ -2,7 +2,6 @@ import { getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
-import { RealtimeRefresh } from '@/components/app/realtime-refresh';
 import { DashboardPerformanceView } from '@/components/dashboard/dashboard-performance-view';
 import { DashboardSessionsView } from '@/components/dashboard/dashboard-sessions-view';
 import type { AppLocale } from '@/i18n/routing';
@@ -58,23 +57,8 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
     showWarning: (billingSnapshot?.questions_answered ?? 0) >= 85 && (billingSnapshot?.questions_answered ?? 0) < TRIAL_QUESTION_LIMIT,
     isComplete: (billingSnapshot?.questions_answered ?? 0) >= TRIAL_QUESTION_LIMIT,
   };
-  const activeGroupId =
-    sessionsData?.groups.find((group) => group.is_founder)?.id ?? sessionsData?.groups[0]?.id ?? null;
-
   return (
     <main className="flex flex-1 flex-col gap-5">
-      {activeGroupId ? (
-        <RealtimeRefresh
-          channelName={`dashboard:${activeGroupId}`}
-          tables={[
-            { table: 'group_members', filter: `group_id=eq.${activeGroupId}` },
-            { table: 'group_weekly_schedules', filter: `group_id=eq.${activeGroupId}` },
-            { table: 'sessions', filter: `group_id=eq.${activeGroupId}` },
-          ]}
-          throttleMs={700}
-        />
-      ) : null}
-
       <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
 
       <section className="mx-auto w-full max-w-[620px] space-y-4">
