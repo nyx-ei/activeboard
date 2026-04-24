@@ -121,6 +121,15 @@ type ConfidenceCalibrationItem = {
   accuracy: number;
 };
 
+type SessionConfidenceBreakdownItem = {
+  sessionId: string;
+  sessionName: string;
+  scheduledAt: string;
+  low: number;
+  medium: number;
+  high: number;
+};
+
 type ErrorTypeBreakdownItem = {
   errorType: ErrorType;
   count: number;
@@ -698,6 +707,105 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
   const perf = createPerfTracker(`getDashboardPerformanceData:${userId}`);
   const supabase = createSupabaseServerClient();
   const completedSessionsCountPromise = getCompletedSessionsCount(userId);
+  const sessionConfidenceBreakdownPromise = (async () => {
+    const { data: answerRows } = await supabase
+      .schema('public')
+      .from('answers')
+      .select('question_id, confidence')
+      .eq('user_id', userId)
+      .not('confidence', 'is', null);
+
+    const safeAnswerRows = (answerRows ?? []).filter(
+      (row): row is { question_id: string; confidence: ConfidenceLevel } =>
+        typeof row.question_id === 'string' &&
+        (row.confidence === 'low' || row.confidence === 'medium' || row.confidence === 'high'),
+    );
+
+    if (safeAnswerRows.length === 0) {
+      return [] as SessionConfidenceBreakdownItem[];
+    }
+
+    const questionIds = [...new Set(safeAnswerRows.map((row) => row.question_id))];
+    const { data: questionRows } = await supabase
+      .schema('public')
+      .from('questions')
+      .select('id, session_id')
+      .in('id', questionIds);
+
+    const questionSessionMap = new Map(
+      (questionRows ?? [])
+        .filter((row): row is { id: string; session_id: string } => typeof row.id === 'string' && typeof row.session_id === 'string')
+        .map((row) => [row.id, row.session_id]),
+    );
+
+    const sessionIds = [...new Set([...questionSessionMap.values()])];
+    if (sessionIds.length === 0) {
+      return [] as SessionConfidenceBreakdownItem[];
+    }
+
+    const { data: sessionRows } = await supabase
+      .schema('public')
+      .from('sessions')
+      .select('id, name, scheduled_at, group_id')
+      .in('id', sessionIds);
+
+    const groupIds = [
+      ...new Set(
+        (sessionRows ?? [])
+          .map((row) => (typeof row.group_id === 'string' ? row.group_id : null))
+          .filter((value): value is string => Boolean(value)),
+      ),
+    ];
+
+    const { data: groupRows } =
+      groupIds.length > 0
+        ? await supabase.schema('public').from('groups').select('id, name').in('id', groupIds)
+        : { data: [] as { id: string; name: string }[] };
+
+    const sessionMetaMap = new Map(
+      (sessionRows ?? [])
+        .filter(
+          (row): row is { id: string; name: string | null; scheduled_at: string; group_id: string } =>
+            typeof row.id === 'string' && typeof row.scheduled_at === 'string',
+        )
+        .map((row) => [row.id, row]),
+    );
+    const groupNameMap = new Map(
+      (groupRows ?? [])
+        .filter((row): row is { id: string; name: string } => typeof row.id === 'string' && typeof row.name === 'string')
+        .map((row) => [row.id, row.name]),
+    );
+
+    const breakdownMap = new Map<string, SessionConfidenceBreakdownItem>();
+    for (const answer of safeAnswerRows) {
+      const sessionId = questionSessionMap.get(answer.question_id);
+      if (!sessionId) continue;
+
+      const sessionMeta = sessionMetaMap.get(sessionId);
+      if (!sessionMeta) continue;
+
+      const existing =
+        breakdownMap.get(sessionId) ??
+        {
+          sessionId,
+          sessionName: sessionMeta.name?.trim() || (sessionMeta.group_id ? groupNameMap.get(sessionMeta.group_id) ?? 'Session' : 'Session'),
+          scheduledAt: sessionMeta.scheduled_at,
+          low: 0,
+          medium: 0,
+          high: 0,
+        };
+
+      if (answer.confidence === 'low') existing.low += 1;
+      if (answer.confidence === 'medium') existing.medium += 1;
+      if (answer.confidence === 'high') existing.high += 1;
+
+      breakdownMap.set(sessionId, existing);
+    }
+
+    return Array.from(breakdownMap.values()).sort(
+      (left, right) => new Date(right.scheduledAt).getTime() - new Date(left.scheduledAt).getTime(),
+    );
+  })();
   const metricsPromise = supabase
     .schema('public')
     .from('dashboard_user_answer_metrics')
@@ -721,8 +829,9 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
     .eq('user_id', userId)
     .maybeSingle();
 
-  const [completedSessionsCount, metricsResult, profileAnalyticsResult] = await Promise.all([
+  const [completedSessionsCount, sessionConfidenceBreakdown, metricsResult, profileAnalyticsResult] = await Promise.all([
     completedSessionsCountPromise,
+    sessionConfidenceBreakdownPromise,
     metricsPromise,
     profileAnalyticsPromise,
   ]);
@@ -755,6 +864,7 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
       leagueProgress: Math.min(100, Math.round((answeredCount / 300) * 100)),
     },
     profileAnalytics,
+    sessionConfidenceBreakdown,
   };
 });
 
@@ -1161,7 +1271,7 @@ async function getSessionShellData(sessionId: string, user: User) {
 }
 
 export const getSessionPageData = cache(
-  async (sessionId: string, user: User, stage: string | undefined, questionIndex: number) => {
+  async (sessionId: string, user: User, stage: string | undefined, questionIndex?: number | null) => {
     const shell = await getSessionShellData(sessionId, user);
 
     if (!shell?.group) {
@@ -1185,6 +1295,7 @@ export const getSessionPageData = cache(
         membership,
         members,
         answeredCount: 0,
+        resolvedQuestionIndex: 0,
         questionGoal: session.question_goal ?? 10,
         questions: [] as Array<{
           id: string;
@@ -1230,6 +1341,12 @@ export const getSessionPageData = cache(
 
       const safeQuestions = questions ?? [];
       const safeQuestionIds = safeQuestions.map((question) => question.id);
+      const hasExplicitQuestionIndex = Number.isFinite(questionIndex);
+      const firstPendingReviewQuestion =
+        safeQuestions.find((question) => !question.correct_option) ?? safeQuestions[0] ?? null;
+      const resolvedReviewIndex = hasExplicitQuestionIndex
+        ? Math.max(0, Math.min(questionIndex as number, Math.max((session.question_goal ?? safeQuestions.length ?? 1) - 1, 0)))
+        : (firstPendingReviewQuestion?.order_index ?? 0);
       const safeAllAnswers =
         safeQuestionIds.length > 0
           ? (
@@ -1247,6 +1364,7 @@ export const getSessionPageData = cache(
         membership,
         members,
         answeredCount: answeredCountResult.data?.answered_question_count ?? 0,
+        resolvedQuestionIndex: resolvedReviewIndex,
         questionGoal: session.question_goal ?? Math.max(safeQuestions.length, 10),
         questions: safeQuestions,
         currentQuestion: null,
@@ -1262,17 +1380,20 @@ export const getSessionPageData = cache(
       };
     }
 
-    const normalizedIndex = Number.isFinite(questionIndex) ? Math.max(0, questionIndex) : 0;
+    const hasExplicitQuestionIndex = Number.isFinite(questionIndex);
+    const requestedQuestionIndex = hasExplicitQuestionIndex ? Math.max(0, questionIndex as number) : null;
     let currentQuestion =
-      (
-        await supabase
-          .schema('public')
-          .from('questions')
-          .select('id, body, options, order_index, phase, launched_at, answer_deadline_at')
-          .eq('session_id', sessionId)
-          .eq('order_index', normalizedIndex)
-          .maybeSingle()
-      ).data ?? null;
+      requestedQuestionIndex !== null
+        ? (
+            await supabase
+              .schema('public')
+              .from('questions')
+              .select('id, body, options, order_index, phase, launched_at, answer_deadline_at')
+              .eq('session_id', sessionId)
+              .eq('order_index', requestedQuestionIndex)
+              .maybeSingle()
+          ).data ?? null
+        : null;
 
     if (!currentQuestion) {
       currentQuestion =
@@ -1282,7 +1403,7 @@ export const getSessionPageData = cache(
             .from('questions')
             .select('id, body, options, order_index, phase, launched_at, answer_deadline_at')
             .eq('session_id', sessionId)
-            .order('order_index', { ascending: true })
+            .order('order_index', { ascending: false })
             .limit(1)
             .maybeSingle()
         ).data ?? null;
@@ -1312,6 +1433,7 @@ export const getSessionPageData = cache(
       membership,
       members,
       answeredCount: answeredCountResult.data?.answered_question_count ?? 0,
+      resolvedQuestionIndex: currentQuestion?.order_index ?? 0,
       questionGoal: session.question_goal ?? Math.max((currentQuestion?.order_index ?? 0) + 1, 10),
       questions: currentQuestion ? [currentQuestion] : [],
       currentQuestion,
