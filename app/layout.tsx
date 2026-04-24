@@ -18,6 +18,18 @@ export const metadata: Metadata = {
   description: 'Phone-first collaborative study platform for real-time medical exam prep.',
   applicationName: 'ActiveBoard',
   manifest: '/manifest.webmanifest',
+  openGraph: {
+    title: 'ActiveBoard',
+    description: 'Phone-first collaborative study platform for real-time medical exam prep.',
+    siteName: 'ActiveBoard',
+    images: ['/opengraph-image'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'ActiveBoard',
+    description: 'Phone-first collaborative study platform for real-time medical exam prep.',
+    images: ['/opengraph-image'],
+  },
   icons: {
     icon: [
       { url: '/icons/icon-192.svg', type: 'image/svg+xml' },

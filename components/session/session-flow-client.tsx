@@ -135,9 +135,55 @@ export function SessionAnswerForm({
     if (!hasAnswer || hasAllAnswers) return undefined;
     const id = window.setInterval(() => {
       router.refresh();
-    }, 2500);
+    }, 1200);
     return () => window.clearInterval(id);
   }, [hasAnswer, hasAllAnswers, router]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+
+      if (hasAnswer || isExpired) {
+        return;
+      }
+
+      const key = event.key.toUpperCase();
+      if (ANSWER_OPTIONS.includes(key as AnswerOption)) {
+        event.preventDefault();
+        setSelectedOption(key);
+        return;
+      }
+
+      if (event.key === '?') {
+        event.preventDefault();
+        setSelectedOption('?');
+        return;
+      }
+
+      if (event.key === '1') {
+        event.preventDefault();
+        setConfidence('low');
+        return;
+      }
+
+      if (event.key === '2') {
+        event.preventDefault();
+        setConfidence('medium');
+        return;
+      }
+
+      if (event.key === '3') {
+        event.preventDefault();
+        setConfidence('high');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [hasAnswer, isExpired]);
 
   return (
     <div className="mx-auto w-full max-w-[496px] space-y-7">
@@ -293,6 +339,24 @@ export function ReviewAnswerForm({
   const reviewTrace = hasCorrectOption
     ? `${normalizedParticipantAnswer} ${isCorrect ? '✓' : '×'} → ${correctOption}`
     : '';
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+
+      const key = event.key.toUpperCase();
+      if (ANSWER_OPTIONS.includes(key as AnswerOption)) {
+        event.preventDefault();
+        setCorrectOption(key as AnswerOption);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <form action={action} className="space-y-4">

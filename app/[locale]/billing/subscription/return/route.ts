@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { getTranslations } from 'next-intl/server';
 
 import { routing, type AppLocale } from '@/i18n/routing';
@@ -10,6 +11,7 @@ import { getBillingPlanByPriceId } from '@/lib/stripe/pricing';
 import { createStripeServerClient } from '@/lib/stripe/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { withFeedback } from '@/lib/utils';
+import { deriveUserTier } from '@/lib/billing/user-tier';
 
 type RouteContext = {
   params: {
@@ -79,6 +81,17 @@ export async function GET(request: Request, { params }: RouteContext) {
   const priceId = subscription.items.data[0]?.price?.id ?? null;
   const currentPeriodEnd = subscription.items.data[0]?.current_period_end ?? null;
   const plan = await getBillingPlanByPriceId(priceId, locale);
+  const { data: userBilling } = await supabase
+    .schema('public')
+    .from('users')
+    .select('questions_answered')
+    .eq('id', user.id)
+    .maybeSingle();
+  const nextUserTier = deriveUserTier({
+    questionsAnswered: userBilling?.questions_answered ?? 0,
+    hasValidPaymentMethod: true,
+    subscriptionStatus: subscription.status,
+  });
 
   await supabase
     .schema('public')
@@ -87,6 +100,7 @@ export async function GET(request: Request, { params }: RouteContext) {
       stripe_customer_id: customerId,
       has_valid_payment_method: true,
       subscription_status: subscription.status,
+      user_tier: nextUserTier,
       subscription_current_period_ends_at: currentPeriodEnd
         ? new Date(currentPeriodEnd * 1000).toISOString()
         : null,
@@ -105,6 +119,10 @@ export async function GET(request: Request, { params }: RouteContext) {
       stripe_price_id: priceId,
     },
   });
+
+  revalidatePath(`/${locale}/billing`);
+  revalidatePath(`/${locale}/groups`);
+  revalidatePath(`/${locale}/dashboard`);
 
   return NextResponse.redirect(
     new URL(withFeedback(`/${locale}/billing`, 'success', t('subscriptionStarted')), requestUrl.origin),

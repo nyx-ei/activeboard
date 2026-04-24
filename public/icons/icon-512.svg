@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
   <title id="title">ActiveBoard Favicon</title>
-  <desc id="desc">Purple rounded-square icon with the letters AB.</desc>
-  <rect width="512" height="512" rx="118" fill="#8b5cf6" />
+  <desc id="desc">Green rounded-square icon with the letters AB.</desc>
+  <rect width="512" height="512" rx="118" fill="#22c55e" />
   <text
     x="256"
     y="305"
