@@ -10,9 +10,17 @@ import { createPerfTracker } from '@/lib/observability/perf';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
 import { sendTrialWarningEmailIfNeeded } from '@/lib/notifications/trial-progress';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { isConfidenceLevel } from '@/lib/demo/confidence';
 import { refreshDashboardProfileAnalytics } from '@/lib/demo/profile-analytics';
+import {
+  ensureQuestion,
+  getCurrentAuthUser,
+  getGlobalDeadline,
+  getSessionAccessSnapshot,
+  isCustomAnswerLetter,
+  loadSessionRuntimeAccess,
+  resolveSessionQuestion,
+} from '@/lib/session/flow';
 import {
   ANSWER_OPTIONS,
   DIMENSION_OF_CARE_OPTIONS,
@@ -21,43 +29,12 @@ import {
 } from '@/lib/types/demo';
 import { withFeedback } from '@/lib/utils';
 
-function getGlobalDeadline(startedAt: string | null, timerSeconds: number) {
-  const startedAtMs = startedAt ? new Date(startedAt).getTime() : Date.now();
-  return new Date(startedAtMs + timerSeconds * 1000);
-}
-
 function groupPath(locale: AppLocale, groupId: string) {
   return `/${locale}/groups/${groupId}`;
 }
 
-function isCustomAnswerLetter(value: string) {
-  return /^[A-Z]$/.test(value) && !ANSWER_OPTIONS.includes(value as (typeof ANSWER_OPTIONS)[number]);
-}
-
 function runDeferredTasks(tasks: Array<Promise<unknown>>) {
   void Promise.allSettled(tasks);
-}
-
-type SessionRuntimeAccessRow = {
-  session_id: string | null;
-  group_id: string | null;
-  status: string | null;
-  leader_id: string | null;
-  timer_mode: 'per_question' | 'global' | null;
-  timer_seconds: number | null;
-  question_goal: number | null;
-  started_at: string | null;
-  is_founder: boolean | null;
-  member_count: number | null;
-};
-
-async function getCurrentAuthUser() {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  return { supabase, user };
 }
 
 async function requireSessionMember(sessionId: string, locale: AppLocale) {
@@ -68,55 +45,21 @@ async function requireSessionMember(sessionId: string, locale: AppLocale) {
     redirect(`/${locale}/auth/login`);
   }
 
-  const { data: access } = await (supabase as unknown as {
-    schema: (schemaName: string) => {
-      from: (relation: string) => {
-        select: (columns: string) => {
-          eq: (column: string, value: string) => {
-            eq: (column: string, value: string) => {
-              maybeSingle: () => Promise<{ data: SessionRuntimeAccessRow | null }>;
-            };
-          };
-        };
-      };
-    };
-  })
-    .schema('public')
-    .from('session_runtime_access')
-    .select(
-      'session_id, group_id, status, leader_id, timer_mode, timer_seconds, question_goal, started_at, is_founder, member_count',
-    )
-    .eq('session_id', sessionId)
-    .eq('user_id', user.id)
-    .maybeSingle();
+  const access = await loadSessionRuntimeAccess(supabase, sessionId, user.id);
+  const session = getSessionAccessSnapshot(access);
 
-  if (
-    !access?.session_id ||
-    !access.group_id ||
-    !access.status ||
-    !access.timer_mode ||
-    typeof access.timer_seconds !== 'number' ||
-    typeof access.question_goal !== 'number'
-  ) {
+  if (!session) {
     redirect(withFeedback(`/${locale}/dashboard?view=sessions`, 'error', t('notAuthorized')));
   }
+  const safeAccess = access!;
 
   return {
     supabase,
     user,
-    session: {
-      id: access.session_id,
-      group_id: access.group_id,
-      status: access.status,
-      leader_id: access.leader_id,
-      timer_mode: access.timer_mode,
-      timer_seconds: access.timer_seconds,
-      question_goal: access.question_goal,
-      started_at: access.started_at,
-    },
+    session,
     membership: {
-      is_founder: Boolean(access.is_founder),
-      member_count: access.member_count ?? 0,
+      is_founder: Boolean(safeAccess.is_founder),
+      member_count: safeAccess.member_count ?? 0,
     },
     t,
   };
@@ -136,119 +79,25 @@ async function requireSessionMemberWithPerf(
     redirect(`/${locale}/auth/login`);
   }
 
-  const { data: access } = await (supabase as unknown as {
-    schema: (schemaName: string) => {
-      from: (relation: string) => {
-        select: (columns: string) => {
-          eq: (column: string, value: string) => {
-            eq: (column: string, value: string) => {
-              maybeSingle: () => Promise<{ data: SessionRuntimeAccessRow | null }>;
-            };
-          };
-        };
-      };
-    };
-  })
-    .schema('public')
-    .from('session_runtime_access')
-    .select(
-      'session_id, group_id, status, leader_id, timer_mode, timer_seconds, question_goal, started_at, is_founder, member_count',
-    )
-    .eq('session_id', sessionId)
-    .eq('user_id', user.id)
-    .maybeSingle();
+  const access = await loadSessionRuntimeAccess(supabase, sessionId, user.id);
   perf.step('session_loaded');
+  const session = getSessionAccessSnapshot(access);
 
-  if (
-    !access?.session_id ||
-    !access.group_id ||
-    !access.status ||
-    !access.timer_mode ||
-    typeof access.timer_seconds !== 'number' ||
-    typeof access.question_goal !== 'number'
-  ) {
+  if (!session) {
     redirect(withFeedback(`/${locale}/dashboard?view=sessions`, 'error', t('notAuthorized')));
   }
   perf.step('membership_loaded');
+  const safeAccess = access!;
 
   return {
     supabase,
     user,
-    session: {
-      id: access.session_id,
-      group_id: access.group_id,
-      status: access.status,
-      leader_id: access.leader_id,
-      timer_mode: access.timer_mode,
-      timer_seconds: access.timer_seconds,
-      question_goal: access.question_goal,
-      started_at: access.started_at,
-    },
+    session,
     membership: {
-      is_founder: Boolean(access.is_founder),
-      member_count: access.member_count ?? 0,
+      is_founder: Boolean(safeAccess.is_founder),
+      member_count: safeAccess.member_count ?? 0,
     },
     t,
-  };
-}
-
-async function ensureQuestion(
-  supabase: ReturnType<typeof createSupabaseServerClient>,
-  sessionId: string,
-  orderIndex: number,
-  userId: string,
-  session: { timer_mode: 'per_question' | 'global'; timer_seconds: number; started_at: string | null },
-) {
-  const now = new Date();
-  const answerDeadlineAt =
-    session.timer_mode === 'global'
-      ? getGlobalDeadline(session.started_at ?? now.toISOString(), session.timer_seconds)
-      : new Date(now.getTime() + session.timer_seconds * 1000);
-
-  const { data: existing } = await supabase
-    .schema('public')
-    .from('questions')
-    .select('id, answer_deadline_at')
-    .eq('session_id', sessionId)
-    .eq('order_index', orderIndex)
-    .maybeSingle();
-
-  if (existing) {
-    if (!existing.answer_deadline_at) {
-      await supabase
-        .schema('public')
-        .from('questions')
-        .update({ answer_deadline_at: answerDeadlineAt.toISOString(), phase: 'answering' })
-        .eq('id', existing.id);
-    }
-    return {
-      id: existing.id,
-      answerDeadlineAt: existing.answer_deadline_at ?? answerDeadlineAt.toISOString(),
-    };
-  }
-
-  const { data: created, error } = await supabase
-    .schema('public')
-    .from('questions')
-    .insert({
-      session_id: sessionId,
-      asked_by: userId,
-      options: ANSWER_OPTIONS,
-      order_index: orderIndex,
-      phase: 'answering',
-      launched_at: now.toISOString(),
-      answer_deadline_at: answerDeadlineAt.toISOString(),
-    })
-    .select('id, answer_deadline_at')
-    .single();
-
-  if (error || !created) {
-    throw new Error('question_create_failed');
-  }
-
-  return {
-    id: created.id,
-    answerDeadlineAt: created.answer_deadline_at ?? answerDeadlineAt.toISOString(),
   };
 }
 
@@ -289,6 +138,7 @@ export async function initializeSessionFlowAction(formData: FormData) {
 export async function submitSessionStepAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
   const sessionId = formData.get('sessionId') as string;
+  const currentQuestionId = (formData.get('questionId') as string | null)?.trim() || null;
   const questionIndex = Number(formData.get('questionIndex'));
   const selectedOption = (formData.get('selectedOption') as string | null)?.toUpperCase() ?? '';
   const customOption = (formData.get('customOption') as string | null)?.trim().toUpperCase() ?? '';
@@ -305,26 +155,34 @@ export async function submitSessionStepAction(formData: FormData) {
     questionIndex < 0 ||
     questionIndex >= session.question_goal ||
     (!ANSWER_OPTIONS.includes(selectedOption as (typeof ANSWER_OPTIONS)[number]) && selectedOption !== '?') ||
-    (selectedOption === '?' && !isCustomAnswerLetter(customOption)) ||
+    (selectedOption === '?' &&
+      (!isCustomAnswerLetter(customOption) ||
+        ANSWER_OPTIONS.includes(customOption as (typeof ANSWER_OPTIONS)[number]))) ||
     !confidence
   ) {
     redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('missingFields')));
   }
 
-  let ensuredQuestion: { id: string; answerDeadlineAt: string };
+  let ensuredQuestion: { id: string; answerDeadlineAt: string | null };
   try {
-    ensuredQuestion = await ensureQuestion(supabase, sessionId, questionIndex, user.id, session);
+    ensuredQuestion = await resolveSessionQuestion(supabase, {
+      sessionId,
+      questionId: currentQuestionId,
+      questionIndex,
+      userId: user.id,
+      session,
+    });
   } catch {
     redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('actionFailed')));
   }
   perf.step('question_ensured');
 
-  const questionId = ensuredQuestion.id;
+  const resolvedQuestionId = ensuredQuestion.id;
   const answerDeadlineAt = ensuredQuestion.answerDeadlineAt;
   if (answerDeadlineAt && new Date(answerDeadlineAt).getTime() <= Date.now()) {
     await supabase.schema('public').from('answers').upsert(
       {
-        question_id: questionId,
+        question_id: resolvedQuestionId,
         user_id: user.id,
         selected_option: '?',
         confidence: null,
@@ -332,14 +190,14 @@ export async function submitSessionStepAction(formData: FormData) {
       { onConflict: 'question_id,user_id' },
     );
     perf.step('timeout_answer_upserted');
-    perf.done({ mode: 'expired', questionId });
+    perf.done({ mode: 'expired', questionId: resolvedQuestionId });
 
     redirect(`/${locale}/sessions/${sessionId}?q=${questionIndex}`);
   }
 
   await supabase.schema('public').from('answers').upsert(
     {
-      question_id: questionId,
+      question_id: resolvedQuestionId,
       user_id: user.id,
       selected_option: resolvedSelectedOption,
       confidence,
@@ -356,7 +214,7 @@ export async function submitSessionStepAction(formData: FormData) {
       groupId: session.group_id,
       sessionId,
       metadata: {
-        question_id: questionId,
+        question_id: resolvedQuestionId,
         question_index: questionIndex,
         selected_option: resolvedSelectedOption,
         confidence,
@@ -368,7 +226,7 @@ export async function submitSessionStepAction(formData: FormData) {
   perf.step('deferred_side_effects_started');
   perf.done({
     mode: 'submitted',
-    questionId,
+    questionId: resolvedQuestionId,
     selectedOption: resolvedSelectedOption,
     confidence,
   });
@@ -379,6 +237,7 @@ export async function submitSessionStepAction(formData: FormData) {
 export async function timeoutSessionStepAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
   const sessionId = formData.get('sessionId') as string;
+  const currentQuestionId = (formData.get('questionId') as string | null)?.trim() || null;
   const questionIndex = Number(formData.get('questionIndex'));
   const { supabase, user, session, t } = await requireSessionMember(sessionId, locale);
 
@@ -388,15 +247,21 @@ export async function timeoutSessionStepAction(formData: FormData) {
 
   let ensuredQuestion: { id: string };
   try {
-    ensuredQuestion = await ensureQuestion(supabase, sessionId, questionIndex, user.id, session);
+    ensuredQuestion = await resolveSessionQuestion(supabase, {
+      sessionId,
+      questionId: currentQuestionId,
+      questionIndex,
+      userId: user.id,
+      session,
+    });
   } catch {
     redirect(withFeedback(`/${locale}/sessions/${sessionId}`, 'error', t('actionFailed')));
   }
 
-  const questionId = ensuredQuestion.id;
+  const resolvedQuestionId = ensuredQuestion.id;
   await supabase.schema('public').from('answers').upsert(
     {
-      question_id: questionId,
+      question_id: resolvedQuestionId,
       user_id: user.id,
       selected_option: '?',
       confidence: null,

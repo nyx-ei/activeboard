@@ -20,8 +20,6 @@ import {
   initializeSessionFlowAction,
   quitIncompleteSessionAction,
   saveReviewAnswerAction,
-  submitSessionStepAction,
-  timeoutSessionStepAction,
 } from './actions';
 
 type SessionPageProps = {
@@ -289,8 +287,6 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
       <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
       <SessionActiveRuntime
         key={question.id}
-        action={submitSessionStepAction}
-        timeoutAction={timeoutSessionStepAction}
         advanceAction={advanceSessionStepAction}
         locale={locale}
         sessionId={params.sessionId}

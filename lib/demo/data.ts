@@ -636,7 +636,14 @@ async function getCompletedSessionsCount(userId: string) {
 }
 
 export const getDashboardSessionsData = cache(async (user: User, activeGroupId?: string | null) => {
-  const perf = createPerfTracker(`getDashboardSessionsData:${user.id}`);
+  const perf = createPerfTracker(`getDashboardSessionsData:${user.id}`, {
+    userId: user.id,
+    minDurationMs: 250,
+    metadata: {
+      trace_group: 'dashboard',
+      trace_kind: 'sessions',
+    },
+  });
   const core = await getDashboardCore(user.id);
   perf.step('dashboard_core_loaded');
 
@@ -673,7 +680,14 @@ export const getDashboardSessionsData = cache(async (user: User, activeGroupId?:
 });
 
 export const getDashboardPerformanceData = cache(async (userId: string) => {
-  const perf = createPerfTracker(`getDashboardPerformanceData:${userId}`);
+  const perf = createPerfTracker(`getDashboardPerformanceData:${userId}`, {
+    userId,
+    minDurationMs: 250,
+    metadata: {
+      trace_group: 'dashboard',
+      trace_kind: 'performance',
+    },
+  });
   const supabase = createSupabaseServerClient();
   const completedSessionsCountPromise = getCompletedSessionsCount(userId);
   const sessionConfidenceBreakdownPromise = (supabase as unknown as {
@@ -825,7 +839,15 @@ export const getDashboardData = cache(
 );
 
 export const getGroupCoreData = cache(async (groupId: string, user: User) => {
-  const perf = createPerfTracker(`getGroupCoreData:${groupId}`);
+  const perf = createPerfTracker(`getGroupCoreData:${groupId}`, {
+    userId: user.id,
+    groupId,
+    minDurationMs: 250,
+    metadata: {
+      trace_group: 'groups',
+      trace_kind: 'group_core',
+    },
+  });
   const supabase = createSupabaseServerClient();
 
   const { data: membership } = await supabase

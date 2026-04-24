@@ -1,16 +1,10 @@
 import { NextResponse } from 'next/server';
 
 import { createPerfTracker } from '@/lib/observability/perf';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getCurrentAuthUser, loadSessionRuntimeAccess } from '@/lib/session/flow';
 
 type RouteContext = {
   params: { sessionId: string };
-};
-
-type SessionRuntimeAccessRow = {
-  session_id: string | null;
-  status: string | null;
-  member_count: number | null;
 };
 
 export async function GET(request: Request, { params }: RouteContext) {
@@ -22,35 +16,25 @@ export async function GET(request: Request, { params }: RouteContext) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
 
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getCurrentAuthUser();
   perf.step('auth_loaded');
 
   if (!user) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
+  perf.setContext({
+    userId: user.id,
+    sessionId,
+    sampleRate: 0.2,
+    minDurationMs: 1200,
+    metadata: {
+      trace_group: 'sessions',
+      trace_kind: 'runtime',
+      question_id: questionId,
+    },
+  });
 
-  const { data: access } = await (supabase as unknown as {
-    schema: (schemaName: string) => {
-      from: (relation: string) => {
-        select: (columns: string) => {
-          eq: (column: string, value: string) => {
-            eq: (column: string, value: string) => {
-              maybeSingle: () => Promise<{ data: SessionRuntimeAccessRow | null }>;
-            };
-          };
-        };
-      };
-    };
-  })
-    .schema('public')
-    .from('session_runtime_access')
-    .select('session_id, status, member_count')
-    .eq('session_id', sessionId)
-    .eq('user_id', user.id)
-    .maybeSingle();
+  const access = await loadSessionRuntimeAccess(supabase, sessionId, user.id);
   perf.step('session_loaded');
 
   if (!access?.session_id || !access.status) {

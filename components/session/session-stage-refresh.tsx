@@ -3,20 +3,15 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { fetchSessionRuntime } from '@/components/session/runtime-client';
+
 type SessionStageRefreshProps = {
   sessionId: string;
   expectedStatus: string;
   expectedQuestionId?: string | null;
 };
 
-type RuntimePayload = {
-  ok: boolean;
-  sessionStatus: string;
-  questionId: string | null;
-  questionPhase: string | null;
-};
-
-const POLL_INTERVAL_MS = 2000;
+const POLL_INTERVAL_MS = 2400;
 
 export function SessionStageRefresh({
   sessionId,
@@ -38,16 +33,11 @@ export function SessionStageRefresh({
       refreshInFlightRef.current = true;
 
       try {
-        const response = await fetch(`/api/sessions/${sessionId}/runtime`, {
-          cache: 'no-store',
-          credentials: 'same-origin',
-        });
+        const payload = await fetchSessionRuntime(`/api/sessions/${sessionId}/runtime`);
 
-        if (!response.ok || cancelled) {
+        if (!payload || cancelled) {
           return;
         }
-
-        const payload = (await response.json()) as RuntimePayload;
         const statusChanged = payload.sessionStatus !== expectedStatus;
         const questionChanged = payload.questionId !== expectedQuestionId;
 

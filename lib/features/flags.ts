@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const FEATURE_FLAGS = {
   canUseUbiquitousLogging: false,
+  canUsePerformanceLogging: true,
   canUseStripeBilling: false,
   canEnforceUserTierGating: true,
 } as const;

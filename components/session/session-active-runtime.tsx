@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { fetchSessionRuntime } from '@/components/session/runtime-client';
 import { SessionAnswerForm, SessionHeaderMeta } from '@/components/session/session-flow-client';
 import { Link } from '@/i18n/navigation';
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
@@ -35,22 +36,12 @@ type SessionActiveRuntimeProps = {
     nextQuestionPending: string;
     allAnswersReceived: string;
   };
-  action: ServerAction;
-  timeoutAction: ServerAction;
   advanceAction: ServerAction;
 };
 
-type RuntimePayload = {
-  ok: boolean;
-  sessionStatus: string;
-  questionId: string | null;
-  questionPhase: string | null;
-  answerDeadlineAt: string | null;
-  submittedCount: number;
-  memberCount: number;
-};
-
-const POLL_INTERVAL_MS = 1800;
+const BASE_POLL_INTERVAL_MS = 1800;
+const ANSWERED_POLL_INTERVAL_MS = 2600;
+const READY_POLL_INTERVAL_MS = 900;
 
 export function SessionActiveRuntime({
   sessionId,
@@ -64,28 +55,62 @@ export function SessionActiveRuntime({
   initialConfidence,
   locale,
   labels,
-  action,
-  timeoutAction,
   advanceAction,
 }: SessionActiveRuntimeProps) {
   const router = useRouter();
   const [submittedCount, setSubmittedCount] = useState(initialSubmittedCount);
   const [memberCount, setMemberCount] = useState(initialMemberCount);
   const [answerDeadlineAt, setAnswerDeadlineAt] = useState(initialAnswerDeadlineAt);
+  const [currentAnswer, setCurrentAnswer] = useState(initialAnswer ?? null);
+  const [currentConfidence, setCurrentConfidence] = useState(initialConfidence ?? null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const refreshInFlightRef = useRef(false);
+  const answeredLocallyRef = useRef(Boolean(initialAnswer));
+  const submittedCountRef = useRef(initialSubmittedCount);
+  const memberCountRef = useRef(initialMemberCount);
+  const currentAnswerRef = useRef<string | null>(initialAnswer ?? null);
 
   useEffect(() => {
     setSubmittedCount(initialSubmittedCount);
     setMemberCount(initialMemberCount);
     setAnswerDeadlineAt(initialAnswerDeadlineAt);
+    setCurrentAnswer(initialAnswer ?? null);
+    setCurrentConfidence(initialConfidence ?? null);
     setIsSubmitting(false);
     refreshInFlightRef.current = false;
-  }, [initialAnswerDeadlineAt, initialMemberCount, initialSubmittedCount, questionId]);
+    answeredLocallyRef.current = Boolean(initialAnswer);
+    submittedCountRef.current = initialSubmittedCount;
+    memberCountRef.current = initialMemberCount;
+    currentAnswerRef.current = initialAnswer ?? null;
+  }, [initialAnswer, initialAnswerDeadlineAt, initialConfidence, initialMemberCount, initialSubmittedCount, questionId]);
+
+  useEffect(() => {
+    submittedCountRef.current = submittedCount;
+  }, [submittedCount]);
+
+  useEffect(() => {
+    memberCountRef.current = memberCount;
+  }, [memberCount]);
+
+  useEffect(() => {
+    currentAnswerRef.current = currentAnswer;
+  }, [currentAnswer]);
 
   useEffect(() => {
     let cancelled = false;
-    let intervalId: number | null = null;
+    let timeoutId: number | null = null;
+
+    const getPollDelay = () => {
+      if (submittedCountRef.current >= Math.max(memberCountRef.current, 1)) {
+        return READY_POLL_INTERVAL_MS;
+      }
+
+      if (currentAnswerRef.current) {
+        return ANSWERED_POLL_INTERVAL_MS;
+      }
+
+      return BASE_POLL_INTERVAL_MS;
+    };
 
     const syncRuntime = async () => {
       if (document.visibilityState !== 'visible' || refreshInFlightRef.current || isSubmitting) {
@@ -95,16 +120,13 @@ export function SessionActiveRuntime({
       refreshInFlightRef.current = true;
 
       try {
-        const response = await fetch(`/api/sessions/${sessionId}/runtime?questionId=${encodeURIComponent(questionId)}`, {
-          cache: 'no-store',
-          credentials: 'same-origin',
-        });
+        const payload = await fetchSessionRuntime(
+          `/api/sessions/${sessionId}/runtime?questionId=${encodeURIComponent(questionId)}`,
+        );
 
-        if (!response.ok || cancelled) {
+        if (!payload || cancelled) {
           return;
         }
-
-        const payload = (await response.json()) as RuntimePayload;
 
         if (
           payload.sessionStatus !== 'active' ||
@@ -115,9 +137,9 @@ export function SessionActiveRuntime({
           return;
         }
 
-        setSubmittedCount(payload.submittedCount);
-        setMemberCount(Math.max(payload.memberCount, 1));
-        setAnswerDeadlineAt(payload.answerDeadlineAt);
+        setSubmittedCount(payload.submittedCount ?? 0);
+        setMemberCount(Math.max(payload.memberCount ?? 0, 1));
+        setAnswerDeadlineAt(payload.answerDeadlineAt ?? null);
       } catch {
         // Keep the current UI state and wait for the next sync attempt.
       } finally {
@@ -126,18 +148,22 @@ export function SessionActiveRuntime({
     };
 
     const startPolling = () => {
-      if (intervalId !== null) {
-        window.clearInterval(intervalId);
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
       }
 
       if (document.visibilityState !== 'visible') {
-        intervalId = null;
+        timeoutId = null;
         return;
       }
 
-      intervalId = window.setInterval(() => {
-        void syncRuntime();
-      }, POLL_INTERVAL_MS);
+      timeoutId = window.setTimeout(() => {
+        void syncRuntime().finally(() => {
+          if (!cancelled) {
+            startPolling();
+          }
+        });
+      }, getPollDelay());
     };
 
     void syncRuntime();
@@ -155,8 +181,8 @@ export function SessionActiveRuntime({
     return () => {
       cancelled = true;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (intervalId !== null) {
-        window.clearInterval(intervalId);
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
       }
     };
   }, [isSubmitting, questionId, router, sessionId]);
@@ -182,19 +208,31 @@ export function SessionActiveRuntime({
       <section className="mx-auto w-full max-w-[560px] px-4 py-7">
         <SessionAnswerForm
           key={questionId}
-          action={action}
-          timeoutAction={timeoutAction}
           advanceAction={advanceAction}
           locale={locale}
           sessionId={sessionId}
           questionId={questionId}
           questionIndex={questionIndex}
-          initialAnswer={initialAnswer}
-          initialConfidence={initialConfidence}
+          initialAnswer={currentAnswer}
+          initialConfidence={currentConfidence}
           answerDeadlineAt={answerDeadlineAt}
           submittedCount={submittedCount}
           memberCount={memberCount}
           onSubmissionStateChange={setIsSubmitting}
+          onAnswerPersisted={(savedAnswer, savedConfidence) => {
+            if (!answeredLocallyRef.current) {
+              answeredLocallyRef.current = true;
+              setSubmittedCount((current) => {
+                const nextCount = Math.min(Math.max(memberCount, 1), current + 1);
+                submittedCountRef.current = nextCount;
+                return nextCount;
+              });
+            }
+            setCurrentAnswer(savedAnswer);
+            setCurrentConfidence(savedConfidence);
+            currentAnswerRef.current = savedAnswer;
+            setIsSubmitting(false);
+          }}
           labels={{
             confidenceTitle: labels.confidenceTitle,
             confidenceLow: labels.confidenceLow,
