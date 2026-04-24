@@ -41,11 +41,6 @@ type GroupWeeklySchedule = {
 type DashboardGroup = {
   id: string;
   name: string;
-  invite_code: string;
-  created_by: string | null;
-  created_at: string;
-  meeting_link: string | null;
-  max_members: number;
   is_founder: boolean;
   memberCount: number;
   nextSession: DashboardSession | null;
@@ -175,6 +170,26 @@ type GroupMemberStatsRow = {
   group_id: string | null;
   member_count: number | null;
   founder_user_id: string | null;
+};
+
+type DashboardUserGroupRow = {
+  group_id: string | null;
+  is_founder: boolean | null;
+  name: string | null;
+  member_count: number | null;
+};
+
+type DashboardUserSessionRow = {
+  id: string | null;
+  group_id: string | null;
+  name: string | null;
+  scheduled_at: string | null;
+  share_code: string | null;
+  status: DashboardSession['status'] | null;
+  timer_mode: DashboardSession['timer_mode'] | null;
+  timer_seconds: number | null;
+  leader_id: string | null;
+  question_goal: number | null;
 };
 
 const TRIAL_WARNING_THRESHOLD = 85;
@@ -474,14 +489,47 @@ async function getUserSchedule(userId: string) {
 
 async function getDashboardCore(userId: string) {
   const supabase = createSupabaseServerClient();
-  const { data: memberships } = await supabase
+  const dashboardViewsClient = supabase as unknown as {
+    schema: (schemaName: string) => {
+      from: (relation: string) => {
+        select: (columns: string) => {
+          eq: (column: string, value: string) => {
+            order?: (
+              orderColumn: string,
+              options: { ascending: boolean },
+            ) => Promise<{ data: DashboardUserSessionRow[] | null }>;
+          };
+        };
+      };
+    };
+  };
+
+  const userGroupsPromise = (dashboardViewsClient
     .schema('public')
-    .from('group_members')
-    .select('group_id, is_founder')
+    .from('dashboard_user_groups')
+    .select('group_id, is_founder, name, member_count') as {
+      eq: (column: string, value: string) => Promise<{ data: DashboardUserGroupRow[] | null }>;
+    })
     .eq('user_id', userId);
 
-  const groupIds = (memberships ?? []).map((membership) => membership.group_id);
-  if (groupIds.length === 0) {
+  const dashboardUserSessionsRelation = dashboardViewsClient
+    .schema('public')
+    .from('dashboard_user_sessions')
+    .select('id, group_id, name, scheduled_at, share_code, status, timer_mode, timer_seconds, leader_id, question_goal') as {
+    eq: (
+      column: string,
+      value: string,
+    ) => { order: (orderColumn: string, options: { ascending: boolean }) => Promise<{ data: DashboardUserSessionRow[] | null }> };
+  };
+
+  const userSessionsPromise = dashboardUserSessionsRelation
+    .eq('user_id', userId)
+    .order('scheduled_at', { ascending: true })
+    .then((result) => result.data ?? []);
+
+  const [userGroups, userSessions] = await Promise.all([userGroupsPromise, userSessionsPromise]);
+
+  if ((userGroups.data ?? []).length === 0) {
     return {
       groups: [] as DashboardGroup[],
       groupsById: new Map<string, { name: string }>(),
@@ -490,69 +538,69 @@ async function getDashboardCore(userId: string) {
     };
   }
 
-  const memberStatsPromise = (supabase as unknown as {
-    schema: (schemaName: string) => {
-      from: (relation: string) => {
-        select: (columns: string) => {
-          in: (column: string, values: string[]) => Promise<{
-            data: GroupMemberStatsRow[] | null;
-          }>;
-        };
-      };
-    };
-  })
-    .schema('public')
-    .from('group_member_stats')
-    .select('group_id, member_count')
-    .in('group_id', groupIds);
+  const groupsById = new Map<string, { name: string }>();
+  const groups: DashboardGroup[] = [];
 
-  const [groups, memberStatsRows, sessions] = await Promise.all([
-    supabase
-      .schema('public')
-      .from('groups')
-      .select('id, name, invite_code, created_by, created_at, meeting_link, max_members')
-      .in('id', groupIds)
-      .then((result) => result.data ?? []),
-    memberStatsPromise.then((result) => result.data ?? []),
-    supabase
-      .schema('public')
-      .from('sessions')
-      .select('id, group_id, name, scheduled_at, share_code, status, timer_mode, timer_seconds, leader_id, question_goal')
-      .in('group_id', groupIds)
-      .order('scheduled_at', { ascending: true })
-      .then((result) => (result.data ?? []) as DashboardSession[]),
-  ]);
-
-  const groupsById = new Map(groups.map((group) => [group.id, group]));
-  const countsByGroup = new Map<string, number>();
-  for (const item of memberStatsRows) {
-    if (!item.group_id) {
+  for (const row of userGroups.data ?? []) {
+    if (!row.group_id || !row.name) {
       continue;
     }
 
-    countsByGroup.set(item.group_id, item.member_count ?? 0);
+    groupsById.set(row.group_id, { name: row.name });
+    groups.push({
+      id: row.group_id,
+      name: row.name,
+      is_founder: Boolean(row.is_founder),
+      memberCount: row.member_count ?? 0,
+      nextSession: null,
+    });
+  }
+
+  const sessions: DashboardSession[] = [];
+  for (const row of userSessions) {
+    if (
+      !row.id ||
+      !row.group_id ||
+      !row.scheduled_at ||
+      !row.share_code ||
+      !row.status ||
+      !row.timer_mode ||
+      typeof row.timer_seconds !== 'number' ||
+      typeof row.question_goal !== 'number'
+    ) {
+      continue;
+    }
+
+    if (row.status === 'cancelled') {
+      continue;
+    }
+
+    sessions.push({
+      id: row.id,
+      group_id: row.group_id,
+      name: row.name,
+      scheduled_at: row.scheduled_at,
+      share_code: row.share_code,
+      status: row.status,
+      timer_mode: row.timer_mode,
+      timer_seconds: row.timer_seconds,
+      leader_id: row.leader_id,
+      question_goal: row.question_goal,
+    });
   }
 
   const upcomingByGroup = new Map(
     sessions
-      .filter((session) => session.status !== 'completed' && session.status !== 'cancelled')
+      .filter((session) => session.status !== 'completed')
       .map((session) => [session.group_id, session]),
   );
 
+  for (const group of groups) {
+    group.nextSession = upcomingByGroup.get(group.id) ?? null;
+  }
+
   return {
-    groups: (memberships ?? []).reduce<DashboardGroup[]>((acc, membership) => {
-      const group = groupsById.get(membership.group_id);
-      if (!group) return acc;
-
-      acc.push({
-        ...group,
-        is_founder: membership.is_founder,
-        memberCount: countsByGroup.get(group.id) ?? 0,
-        nextSession: upcomingByGroup.get(group.id) ?? null,
-      });
-
-      return acc;
-    }, []),
+    groups,
     groupsById,
     sessions,
     activeSessions: sessions.filter((session) => session.status === 'active'),
@@ -561,22 +609,21 @@ async function getDashboardCore(userId: string) {
 
 async function getCompletedSessionsCount(userId: string) {
   const supabase = createSupabaseServerClient();
-  const { data: memberships } = await supabase
+  const { count } = await (supabase as unknown as {
+    schema: (schemaName: string) => {
+      from: (relation: string) => {
+        select: (columns: string, options: { count: 'exact'; head: true }) => {
+          eq: (column: string, value: string) => {
+            eq: (statusColumn: string, statusValue: string) => Promise<{ count: number | null }>;
+          };
+        };
+      };
+    };
+  })
     .schema('public')
-    .from('group_members')
-    .select('group_id')
-    .eq('user_id', userId);
-
-  const groupIds = (memberships ?? []).map((membership) => membership.group_id);
-  if (groupIds.length === 0) {
-    return 0;
-  }
-
-  const { count } = await supabase
-    .schema('public')
-    .from('sessions')
+    .from('dashboard_user_sessions')
     .select('*', { count: 'exact', head: true })
-    .in('group_id', groupIds)
+    .eq('user_id', userId)
     .eq('status', 'completed');
 
   return count ?? 0;
@@ -633,8 +680,8 @@ export const getDashboardSessionsData = cache(async (user: User, activeGroupId?:
     questionCount: questionCountBySession.get(session.id) ?? 0,
   }));
 
-  const dedupedSessions = dedupeDashboardSessions(enrichedSessions.filter((session) => session.status !== 'cancelled'));
-  const nextSession = enrichedSessions.find((session) => session.status !== 'completed' && session.status !== 'cancelled') ?? null;
+  const dedupedSessions = dedupeDashboardSessions(enrichedSessions);
+  const nextSession = enrichedSessions.find((session) => session.status !== 'completed') ?? null;
 
   perf.done({
     groups: core.groups.length,
