@@ -418,6 +418,10 @@ export function ReviewAnswerForm({
     : '';
 
   useEffect(() => {
+    setCorrectOption(initialCorrectOption ?? '');
+  }, [initialCorrectOption, questionId]);
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
@@ -453,7 +457,7 @@ export function ReviewAnswerForm({
             onClick={() => {
               if (option !== '?') setCorrectOption(option as AnswerOption);
             }}
-            className={`h-11 rounded-[7px] border text-base font-extrabold transition ${
+            className={`h-11 w-full rounded-[7px] border text-base font-extrabold transition ${
               correctOption === option
                 ? 'border-brand bg-brand text-white'
                 : 'border-white/[0.08] bg-[#202b3e] text-slate-300 hover:border-brand/50'
