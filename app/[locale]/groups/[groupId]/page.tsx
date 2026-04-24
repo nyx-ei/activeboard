@@ -5,8 +5,7 @@ import { GroupPageView } from '@/components/groups/group-page-view';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
 import { getUserAccessState, hasUserTierCapability } from '@/lib/billing/gating';
-import { getGroupData } from '@/lib/demo/data';
-import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { getGroupCoreData } from '@/lib/demo/data';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 import {
@@ -45,8 +44,8 @@ export default async function GroupRoutePage({
   const canBrowseLookupLayer = hasUserTierCapability(accessState, 'canBrowseLookupLayer');
   const canCreateSession = hasUserTierCapability(accessState, 'canCreateSession');
 
-  const [data, currentProfile, memberships] = await Promise.all([
-    getGroupData(params.groupId, user),
+  const [data, currentProfile] = await Promise.all([
+    getGroupCoreData(params.groupId, user),
     createSupabaseServerClient()
       .schema('public')
       .from('users')
@@ -54,12 +53,6 @@ export default async function GroupRoutePage({
       .eq('id', user.id)
       .maybeSingle()
       .then((result) => result.data),
-    createSupabaseServerClient()
-      .schema('public')
-      .from('group_members')
-      .select('group_id')
-      .eq('user_id', user.id)
-      .then((result) => result.data ?? []),
   ]);
 
   if (!data) {
@@ -95,72 +88,6 @@ export default async function GroupRoutePage({
     saturday: t('weekdaySaturday'),
     sunday: t('weekdaySunday'),
   };
-
-  const shellGroups =
-    memberships.length > 0
-      ? await (async () => {
-          const supabase = createSupabaseServerClient();
-          const supabaseAdmin = createSupabaseAdminClient();
-          const groupIds = [...new Set(memberships.map((membership) => membership.group_id))];
-          const [{ data: groups }, { data: schedules }, { data: membershipsWithUsers }] = await Promise.all([
-            supabase
-              .schema('public')
-              .from('groups')
-              .select('id, name')
-              .in('id', groupIds)
-              .order('created_at', { ascending: false }),
-            supabase
-              .schema('public')
-              .from('group_weekly_schedules')
-              .select('group_id, start_time, end_time, question_goal')
-              .in('group_id', groupIds),
-            supabaseAdmin.schema('public').from('group_members').select('group_id, user_id').in('group_id', groupIds),
-          ]);
-
-          const memberIds = [...new Set((membershipsWithUsers ?? []).map((membership) => membership.user_id))];
-          const { data: memberProfiles } =
-            memberIds.length > 0
-              ? await supabaseAdmin
-                  .schema('public')
-                  .from('users')
-                  .select('id, display_name, email, avatar_url')
-                  .in('id', memberIds)
-              : { data: [] };
-
-          const memberProfileById = new Map((memberProfiles ?? []).map((profile) => [profile.id, profile]));
-
-          return (groups ?? []).map((group) => {
-            const groupSchedules = (schedules ?? []).filter((schedule) => schedule.group_id === group.id);
-            const firstSchedule = groupSchedules[0];
-            const weeklyQuestions = groupSchedules.reduce((sum, schedule) => sum + (schedule.question_goal ?? 0), 0);
-            const groupMemberships = (membershipsWithUsers ?? []).filter((membership) => membership.group_id === group.id);
-            const membersPreview = (membershipsWithUsers ?? [])
-              .filter((membership) => membership.group_id === group.id)
-              .slice(0, 4)
-              .map((membership) => {
-                const profile = memberProfileById.get(membership.user_id);
-                const displayLabel = profile?.display_name ?? profile?.email ?? 'AB';
-                return {
-                  id: membership.user_id,
-                  initials: getInitials(displayLabel),
-                  avatarUrl: profile?.avatar_url ?? null,
-                };
-              });
-
-            return {
-              id: group.id,
-              name: group.name,
-              language: locale.toUpperCase(),
-              memberCount: groupMemberships.length,
-              scheduleLabel: firstSchedule
-                ? `${firstSchedule.start_time?.slice(0, 5) ?? '--:--'} - ${firstSchedule.end_time?.slice(0, 5) ?? '--:--'}`
-                : '',
-              weeklyQuestions,
-              membersPreview,
-            };
-          });
-        })()
-      : [];
   return (
     <main className="flex flex-1 flex-col gap-5">
       <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
@@ -168,7 +95,7 @@ export default async function GroupRoutePage({
       <section className="mx-auto w-full max-w-[620px] space-y-4">
         <GroupPageView
           locale={locale}
-          shellGroups={shellGroups}
+          shellGroups={[]}
           currentUserInitials={getInitials(displayName)}
           canBrowseLookupLayer={canBrowseLookupLayer}
           initialLiveOpen={searchParams.live === '1'}
@@ -178,7 +105,7 @@ export default async function GroupRoutePage({
           schedules={data.weeklySchedules}
           weeklyCompletedQuestions={data.weeklyCompletedQuestions}
           weeklyTargetQuestions={data.weeklyTargetQuestions}
-          memberPerformance={data.memberPerformance}
+          memberPerformance={[]}
           weekdayLabels={weekdayLabels}
           groupInfoSummary={groupInfoSummary}
           sessions={data.sessions}

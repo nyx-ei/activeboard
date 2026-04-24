@@ -11,6 +11,7 @@ export const USER_TIERS = {
 } as const;
 
 export const TRIAL_QUESTION_LIMIT = 100;
+export const TRIAL_WARNING_THRESHOLD = 85;
 
 export const SUBSCRIPTION_STATUSES = {
   none: 'none',
@@ -40,6 +41,15 @@ type BillingSnapshot = Pick<
   | 'stripe_default_payment_method_id'
   | 'billing_updated_at'
 >;
+
+export type TrialProgressSnapshot = {
+  current: number;
+  total: number;
+  remaining: number;
+  warningThreshold: number;
+  showWarning: boolean;
+  isComplete: boolean;
+};
 
 export function deriveUserTier({
   questionsAnswered,
@@ -82,6 +92,17 @@ export function getUserTierCapabilities(userTier: UserTier) {
     canBeDiscoverable: canUseLookupLayer,
     canViewLiveSessionLinelist: canUseLookupLayer,
     canSendLookupInvites: canUseLookupLayer,
+  };
+}
+
+export function getTrialProgressSnapshot(questionsAnswered: number): TrialProgressSnapshot {
+  return {
+    current: Math.min(questionsAnswered, TRIAL_QUESTION_LIMIT),
+    total: TRIAL_QUESTION_LIMIT,
+    remaining: Math.max(TRIAL_QUESTION_LIMIT - questionsAnswered, 0),
+    warningThreshold: TRIAL_WARNING_THRESHOLD,
+    showWarning: questionsAnswered >= TRIAL_WARNING_THRESHOLD && questionsAnswered < TRIAL_QUESTION_LIMIT,
+    isComplete: questionsAnswered >= TRIAL_QUESTION_LIMIT,
   };
 }
 

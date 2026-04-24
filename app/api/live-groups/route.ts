@@ -27,7 +27,6 @@ export async function GET(request: Request) {
   const locale: AppLocale = routing.locales.includes(localeParam as AppLocale)
     ? (localeParam as AppLocale)
     : routing.defaultLocale;
-
   const groups = await getLiveGroupsForUser(user.id, locale);
   return NextResponse.json({ ok: true, groups });
 }

@@ -9,9 +9,9 @@ import { SubmitButton } from '@/components/ui/submit-button';
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
-import { getUserBillingSnapshot, TRIAL_QUESTION_LIMIT } from '@/lib/billing/user-tier';
+import { getTrialProgressSnapshot, getUserBillingSnapshot } from '@/lib/billing/user-tier';
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
-import { getSessionData } from '@/lib/demo/data';
+import { getSessionPageData } from '@/lib/demo/data';
 import { ANSWER_OPTIONS } from '@/lib/types/demo';
 
 import {
@@ -32,6 +32,17 @@ type SessionPageProps = {
     q?: string;
     stage?: string;
   };
+};
+
+type ReviewQuestion = {
+  id: string;
+  body: string | null;
+  options: unknown;
+  order_index: number;
+  phase: string | null;
+  launched_at: string | null;
+  answer_deadline_at: string | null;
+  correct_option?: string | null;
 };
 
 function getDistribution(answers: Array<{ selected_option: string | null; confidence: string | null }>, memberCount: number) {
@@ -96,14 +107,18 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
   const locale = params.locale as AppLocale;
   const user = await requireUser(locale);
   const t = await getTranslations('Session');
-  const dashboardT = await getTranslations('Dashboard');
-  const [data, billingSnapshot] = await Promise.all([getSessionData(params.sessionId, user), getUserBillingSnapshot(user.id)]);
+  const data = await getSessionPageData(
+    params.sessionId,
+    user,
+    searchParams.stage,
+    Math.max(0, Number(searchParams.q ?? 0) || 0),
+  );
 
   if (!data?.session || !data.group) {
     notFound();
   }
 
-  const questionGoal = data.session.question_goal ?? Math.max(data.questions.length, 10);
+  const questionGoal = data.questionGoal;
   const currentIndex = Math.max(0, Math.min(Number(searchParams.q ?? 0) || 0, questionGoal - 1));
   const questions = [...data.questions].sort((left, right) => left.order_index - right.order_index);
   const question = questions.find((item) => item.order_index === currentIndex) ?? questions[currentIndex] ?? questions[0] ?? null;
@@ -113,16 +128,8 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
     ...(question ? [{ table: 'answers', filter: `question_id=eq.${question.id}` }] : []),
     { table: 'question_classifications', filter: `session_id=eq.${params.sessionId}` },
   ];
-  const myAnswers = data.allAnswers.filter((answer) => answer.user_id === user.id);
-  const answeredCount = new Set(myAnswers.map((answer) => answer.question_id)).size;
+  const answeredCount = data.answeredCount;
   const memberCount = Math.max(data.members.length, 1);
-  const trialProgress = {
-    current: Math.min(billingSnapshot?.questions_answered ?? 0, TRIAL_QUESTION_LIMIT),
-    total: TRIAL_QUESTION_LIMIT,
-    remaining: Math.max(TRIAL_QUESTION_LIMIT - (billingSnapshot?.questions_answered ?? 0), 0),
-    showWarning: (billingSnapshot?.questions_answered ?? 0) >= 85 && (billingSnapshot?.questions_answered ?? 0) < TRIAL_QUESTION_LIMIT,
-    isComplete: (billingSnapshot?.questions_answered ?? 0) >= TRIAL_QUESTION_LIMIT,
-  };
   const shouldShowCompletion =
     searchParams.stage === 'complete' ||
     (data.session.status === 'completed' && searchParams.stage !== 'review') ||
@@ -193,10 +200,11 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
   }
 
   if (isReview && question) {
+    const reviewQuestion = question as ReviewQuestion;
     const questionAnswers = data.allAnswers.filter((answer) => answer.question_id === question.id);
     const distribution = getDistribution(questionAnswers, data.members.length);
     const myReviewAnswer = questionAnswers.find((answer) => answer.user_id === user.id) ?? null;
-    const canFinish = questions.filter((item) => item.correct_option).length >= questionGoal;
+    const canFinish = questions.filter((item) => (item as ReviewQuestion).correct_option).length >= questionGoal;
     const isLastQuestion = currentIndex >= questionGoal - 1;
 
     return (
@@ -235,8 +243,8 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
             <div className="mt-8 flex items-end justify-center gap-8">
               {[...ANSWER_OPTIONS, '?'].map((option) => (
                 <div key={option} className="flex min-w-7 flex-col items-center gap-1 text-center">
-                  <span className={question.correct_option === option ? 'text-sm font-extrabold text-brand' : 'text-sm font-bold text-slate-500'}>
-                    {option}{question.correct_option === option ? ' *' : ''}
+                  <span className={reviewQuestion.correct_option === option ? 'text-sm font-extrabold text-brand' : 'text-sm font-bold text-slate-500'}>
+                    {option}{reviewQuestion.correct_option === option ? ' *' : ''}
                   </span>
                   <span className="text-xs font-bold text-slate-600">{distribution.get(option) ?? 0}</span>
                 </div>
@@ -251,7 +259,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
                 questionIndex={currentIndex}
                 nextQuestionIndex={Math.min(questionGoal - 1, currentIndex + 1)}
                 isLastQuestion={isLastQuestion}
-                initialCorrectOption={question.correct_option as never}
+                initialCorrectOption={reviewQuestion.correct_option as never}
                 participantAnswer={myReviewAnswer?.selected_option}
                 participantConfidence={myReviewAnswer?.confidence as ConfidenceLevel | null | undefined}
                 labels={{
@@ -300,8 +308,11 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
     );
   }
 
-  const myAnswer = data.allAnswers.find((answer) => answer.question_id === question.id && answer.user_id === user.id) ?? null;
-  const questionAnswers = data.allAnswers.filter((answer) => answer.question_id === question.id);
+  const dashboardT = await getTranslations('Dashboard');
+  const billingSnapshot = await getUserBillingSnapshot(user.id);
+  const trialProgress = getTrialProgressSnapshot(billingSnapshot?.questions_answered ?? 0);
+  const myAnswer = data.currentQuestionAnswers.find((answer) => answer.user_id === user.id) ?? null;
+  const questionAnswers = data.currentQuestionAnswers;
   const isQuestionExpired =
     Boolean(question.answer_deadline_at) && new Date(question.answer_deadline_at ?? '').getTime() <= Date.now();
   const submittedCount = isQuestionExpired ? memberCount : questionAnswers.length;
@@ -352,7 +363,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
           questionId={question.id}
           questionIndex={currentIndex}
           initialAnswer={myAnswer?.selected_option}
-          initialConfidence={myAnswer?.confidence}
+          initialConfidence={myAnswer?.confidence as ConfidenceLevel | null | undefined}
           answerDeadlineAt={question.answer_deadline_at}
           submittedCount={submittedCount}
           memberCount={memberCount}
