@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Lock } from 'lucide-react';
 
 import { Link, usePathname, useRouter } from '@/i18n/navigation';
@@ -86,8 +86,37 @@ function formatElapsedTime(minutes: number, labels: LiveGroupsModalProps['labels
 
 export function LiveGroupsModal({ locale, groups, canJoinLiveGroups, initialOpen = false, joinGroupAction, labels }: LiveGroupsModalProps) {
   const [open, setOpen] = useState(initialOpen);
+  const [resolvedGroups, setResolvedGroups] = useState(groups);
+  const [isLoading, setIsLoading] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+
+  useEffect(() => {
+    if (!open || resolvedGroups.length > 0) {
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoading(true);
+
+    fetch(`/api/live-groups?locale=${locale}`, { credentials: 'include' })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!cancelled && payload?.ok && Array.isArray(payload.groups)) {
+          setResolvedGroups(payload.groups);
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [locale, open, resolvedGroups.length]);
 
   function handleClose() {
     setOpen(false);
@@ -135,13 +164,19 @@ export function LiveGroupsModal({ locale, groups, canJoinLiveGroups, initialOpen
             </div>
 
             <div className="mt-5 space-y-3">
-              {groups.length === 0 ? (
+              {isLoading ? (
+                <div className="rounded-[12px] border border-white/[0.06] bg-[#18243a] p-4 text-sm font-semibold text-slate-400">
+                  Loading...
+                </div>
+              ) : null}
+
+              {!isLoading && resolvedGroups.length === 0 ? (
                 <div className="rounded-[12px] border border-white/[0.06] bg-[#18243a] p-4 text-sm font-semibold text-slate-400">
                   {labels.empty}
                 </div>
               ) : null}
 
-              {groups.map((group) => {
+              {resolvedGroups.map((group) => {
                 const remaining = Math.max(group.maxMembers - group.memberCount, 0);
 
                 return (

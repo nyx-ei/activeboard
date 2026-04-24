@@ -807,6 +807,124 @@ export const getDashboardData = cache(
   },
 );
 
+export const getGroupCoreData = cache(async (groupId: string, user: User) => {
+  const perf = createPerfTracker(`getGroupCoreData:${groupId}`);
+  const supabase = createSupabaseServerClient();
+
+  const { data: membership } = await supabase
+    .schema('public')
+    .from('group_members')
+    .select('group_id, is_founder')
+    .eq('group_id', groupId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (!membership) {
+    return null;
+  }
+
+  const [{ data: group }, { data: members }, { data: sessions }, { data: weeklySchedules }] = await Promise.all([
+    supabase
+      .schema('public')
+      .from('groups')
+      .select('id, name, invite_code, created_by, created_at, meeting_link, max_members')
+      .eq('id', groupId)
+      .single(),
+    supabase.schema('public').from('group_members').select('user_id, is_founder').eq('group_id', groupId),
+    supabase
+      .schema('public')
+      .from('sessions')
+      .select('id, name, scheduled_at, share_code, status, timer_mode, timer_seconds, leader_id, meeting_link')
+      .eq('group_id', groupId)
+      .order('scheduled_at', { ascending: false }),
+    supabase
+      .schema('public')
+      .from('group_weekly_schedules')
+      .select('id, weekday, start_time, end_time, question_goal')
+      .eq('group_id', groupId)
+      .order('weekday', { ascending: true })
+      .order('start_time', { ascending: true }),
+  ]);
+
+  const safeMembers = members ?? [];
+  const safeSessions = sessions ?? [];
+  const safeWeeklySchedules = sortWeeklySchedules(weeklySchedules ?? []);
+  const sessionIds = safeSessions.map((session) => session.id);
+  const currentWeekStart = new Date();
+  const currentDay = currentWeekStart.getDay();
+  const offsetToMonday = currentDay === 0 ? 6 : currentDay - 1;
+  currentWeekStart.setDate(currentWeekStart.getDate() - offsetToMonday);
+  currentWeekStart.setHours(0, 0, 0, 0);
+
+  const weeklySessions = safeSessions.filter((session) => {
+    if (session.status === 'cancelled') return false;
+    return new Date(session.scheduled_at).getTime() >= currentWeekStart.getTime();
+  });
+  const weeklySessionIds = new Set(weeklySessions.map((session) => session.id));
+
+  const { data: groupQuestions } =
+    sessionIds.length > 0
+      ? await supabase.schema('public').from('questions').select('id, session_id').in('session_id', sessionIds)
+      : { data: [] as { id: string; session_id: string }[] };
+  const weeklyQuestionIds = new Set(
+    (groupQuestions ?? [])
+      .filter((question) => weeklySessionIds.has(question.session_id))
+      .map((question) => question.id),
+  );
+
+  const { data: weeklyAnswers } =
+    weeklyQuestionIds.size > 0
+      ? await supabase
+          .schema('public')
+          .from('answers')
+          .select('question_id')
+          .in('question_id', [...weeklyQuestionIds])
+      : { data: [] as { question_id: string }[] };
+
+  const questionAnswerCounts = new Map<string, number>();
+  for (const answer of weeklyAnswers ?? []) {
+    questionAnswerCounts.set(answer.question_id, (questionAnswerCounts.get(answer.question_id) ?? 0) + 1);
+  }
+
+  const weeklyTargetQuestions = safeWeeklySchedules.reduce((sum, schedule) => sum + schedule.question_goal, 0);
+  const qualifyingGroupSize = safeMembers.length >= 2 && safeMembers.length <= 5;
+  const weeklyCompletedQuestions = qualifyingGroupSize
+    ? (groupQuestions ?? []).filter(
+        (question) => weeklyQuestionIds.has(question.id) && (questionAnswerCounts.get(question.id) ?? 0) >= safeMembers.length,
+      ).length
+    : 0;
+
+  const founderCaptainId = safeMembers.find((member) => member.is_founder)?.user_id ?? null;
+  const sessionLeaderId =
+    safeSessions.find((session) => session.status === 'active')?.leader_id ??
+    safeSessions.find((session) => session.status === 'scheduled')?.leader_id ??
+    null;
+
+  perf.done({
+    members: safeMembers.length,
+    sessions: safeSessions.length,
+    weeklySchedules: safeWeeklySchedules.length,
+  });
+
+  return {
+    group: group
+      ? {
+          ...group,
+          is_founder: membership.is_founder,
+          memberCount: safeMembers.length,
+        }
+      : null,
+    membership,
+    sessions: safeSessions,
+    weeklySchedules: safeWeeklySchedules,
+    weeklyCompletedQuestions,
+    weeklyTargetQuestions,
+    weeklyProgressPercentage:
+      weeklyTargetQuestions > 0 ? Math.min(100, Math.round((weeklyCompletedQuestions / weeklyTargetQuestions) * 100)) : 0,
+    currentCaptainId: founderCaptainId ?? sessionLeaderId ?? null,
+  };
+});
+
 export const getGroupData = cache(async (groupId: string, user: User) => {
   const perf = createPerfTracker(`getGroupData:${groupId}`);
   const supabase = createSupabaseServerClient();
