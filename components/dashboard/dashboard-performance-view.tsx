@@ -86,8 +86,6 @@ function startOfUtcWeek(date: Date) {
 
 export function DashboardPerformanceView({
   answeredCount,
-  successRate,
-  averageConfidence,
   heatmap,
   confidenceCalibration,
   sessionConfidenceBreakdown,
@@ -121,14 +119,6 @@ export function DashboardPerformanceView({
     return labels.monthLabels[markerDate.getUTCMonth()] ?? '';
   });
   const averagePerWeek = Math.round(answeredCount / Math.max(1, weekCount));
-  const confidenceLabel =
-    averageConfidence === 'low'
-      ? labels.confidenceLow
-      : averageConfidence === 'medium'
-        ? labels.confidenceMedium
-        : averageConfidence === 'high'
-          ? labels.confidenceHigh
-          : labels.noData;
   return (
     <>
       <section className="surface-mockup p-5">
@@ -202,9 +192,6 @@ export function DashboardPerformanceView({
 
       <section className="surface-mockup p-5">
         <p className="text-sm font-bold text-white">{labels.certaintyTitle}</p>
-        <p className="mt-2 text-sm text-slate-500">
-          {successRate !== null ? `${successRate}% - ${confidenceLabel}` : labels.confidenceAfterNextSession}
-        </p>
         {sessionConfidenceBreakdown.length > 0 ? (
           <div className="mt-4 space-y-3">
             {sessionConfidenceBreakdown.map((item) => (

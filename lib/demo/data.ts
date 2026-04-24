@@ -746,13 +746,34 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
     const { data: sessionRows } = await supabase
       .schema('public')
       .from('sessions')
-      .select('id, name, scheduled_at')
+      .select('id, name, scheduled_at, group_id')
       .in('id', sessionIds);
+
+    const groupIds = [
+      ...new Set(
+        (sessionRows ?? [])
+          .map((row) => (typeof row.group_id === 'string' ? row.group_id : null))
+          .filter((value): value is string => Boolean(value)),
+      ),
+    ];
+
+    const { data: groupRows } =
+      groupIds.length > 0
+        ? await supabase.schema('public').from('groups').select('id, name').in('id', groupIds)
+        : { data: [] as { id: string; name: string }[] };
 
     const sessionMetaMap = new Map(
       (sessionRows ?? [])
-        .filter((row): row is { id: string; name: string | null; scheduled_at: string } => typeof row.id === 'string' && typeof row.scheduled_at === 'string')
+        .filter(
+          (row): row is { id: string; name: string | null; scheduled_at: string; group_id: string } =>
+            typeof row.id === 'string' && typeof row.scheduled_at === 'string',
+        )
         .map((row) => [row.id, row]),
+    );
+    const groupNameMap = new Map(
+      (groupRows ?? [])
+        .filter((row): row is { id: string; name: string } => typeof row.id === 'string' && typeof row.name === 'string')
+        .map((row) => [row.id, row.name]),
     );
 
     const breakdownMap = new Map<string, SessionConfidenceBreakdownItem>();
@@ -767,7 +788,7 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
         breakdownMap.get(sessionId) ??
         {
           sessionId,
-          sessionName: sessionMeta.name?.trim() || 'Untitled session',
+          sessionName: sessionMeta.name?.trim() || (sessionMeta.group_id ? groupNameMap.get(sessionMeta.group_id) ?? 'Session' : 'Session'),
           scheduledAt: sessionMeta.scheduled_at,
           low: 0,
           medium: 0,
