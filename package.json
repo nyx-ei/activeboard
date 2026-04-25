@@ -10,7 +10,15 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test:load:smoke": "cd e2e-load-tests && bash run-tests.sh smoke session-lifecycle",
+    "test:load:load": "cd e2e-load-tests && bash run-tests.sh load session-lifecycle",
+    "test:load:stress": "cd e2e-load-tests && bash run-tests.sh stress session-lifecycle",
+    "test:load:spike": "cd e2e-load-tests && bash run-tests.sh spike session-lifecycle",
+    "test:load:stability": "cd e2e-load-tests && bash run-tests.sh load connection-stability",
+    "test:real:smoke": "cd e2e-load-tests && bash run-tests.sh smoke real-app-test",
+    "test:real:load": "cd e2e-load-tests && bash run-tests.sh load real-app-test",
+    "test:real:stress": "cd e2e-load-tests && bash run-tests.sh stress real-app-test"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
