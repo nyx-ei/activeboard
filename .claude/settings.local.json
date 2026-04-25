@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh issue *)",
+      "Bash(git checkout *)",
+      "Bash(gh label *)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'docs: update roadmap to reflect actual implementation status *)",
+      "Bash(git commit -m 'docs: add roadmap audit results with 8 follow-up bugs *)",
+      "Bash(git push *)",
+      "Bash(gh milestone *)",
+      "Bash(gh api *)"
+    ]
+  }
+}
