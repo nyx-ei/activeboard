@@ -52,6 +52,10 @@ type DashboardSessionsViewProps = {
     trialProgressWarning: string;
     trialProgressComplete: string;
   };
+  sessionJoinFeedback?: {
+    tone: 'success' | 'error';
+    message: string;
+  } | null;
 };
 
 export function DashboardSessionsView({
@@ -65,6 +69,7 @@ export function DashboardSessionsView({
   joinSessionAction,
   createSessionAction,
   labels,
+  sessionJoinFeedback,
 }: DashboardSessionsViewProps) {
   const [isCreateSessionOpen, setIsCreateSessionOpen] = useState(false);
   const initialGroupId = groups[0]?.id ?? '';
@@ -136,25 +141,28 @@ export function DashboardSessionsView({
         )}
       </section>
 
-      {sessions.length > 0 ? (
-        <>
-          <form action={joinSessionAction} className="flex items-center gap-2 sm:justify-center">
-            <input type="hidden" name="locale" value={locale} />
-            <input
-              name="sessionCode"
-              maxLength={6}
-              placeholder={labels.sessionCodePlaceholder}
-              autoCapitalize="characters"
-              autoComplete="off"
-              className="field h-10 min-w-0 flex-1 rounded-[7px] px-4 py-2 text-center text-xs uppercase tracking-[0.18em] sm:h-9 sm:max-w-[210px] sm:flex-none"
-            />
-            <SubmitButton pendingLabel={labels.goPending} className="button-primary h-10 w-[96px] shrink-0 rounded-[7px] px-4 py-2 text-xs sm:h-9 sm:w-auto" disabled={!canJoinSessions}>
-              {labels.go}
-            </SubmitButton>
-          </form>
-          {!canJoinSessions ? <p className="text-center text-sm text-amber-300">{labels.upgradeRequiredToJoinSession}</p> : null}
-        </>
-      ) : null}
+      <div className="space-y-2">
+        <form action={joinSessionAction} className="flex items-center gap-2 sm:justify-center">
+          <input type="hidden" name="locale" value={locale} />
+          <input
+            name="sessionCode"
+            maxLength={6}
+            placeholder={labels.sessionCodePlaceholder}
+            autoCapitalize="characters"
+            autoComplete="off"
+            className="field h-10 min-w-0 flex-1 rounded-[7px] px-4 py-2 text-center text-xs uppercase tracking-[0.18em] sm:h-9 sm:max-w-[210px] sm:flex-none"
+          />
+          <SubmitButton pendingLabel={labels.goPending} className="button-primary h-10 w-[96px] shrink-0 rounded-[7px] px-4 py-2 text-xs sm:h-9 sm:w-auto" disabled={!canJoinSessions}>
+            {labels.go}
+          </SubmitButton>
+        </form>
+        {sessionJoinFeedback?.message ? (
+          <p className={sessionJoinFeedback.tone === 'error' ? 'text-center text-sm font-semibold text-rose-300' : 'text-center text-sm font-semibold text-brand'}>
+            {sessionJoinFeedback.message}
+          </p>
+        ) : null}
+        {!canJoinSessions ? <p className="text-center text-sm text-amber-300">{labels.upgradeRequiredToJoinSession}</p> : null}
+      </div>
 
       {isCreateSessionOpen && groups.length > 0 ? (
         <CreateSessionModal

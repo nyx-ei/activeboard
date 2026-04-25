@@ -3,6 +3,7 @@
 import { BookOpen, CreditCard, User } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
+import { LogoutButton } from '@/components/auth/logout-button';
 import { Link } from '@/i18n/navigation';
 import { cn } from '@/lib/utils';
 
@@ -116,6 +117,13 @@ export function ProfileMenu({
                 <span>{billingLabel}</span>
               </Link>
             ) : null}
+
+            <div className="px-1 pb-1 pt-1">
+              <LogoutButton
+                showIcon
+                className="flex w-full items-center justify-start gap-3 rounded-[10px] border-none bg-transparent px-3 py-3 text-sm font-bold text-[#ff4d5e] shadow-none transition hover:bg-white/[0.05] hover:text-[#ff7a86]"
+              />
+            </div>
           </div>
         </div>
       ) : null}

@@ -969,6 +969,8 @@
     "groupFull": "This group is already full.",
     "invalidCode": "The invite code is invalid.",
     "invalidSessionCode": "The session code is invalid.",
+    "sessionCompletedHint": "This session is complete. Open the summary to review results.",
+    "sessionInactive": "This session is no longer active.",
     "inviteExists": "A pending invitation already exists for this email.",
     "cannotInviteSelf": "You cannot invite yourself.",
     "missingFields": "Please complete all required fields.",
