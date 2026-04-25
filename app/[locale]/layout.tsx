@@ -69,12 +69,14 @@ export default async function LocaleLayout({
 
           return {
             isCaptain: memberships.some((membership) => membership.is_founder),
+            hasGroups: memberships.length > 0,
             canBrowseLookupLayer: hasUserTierCapability(accessState, 'canBrowseLookupLayer'),
             preferredGroupId: memberships[0]?.group_id ?? null,
           };
         })()
       : Promise.resolve({
           isCaptain: false,
+          hasGroups: false,
           canBrowseLookupLayer: false,
           preferredGroupId: null as string | null,
         }),
@@ -169,6 +171,7 @@ export default async function LocaleLayout({
         {user ? (
           <AppBottomNav
             locale={locale}
+            showGroupTab={shellData.hasGroups}
             groupsHref={shellData.preferredGroupId ? `/groups/${shellData.preferredGroupId}` : '/groups'}
             labels={{
               sessions: t('navSessions'),

@@ -12,6 +12,7 @@ import { logAppEvent } from '@/lib/logging/logger';
 import { sendSessionCalendarInvites } from '@/lib/notifications/calendar-invites';
 import { sendGroupInviteEmail } from '@/lib/notifications/group-invites';
 import { parseAvailabilityGrid } from '@/lib/schedule/availability';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { generateInviteCode, generateSessionShareCode, normalizeEmail, withFeedback } from '@/lib/utils';
 
@@ -22,6 +23,12 @@ async function getCurrentAuthUser() {
   } = await supabase.auth.getUser();
 
   return { supabase, user };
+}
+
+function withSessionJoinFeedback(path: string, tone: 'success' | 'error', message: string) {
+  const url = new URL(withFeedback(path, tone, message), 'http://localhost');
+  url.searchParams.set('sessionJoinFeedback', '1');
+  return `${url.pathname}?${url.searchParams.toString()}`;
 }
 
 type JoinableGroupLookup = {
@@ -58,6 +65,7 @@ export async function joinSessionByCodeAction(formData: FormData) {
   const code = (formData.get('sessionCode') as string | null)?.trim().toUpperCase() ?? '';
   const t = await getTranslations({ locale, namespace: 'Feedback' });
   const { supabase, user } = await getCurrentAuthUser();
+  const sessionsPath = `/${locale}/dashboard?view=sessions`;
 
   if (!user) {
     redirect(`/${locale}/auth/login`);
@@ -67,22 +75,23 @@ export async function joinSessionByCodeAction(formData: FormData) {
     userId: user.id,
     capability: 'canJoinSessions',
     locale,
-    redirectTo: `/${locale}/dashboard`,
+    redirectTo: sessionsPath,
   });
 
   if (!code) {
-    redirect(withFeedback(`/${locale}/dashboard`, 'error', t('invalidSessionCode')));
+    redirect(withSessionJoinFeedback(sessionsPath, 'error', t('invalidSessionCode')));
   }
 
-  const { data: session } = await supabase
+  const admin = createSupabaseAdminClient();
+  const { data: session } = await admin
     .schema('public')
     .from('sessions')
-    .select('id, group_id')
+    .select('id, group_id, status')
     .eq('share_code', code)
     .maybeSingle();
 
   if (!session) {
-    redirect(withFeedback(`/${locale}/dashboard`, 'error', t('invalidSessionCode')));
+    redirect(withSessionJoinFeedback(sessionsPath, 'error', t('invalidSessionCode')));
   }
 
   const { data: membership } = await supabase
@@ -94,7 +103,15 @@ export async function joinSessionByCodeAction(formData: FormData) {
     .maybeSingle();
 
   if (!membership) {
-    redirect(withFeedback(`/${locale}/dashboard`, 'error', t('notAuthorized')));
+    redirect(withSessionJoinFeedback(sessionsPath, 'error', t('notAuthorized')));
+  }
+
+  if (session.status === 'completed') {
+    redirect(withSessionJoinFeedback(sessionsPath, 'error', t('sessionCompletedHint')));
+  }
+
+  if (session.status === 'cancelled' || session.status === 'incomplete') {
+    redirect(withSessionJoinFeedback(sessionsPath, 'error', t('sessionInactive')));
   }
 
   await logAppEvent({

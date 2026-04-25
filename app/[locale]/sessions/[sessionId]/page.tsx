@@ -290,6 +290,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
         advanceAction={advanceSessionStepAction}
         locale={locale}
         sessionId={params.sessionId}
+        sessionShareCode={data.session.share_code}
         questionId={question.id}
         questionIndex={currentIndex}
         questionGoal={questionGoal}

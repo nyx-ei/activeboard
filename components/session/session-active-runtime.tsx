@@ -13,6 +13,7 @@ type ServerAction = (formData: FormData) => void | Promise<void>;
 
 type SessionActiveRuntimeProps = {
   sessionId: string;
+  sessionShareCode: string;
   questionId: string;
   questionIndex: number;
   questionGoal: number;
@@ -45,6 +46,7 @@ const READY_POLL_INTERVAL_MS = 900;
 
 export function SessionActiveRuntime({
   sessionId,
+  sessionShareCode,
   questionId,
   questionIndex,
   questionGoal,
@@ -194,12 +196,13 @@ export function SessionActiveRuntime({
           <Link href="/dashboard?view=sessions" prefetch={false} className="text-slate-500 hover:text-white">
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           </Link>
-          <div className="text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">{labels.questionUpper}</p>
-            <p className="text-xl font-extrabold text-white">
-              {questionIndex + 1}
-              <span className="text-sm text-slate-500">/{questionGoal}</span>
-            </p>
+          <div className="min-w-0 flex-1 text-center">
+            <p className="truncate text-sm font-extrabold uppercase tracking-[0.18em] text-white sm:text-base">{sessionShareCode}</p>
+            <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                {labels.questionUpper} {questionIndex + 1}/{questionGoal}
+              </span>
+            </div>
           </div>
           <SessionHeaderMeta submittedCount={submittedCount} memberCount={memberCount} answerDeadlineAt={answerDeadlineAt} />
         </div>

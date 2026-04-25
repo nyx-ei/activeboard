@@ -23,6 +23,7 @@ type DashboardPageProps = {
     feedbackTone?: string;
     view?: string;
     groupId?: string;
+    sessionJoinFeedback?: string;
   };
 };
 
@@ -39,6 +40,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   const view = searchParams.view === 'performance' ? 'performance' : 'sessions';
   const isPerformanceView = view === 'performance';
   const isSessionsView = view === 'sessions';
+  const isSessionJoinFeedback = isSessionsView && searchParams.sessionJoinFeedback === '1' && Boolean(searchParams.feedbackMessage);
 
   const [sessionsData, performanceData, accessState, billingSnapshot] = await Promise.all([
     isSessionsView ? getDashboardSessionsData(user) : null,
@@ -52,7 +54,10 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   const trialProgress = getTrialProgressSnapshot(billingSnapshot?.questions_answered ?? 0);
   return (
     <main className="flex flex-1 flex-col gap-5">
-      <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
+      <FeedbackBanner
+        message={isSessionJoinFeedback ? undefined : searchParams.feedbackMessage}
+        tone={isSessionJoinFeedback ? undefined : searchParams.feedbackTone}
+      />
 
       <section className="mx-auto w-full max-w-[620px] space-y-4">
         {isSessionsView ? (
@@ -70,6 +75,14 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
             cancelSessionAction={cancelDashboardSessionAction}
             joinSessionAction={joinSessionByCodeAction}
             createSessionAction={createDashboardSessionAction}
+            sessionJoinFeedback={
+              isSessionJoinFeedback && searchParams.feedbackMessage && searchParams.feedbackTone
+                ? {
+                    tone: searchParams.feedbackTone === 'success' ? 'success' : 'error',
+                    message: searchParams.feedbackMessage,
+                  }
+                : null
+            }
             labels={{
               sessions: t('sessions'),
               newSession: t('newSession'),
