@@ -26,6 +26,7 @@ type SessionPageProps = {
   searchParams: {
     feedbackMessage?: string;
     feedbackTone?: string;
+    feedbackId?: string;
     q?: string;
     stage?: string;
   };
@@ -98,7 +99,11 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
     return (
       <main className="flex flex-1 items-center justify-center px-4">
         <SessionStageRefresh sessionId={params.sessionId} expectedStatus="scheduled" />
-        <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
+        <FeedbackBanner
+          message={searchParams.feedbackMessage}
+          tone={searchParams.feedbackTone}
+          feedbackId={searchParams.feedbackId}
+        />
         <section className="flex w-full max-w-md flex-col items-center text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 text-brand">
             <Play className="ml-1 h-8 w-8" aria-hidden="true" />
@@ -129,7 +134,11 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
   if (shouldShowCompletion) {
     return (
       <main className="flex flex-1 items-center justify-center px-4">
-        <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
+        <FeedbackBanner
+          message={searchParams.feedbackMessage}
+          tone={searchParams.feedbackTone}
+          feedbackId={searchParams.feedbackId}
+        />
         <section className="flex w-full max-w-md flex-col items-center text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 text-brand">
             <Check className="h-8 w-8" aria-hidden="true" />
@@ -164,7 +173,11 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
 
     return (
       <main className="flex flex-1 flex-col">
-        <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
+        <FeedbackBanner
+          message={searchParams.feedbackMessage}
+          tone={searchParams.feedbackTone}
+          feedbackId={searchParams.feedbackId}
+        />
         <header className="sticky top-0 z-20 border-b border-white/[0.07] bg-background/95 backdrop-blur">
           <div className="mx-auto flex min-h-16 w-full max-w-[700px] items-center gap-3 px-4 py-3 sm:grid sm:grid-cols-[40px_minmax(0,1fr)_40px] sm:py-0">
             <Link href="/dashboard?view=sessions" prefetch={false} className="inline-flex h-10 w-10 items-center justify-start text-slate-500 hover:text-white">
@@ -287,7 +300,11 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
     return (
       <main className="flex flex-1 flex-col">
         <SessionStageRefresh sessionId={params.sessionId} expectedStatus={data.session.status} expectedQuestionId={null} />
-        <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
+        <FeedbackBanner
+          message={searchParams.feedbackMessage}
+          tone={searchParams.feedbackTone}
+          feedbackId={searchParams.feedbackId}
+        />
         <section className="flex flex-1 items-center justify-center px-4 text-center text-sm font-bold text-slate-500">
           {t('loadingSession')}
         </section>
@@ -303,7 +320,11 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
 
   return (
     <main className="flex flex-1 flex-col">
-      <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
+      <FeedbackBanner
+        message={searchParams.feedbackMessage}
+        tone={searchParams.feedbackTone}
+        feedbackId={searchParams.feedbackId}
+      />
       <SessionActiveRuntime
         key={question.id}
         advanceAction={advanceSessionStepAction}

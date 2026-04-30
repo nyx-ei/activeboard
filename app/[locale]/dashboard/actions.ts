@@ -688,7 +688,7 @@ export async function cancelDashboardSessionAction(formData: FormData) {
     .maybeSingle();
 
   if (!membership || (session.leader_id !== user.id && session.created_by !== user.id && !membership.is_founder)) {
-    redirect(withFeedback(sessionReturnPath, 'error', t('notAuthorized')));
+    redirect(withFeedback(sessionReturnPath, 'error', t('deleteSessionNotAuthorized')));
   }
 
   const { error } = await supabase.schema('public').from('sessions').update({ status: 'cancelled' }).eq('id', sessionId);

@@ -35,7 +35,7 @@ export default async function GroupRoutePage({
   searchParams,
 }: {
   params: { locale: string; groupId: string };
-  searchParams: { feedbackMessage?: string; feedbackTone?: string; live?: string };
+  searchParams: { feedbackMessage?: string; feedbackTone?: string; feedbackId?: string; live?: string };
 }) {
   const locale = params.locale as AppLocale;
   const user = await requireUser(locale);
@@ -84,7 +84,11 @@ export default async function GroupRoutePage({
   };
   return (
     <main className="flex flex-1 flex-col gap-5">
-      <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
+      <FeedbackBanner
+        message={searchParams.feedbackMessage}
+        tone={searchParams.feedbackTone}
+        feedbackId={searchParams.feedbackId}
+      />
 
       <section className="mx-auto w-full max-w-[620px] space-y-4">
         <GroupPageView
