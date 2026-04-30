@@ -14,6 +14,10 @@ Available views:
   - Rolling 30-day event split by `device_type` derived from request user agent in `app_logs`.
 - `public.beta_trial_funnel`
   - Funnel buckets for `0_not_started`, `1_84_trial`, `85_99_warning`, `100_plus_locked`, `100_plus_paid`.
+- `public.beta_performance_trace_logs_7d`
+  - Raw persisted performance traces for the main critical flows over the last 7 days.
+- `public.beta_app_velocity_7d`
+  - Aggregated app velocity view: sample count, avg, p50, p95, min, and max timings by trace name/group/kind.
 
 Definitions:
 
@@ -27,8 +31,13 @@ Definitions:
   - `session_completion_rate` from `beta_session_kpi_summary`
 - `85->100 funnel`
   - `beta_trial_funnel`
+- `performance trace export`
+  - `beta_performance_trace_logs_7d`
+- `app velocity`
+  - `beta_app_velocity_7d`
 
 Notes:
 
 - Device split depends on `app_logs` being enabled through the `canUseUbiquitousLogging` feature flag.
+- Performance trace export and velocity reporting depend on `canUsePerformanceLogging`.
 - These views are intended for internal beta validation and operational review, typically via SQL editor or service-role reads.
