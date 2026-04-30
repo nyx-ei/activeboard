@@ -192,7 +192,7 @@ export function GroupPageView({
   const [isCreateSessionOpen, setIsCreateSessionOpen] = useState(false);
   const [resolvedShellGroups, setResolvedShellGroups] = useState(shellGroups);
   const [resolvedMemberPerformance, setResolvedMemberPerformance] = useState(memberPerformance);
-  const [memberPerformanceLoaded, setMemberPerformanceLoaded] = useState(memberPerformance.length > 0);
+  const [memberPerformanceLoaded, setMemberPerformanceLoaded] = useState(true);
   const [weeklyProgress, setWeeklyProgress] = useState(
     initialWeeklyProgress ?? {
       weeklyCompletedQuestions: 0,
@@ -247,6 +247,11 @@ export function GroupPageView({
     );
     setWeeklyProgressLoaded(Boolean(initialWeeklyProgress));
   }, [initialWeeklyProgress, schedules]);
+
+  useEffect(() => {
+    setResolvedMemberPerformance(memberPerformance);
+    setMemberPerformanceLoaded(true);
+  }, [memberPerformance]);
 
   useEffect(() => {
     if (!primaryGroup || memberPerformanceLoaded) {

@@ -6,6 +6,7 @@ import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
 import { getUserAccessState, hasUserTierCapability } from '@/lib/billing/gating';
 import { getGroupCoreData } from '@/lib/demo/data';
+import { getGroupMemberPerformance, getGroupWeeklyProgress, getShellGroupsForUser } from '@/lib/groups/server';
 
 import {
   addDashboardExistingMemberAction,
@@ -38,12 +39,16 @@ export default async function GroupRoutePage({
 }) {
   const locale = params.locale as AppLocale;
   const user = await requireUser(locale);
-  const t = await getTranslations('Dashboard');
-  const accessState = await getUserAccessState(user.id);
+  const [t, accessState, data, shellGroups, memberPerformance, weeklyProgress] = await Promise.all([
+    getTranslations('Dashboard'),
+    getUserAccessState(user.id),
+    getGroupCoreData(params.groupId, user),
+    getShellGroupsForUser(user.id, locale),
+    getGroupMemberPerformance(params.groupId, user.email ?? ''),
+    getGroupWeeklyProgress(params.groupId),
+  ]);
   const canBrowseLookupLayer = hasUserTierCapability(accessState, 'canBrowseLookupLayer');
   const canCreateSession = hasUserTierCapability(accessState, 'canCreateSession');
-
-  const data = await getGroupCoreData(params.groupId, user);
 
   if (!data) {
     return null;
@@ -84,7 +89,7 @@ export default async function GroupRoutePage({
       <section className="mx-auto w-full max-w-[620px] space-y-4">
         <GroupPageView
           locale={locale}
-          shellGroups={[]}
+          shellGroups={shellGroups}
           currentUserInitials={getInitials(displayName)}
           canBrowseLookupLayer={canBrowseLookupLayer}
           initialLiveOpen={searchParams.live === '1'}
@@ -92,8 +97,8 @@ export default async function GroupRoutePage({
           isPrimaryGroupFounder={Boolean(data.membership.is_founder)}
           currentCaptainId={currentCaptainId}
           schedules={data.weeklySchedules}
-          initialWeeklyProgress={null}
-          memberPerformance={[]}
+          initialWeeklyProgress={weeklyProgress}
+          memberPerformance={memberPerformance}
           weekdayLabels={weekdayLabels}
           groupInfoSummary={groupInfoSummary}
           sessions={data.sessions}
