@@ -9,6 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "seed:qa-test-data": "node scripts/qa-test-data.js",
+    "cleanup:qa-test-data": "node scripts/qa-test-data.js cleanup",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:load:smoke": "cd e2e-load-tests && bash run-tests.sh smoke session-lifecycle",
