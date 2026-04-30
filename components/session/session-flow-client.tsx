@@ -444,7 +444,6 @@ export function SessionAnswerForm({
 }
 
 export function ReviewAnswerForm({
-  action,
   locale,
   sessionId,
   questionId,
@@ -456,7 +455,6 @@ export function ReviewAnswerForm({
   participantConfidence,
   labels,
 }: {
-  action: ServerAction;
   locale: string;
   sessionId: string;
   questionId: string;
@@ -476,7 +474,10 @@ export function ReviewAnswerForm({
     reviewStatus: Record<CertaintyCorrectnessStatus, string>;
   };
 }) {
+  const router = useRouter();
   const [correctOption, setCorrectOption] = useState<AnswerOption | ''>(initialCorrectOption ?? '');
+  const [isPending, setIsPending] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
   const canSubmit = Boolean(correctOption) && correctOption !== initialCorrectOption;
   const hasCorrectOption = Boolean(correctOption);
   const normalizedParticipantAnswer = participantAnswer?.toUpperCase() ?? '?';
@@ -497,6 +498,8 @@ export function ReviewAnswerForm({
 
   useEffect(() => {
     setCorrectOption(initialCorrectOption ?? '');
+    setIsPending(false);
+    setSubmissionError(null);
   }, [initialCorrectOption, questionId]);
 
   useEffect(() => {
@@ -517,15 +520,62 @@ export function ReviewAnswerForm({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  async function saveReviewAnswer() {
+    if (!canSubmit || isPending) {
+      return;
+    }
+
+    setSubmissionError(null);
+    setIsPending(true);
+
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/review-answer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          locale,
+          questionId,
+          questionIndex,
+          nextQuestionIndex,
+          advanceAfterSave: !isLastQuestion,
+          correctOption,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => ({ ok: false }))) as {
+        ok?: boolean;
+        message?: string;
+        redirectTo?: string;
+      };
+
+      if (!response.ok || !payload.ok) {
+        if (payload.redirectTo) {
+          router.replace(payload.redirectTo as never);
+          return;
+        }
+
+        setSubmissionError(payload.message ?? labels.savePending);
+        setIsPending(false);
+        return;
+      }
+
+      if (payload.redirectTo) {
+        router.replace(payload.redirectTo as never);
+        return;
+      }
+
+      setIsPending(false);
+    } catch {
+      setSubmissionError(labels.savePending);
+      setIsPending(false);
+    }
+  }
+
   return (
-    <form action={action} className="space-y-4">
-      <input type="hidden" name="locale" value={locale} />
-      <input type="hidden" name="sessionId" value={sessionId} />
-      <input type="hidden" name="questionId" value={questionId} />
-      <input type="hidden" name="questionIndex" value={questionIndex} />
-      <input type="hidden" name="nextQuestionIndex" value={nextQuestionIndex} />
-      <input type="hidden" name="advanceAfterSave" value={isLastQuestion ? 'false' : 'true'} />
-      <input type="hidden" name="correctOption" value={correctOption} />
+    <div className="space-y-4">
       <p className="text-sm font-bold text-slate-300">{labels.correctAnswer}</p>
       <div className="grid grid-cols-3 gap-2 min-[420px]:grid-cols-6">
         {[...ANSWER_OPTIONS, '?'].map((option) => (
@@ -533,13 +583,14 @@ export function ReviewAnswerForm({
             key={option}
             type="button"
             onClick={() => {
-              if (option !== '?') setCorrectOption(option as AnswerOption);
+              if (!isPending && option !== '?') setCorrectOption(option as AnswerOption);
             }}
             className={`h-11 w-full rounded-[7px] border text-base font-extrabold transition ${
               correctOption === option
                 ? 'border-brand bg-brand text-white'
                 : 'border-white/[0.08] bg-[#202b3e] text-slate-300 hover:border-brand/50'
             }`}
+            disabled={isPending}
           >
             {option}
           </button>
@@ -556,19 +607,33 @@ export function ReviewAnswerForm({
           </div>
         </section>
       ) : null}
-      <SubmitButton
-        pendingLabel={labels.savePending}
-        className="button-primary h-10 w-full rounded-[7px] py-2 text-sm disabled:bg-brand/40 disabled:text-white/60"
-        disabled={!canSubmit}
+      <button
+        type="button"
+        className="button-primary relative h-10 w-full rounded-[7px] py-2 text-sm disabled:cursor-not-allowed disabled:bg-brand/40 disabled:text-white/60 disabled:opacity-70"
+        disabled={!canSubmit || isPending}
+        onClick={() => {
+          void saveReviewAnswer();
+        }}
+        aria-disabled={!canSubmit || isPending}
+        aria-busy={isPending}
       >
-        {isLastQuestion
-          ? initialCorrectOption
-            ? labels.update
-            : labels.save
-          : initialCorrectOption
-            ? labels.updateAndNext
-            : labels.saveAndNext}
-      </SubmitButton>
-    </form>
+        <span className={isPending ? 'text-transparent' : ''}>
+          {isLastQuestion
+            ? initialCorrectOption
+              ? labels.update
+              : labels.save
+            : initialCorrectOption
+              ? labels.updateAndNext
+              : labels.saveAndNext}
+        </span>
+        {isPending ? (
+          <span className="absolute inset-0 inline-flex items-center justify-center gap-2">
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true" />
+            {labels.savePending}
+          </span>
+        ) : null}
+      </button>
+      {submissionError ? <p className="text-center text-sm font-semibold text-rose-300">{submissionError}</p> : null}
+    </div>
   );
 }

@@ -904,7 +904,7 @@ export const getGroupCoreData = cache(async (groupId: string, user: User) => {
       .order('start_time', { ascending: true }),
   ]);
 
-  const safeSessions = sessions ?? [];
+  const safeSessions = (sessions ?? []).filter((session) => session.status !== 'cancelled');
   const safeWeeklySchedules = sortWeeklySchedules(weeklySchedules ?? []);
   const memberCount = memberStats?.member_count ?? 0;
   const founderCaptainId = memberStats?.founder_user_id ?? null;
@@ -980,7 +980,7 @@ export const getGroupData = cache(async (groupId: string, user: User) => {
   ]);
   const safeInvites = invites ?? [];
   const safeMembers = members ?? [];
-  const safeSessions = sessions ?? [];
+  const safeSessions = (sessions ?? []).filter((session) => session.status !== 'cancelled');
   const safeWeeklySchedules = sortWeeklySchedules(weeklySchedules ?? []);
   const userIds = [...new Set([...safeMembers.map((member) => member.user_id), ...safeInvites.map((invite) => invite.invited_by)])];
   const usersMap = await getUsersMap(supabase, userIds);
@@ -1239,21 +1239,25 @@ export const getSessionPageData = cache(
       ]);
 
       const safeQuestions = questions ?? [];
-      const safeQuestionIds = safeQuestions.map((question) => question.id);
       const hasExplicitQuestionIndex = Number.isFinite(questionIndex);
       const firstPendingReviewQuestion =
         safeQuestions.find((question) => !question.correct_option) ?? safeQuestions[0] ?? null;
       const resolvedReviewIndex = hasExplicitQuestionIndex
         ? Math.max(0, Math.min(questionIndex as number, Math.max((session.question_goal ?? safeQuestions.length ?? 1) - 1, 0)))
         : (firstPendingReviewQuestion?.order_index ?? 0);
-      const safeAllAnswers =
-        safeQuestionIds.length > 0
+      const currentReviewQuestion =
+        safeQuestions.find((question) => question.order_index === resolvedReviewIndex) ??
+        safeQuestions[resolvedReviewIndex] ??
+        firstPendingReviewQuestion ??
+        null;
+      const currentQuestionAnswers =
+        currentReviewQuestion
           ? (
               await supabase
                 .schema('public')
                 .from('answers')
                 .select('id, question_id, user_id, selected_option, confidence, is_correct, answered_at')
-                .in('question_id', safeQuestionIds)
+                .eq('question_id', currentReviewQuestion.id)
             ).data ?? []
           : [];
 
@@ -1266,16 +1270,17 @@ export const getSessionPageData = cache(
         resolvedQuestionIndex: resolvedReviewIndex,
         questionGoal: session.question_goal ?? Math.max(safeQuestions.length, 10),
         questions: safeQuestions,
-        currentQuestion: null,
-        currentQuestionAnswers: [] as Array<{
+        currentQuestion: currentReviewQuestion,
+        currentQuestionAnswers,
+        allAnswers: [] as Array<{
           id: string;
+          question_id: string;
           user_id: string;
           selected_option: string | null;
           confidence: string | null;
           is_correct: boolean | null;
           answered_at: string | null;
         }>,
-        allAnswers: safeAllAnswers,
       };
     }
 

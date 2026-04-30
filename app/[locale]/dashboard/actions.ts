@@ -572,7 +572,7 @@ export async function createDashboardSessionAction(formData: FormData) {
     .maybeSingle();
 
   if (existingOpenSession) {
-    redirect(withFeedback(sessionsPath, 'success', t('sessionScheduled')));
+    redirect(withFeedback(`/${locale}/sessions/${existingOpenSession.id}`, 'success', t('sessionScheduled')));
   }
 
   let shareCode = generateSessionShareCode();
@@ -648,9 +648,7 @@ export async function createDashboardSessionAction(formData: FormData) {
     }
   }
 
-  revalidatePath(`/${locale}/dashboard`);
-  revalidatePath(groupDashboardPath(locale, groupId));
-  redirect(withFeedback(sessionsPath, 'success', t('sessionScheduled')));
+  redirect(withFeedback(`/${locale}/sessions/${createdSession.id}`, 'success', t('sessionScheduled')));
 }
 
 export const createGroupSessionAction = createDashboardSessionAction;
@@ -712,8 +710,6 @@ export async function cancelDashboardSessionAction(formData: FormData) {
     },
   });
 
-  revalidatePath(`/${locale}/dashboard`);
-  revalidatePath(groupDashboardPath(locale, session.group_id));
   redirect(withFeedback(sessionReturnPath, 'success', t('actionSucceeded')));
 }
 
