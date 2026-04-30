@@ -106,7 +106,6 @@ export function SessionCard({
               <SubmitButton
                 pendingLabel=""
                 className="rounded-md p-1.5 text-rose-300 transition hover:bg-white/[0.06] hover:text-rose-200"
-                disabled={session.status === 'completed' || session.status === 'cancelled'}
               >
                 <Trash2 className="h-4 w-4" aria-hidden="true" strokeWidth={1.8} />
               </SubmitButton>
