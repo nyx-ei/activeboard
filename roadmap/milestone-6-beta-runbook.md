@@ -21,12 +21,14 @@ where schemaname = 'public'
     'beta_session_kpi_summary',
     'beta_returning_users_28d',
     'beta_device_split_30d',
-    'beta_trial_funnel'
+    'beta_trial_funnel',
+    'beta_performance_trace_logs_7d',
+    'beta_app_velocity_7d'
   )
 order by viewname;
 ```
 
-Expected result: all 9 views are returned.
+Expected result: all 11 views are returned.
 
 ## 2. Verify or enable `canUseUbiquitousLogging`
 
@@ -83,6 +85,65 @@ limit 20;
 
 Expected result: new rows should start showing `device_type`, `platform`, and `browser`.
 
+## 2b. Verify or enable `canUsePerformanceLogging`
+
+Check current value:
+
+```sql
+select
+  key,
+  enabled,
+  description,
+  updated_at
+from public.feature_flags
+where key = 'canUsePerformanceLogging';
+```
+
+If the row is missing, recreate it:
+
+```sql
+insert into public.feature_flags (key, enabled, description)
+values (
+  'canUsePerformanceLogging',
+  true,
+  'Enables persisted structured performance trace logging.'
+)
+on conflict (key) do update
+set enabled = excluded.enabled,
+    description = excluded.description
+returning key, enabled, updated_at;
+```
+
+To verify trace persistence:
+
+```sql
+select
+  created_at,
+  trace_name,
+  trace_group,
+  trace_kind,
+  total_ms
+from public.beta_performance_trace_logs_7d
+order by created_at desc
+limit 20;
+```
+
+To verify aggregated app velocity:
+
+```sql
+select
+  trace_name,
+  trace_group,
+  trace_kind,
+  sample_count,
+  avg_ms,
+  p50_ms,
+  p95_ms,
+  max_ms
+from public.beta_app_velocity_7d
+order by p95_ms desc nulls last;
+```
+
 ## 3. Beta execution checklist
 
 Use this sequence for the first real beta sessions:
@@ -95,6 +156,7 @@ Use this sequence for the first real beta sessions:
 6. Ensure at least one user returns on a different day.
 7. Re-run the KPI queries below after the first batch of sessions.
 8. Log product feedback separately under `#79`.
+9. Export both raw traces and aggregated velocity if navigation or submit latency is reported.
 
 ## 4. KPI queries
 

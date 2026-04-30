@@ -324,14 +324,13 @@ Original sequencing was `#53 → #54 → #55 → #56 → #57 → #58`. The v8 re
 ## Milestone 6: Closed Beta & UX Iteration — IMPLEMENTED
 
 - [#79: Closed beta with 2–3 WhatsApp study groups](https://github.com/nyx-ei/activeboard/issues/79) — Implemented (the product flow, KPI instrumentation, and beta-readiness runbook are now in place in the codebase for the closed-beta pass)
-- [#80: UX iteration pass based on beta feedback](https://github.com/nyx-ei/activeboard/issues/80) - Implemented for the current feedback batch (landing, signup, shell, sessions, performance heatmap, review flow, live groups, profile, billing, group/join, responsive mobile polish, and modal polish aligned to latest client mockups)
+- [#80: UX iteration pass based on beta feedback](https://github.com/nyx-ei/activeboard/issues/80) - Implemented for the current feedback batch (landing, signup, shell, sessions, performance heatmap, review flow, live groups, profile, billing, group/join, responsive mobile polish, modal polish, group/session card alignment, improved review density on mobile, and session join/access messaging aligned to latest client feedback)
 - [#89: Remove Error frequency tile from dashboard performance view](https://github.com/nyx-ei/activeboard/issues/89) — Implemented (flat error rate removed from the Performance tab)
 - [#90: Soften the header divider under the app shell](https://github.com/nyx-ei/activeboard/issues/90) — Implemented
 - [#91: Modals: inconsistent centering and missing Escape / backdrop dismissal](https://github.com/nyx-ei/activeboard/issues/91) — Implemented (shared portal-backed modals with backdrop/Escape dismissal; group picker, billing, live groups, profile, group edit, and schedule modals aligned)
 - [#92: Header: duplicate avatar — one decorative, one interactive, visually identical](https://github.com/nyx-ei/activeboard/issues/92) — Implemented (decorative avatar removed; functional profile avatar/menu kept)
 - [#93: Hide 'Join live groups' entirely when user can't join](https://github.com/nyx-ei/activeboard/issues/93) — Implemented (group CTA gated on `canBrowseLookupLayer`)
 - [#94: Rebrand header live-groups pill: smart click → live modal or paywall modal](https://github.com/nyx-ei/activeboard/issues/94) — Implemented (the header live-groups pill is now separate from group switching; eligible users land directly in the live groups bottom sheet, gated users go to billing)
-- [#118: Language toggle placement — move out of profile menu](https://github.com/nyx-ei/activeboard/issues/118) — Not started (language is a group-level setting per v8 spec; should not appear in user profile dropdown)
 
 ### Multi-group rework — kill the global "active group" concept
 
@@ -354,12 +353,13 @@ Tracked as epic **[#104](https://github.com/nyx-ei/activeboard/issues/104)**. Re
 
 - [#102: Founder signup — 5-step wizard (Account → Plan → Schedule → Banks → Team)](https://github.com/nyx-ei/activeboard/issues/102) — Implemented (landing sign-up modal and `/create-group` now use the full founder flow with explicit account → plan → optional schedule → banks → team, separate exam type + exam session, explicit language/timezone persistence, and atomic final account/group creation with rollback on failure)
 - [#103: Invitee signup — 3-step join-via-link wizard (inherits lang/timezone/exam from group)](https://github.com/nyx-ei/activeboard/issues/103) — Implemented (invitation emails deep-link to `/invite/[inviteId]`; unauthenticated invitees authenticate first, then complete a dedicated group-aware onboarding flow for exam settings → optional availability → review/accept before joining)
+- [#118: Language toggle placement — move out of profile menu](https://github.com/nyx-ei/activeboard/issues/118) — Implemented (language switching now lives directly in the shell header instead of inside the avatar/profile menu)
 
 Key metrics to track during beta: questions-per-session, return rate, mobile vs. desktop split, session completion rate, 85→100-question funnel (warning to payment).
 
 ### Delivery Notes
 
-The current Milestone 6 pass aligns the app shell and core flows with the client mockups: three-tab navigation (`Sessions`, `Performance`, `Groupes`), modal-based profile/billing/exam settings, centered portal modals, group switcher, Groups tab group management, smart live/paywall header launcher, live groups bottom sheet, responsive heatmap, simplified session/review flow, landing page, the completed founder onboarding wizard, cross-group Sessions listing, dedicated `/groups` route entry points, a unified `/groups/[id]` management surface with in-page session creation, dedicated invite acceptance routing, the completed invitee onboarding wizard, narrowed service-worker caching, route-specific dashboard query splitting with SQL-backed beta KPI rollups, and mobile-first responsive fixes across the core flows. By roadmap implementation criteria, Milestone 6 is now complete in code.
+The current Milestone 6 pass aligns the app shell and core flows with the client mockups: three-tab navigation (`Sessions`, `Performance`, `Groupes`), modal-based profile/billing/exam settings, centered portal modals, group switcher, Groups tab group management, smart live/paywall header launcher, live groups bottom sheet, responsive heatmap, simplified session/review flow, landing page, the completed founder onboarding wizard, cross-group Sessions listing, dedicated `/groups` route entry points, a unified `/groups/[id]` management surface with in-page session creation, dedicated invite acceptance routing, the completed invitee onboarding wizard, narrowed service-worker caching, route-specific dashboard query splitting with SQL-backed beta KPI rollups, persisted performance trace export, faster dashboard/group tab switching, lighter simulator save paths for room/review, and mobile-first responsive fixes across the core flows. By roadmap implementation criteria, Milestone 6 is now complete in code.
 
 ---
 
@@ -379,6 +379,7 @@ Domain gap matching (complementary profiles) is deferred to v2.
 ## Milestone 8: Observability & Operations — PARTIAL
 
 - [#59: Ubiquitous logging behind feature flag](https://github.com/nyx-ei/activeboard/issues/59) — Implemented
+- Structured performance trace export and app velocity reporting — Implemented (raw traces are persisted via `performance_trace_recorded`, exported through `public.beta_performance_trace_logs_7d`, and summarized through `public.beta_app_velocity_7d`)
 - [#43: PostHog integration](https://github.com/nyx-ei/activeboard/issues/43) — Not started
 - [#44: Sentry error tracking](https://github.com/nyx-ei/activeboard/issues/44) — Not started
 - [#45: Admin dashboard (founder only)](https://github.com/nyx-ei/activeboard/issues/45) — Not started
@@ -392,8 +393,8 @@ The phone is the intended primary ActiveBoard device (BYOM two-device pattern: l
 
 - [#41: Mobile-optimized session UI](https://github.com/nyx-ei/activeboard/issues/41) — Implemented (the session, review, and summary flows now use mobile-first widths, large touch targets, responsive option grids, and phone-oriented pacing)
 - [#42: Offline resilience](https://github.com/nyx-ei/activeboard/issues/42) — Implemented (localized offline fallback page is cached by the service worker and surfaced through an in-app offline banner)
-- [#40: PWA install prompt (smart timing)](https://github.com/nyx-ei/activeboard/issues/40) — Not started
-- [#81: Monitor PWA install funnel & adoption rates](https://github.com/nyx-ei/activeboard/issues/81) — Not started
+- [#40: PWA install prompt (smart timing)](https://github.com/nyx-ei/activeboard/issues/40) — Implemented (smart `beforeinstallprompt` handling, session suppression, cooldown-based dismissal, and install acceptance logging are wired in the shell)
+- [#81: Monitor PWA install funnel & adoption rates](https://github.com/nyx-ei/activeboard/issues/81) — Partially implemented (prompt shown, accepted, and home-screen launch events are tracked; a dedicated aggregated reporting surface for adoption still needs to be added)
 
 ---
 
@@ -443,16 +444,15 @@ Target weekly cadence from the v8 spec:
 
 ## Statistics
 
-- Total issues on active roadmap: 62
-- Fully implemented (100% acceptance criteria met): 46 issues (#17-#28, #41-#42, #50, #53-#59, #64-#72, #73-#75, #79-#80, #89-#100, #102-#103)
+- Total issues on active roadmap: 63
+- Fully implemented (100% acceptance criteria met): 52 issues (#17-#28, #40-#42, #50, #53-#59, #64-#75, #79-#80, #89-#100, #102-#103, #118)
 - Data-layer complete, UI missing: 0 issues
 - Infrastructure defined, never triggered: 0 issues
-- Partially implemented (AC incomplete): 0 issues
-- Not started on active roadmap: 13 issues (#29-#31, #40, #43-#46, #76-#78, #81, #118)
+- Partially implemented (AC incomplete): 1 issue (#81)
+- Not started on active roadmap: 10 issues (#29-#31, #43-#46, #76-#78)
 - Deferred: 5 issues (#32–#36) + v2 question types
-- **Current focus: Milestone 7 (Lookup Layer), plus the untouched backlog in Milestones 8 and 9**
-- New follow-up bugs created (this audit): #107–#114, #118
-- Last updated: April 22, 2026
+- **Current focus: Milestone 7 (Lookup Layer), plus the remaining observability backlog and PWA adoption reporting**
+- Last updated: April 30, 2026
 
 ---
 
