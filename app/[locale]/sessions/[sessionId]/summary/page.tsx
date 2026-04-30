@@ -15,6 +15,7 @@ type SessionSummaryPageProps = {
   searchParams: {
     feedbackMessage?: string;
     feedbackTone?: string;
+    feedbackId?: string;
   };
 };
 
@@ -52,7 +53,11 @@ export default async function SessionSummaryPage({ params, searchParams }: Sessi
 
   return (
     <main className="flex flex-1 flex-col gap-6">
-      <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
+      <FeedbackBanner
+        message={searchParams.feedbackMessage}
+        tone={searchParams.feedbackTone}
+        feedbackId={searchParams.feedbackId}
+      />
 
       <section className="surface p-6 sm:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

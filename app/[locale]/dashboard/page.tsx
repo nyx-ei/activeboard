@@ -22,6 +22,7 @@ type DashboardPageProps = {
   searchParams: {
     feedbackMessage?: string;
     feedbackTone?: string;
+    feedbackId?: string;
     view?: string;
     groupId?: string;
     sessionJoinFeedback?: string;
@@ -168,6 +169,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
       <FeedbackBanner
         message={isSessionJoinFeedback ? undefined : searchParams.feedbackMessage}
         tone={isSessionJoinFeedback ? undefined : searchParams.feedbackTone}
+        feedbackId={isSessionJoinFeedback ? undefined : searchParams.feedbackId}
       />
 
       <section className="mx-auto w-full max-w-[620px] space-y-4">

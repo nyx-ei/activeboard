@@ -34,6 +34,7 @@ export function withFeedback(path: string, tone: 'success' | 'error', message: s
   const url = new URL(path, 'http://localhost');
   url.searchParams.set('feedbackTone', tone);
   url.searchParams.set('feedbackMessage', message);
+  url.searchParams.set('feedbackId', `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
 
   return `${url.pathname}?${url.searchParams.toString()}`;
 }

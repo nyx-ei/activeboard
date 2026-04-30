@@ -21,6 +21,7 @@ type ProfilePageProps = {
   searchParams: {
     feedbackMessage?: string;
     feedbackTone?: string;
+    feedbackId?: string;
     section?: string;
   };
 };
@@ -55,7 +56,11 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
   return (
     <main className="fixed inset-0 z-50 flex min-h-screen items-center justify-center overflow-y-auto bg-black/72 px-4 py-6 backdrop-blur-[2px]">
       <div className="w-full max-w-[480px]">
-        <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
+        <FeedbackBanner
+          message={searchParams.feedbackMessage}
+          tone={searchParams.feedbackTone}
+          feedbackId={searchParams.feedbackId}
+        />
 
         <section className="max-h-[min(78vh,680px)] overflow-y-auto rounded-[15px] border border-white/[0.06] bg-[#11192c] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.55)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex items-center justify-between gap-4">
