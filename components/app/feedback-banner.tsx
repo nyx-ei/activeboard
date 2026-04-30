@@ -7,9 +7,10 @@ import { cn } from '@/lib/utils';
 type FeedbackBannerProps = {
   message?: string | null;
   tone?: string | null;
+  feedbackId?: string | null;
 };
 
-export function FeedbackBanner({ message, tone }: FeedbackBannerProps) {
+export function FeedbackBanner({ message, tone, feedbackId }: FeedbackBannerProps) {
   const [visible, setVisible] = useState(Boolean(message));
 
   useEffect(() => {
@@ -22,7 +23,7 @@ export function FeedbackBanner({ message, tone }: FeedbackBannerProps) {
     const timeout = window.setTimeout(() => setVisible(false), 3200);
 
     return () => window.clearTimeout(timeout);
-  }, [message]);
+  }, [feedbackId, message]);
 
   if (!message || !visible) {
     return null;

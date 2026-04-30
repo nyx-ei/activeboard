@@ -966,6 +966,7 @@
     "passwordUpdated": "Password updated successfully.",
     "passwordTooShort": "Password must contain at least 8 characters.",
     "notAuthorized": "You do not have access to this resource.",
+    "deleteSessionNotAuthorized": "Only the current session captain, the session creator, or the group founder can delete this session.",
     "groupFull": "This group is already full.",
     "invalidCode": "The invite code is invalid.",
     "invalidSessionCode": "The session code is invalid.",
