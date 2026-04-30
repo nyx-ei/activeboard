@@ -675,7 +675,7 @@ export async function cancelDashboardSessionAction(formData: FormData) {
       ? returnTo
       : `/${locale}/dashboard?view=sessions`;
 
-  if (!session || session.status === 'completed' || session.status === 'cancelled') {
+  if (!session) {
     redirect(withFeedback(sessionReturnPath, 'error', t('actionFailed')));
   }
 
