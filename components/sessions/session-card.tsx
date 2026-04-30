@@ -99,6 +99,18 @@ export function SessionCard({
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <h2 className="truncate text-sm font-extrabold text-white">{session.name ?? session.groupName ?? 'ActiveBoard'}</h2>
             <StatusBadge status={session.status} labels={labels} />
+            <form action={cancelSessionAction} onClick={(event) => event.stopPropagation()}>
+              <input type="hidden" name="locale" value={locale} />
+              <input type="hidden" name="sessionId" value={session.id} />
+              {returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
+              <SubmitButton
+                pendingLabel=""
+                className="rounded-md p-1.5 text-rose-300 transition hover:bg-white/[0.06] hover:text-rose-200"
+                disabled={session.status === 'completed' || session.status === 'cancelled'}
+              >
+                <Trash2 className="h-4 w-4" aria-hidden="true" strokeWidth={1.8} />
+              </SubmitButton>
+            </form>
           </div>
           <p className="mt-1 text-xs font-medium text-slate-500">
             {new Intl.DateTimeFormat(locale, {
@@ -121,19 +133,6 @@ export function SessionCard({
           >
             <Share2 className="h-4 w-4" aria-hidden="true" strokeWidth={1.8} />
           </button>
-          <form action={cancelSessionAction} onClick={(event) => event.stopPropagation()}>
-            <input type="hidden" name="locale" value={locale} />
-            <input type="hidden" name="sessionId" value={session.id} />
-            {returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
-            <SubmitButton
-              pendingLabel=""
-              className="rounded-md p-1.5 transition hover:bg-white/[0.06] hover:text-red-300"
-              disabled={session.status === 'completed' || session.status === 'cancelled'}
-            >
-              <span className="sr-only">{labels.delete}</span>
-              <Trash2 className="h-4 w-4" aria-hidden="true" strokeWidth={1.8} />
-            </SubmitButton>
-          </form>
         </div>
       </div>
     </article>

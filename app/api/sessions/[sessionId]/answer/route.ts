@@ -138,12 +138,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       { onConflict: 'question_id,user_id' },
     );
     perf.step('answer_upserted');
-    try {
-      await refreshDashboardProfileAnalytics();
-      perf.step('analytics_refreshed');
-    } catch {
-      // Preserve the saved answer even if analytics refresh is temporarily unavailable.
-    }
+    runDeferredTasks([refreshDashboardProfileAnalytics().catch(() => undefined)]);
     perf.done({ mode: 'timeout', questionId: ensuredQuestion.id });
 
     return NextResponse.json({
@@ -166,14 +161,9 @@ export async function POST(request: Request, { params }: RouteContext) {
     { onConflict: 'question_id,user_id' },
   );
   perf.step('answer_upserted');
-  try {
-    await refreshDashboardProfileAnalytics();
-    perf.step('analytics_refreshed');
-  } catch {
-    // Preserve the saved answer even if analytics refresh is temporarily unavailable.
-  }
 
   runDeferredTasks([
+    refreshDashboardProfileAnalytics().catch(() => undefined),
     logAppEvent({
       eventName: APP_EVENTS.answerSubmitted,
       locale,

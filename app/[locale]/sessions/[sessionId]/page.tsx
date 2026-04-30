@@ -19,7 +19,6 @@ import {
   finishReviewSessionAction,
   initializeSessionFlowAction,
   quitIncompleteSessionAction,
-  saveReviewAnswerAction,
 } from './actions';
 
 type SessionPageProps = {
@@ -154,7 +153,7 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
 
   if (isReview && question) {
     const reviewQuestion = question as ReviewQuestion;
-    const questionAnswers = data.allAnswers.filter((answer) => answer.question_id === question.id);
+    const questionAnswers = data.currentQuestionAnswers;
     const distribution = getDistribution(questionAnswers, data.members.length);
     const myReviewAnswer = questionAnswers.find((answer) => answer.user_id === user.id) ?? null;
     const canFinish = questions.filter((item) => (item as ReviewQuestion).correct_option).length >= questionGoal;
@@ -167,14 +166,18 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
       <main className="flex flex-1 flex-col">
         <FeedbackBanner message={searchParams.feedbackMessage} tone={searchParams.feedbackTone} />
         <header className="sticky top-0 z-20 border-b border-white/[0.07] bg-background/95 backdrop-blur">
-          <div className="mx-auto grid min-h-16 w-full max-w-[700px] grid-cols-[40px_minmax(0,1fr)_40px] items-center gap-3 px-4 py-3 sm:h-16 sm:py-0">
+          <div className="mx-auto flex min-h-16 w-full max-w-[700px] items-center gap-3 px-4 py-3 sm:grid sm:grid-cols-[40px_minmax(0,1fr)_40px] sm:py-0">
             <Link href="/dashboard?view=sessions" prefetch={false} className="inline-flex h-10 w-10 items-center justify-start text-slate-500 hover:text-white">
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             </Link>
-            <p className="min-w-0 flex-1 text-center text-base font-extrabold text-white sm:text-lg">
+            <div className="min-w-0 flex-1 sm:hidden">
+              <p className="truncate text-sm font-semibold text-white">{data.session.name ?? data.group.name}</p>
+              <p className="text-xs font-medium text-slate-500">{t('reviewShort')}</p>
+            </div>
+            <p className="hidden min-w-0 flex-1 text-center text-base font-extrabold text-white sm:block sm:text-lg">
               {data.session.name ?? data.group.name} - {t('reviewShort')}
             </p>
-            <span aria-hidden="true" />
+            <span aria-hidden="true" className="hidden sm:block" />
           </div>
         </header>
 
@@ -189,7 +192,10 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
                 {'<'} {t('previous')}
               </Link>
             )}
-            <h1 className="text-2xl font-extrabold text-white">{t('questionNumber', { number: currentIndex + 1 })}</h1>
+            <h1 className="text-lg font-semibold text-white sm:text-2xl sm:font-extrabold">
+              <span className="sm:hidden">{currentIndex + 1}/{questionGoal}</span>
+              <span className="hidden sm:inline">{t('questionNumber', { number: currentIndex + 1 })}</span>
+            </h1>
             {isLastQuestion ? (
               <span className="opacity-40">
                 {t('next')} {'>'}
@@ -206,7 +212,21 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
               <BarChart3 className="h-4 w-4 text-brand" aria-hidden="true" />
               <h2 className="text-sm font-extrabold text-white">{t('distribution')}</h2>
             </div>
-            <div className="mt-8 grid grid-cols-3 gap-x-2 gap-y-4 min-[420px]:grid-cols-6">
+            <div className="mt-3 grid grid-cols-6 gap-1.5 sm:hidden">
+              {[...ANSWER_OPTIONS, '?'].map((option) => (
+                <div
+                  key={option}
+                  className={`inline-flex min-h-9 items-center justify-center rounded-[7px] border px-1 text-center text-[11px] font-semibold ${
+                    reviewQuestion.correct_option === option
+                      ? 'border-brand/35 bg-brand/10 text-brand'
+                      : 'border-white/[0.08] bg-[#121b2e] text-slate-400'
+                  }`}
+                >
+                  {option}-{distribution.get(option) ?? 0}
+                </div>
+              ))}
+            </div>
+            <div className="mt-8 hidden grid-cols-3 gap-x-2 gap-y-4 min-[420px]:grid-cols-6 sm:grid">
               {[...ANSWER_OPTIONS, '?'].map((option) => (
                 <div key={option} className="flex w-full flex-col items-center gap-1 text-center">
                   <span className={reviewQuestion.correct_option === option ? 'text-sm font-extrabold text-brand' : 'text-sm font-bold text-slate-500'}>
@@ -220,7 +240,6 @@ export default async function SessionPage({ params, searchParams }: SessionPageP
             <div className="mt-5 border-t border-white/[0.06] pt-5">
               <ReviewAnswerForm
                 key={question.id}
-                action={saveReviewAnswerAction}
                 locale={locale}
                 sessionId={params.sessionId}
                 questionId={question.id}
