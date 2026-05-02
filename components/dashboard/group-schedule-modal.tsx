@@ -127,7 +127,8 @@ export function GroupScheduleModal({
           onClose={() => setOpen(false)}
           backdropLabel={labels.close}
           mobileSheet
-          contentClassName="relative max-h-[min(88vh,620px)] w-full max-w-[540px] overflow-y-auto rounded-t-[16px] border border-white/[0.06] bg-[#11192c] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.55)] [scrollbar-width:none] sm:rounded-[10px] sm:p-6 [&::-webkit-scrollbar]:hidden"
+          className="bg-black px-0 py-0 backdrop-blur-0 sm:bg-black/72 sm:px-4 sm:py-6 sm:backdrop-blur-[2px]"
+          contentClassName="relative flex h-[100dvh] w-full max-w-[540px] flex-col overflow-hidden rounded-none border-0 bg-[#11192c] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.55)] sm:max-h-[min(88vh,620px)] sm:rounded-[10px] sm:border sm:border-white/[0.06] sm:p-6"
         >
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -142,12 +143,12 @@ export function GroupScheduleModal({
                 </button>
               </div>
 
-              <form action={mode === 'edit' ? updateAction : addAction} className="mt-6">
+              <form action={mode === 'edit' ? updateAction : addAction} className="mt-6 flex min-h-0 flex-1 flex-col">
                 <input type="hidden" name="locale" value={locale} />
                 <input type="hidden" name="groupId" value={groupId} />
 
-                <div className="space-y-2">
-                  <div className="grid grid-cols-[minmax(88px,1fr)_minmax(68px,0.75fr)_minmax(68px,0.75fr)_minmax(52px,0.55fr)_28px] items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                <div className="min-h-0 flex-1 space-y-2 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <div className="hidden grid-cols-[minmax(88px,1fr)_minmax(68px,0.75fr)_minmax(68px,0.75fr)_minmax(52px,0.55fr)_28px] items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 min-[520px]:grid">
                     <span>{locale === 'fr' ? 'Jour' : 'Day'}</span>
                     <span>{locale === 'fr' ? 'Début' : 'Start'}</span>
                     <span>{locale === 'fr' ? 'Fin' : 'End'}</span>
@@ -157,8 +158,11 @@ export function GroupScheduleModal({
                   {drafts.map((draft) => (
                     <div key={draft.id} className="rounded-[9px] bg-white/[0.045] p-3 text-sm">
                       {mode === 'edit' ? <input type="hidden" name="scheduleId" value={draft.id} /> : null}
-                      <div className="grid grid-cols-[minmax(88px,1fr)_minmax(68px,0.75fr)_minmax(68px,0.75fr)_minmax(52px,0.55fr)_28px] items-center gap-2">
-                        <label className="block min-w-0">
+                      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(56px,0.7fr)_32px] items-center gap-2 min-[520px]:grid-cols-[minmax(88px,1fr)_minmax(68px,0.75fr)_minmax(68px,0.75fr)_minmax(52px,0.55fr)_28px]">
+                        <label className="col-span-4 block min-w-0 min-[520px]:col-span-1">
+                          <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500 min-[520px]:sr-only">
+                            {locale === 'fr' ? 'Jour' : 'Day'}
+                          </span>
                           <select
                             name="weekday"
                             className="h-10 w-full min-w-0 rounded-[6px] border border-white/[0.08] bg-white/[0.08] px-2 text-xs font-bold text-white outline-none focus:border-brand"
@@ -173,28 +177,37 @@ export function GroupScheduleModal({
                           </select>
                         </label>
                         <label className="block min-w-0">
+                          <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500 min-[520px]:sr-only">
+                            {locale === 'fr' ? 'DÃ©but' : 'Start'}
+                          </span>
                           <div className="flex h-10 min-w-0 items-center rounded-[6px] border border-white/[0.08] bg-white/[0.08] px-2 focus-within:border-brand">
                             <input
                               name="startTime"
                               type="time"
-                              className="min-w-0 flex-1 bg-transparent p-0 text-xs font-bold text-white outline-none"
+                              className="min-w-0 flex-1 bg-transparent p-0 text-[11px] font-bold text-white outline-none sm:text-xs"
                               value={draft.startTime}
                               onChange={(event) => updateDraft(draft.id, { startTime: event.target.value })}
                             />
                           </div>
                         </label>
                         <label className="block min-w-0">
+                          <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500 min-[520px]:sr-only">
+                            {locale === 'fr' ? 'Fin' : 'End'}
+                          </span>
                           <div className="flex h-10 min-w-0 items-center rounded-[6px] border border-white/[0.08] bg-white/[0.08] px-2 focus-within:border-brand">
                             <input
                               name="endTime"
                               type="time"
-                              className="min-w-0 flex-1 bg-transparent p-0 text-xs font-bold text-white outline-none"
+                              className="min-w-0 flex-1 bg-transparent p-0 text-[11px] font-bold text-white outline-none sm:text-xs"
                               value={draft.endTime}
                               onChange={(event) => updateDraft(draft.id, { endTime: event.target.value })}
                             />
                           </div>
                         </label>
                         <label className="block min-w-0">
+                          <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500 min-[520px]:sr-only">
+                            Q
+                          </span>
                           <input
                             name="questionGoal"
                             type="number"
@@ -206,7 +219,7 @@ export function GroupScheduleModal({
                             aria-label={labels.questionGoal}
                           />
                         </label>
-                        <div className="flex justify-center">
+                        <div className="flex h-full items-end justify-center min-[520px]:items-center">
                           {draft.persisted ? (
                             <button type="submit" formAction={deleteAction} name="deleteScheduleId" value={draft.id} className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition hover:bg-white/[0.06] hover:text-white" aria-label={labels.removeDay}>
                               <Trash2 className="h-4 w-4" aria-hidden="true" />

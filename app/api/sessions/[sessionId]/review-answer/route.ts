@@ -5,7 +5,11 @@ import type { AppLocale } from '@/i18n/routing';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
 import { createPerfTracker } from '@/lib/observability/perf';
-import { getCurrentAuthUser, getSessionAccessSnapshot, loadSessionRuntimeAccess } from '@/lib/session/flow';
+import {
+  getCurrentAuthUser,
+  getSessionAccessSnapshot,
+  loadSessionRuntimeAccess,
+} from '@/lib/session/flow';
 import { ANSWER_OPTIONS } from '@/lib/types/demo';
 
 type RouteContext = {
@@ -30,34 +34,72 @@ export async function POST(request: Request, { params }: RouteContext) {
   const nextQuestionIndex = Number(body?.nextQuestionIndex);
   const advanceAfterSave = body?.advanceAfterSave === true;
   const correctOption = body?.correctOption?.toUpperCase() ?? '';
-  const perf = createPerfTracker(`saveReviewAnswerRoute:${sessionId}:${questionIndex}`);
-  const t = await getTranslations({ locale, namespace: 'Feedback' });
+  const perf = createPerfTracker(
+    `saveReviewAnswerRoute:${sessionId}:${questionIndex}`,
+  );
+  perf.step('request_parsed');
+  let feedbackTranslations: Awaited<ReturnType<typeof getTranslations>> | null =
+    null;
+  const getFeedback = async (key: string) => {
+    feedbackTranslations ??= await getTranslations({
+      locale,
+      namespace: 'Feedback',
+    });
+    return feedbackTranslations(key);
+  };
 
-  if (!sessionId || !questionId || !Number.isInteger(questionIndex) || questionIndex < 0) {
-    return NextResponse.json({ ok: false, message: t('actionFailed') }, { status: 400 });
+  if (
+    !sessionId ||
+    !questionId ||
+    !Number.isInteger(questionIndex) ||
+    questionIndex < 0
+  ) {
+    return NextResponse.json(
+      { ok: false, message: await getFeedback('actionFailed') },
+      { status: 400 },
+    );
   }
 
-  if (!ANSWER_OPTIONS.includes(correctOption as (typeof ANSWER_OPTIONS)[number])) {
-    return NextResponse.json({ ok: false, message: t('missingFields') }, { status: 400 });
+  if (
+    !ANSWER_OPTIONS.includes(correctOption as (typeof ANSWER_OPTIONS)[number])
+  ) {
+    return NextResponse.json(
+      { ok: false, message: await getFeedback('missingFields') },
+      { status: 400 },
+    );
   }
+  perf.step('payload_validated');
 
   const { supabase, user } = await getCurrentAuthUser();
   perf.step('auth_loaded');
 
   if (!user) {
     return NextResponse.json(
-      { ok: false, redirectTo: `/${locale}/auth/login`, message: t('notAuthorized') },
+      {
+        ok: false,
+        redirectTo: `/${locale}/auth/login`,
+        message: await getFeedback('notAuthorized'),
+      },
       { status: 401 },
     );
   }
 
-  const access = await loadSessionRuntimeAccess(supabase, sessionId, user.id);
+  const access = await loadSessionRuntimeAccess(
+    supabase,
+    sessionId,
+    user.id,
+    false,
+  );
   perf.step('session_loaded');
   const session = getSessionAccessSnapshot(access);
 
   if (!session) {
     return NextResponse.json(
-      { ok: false, redirectTo: `/${locale}/dashboard?view=sessions`, message: t('notAuthorized') },
+      {
+        ok: false,
+        redirectTo: `/${locale}/dashboard?view=sessions`,
+        message: await getFeedback('notAuthorized'),
+      },
       { status: 403 },
     );
   }
@@ -77,28 +119,34 @@ export async function POST(request: Request, { params }: RouteContext) {
   });
   perf.step('membership_loaded');
 
-  if (session.status !== 'incomplete' && session.status !== 'active' && session.status !== 'completed') {
-    return NextResponse.json({ ok: false, message: t('actionFailed') }, { status: 400 });
+  if (
+    session.status !== 'incomplete' &&
+    session.status !== 'active' &&
+    session.status !== 'completed'
+  ) {
+    return NextResponse.json(
+      { ok: false, message: await getFeedback('actionFailed') },
+      { status: 400 },
+    );
   }
+  perf.step('session_validated');
 
-  const { data: question } = await supabase
-    .schema('public')
-    .from('questions')
-    .select('id, session_id')
-    .eq('id', questionId)
-    .maybeSingle();
-  perf.step('question_loaded');
-
-  if (!question || question.session_id !== sessionId) {
-    return NextResponse.json({ ok: false, message: t('notAuthorized') }, { status: 403 });
-  }
-
-  await supabase
+  const { data: updatedQuestion } = await supabase
     .schema('public')
     .from('questions')
     .update({ correct_option: correctOption, phase: 'review' })
-    .eq('id', questionId);
+    .eq('id', questionId)
+    .eq('session_id', sessionId)
+    .select('id')
+    .maybeSingle();
   perf.step('question_updated');
+
+  if (!updatedQuestion?.id) {
+    return NextResponse.json(
+      { ok: false, message: await getFeedback('notAuthorized') },
+      { status: 403 },
+    );
+  }
 
   await Promise.all([
     supabase
@@ -132,10 +180,14 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const targetQuestionIndex =
     advanceAfterSave && Number.isInteger(nextQuestionIndex)
-      ? Math.max(0, Math.min(nextQuestionIndex, Math.max(session.question_goal - 1, 0)))
+      ? Math.max(
+          0,
+          Math.min(nextQuestionIndex, Math.max(session.question_goal - 1, 0)),
+        )
       : questionIndex;
 
   const redirectTo = `/${locale}/sessions/${sessionId}?stage=review&q=${targetQuestionIndex}`;
+  perf.step('response_prepared');
   perf.done({
     questionId,
     correctOption,

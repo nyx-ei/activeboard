@@ -1,13 +1,47 @@
 'use client';
 
-import { useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 import { CreateSessionModal } from '@/components/sessions/create-session-modal';
-import { SubmitButton } from '@/components/ui/submit-button';
-import { SessionCard, type SessionCardLabels, type SessionListItem } from '@/components/sessions/session-card';
+import {
+  SessionCard,
+  type SessionCardLabels,
+  type SessionListItem,
+} from '@/components/sessions/session-card';
 
-type DashboardSessionsViewProps = {
+const CANCELLED_SESSION_STORAGE_KEY = 'activeboard:cancelled-session-ids';
+
+function readCancelledSessionIds() {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(
+      window.sessionStorage.getItem(CANCELLED_SESSION_STORAGE_KEY) ?? '[]',
+    );
+    return Array.isArray(parsed)
+      ? parsed.filter((value): value is string => typeof value === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeCancelledSessionIds(sessionIds: string[]) {
+  try {
+    window.sessionStorage.setItem(
+      CANCELLED_SESSION_STORAGE_KEY,
+      JSON.stringify(sessionIds.slice(-80)),
+    );
+  } catch {
+    // Ignore storage failures; the in-memory optimistic state still applies.
+  }
+}
+
+export type DashboardSessionsViewProps = {
   locale: string;
   sessions: SessionListItem[];
   groups: Array<{ id: string; name: string; memberCount: number }>;
@@ -58,27 +92,41 @@ type DashboardSessionsViewProps = {
   } | null;
 };
 
-export function DashboardSessionsView({
+export const DashboardSessionsView = memo(function DashboardSessionsView({
   locale,
   sessions,
   groups,
   trialProgress,
   canJoinSessions,
   canCreateSession,
-  cancelSessionAction,
   joinSessionAction,
   createSessionAction,
   labels,
   sessionJoinFeedback,
 }: DashboardSessionsViewProps) {
+  const router = useRouter();
   const [isCreateSessionOpen, setIsCreateSessionOpen] = useState(false);
+  const [cancelledSessionIds, setCancelledSessionIds] = useState<string[]>([]);
+  const [sessionCode, setSessionCode] = useState('');
+  const [joinPending, setJoinPending] = useState(false);
+  const [joinFeedback, setJoinFeedback] = useState(sessionJoinFeedback);
   const initialGroupId = groups[0]?.id ?? '';
+  useEffect(() => {
+    setCancelledSessionIds(readCancelledSessionIds());
+  }, []);
+
+  const visibleSessions = sessions.filter(
+    (session) =>
+      session.status !== 'cancelled' && !cancelledSessionIds.includes(session.id),
+  );
 
   return (
-    <>
+    <div className="space-y-5">
       <section className="surface-mockup p-5">
         <div className="flex items-start justify-between gap-4">
-          <p className="text-sm font-bold text-white">{labels.trialProgressTitle}</p>
+          <p className="text-sm font-bold text-white">
+            {labels.trialProgressTitle}
+          </p>
           <p className="text-sm font-extrabold text-white">
             {trialProgress.current} / {trialProgress.total}
           </p>
@@ -91,77 +139,188 @@ export function DashboardSessionsView({
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.08]">
           <div
             className="h-full rounded-full bg-brand"
-            style={{ width: `${Math.min(100, Math.round((trialProgress.current / Math.max(1, trialProgress.total)) * 100))}%` }}
+            style={{
+              width: `${Math.min(100, Math.round((trialProgress.current / Math.max(1, trialProgress.total)) * 100))}%`,
+            }}
           />
         </div>
-        <p className={`mt-3 text-sm ${trialProgress.isComplete || trialProgress.showWarning ? 'font-bold text-amber-300' : 'text-slate-500'}`}>
+        <p
+          className={`mt-3 text-sm ${trialProgress.isComplete || trialProgress.showWarning ? 'font-bold text-amber-300' : 'text-slate-500'}`}
+        >
           {trialProgress.isComplete
             ? labels.trialProgressComplete
             : trialProgress.showWarning
-              ? labels.trialProgressWarning.replace('{remaining}', String(trialProgress.remaining))
-              : labels.trialProgressDescription.replace('{remaining}', String(trialProgress.remaining))}
+              ? labels.trialProgressWarning.replace(
+                  '{remaining}',
+                  String(trialProgress.remaining),
+                )
+              : labels.trialProgressDescription.replace(
+                  '{remaining}',
+                  String(trialProgress.remaining),
+                )}
         </p>
       </section>
 
-      {groups.length > 0 ? (
-        <div className="w-full">
-          <button
-            type="button"
-            onClick={() => setIsCreateSessionOpen(true)}
-            className="button-primary h-10 w-full rounded-[7px] px-4 text-sm"
-            disabled={!canCreateSession}
-          >
-            <span className="mr-2 text-lg leading-none">+</span>
-            {labels.newSession}
-          </button>
-        </div>
-      ) : null}
+      <div className="space-y-3">
+        {groups.length > 0 ? (
+          <div className="w-full">
+            <button
+              type="button"
+              onClick={() => setIsCreateSessionOpen(true)}
+              className="button-primary h-10 w-full rounded-[7px] px-4 text-sm"
+              disabled={!canCreateSession}
+            >
+              <span className="mr-2 text-lg leading-none">+</span>
+              {labels.newSession}
+            </button>
+          </div>
+        ) : null}
 
-      <div className="flex items-start gap-3 rounded-[7px] border border-white/[0.06] bg-[#121b2e] px-4 py-2.5 text-[11px] font-semibold leading-snug text-slate-500">
-        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" aria-hidden="true" />
-        <p>{labels.soloSessionProgressHint}</p>
+        <div className="flex items-start gap-3 rounded-[7px] border border-white/[0.06] bg-[#121b2e] px-4 py-2.5 text-[11px] font-semibold leading-snug text-slate-500">
+          <AlertTriangle
+            className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400"
+            aria-hidden="true"
+          />
+          <p>{labels.soloSessionProgressHint}</p>
+        </div>
       </div>
 
       <section className="space-y-3">
-        <h1 className="text-lg font-extrabold tracking-tight text-white">{labels.sessions}</h1>
-        {sessions.length > 0 ? (
+        <h1 className="text-lg font-extrabold tracking-tight text-white">
+          {labels.sessions}
+        </h1>
+        {visibleSessions.length > 0 ? (
           <div className="space-y-3">
-            {sessions.map((session) => (
+            {visibleSessions.map((session) => (
               <SessionCard
                 key={session.id}
                 session={session}
                 locale={locale}
                 labels={labels}
-                cancelSessionAction={cancelSessionAction}
+                returnTo={`/${locale}/dashboard?view=sessions`}
+                onCancelOptimistic={(sessionId) =>
+                  setCancelledSessionIds((current) => {
+                    const next = current.includes(sessionId)
+                      ? current
+                      : [...current, sessionId];
+                    writeCancelledSessionIds(next);
+                    return next;
+                  })
+                }
+                onCancelRollback={(sessionId) =>
+                  setCancelledSessionIds((current) => {
+                    const next = current.filter((id) => id !== sessionId);
+                    writeCancelledSessionIds(next);
+                    return next;
+                  })
+                }
               />
             ))}
           </div>
         ) : (
-          <p className="py-4 text-center text-sm text-slate-500">{labels.noSessionCta}</p>
+          <p className="py-4 text-center text-sm text-slate-500">
+            {labels.noSessionCta}
+          </p>
         )}
       </section>
 
-      <div className="space-y-2">
-        <form action={joinSessionAction} className="flex items-center gap-2 sm:justify-center">
+      <div className="pt-1">
+        <form
+          action={joinSessionAction}
+          className="flex items-center gap-2 sm:justify-center"
+          onSubmit={(event) => {
+            if (!canJoinSessions || joinPending) {
+              event.preventDefault();
+              return;
+            }
+
+            event.preventDefault();
+            setJoinPending(true);
+            setJoinFeedback(null);
+            void fetch('/api/sessions/join', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              credentials: 'same-origin',
+              cache: 'no-store',
+              body: JSON.stringify({
+                locale,
+                sessionCode,
+              }),
+            })
+              .then(async (response) => {
+                const payload = (await response.json().catch(() => null)) as {
+                  ok?: boolean;
+                  message?: string;
+                  redirectTo?: string;
+                } | null;
+
+                if (payload?.redirectTo) {
+                  router.push(payload.redirectTo as never);
+                  return;
+                }
+
+                if (!response.ok || payload?.ok === false) {
+                  setJoinFeedback({
+                    tone: 'error',
+                    message: payload?.message ?? labels.goPending,
+                  });
+                  setJoinPending(false);
+                  return;
+                }
+
+                setJoinPending(false);
+              })
+              .catch(() => {
+                setJoinFeedback({
+                  tone: 'error',
+                  message: labels.goPending,
+                });
+                setJoinPending(false);
+              });
+          }}
+        >
           <input type="hidden" name="locale" value={locale} />
           <input
             name="sessionCode"
             maxLength={6}
+            value={sessionCode}
+            onChange={(event) =>
+              setSessionCode(event.target.value.toUpperCase())
+            }
             placeholder={labels.sessionCodePlaceholder}
             autoCapitalize="characters"
             autoComplete="off"
             className="field h-10 min-w-0 flex-1 rounded-[7px] px-4 py-2 text-center text-xs uppercase tracking-[0.18em] sm:h-9 sm:max-w-[210px] sm:flex-none"
           />
-          <SubmitButton pendingLabel={labels.goPending} className="button-primary h-10 w-[96px] shrink-0 rounded-[7px] px-4 py-2 text-xs sm:h-9 sm:w-auto" disabled={!canJoinSessions}>
-            {labels.go}
-          </SubmitButton>
+          <button
+            type="submit"
+            className="button-primary h-10 w-[96px] shrink-0 rounded-[7px] px-4 py-2 text-xs sm:h-9 sm:w-auto"
+            disabled={!canJoinSessions || joinPending}
+            aria-busy={joinPending}
+          >
+            {joinPending ? labels.goPending : labels.go}
+          </button>
         </form>
-        {sessionJoinFeedback?.message ? (
-          <p className={sessionJoinFeedback.tone === 'error' ? 'text-center text-sm font-semibold text-rose-300' : 'text-center text-sm font-semibold text-brand'}>
-            {sessionJoinFeedback.message}
-          </p>
-        ) : null}
-        {!canJoinSessions ? <p className="text-center text-sm text-amber-300">{labels.upgradeRequiredToJoinSession}</p> : null}
+        <div className="mt-2 space-y-2">
+          {joinFeedback?.message ? (
+            <p
+              className={
+                joinFeedback.tone === 'error'
+                  ? 'text-center text-sm font-semibold text-rose-300'
+                  : 'text-center text-sm font-semibold text-brand'
+              }
+            >
+              {joinFeedback.message}
+            </p>
+          ) : null}
+          {!canJoinSessions ? (
+            <p className="text-center text-sm text-amber-300">
+              {labels.upgradeRequiredToJoinSession}
+            </p>
+          ) : null}
+        </div>
       </div>
 
       {isCreateSessionOpen && groups.length > 0 ? (
@@ -191,6 +350,6 @@ export function DashboardSessionsView({
           onClose={() => setIsCreateSessionOpen(false)}
         />
       ) : null}
-    </>
+    </div>
   );
-}
+});

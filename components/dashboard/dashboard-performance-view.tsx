@@ -1,3 +1,5 @@
+import { memo, useMemo } from 'react';
+
 type HeatmapDay = {
   date: string;
   count: number;
@@ -19,7 +21,7 @@ type SessionConfidenceBreakdownItem = {
   high: number;
 };
 
-type DashboardPerformanceViewProps = {
+export type DashboardPerformanceViewProps = {
   answeredCount: number;
   completedSessionsCount: number;
   successRate: number | null;
@@ -42,7 +44,8 @@ type DashboardPerformanceViewProps = {
     none: string;
     less: string;
     more: string;
-    sessionsFinished: string;
+    sessionsFinishedOne: string;
+    sessionsFinishedOther: string;
     averagePerWeek: string;
     completion: string;
     confidenceCalibrationTitle: string;
@@ -87,7 +90,11 @@ function startOfUtcWeek(date: Date) {
   return next;
 }
 
-export function DashboardPerformanceView({
+function formatCountLabel(template: string, count: number) {
+  return template.replace(/\d+/, String(count));
+}
+
+export const DashboardPerformanceView = memo(function DashboardPerformanceView({
   answeredCount,
   completedSessionsCount,
   successRate,
@@ -96,48 +103,75 @@ export function DashboardPerformanceView({
   sessionConfidenceBreakdown,
   labels,
 }: DashboardPerformanceViewProps) {
-  const heatmapByDate = new Map(heatmap.map((day) => [day.date, day]));
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
   const weekCount = 28;
-  const chartEnd = addUtcDays(startOfUtcWeek(today), 6);
-  const chartStart = addUtcDays(chartEnd, -(weekCount * 7 - 1));
-  const chartDays = Array.from({ length: weekCount * 7 }, (_, index) => {
-    const date = addUtcDays(chartStart, index);
-    const dateKey = toIsoDate(date);
-    const source = heatmapByDate.get(dateKey);
+  const { weeks, monthMarkers } = useMemo(() => {
+    const heatmapByDate = new Map(heatmap.map((day) => [day.date, day]));
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const chartEnd = addUtcDays(startOfUtcWeek(today), 6);
+    const chartStart = addUtcDays(chartEnd, -(weekCount * 7 - 1));
+    const chartDays = Array.from({ length: weekCount * 7 }, (_, index) => {
+      const date = addUtcDays(chartStart, index);
+      const dateKey = toIsoDate(date);
+      const source = heatmapByDate.get(dateKey);
+      return {
+        date: dateKey,
+        count: source?.count ?? 0,
+        intensity: source?.intensity ?? 0,
+      };
+    });
+    const nextWeeks: HeatmapDay[][] = [];
+    for (let index = 0; index < chartDays.length; index += 7) {
+      nextWeeks.push(chartDays.slice(index, index + 7));
+    }
+    const nextMonthMarkers = nextWeeks.map((week, weekIndex) => {
+      const firstOfMonth = week.find(
+        (day) => parseIsoDate(day.date).getUTCDate() === 1,
+      );
+      if (!firstOfMonth && weekIndex !== 0) return '';
+      const markerDate = firstOfMonth
+        ? parseIsoDate(firstOfMonth.date)
+        : week[0]
+          ? parseIsoDate(week[0].date)
+          : null;
+      if (!markerDate) return '';
+      return labels.monthLabels[markerDate.getUTCMonth()] ?? '';
+    });
+
     return {
-      date: dateKey,
-      count: source?.count ?? 0,
-      intensity: source?.intensity ?? 0,
+      weeks: nextWeeks,
+      monthMarkers: nextMonthMarkers,
     };
-  });
-  const weeks: HeatmapDay[][] = [];
-  for (let index = 0; index < chartDays.length; index += 7) {
-    weeks.push(chartDays.slice(index, index + 7));
-  }
-  const monthMarkers = weeks.map((week, weekIndex) => {
-    const firstOfMonth = week.find((day) => parseIsoDate(day.date).getUTCDate() === 1);
-    if (!firstOfMonth && weekIndex !== 0) return '';
-    const markerDate = firstOfMonth ? parseIsoDate(firstOfMonth.date) : week[0] ? parseIsoDate(week[0].date) : null;
-    if (!markerDate) return '';
-    return labels.monthLabels[markerDate.getUTCMonth()] ?? '';
-  });
+  }, [heatmap, labels.monthLabels]);
   const averagePerWeek = Math.round(answeredCount / Math.max(1, weekCount));
+  const sessionsFinishedLabel = formatCountLabel(
+    completedSessionsCount === 1
+      ? labels.sessionsFinishedOne
+      : labels.sessionsFinishedOther,
+    completedSessionsCount,
+  );
   return (
-    <>
+    <div className="space-y-5">
       <section className="surface-mockup p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-bold text-slate-300">{labels.sprintActivityTitle}</p>
+            <p className="text-sm font-bold text-slate-300">
+              {labels.sprintActivityTitle}
+            </p>
             <p className="mt-2 text-2xl font-extrabold text-white">
               {answeredCount}
-              <span className="ml-2 text-sm font-bold text-slate-500">{labels.questionsAnswered}</span>
+              <span className="ml-2 text-sm font-bold text-slate-500">
+                {labels.questionsAnswered}
+              </span>
             </p>
           </div>
           <div className="text-right">
-            <p className="text-[42px] font-extrabold leading-none text-brand">{completedSessionsCount}</p>
-            <p className="mt-2 text-sm font-semibold text-slate-500">{labels.sessionsFinished}</p>
+            <p className="text-[42px] font-extrabold leading-none text-brand">
+              {completedSessionsCount}
+            </p>
+            <p className="mt-2 text-sm font-semibold text-slate-500">
+              {sessionsFinishedLabel}
+            </p>
           </div>
         </div>
 
@@ -147,10 +181,15 @@ export function DashboardPerformanceView({
               <div />
               <div
                 className="grid gap-[2px] overflow-visible text-[8px] font-semibold text-slate-600 sm:gap-[3px] sm:text-[9px] md:text-[10px]"
-                style={{ gridTemplateColumns: `repeat(${weekCount}, minmax(0, 1fr))` }}
+                style={{
+                  gridTemplateColumns: `repeat(${weekCount}, minmax(0, 1fr))`,
+                }}
               >
                 {monthMarkers.map((month, index) => (
-                  <span key={`${month}-${index}`} className="whitespace-nowrap leading-none">
+                  <span
+                    key={`${month}-${index}`}
+                    className="whitespace-nowrap leading-none"
+                  >
                     {month}
                   </span>
                 ))}
@@ -165,7 +204,10 @@ export function DashboardPerformanceView({
               </div>
               <div className="flex min-w-0 gap-[2px] sm:gap-[3px]">
                 {weeks.map((week, weekIndex) => (
-                  <div key={weekIndex} className="grid min-w-0 flex-1 grid-rows-7 gap-[2px] sm:gap-[3px]">
+                  <div
+                    key={weekIndex}
+                    className="grid min-w-0 flex-1 grid-rows-7 gap-[2px] sm:gap-[3px]"
+                  >
                     {Array.from({ length: 7 }).map((_, dayIndex) => {
                       const day = week[dayIndex];
                       return (
@@ -192,10 +234,18 @@ export function DashboardPerformanceView({
               <span>{labels.more}</span>
             </div>
             <div className="grid grid-cols-[1fr_auto] gap-x-5 gap-y-2 text-sm">
-              <span className="font-semibold text-slate-500">{labels.averagePerWeek}</span>
-              <span className="font-extrabold text-white">{averagePerWeek}</span>
-              <span className="font-semibold text-slate-500">{labels.completion}</span>
-              <span className="font-extrabold text-white">{successRate !== null ? `${successRate}%` : labels.noData}</span>
+              <span className="font-semibold text-slate-500">
+                {labels.averagePerWeek}
+              </span>
+              <span className="font-extrabold text-white">
+                {averagePerWeek}
+              </span>
+              <span className="font-semibold text-slate-500">
+                {labels.completion}
+              </span>
+              <span className="font-extrabold text-white">
+                {successRate !== null ? `${successRate}%` : labels.noData}
+              </span>
             </div>
           </aside>
         </div>
@@ -206,20 +256,37 @@ export function DashboardPerformanceView({
         {sessionConfidenceBreakdown.length > 0 ? (
           <div className="mt-4 space-y-3">
             {sessionConfidenceBreakdown.map((item) => (
-              <div key={item.sessionId} className="rounded-[10px] border border-white/[0.05] bg-white/[0.03] px-4 py-3">
-                <p className="text-sm font-bold text-white">{item.sessionName}</p>
+              <div
+                key={item.sessionId}
+                className="rounded-[10px] border border-white/[0.05] bg-white/[0.03] px-4 py-3"
+              >
+                <p className="text-sm font-bold text-white">
+                  {item.sessionName}
+                </p>
                 <div className="mt-3 grid grid-cols-3 gap-3 text-center">
                   <div className="rounded-[8px] bg-white/[0.03] px-3 py-2">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">L</p>
-                    <p className="mt-1 text-base font-extrabold text-white">{item.low}</p>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                      L
+                    </p>
+                    <p className="mt-1 text-base font-extrabold text-white">
+                      {item.low}
+                    </p>
                   </div>
                   <div className="rounded-[8px] bg-white/[0.03] px-3 py-2">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">M</p>
-                    <p className="mt-1 text-base font-extrabold text-white">{item.medium}</p>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                      M
+                    </p>
+                    <p className="mt-1 text-base font-extrabold text-white">
+                      {item.medium}
+                    </p>
                   </div>
                   <div className="rounded-[8px] bg-white/[0.03] px-3 py-2">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">H</p>
-                    <p className="mt-1 text-base font-extrabold text-white">{item.high}</p>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                      H
+                    </p>
+                    <p className="mt-1 text-base font-extrabold text-white">
+                      {item.high}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -228,17 +295,28 @@ export function DashboardPerformanceView({
         ) : confidenceCalibration.length > 0 ? (
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             {confidenceCalibration.map((item) => (
-              <div key={item.confidence} className="rounded-[10px] bg-white/[0.035] px-3 py-3">
+              <div
+                key={item.confidence}
+                className="rounded-[10px] bg-white/[0.035] px-3 py-3"
+              >
                 <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-                  {item.confidence === 'low' ? labels.confidenceLow : item.confidence === 'medium' ? labels.confidenceMedium : labels.confidenceHigh}
+                  {item.confidence === 'low'
+                    ? labels.confidenceLow
+                    : item.confidence === 'medium'
+                      ? labels.confidenceMedium
+                      : labels.confidenceHigh}
                 </p>
-                <p className="mt-2 text-lg font-extrabold text-white">{item.total > 0 ? `${item.accuracy}%` : labels.noData}</p>
-                <p className="mt-1 text-xs font-semibold text-slate-500">{item.total} answers</p>
+                <p className="mt-2 text-lg font-extrabold text-white">
+                  {item.total > 0 ? `${item.accuracy}%` : labels.noData}
+                </p>
+                <p className="mt-1 text-xs font-semibold text-slate-500">
+                  {item.total} answers
+                </p>
               </div>
             ))}
           </div>
         ) : null}
       </section>
-    </>
+    </div>
   );
-}
+});

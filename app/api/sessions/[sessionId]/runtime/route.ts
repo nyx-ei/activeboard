@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 
 import { createPerfTracker } from '@/lib/observability/perf';
-import { getCurrentAuthUser, loadSessionRuntimeAccess } from '@/lib/session/flow';
+import {
+  getCurrentAuthUser,
+  loadSessionRuntimeAccess,
+} from '@/lib/session/flow';
 
 type RouteContext = {
   params: { sessionId: string };
@@ -10,7 +13,9 @@ type RouteContext = {
 export async function GET(request: Request, { params }: RouteContext) {
   const questionId = new URL(request.url).searchParams.get('questionId');
   const sessionId = params.sessionId;
-  const perf = createPerfTracker(`sessionRuntime:${sessionId}:${questionId ?? 'latest'}`);
+  const perf = createPerfTracker(
+    `sessionRuntime:${sessionId}:${questionId ?? 'latest'}`,
+  );
 
   if (!sessionId) {
     return NextResponse.json({ ok: false }, { status: 400 });
@@ -54,7 +59,7 @@ export async function GET(request: Request, { params }: RouteContext) {
       supabase
         .schema('public')
         .from('answers')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .eq('question_id', questionId),
     ]);
     perf.step('question_and_counts_loaded');
