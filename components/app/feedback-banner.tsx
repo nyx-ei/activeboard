@@ -11,25 +11,63 @@ type FeedbackBannerProps = {
 };
 
 export function FeedbackBanner({ message, tone, feedbackId }: FeedbackBannerProps) {
-  const [visible, setVisible] = useState(Boolean(message));
+  const [clientFeedback, setClientFeedback] = useState<{
+    message: string;
+    tone: string;
+    id: string;
+  } | null>(null);
+  const resolvedMessage = clientFeedback?.message ?? message;
+  const resolvedTone = clientFeedback?.tone ?? tone;
+  const resolvedFeedbackId = clientFeedback?.id ?? feedbackId;
+  const [visible, setVisible] = useState(Boolean(resolvedMessage));
 
   useEffect(() => {
-    setVisible(Boolean(message));
+    setVisible(Boolean(resolvedMessage));
 
-    if (!message) {
+    if (!resolvedMessage) {
       return;
     }
 
     const timeout = window.setTimeout(() => setVisible(false), 3200);
 
     return () => window.clearTimeout(timeout);
-  }, [feedbackId, message]);
+  }, [resolvedFeedbackId, resolvedMessage]);
 
-  if (!message || !visible) {
+  useEffect(() => {
+    function handleFeedback(event: Event) {
+      const detail = (
+        event as CustomEvent<{ message?: string; tone?: string; id?: string }>
+      ).detail;
+
+      if (!detail?.message) {
+        return;
+      }
+
+      setClientFeedback({
+        message: detail.message,
+        tone: detail.tone === 'success' ? 'success' : 'error',
+        id: detail.id ?? String(Date.now()),
+      });
+    }
+
+    window.addEventListener(
+      'activeboard:feedback',
+      handleFeedback as EventListener,
+    );
+
+    return () => {
+      window.removeEventListener(
+        'activeboard:feedback',
+        handleFeedback as EventListener,
+      );
+    };
+  }, []);
+
+  if (!resolvedMessage || !visible) {
     return null;
   }
 
-  const isSuccess = tone === 'success';
+  const isSuccess = resolvedTone === 'success';
 
   return (
     <div
@@ -43,7 +81,7 @@ export function FeedbackBanner({ message, tone, feedbackId }: FeedbackBannerProp
       role="status"
       aria-live="polite"
     >
-      {message}
+      {resolvedMessage}
     </div>
   );
 }

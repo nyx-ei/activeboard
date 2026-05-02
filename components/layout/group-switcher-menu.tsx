@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 
 import { ModalPortal } from '@/components/ui/modal-portal';
-import { Link } from '@/i18n/navigation';
+import { useRouter } from '@/i18n/navigation';
 import { cn } from '@/lib/utils';
 
 type ShellGroup = {
@@ -33,15 +33,33 @@ type GroupSwitcherMenuProps = {
   };
 };
 
-const MEMBER_AVATAR_COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#ef4444', '#f59e0b'];
+const MEMBER_AVATAR_COLORS = [
+  '#3b82f6',
+  '#22c55e',
+  '#a855f7',
+  '#ef4444',
+  '#f59e0b',
+];
 
-export function GroupSwitcherMenu({ groups, userInitials, labels }: GroupSwitcherMenuProps) {
+export function GroupSwitcherMenu({
+  groups,
+  userInitials,
+  labels,
+}: GroupSwitcherMenuProps) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [failedAvatarIds, setFailedAvatarIds] = useState<string[]>([]);
   const pathname = usePathname();
   const pathGroupId = pathname.match(/\/groups\/([^/?#]+)/)?.[1] ?? null;
-  const selectedGroup = useMemo(() => groups.find((group) => group.id === pathGroupId) ?? null, [groups, pathGroupId]);
-  const failedAvatarSet = useMemo(() => new Set(failedAvatarIds), [failedAvatarIds]);
+  const selectedGroupId = pathGroupId;
+  const selectedGroup = useMemo(
+    () => groups.find((group) => group.id === selectedGroupId) ?? null,
+    [groups, selectedGroupId],
+  );
+  const failedAvatarSet = useMemo(
+    () => new Set(failedAvatarIds),
+    [failedAvatarIds],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -54,6 +72,14 @@ export function GroupSwitcherMenu({ groups, userInitials, labels }: GroupSwitche
     return () => document.removeEventListener('keydown', handleEscape);
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    for (const group of groups.slice(0, 4)) {
+      router.prefetch(`/groups/${group.id}` as never);
+    }
+  }, [groups, open, router]);
+
   if (groups.length === 0) return null;
 
   return (
@@ -61,7 +87,7 @@ export function GroupSwitcherMenu({ groups, userInitials, labels }: GroupSwitche
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-10 min-w-0 w-full items-center gap-3 rounded-[10px] border border-white/[0.08] bg-[#11192c] px-3 text-left shadow-[inset_0_0_0_1px_rgba(255,255,255,0.015)] transition hover:border-white/15 hover:bg-[#131d32]"
+        className="flex h-10 w-full min-w-0 items-center gap-3 rounded-[10px] border border-white/[0.08] bg-[#11192c] px-3 text-left shadow-[inset_0_0_0_1px_rgba(255,255,255,0.015)] transition hover:border-white/15 hover:bg-[#131d32]"
         aria-haspopup="dialog"
         aria-expanded={open}
       >
@@ -72,23 +98,38 @@ export function GroupSwitcherMenu({ groups, userInitials, labels }: GroupSwitche
         <span className="min-w-0 flex-1 truncate text-sm font-extrabold text-white">
           {selectedGroup?.name ?? labels.myGroups}
         </span>
-        <ChevronDown className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" strokeWidth={1.8} />
+        <ChevronDown
+          className="h-4 w-4 shrink-0 text-slate-500"
+          aria-hidden="true"
+          strokeWidth={1.8}
+        />
       </button>
 
       {open ? (
         <ModalPortal>
           <div
-            className="fixed inset-0 flex items-end justify-center bg-black/72 px-0 py-0 backdrop-blur-[2px] sm:items-center sm:px-4 sm:py-6"
+            className="bg-black/72 fixed inset-0 flex items-end justify-center px-0 py-0 backdrop-blur-[2px] sm:items-center sm:px-4 sm:py-6"
             style={{ zIndex: 1000 }}
             role="dialog"
             aria-modal="true"
           >
-            <button type="button" className="absolute inset-0 cursor-default" aria-label="Close" onClick={() => setOpen(false)} />
+            <button
+              type="button"
+              className="absolute inset-0 cursor-default"
+              aria-label="Close"
+              onClick={() => setOpen(false)}
+            />
             <section className="relative w-full max-w-[440px] overflow-hidden rounded-t-[16px] border border-white/[0.06] bg-[#11192c] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.55)] sm:rounded-[15px] sm:p-4">
               <div className="mb-4 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-brand" aria-hidden="true" strokeWidth={1.8} />
-                  <h2 className="text-lg font-extrabold tracking-tight text-white">{labels.myGroups}</h2>
+                  <Users
+                    className="h-4 w-4 text-brand"
+                    aria-hidden="true"
+                    strokeWidth={1.8}
+                  />
+                  <h2 className="text-lg font-extrabold tracking-tight text-white">
+                    {labels.myGroups}
+                  </h2>
                 </div>
                 <button
                   type="button"
@@ -101,33 +142,51 @@ export function GroupSwitcherMenu({ groups, userInitials, labels }: GroupSwitche
 
               <div className="max-h-[min(58vh,360px)] space-y-2 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {groups.map((group) => {
-                  const active = group.id === selectedGroup?.id;
+                  const active = group.id === selectedGroupId;
                   return (
-                    <Link
+                    <button
                       key={group.id}
-                      href={`/groups/${group.id}`}
-                      prefetch={false}
-                      onClick={() => setOpen(false)}
+                      type="button"
+                      onMouseEnter={() => {
+                        router.prefetch(`/groups/${group.id}` as never);
+                      }}
+                      onFocus={() => {
+                        router.prefetch(`/groups/${group.id}` as never);
+                      }}
+                      onClick={() => {
+                        setOpen(false);
+                        router.push(`/groups/${group.id}` as never);
+                      }}
                       className={cn(
-                        'block rounded-[10px] border p-3 transition',
+                        'block w-full rounded-[10px] border p-3 text-left transition',
                         active
-                          ? 'border-brand/60 bg-[#073a33] shadow-[inset_0_0_0_1px_rgba(0,194,129,0.18),0_0_22px_rgba(0,194,129,0.12)] ring-1 ring-brand/25 hover:border-brand hover:bg-[#0a4a40]'
-                          : 'border-white/[0.06] bg-white/[0.035] hover:border-brand/45 hover:bg-brand/[0.08]',
+                          ? 'border-brand/60 ring-brand/25 bg-[#073a33] shadow-[inset_0_0_0_1px_rgba(0,194,129,0.18),0_0_22px_rgba(0,194,129,0.12)] ring-1 hover:border-brand hover:bg-[#0a4a40]'
+                          : 'hover:border-brand/45 hover:bg-brand/[0.08] border-white/[0.06] bg-white/[0.035]',
                       )}
                     >
                       <div className="flex items-center justify-between gap-3 text-[11px] font-bold text-slate-500">
                         <span className="inline-flex items-center gap-2">
-                          <span className={cn('h-2 w-2 rounded-full', active ? 'bg-brand' : 'bg-slate-500')} />
+                          <span
+                            className={cn(
+                              'h-2 w-2 rounded-full',
+                              active ? 'bg-brand' : 'bg-slate-500',
+                            )}
+                          />
                           {group.scheduleLabel || labels.noSchedule}
                         </span>
-                        {active ? <span className="rounded-full bg-brand/15 px-2 py-0.5 text-[10px] text-brand">{labels.active}</span> : null}
+                        {active ? (
+                          <span className="bg-brand/15 rounded-full px-2 py-0.5 text-[10px] text-brand">
+                            {labels.active}
+                          </span>
+                        ) : null}
                       </div>
                       <div className="mt-3 flex items-start justify-between gap-3">
                         <div className="flex min-w-0 items-start gap-3">
                           <div className="mt-0.5 flex shrink-0 -space-x-2">
                             {group.membersPreview.length > 0 ? (
                               group.membersPreview.map((member, index) =>
-                                member.avatarUrl && !failedAvatarSet.has(member.id) ? (
+                                member.avatarUrl &&
+                                !failedAvatarSet.has(member.id) ? (
                                   <img
                                     key={member.id}
                                     src={member.avatarUrl}
@@ -135,7 +194,9 @@ export function GroupSwitcherMenu({ groups, userInitials, labels }: GroupSwitche
                                     className="h-6 w-6 rounded-full border-2 border-[#11192c] object-cover"
                                     onError={() =>
                                       setFailedAvatarIds((current) =>
-                                        current.includes(member.id) ? current : [...current, member.id],
+                                        current.includes(member.id)
+                                          ? current
+                                          : [...current, member.id],
                                       )
                                     }
                                   />
@@ -143,7 +204,12 @@ export function GroupSwitcherMenu({ groups, userInitials, labels }: GroupSwitche
                                   <span
                                     key={member.id}
                                     className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#11192c] text-[9px] font-extrabold text-white"
-                                    style={{ backgroundColor: MEMBER_AVATAR_COLORS[index % MEMBER_AVATAR_COLORS.length] }}
+                                    style={{
+                                      backgroundColor:
+                                        MEMBER_AVATAR_COLORS[
+                                          index % MEMBER_AVATAR_COLORS.length
+                                        ],
+                                    }}
                                   >
                                     {member.initials}
                                   </span>
@@ -156,20 +222,26 @@ export function GroupSwitcherMenu({ groups, userInitials, labels }: GroupSwitche
                             )}
                           </div>
                           <div className="min-w-0">
-                            <p className="truncate text-xs font-bold text-slate-300">{group.name}</p>
+                            <p className="truncate text-xs font-bold text-slate-300">
+                              {group.name}
+                            </p>
                             <p className="mt-1 text-[11px] font-semibold text-slate-500">
                               {labels.averageWeekly}: {group.weeklyQuestions}
                             </p>
                           </div>
                         </div>
-                        <span className="shrink-0 text-xs font-bold text-slate-400">{group.language}</span>
+                        <span className="shrink-0 text-xs font-bold text-slate-400">
+                          {group.language}
+                        </span>
                       </div>
-                    </Link>
+                    </button>
                   );
                 })}
               </div>
 
-              <p className="mt-4 text-center text-[11px] font-medium italic text-slate-500">{labels.selectHint}</p>
+              <p className="mt-4 text-center text-[11px] font-medium italic text-slate-500">
+                {labels.selectHint}
+              </p>
             </section>
           </div>
         </ModalPortal>

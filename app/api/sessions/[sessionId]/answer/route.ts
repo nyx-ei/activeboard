@@ -3,9 +3,9 @@ import { getTranslations } from 'next-intl/server';
 
 import type { AppLocale } from '@/i18n/routing';
 import { isConfidenceLevel } from '@/lib/demo/confidence';
+import { scheduleDashboardProfileAnalyticsRefresh } from '@/lib/demo/profile-analytics';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
-import { refreshDashboardProfileAnalytics } from '@/lib/demo/profile-analytics';
 import { sendTrialWarningEmailIfNeeded } from '@/lib/notifications/trial-progress';
 import { createPerfTracker } from '@/lib/observability/perf';
 import {
@@ -13,6 +13,7 @@ import {
   getSessionAccessSnapshot,
   isCustomAnswerLetter,
   loadSessionRuntimeAccess,
+  precreateQuestionShell,
   resolveSessionQuestion,
 } from '@/lib/session/flow';
 import { ANSWER_OPTIONS } from '@/lib/types/demo';
@@ -45,13 +46,29 @@ export async function POST(request: Request, { params }: RouteContext) {
   const customOption = body?.customOption?.trim().toUpperCase() ?? '';
   const confidenceValue = body?.confidence;
   const confidence =
-    typeof confidenceValue === 'string' && isConfidenceLevel(confidenceValue) ? confidenceValue : null;
+    typeof confidenceValue === 'string' && isConfidenceLevel(confidenceValue)
+      ? confidenceValue
+      : null;
   const mode = body?.mode === 'timeout' ? 'timeout' : 'submit';
-  const perf = createPerfTracker(`submitSessionAnswerRoute:${sessionId}:${questionIndex}`);
-  const t = await getTranslations({ locale, namespace: 'Feedback' });
+  const perf = createPerfTracker(
+    `submitSessionAnswerRoute:${sessionId}:${questionIndex}`,
+  );
+  perf.step('request_parsed');
+  let feedbackTranslations: Awaited<ReturnType<typeof getTranslations>> | null =
+    null;
+  const getFeedback = async (key: string) => {
+    feedbackTranslations ??= await getTranslations({
+      locale,
+      namespace: 'Feedback',
+    });
+    return feedbackTranslations(key);
+  };
 
   if (!sessionId) {
-    return NextResponse.json({ ok: false, message: t('actionFailed') }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, message: await getFeedback('actionFailed') },
+      { status: 400 },
+    );
   }
 
   const { supabase, user } = await getCurrentAuthUser();
@@ -59,18 +76,31 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   if (!user) {
     return NextResponse.json(
-      { ok: false, redirectTo: `/${locale}/auth/login`, message: t('notAuthorized') },
+      {
+        ok: false,
+        redirectTo: `/${locale}/auth/login`,
+        message: await getFeedback('notAuthorized'),
+      },
       { status: 401 },
     );
   }
 
-  const access = await loadSessionRuntimeAccess(supabase, sessionId, user.id);
+  const access = await loadSessionRuntimeAccess(
+    supabase,
+    sessionId,
+    user.id,
+    false,
+  );
   perf.step('session_loaded');
   const session = getSessionAccessSnapshot(access);
 
   if (!session) {
     return NextResponse.json(
-      { ok: false, redirectTo: `/${locale}/dashboard?view=sessions`, message: t('notAuthorized') },
+      {
+        ok: false,
+        redirectTo: `/${locale}/dashboard?view=sessions`,
+        message: await getFeedback('notAuthorized'),
+      },
       { status: 403 },
     );
   }
@@ -96,19 +126,31 @@ export async function POST(request: Request, { params }: RouteContext) {
     questionIndex < 0 ||
     questionIndex >= session.question_goal
   ) {
-    return NextResponse.json({ ok: false, message: t('actionFailed') }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, message: await getFeedback('actionFailed') },
+      { status: 400 },
+    );
   }
 
   if (
     mode === 'submit' &&
-    ((!ANSWER_OPTIONS.includes(selectedOption as (typeof ANSWER_OPTIONS)[number]) && selectedOption !== '?') ||
+    ((!ANSWER_OPTIONS.includes(
+      selectedOption as (typeof ANSWER_OPTIONS)[number],
+    ) &&
+      selectedOption !== '?') ||
       (selectedOption === '?' &&
         (!isCustomAnswerLetter(customOption) ||
-          ANSWER_OPTIONS.includes(customOption as (typeof ANSWER_OPTIONS)[number]))) ||
+          ANSWER_OPTIONS.includes(
+            customOption as (typeof ANSWER_OPTIONS)[number],
+          ))) ||
       !confidence)
   ) {
-    return NextResponse.json({ ok: false, message: t('missingFields') }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, message: await getFeedback('missingFields') },
+      { status: 400 },
+    );
   }
+  perf.step('payload_validated');
 
   let ensuredQuestion: { id: string; answerDeadlineAt: string | null };
   try {
@@ -120,12 +162,18 @@ export async function POST(request: Request, { params }: RouteContext) {
       session,
     });
   } catch {
-    return NextResponse.json({ ok: false, message: t('actionFailed') }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, message: await getFeedback('actionFailed') },
+      { status: 500 },
+    );
   }
   perf.step('question_ensured');
 
   const questionAnswerDeadlineAt = ensuredQuestion.answerDeadlineAt;
-  const isExpired = questionAnswerDeadlineAt ? new Date(questionAnswerDeadlineAt).getTime() <= Date.now() : false;
+  const isExpired = questionAnswerDeadlineAt
+    ? new Date(questionAnswerDeadlineAt).getTime() <= Date.now()
+    : false;
+  perf.step('deadline_checked');
 
   if (mode === 'timeout' || isExpired) {
     await supabase.schema('public').from('answers').upsert(
@@ -138,7 +186,8 @@ export async function POST(request: Request, { params }: RouteContext) {
       { onConflict: 'question_id,user_id' },
     );
     perf.step('answer_upserted');
-    runDeferredTasks([refreshDashboardProfileAnalytics().catch(() => undefined)]);
+    scheduleDashboardProfileAnalyticsRefresh();
+    perf.step('deferred_side_effects_started');
     perf.done({ mode: 'timeout', questionId: ensuredQuestion.id });
 
     return NextResponse.json({
@@ -150,7 +199,8 @@ export async function POST(request: Request, { params }: RouteContext) {
     });
   }
 
-  const resolvedSelectedOption = selectedOption === '?' ? customOption : selectedOption;
+  const resolvedSelectedOption =
+    selectedOption === '?' ? customOption : selectedOption;
   await supabase.schema('public').from('answers').upsert(
     {
       question_id: ensuredQuestion.id,
@@ -163,7 +213,9 @@ export async function POST(request: Request, { params }: RouteContext) {
   perf.step('answer_upserted');
 
   runDeferredTasks([
-    refreshDashboardProfileAnalytics().catch(() => undefined),
+    questionIndex + 1 < session.question_goal
+      ? precreateQuestionShell(supabase, sessionId, questionIndex + 1, user.id)
+      : Promise.resolve(),
     logAppEvent({
       eventName: APP_EVENTS.answerSubmitted,
       locale,
@@ -180,6 +232,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     }),
     sendTrialWarningEmailIfNeeded(user.id),
   ]);
+  scheduleDashboardProfileAnalyticsRefresh();
   perf.step('deferred_side_effects_started');
   perf.done({
     mode: 'submitted',

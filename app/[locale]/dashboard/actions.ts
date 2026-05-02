@@ -14,7 +14,7 @@ import { sendGroupInviteEmail } from '@/lib/notifications/group-invites';
 import { parseAvailabilityGrid } from '@/lib/schedule/availability';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { generateInviteCode, generateSessionShareCode, normalizeEmail, withFeedback } from '@/lib/utils';
+import { generateInviteCode, normalizeEmail, withFeedback } from '@/lib/utils';
 
 async function getCurrentAuthUser() {
   const supabase = createSupabaseServerClient();
@@ -25,7 +25,11 @@ async function getCurrentAuthUser() {
   return { supabase, user };
 }
 
-function withSessionJoinFeedback(path: string, tone: 'success' | 'error', message: string) {
+function withSessionJoinFeedback(
+  path: string,
+  tone: 'success' | 'error',
+  message: string,
+) {
   const url = new URL(withFeedback(path, tone, message), 'http://localhost');
   url.searchParams.set('sessionJoinFeedback', '1');
   return `${url.pathname}?${url.searchParams.toString()}`;
@@ -37,32 +41,10 @@ type JoinableGroupLookup = {
   max_members: number;
 };
 
-async function requireDashboardGroupMembership(groupId: string, locale: AppLocale) {
-  const t = await getTranslations({ locale, namespace: 'Feedback' });
-  const { supabase, user } = await getCurrentAuthUser();
-
-  if (!user) {
-    redirect(`/${locale}/auth/login`);
-  }
-
-  const { data: membership } = await supabase
-    .schema('public')
-    .from('group_members')
-    .select('group_id')
-    .eq('group_id', groupId)
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  if (!membership) {
-    redirect(withFeedback(`/${locale}/dashboard?view=sessions`, 'error', t('notAuthorized')));
-  }
-
-  return { supabase, user, t };
-}
-
 export async function joinSessionByCodeAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
-  const code = (formData.get('sessionCode') as string | null)?.trim().toUpperCase() ?? '';
+  const code =
+    (formData.get('sessionCode') as string | null)?.trim().toUpperCase() ?? '';
   const t = await getTranslations({ locale, namespace: 'Feedback' });
   const { supabase, user } = await getCurrentAuthUser();
   const sessionsPath = `/${locale}/dashboard?view=sessions`;
@@ -79,7 +61,9 @@ export async function joinSessionByCodeAction(formData: FormData) {
   });
 
   if (!code) {
-    redirect(withSessionJoinFeedback(sessionsPath, 'error', t('invalidSessionCode')));
+    redirect(
+      withSessionJoinFeedback(sessionsPath, 'error', t('invalidSessionCode')),
+    );
   }
 
   const admin = createSupabaseAdminClient();
@@ -91,7 +75,9 @@ export async function joinSessionByCodeAction(formData: FormData) {
     .maybeSingle();
 
   if (!session) {
-    redirect(withSessionJoinFeedback(sessionsPath, 'error', t('invalidSessionCode')));
+    redirect(
+      withSessionJoinFeedback(sessionsPath, 'error', t('invalidSessionCode')),
+    );
   }
 
   const { data: membership } = await supabase
@@ -103,15 +89,21 @@ export async function joinSessionByCodeAction(formData: FormData) {
     .maybeSingle();
 
   if (!membership) {
-    redirect(withSessionJoinFeedback(sessionsPath, 'error', t('notAuthorized')));
+    redirect(
+      withSessionJoinFeedback(sessionsPath, 'error', t('notAuthorized')),
+    );
   }
 
   if (session.status === 'completed') {
-    redirect(withSessionJoinFeedback(sessionsPath, 'error', t('sessionCompletedHint')));
+    redirect(
+      withSessionJoinFeedback(sessionsPath, 'error', t('sessionCompletedHint')),
+    );
   }
 
   if (session.status === 'cancelled' || session.status === 'incomplete') {
-    redirect(withSessionJoinFeedback(sessionsPath, 'error', t('sessionInactive')));
+    redirect(
+      withSessionJoinFeedback(sessionsPath, 'error', t('sessionInactive')),
+    );
   }
 
   await logAppEvent({
@@ -207,7 +199,8 @@ export async function createGroupAction(formData: FormData) {
 
 export async function joinGroupAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
-  const code = (formData.get('inviteCode') as string | null)?.trim().toUpperCase() ?? '';
+  const code =
+    (formData.get('inviteCode') as string | null)?.trim().toUpperCase() ?? '';
   const t = await getTranslations({ locale, namespace: 'Feedback' });
 
   if (!code) {
@@ -261,11 +254,14 @@ export async function joinGroupAction(formData: FormData) {
     redirect(withFeedback(`/${locale}/dashboard`, 'error', t('groupFull')));
   }
 
-  const { error } = await supabase.schema('public').from('group_members').insert({
-    group_id: group.id,
-    is_founder: false,
-    user_id: user.id,
-  });
+  const { error } = await supabase
+    .schema('public')
+    .from('group_members')
+    .insert({
+      group_id: group.id,
+      is_founder: false,
+      user_id: user.id,
+    });
 
   if (error) {
     redirect(withFeedback(`/${locale}/dashboard`, 'error', t('actionFailed')));
@@ -290,10 +286,14 @@ export async function respondToInviteAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
   const inviteId = formData.get('inviteId') as string;
   const intent = formData.get('intent') as 'accept' | 'decline';
-  const redirectTo = ((formData.get('redirectTo') as string | null) ?? '').trim();
+  const redirectTo = (
+    (formData.get('redirectTo') as string | null) ?? ''
+  ).trim();
   const t = await getTranslations({ locale, namespace: 'Feedback' });
   const { supabase, user } = await getCurrentAuthUser();
-  const safeRedirectTo = redirectTo.startsWith(`/${locale}/`) ? redirectTo : `/${locale}/dashboard`;
+  const safeRedirectTo = redirectTo.startsWith(`/${locale}/`)
+    ? redirectTo
+    : `/${locale}/dashboard`;
 
   if (!user) {
     redirect(`/${locale}/auth/login`);
@@ -346,7 +346,10 @@ export async function respondToInviteAction(formData: FormData) {
     .eq('id', inviteId);
 
   await logAppEvent({
-    eventName: intent === 'accept' ? APP_EVENTS.groupInviteAccepted : APP_EVENTS.groupInviteDeclined,
+    eventName:
+      intent === 'accept'
+        ? APP_EVENTS.groupInviteAccepted
+        : APP_EVENTS.groupInviteDeclined,
     locale,
     userId: user.id,
     groupId: invite.group_id,
@@ -370,15 +373,30 @@ export async function respondToInviteAction(formData: FormData) {
 export async function completeInviteOnboardingAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
   const inviteId = ((formData.get('inviteId') as string | null) ?? '').trim();
-  const redirectTo = ((formData.get('redirectTo') as string | null) ?? '').trim();
-  const examSession = ((formData.get('examSession') as string | null) ?? '').trim();
+  const redirectTo = (
+    (formData.get('redirectTo') as string | null) ?? ''
+  ).trim();
+  const examSession = (
+    (formData.get('examSession') as string | null) ?? ''
+  ).trim();
   const language = formData.get('language') === 'fr' ? 'fr' : 'en';
-  const timezone = ((formData.get('timezone') as string | null) ?? '').trim() || 'UTC';
-  const availabilityGridRaw = (formData.get('availabilityGrid') as string | null) ?? '{}';
-  const questionBanks = [...new Set(formData.getAll('questionBanks').map((value) => String(value).trim()).filter(Boolean))];
+  const timezone =
+    ((formData.get('timezone') as string | null) ?? '').trim() || 'UTC';
+  const availabilityGridRaw =
+    (formData.get('availabilityGrid') as string | null) ?? '{}';
+  const questionBanks = [
+    ...new Set(
+      formData
+        .getAll('questionBanks')
+        .map((value) => String(value).trim())
+        .filter(Boolean),
+    ),
+  ];
   const t = await getTranslations({ locale, namespace: 'Feedback' });
   const { supabase, user } = await getCurrentAuthUser();
-  const safeRedirectTo = redirectTo.startsWith(`/${locale}/`) ? redirectTo : `/${locale}/dashboard`;
+  const safeRedirectTo = redirectTo.startsWith(`/${locale}/`)
+    ? redirectTo
+    : `/${locale}/dashboard`;
 
   if (!user) {
     redirect(`/${locale}/auth/login`);
@@ -399,7 +417,9 @@ export async function completeInviteOnboardingAction(formData: FormData) {
     redirect(withFeedback(safeRedirectTo, 'error', t('notAuthorized')));
   }
 
-  if (normalizeEmail(invite.invitee_email) !== normalizeEmail(user.email ?? '')) {
+  if (
+    normalizeEmail(invite.invitee_email) !== normalizeEmail(user.email ?? '')
+  ) {
     redirect(withFeedback(safeRedirectTo, 'error', t('notAuthorized')));
   }
 
@@ -429,7 +449,11 @@ export async function completeInviteOnboardingAction(formData: FormData) {
     .schema('public')
     .from('users')
     .update({
-      exam_session: examSession as 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead',
+      exam_session: examSession as
+        | 'april_may_2026'
+        | 'august_september_2026'
+        | 'october_2026'
+        | 'planning_ahead',
       question_banks: questionBanks,
       locale: language,
     })
@@ -439,11 +463,14 @@ export async function completeInviteOnboardingAction(formData: FormData) {
     redirect(withFeedback(safeRedirectTo, 'error', t('actionFailed')));
   }
 
-  const { error: scheduleError } = await supabase.schema('public').from('user_schedules').upsert({
-    user_id: user.id,
-    timezone,
-    availability_grid: availabilityGrid,
-  });
+  const { error: scheduleError } = await supabase
+    .schema('public')
+    .from('user_schedules')
+    .upsert({
+      user_id: user.id,
+      timezone,
+      availability_grid: availabilityGrid,
+    });
 
   if (scheduleError) {
     redirect(withFeedback(safeRedirectTo, 'error', t('actionFailed')));
@@ -468,11 +495,14 @@ export async function completeInviteOnboardingAction(formData: FormData) {
       redirect(withFeedback(safeRedirectTo, 'error', t('groupFull')));
     }
 
-    const { error: membershipError } = await supabase.schema('public').from('group_members').insert({
-      group_id: invite.group_id,
-      is_founder: false,
-      user_id: user.id,
-    });
+    const { error: membershipError } = await supabase
+      .schema('public')
+      .from('group_members')
+      .insert({
+        group_id: invite.group_id,
+        is_founder: false,
+        user_id: user.id,
+      });
 
     if (membershipError) {
       redirect(withFeedback(safeRedirectTo, 'error', t('actionFailed')));
@@ -505,7 +535,10 @@ export async function completeInviteOnboardingAction(formData: FormData) {
       locale_selected: language,
       timezone,
       question_banks: questionBanks,
-      availability_slot_count: Object.values(availabilityGrid).reduce((sum, hours) => sum + hours.length, 0),
+      availability_slot_count: Object.values(availabilityGrid).reduce(
+        (sum, hours) => sum + hours.length,
+        0,
+      ),
     },
   });
 
@@ -519,11 +552,22 @@ export async function createDashboardSessionAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
   const groupId = (formData.get('groupId') as string | null) ?? '';
   const returnTo = (formData.get('returnTo') as string | null) ?? '';
-  const sessionName = ((formData.get('sessionName') as string | null) ?? '').trim();
+  const sessionName = (
+    (formData.get('sessionName') as string | null) ?? ''
+  ).trim();
   const questionGoal = Number(formData.get('questionGoal'));
-  const timerMode = formData.get('timerMode') === 'global' ? 'global' : 'per_question';
+  const timerMode =
+    formData.get('timerMode') === 'global' ? 'global' : 'per_question';
   const timerSeconds = Number(formData.get('timerSeconds'));
-  const t = await getTranslations({ locale, namespace: 'Feedback' });
+  let feedbackTranslations: Awaited<ReturnType<typeof getTranslations>> | null =
+    null;
+  const getFeedback = async (key: string) => {
+    feedbackTranslations ??= await getTranslations({
+      locale,
+      namespace: 'Feedback',
+    });
+    return feedbackTranslations(key);
+  };
   const sessionsPath =
     groupId && returnTo === groupDashboardPath(locale, groupId)
       ? returnTo
@@ -538,18 +582,57 @@ export async function createDashboardSessionAction(formData: FormData) {
     timerSeconds < 1 ||
     timerSeconds > 3600
   ) {
-    redirect(withFeedback(sessionsPath, 'error', t('missingFields')));
+    redirect(
+      withFeedback(sessionsPath, 'error', await getFeedback('missingFields')),
+    );
   }
 
-  const { supabase, user } = await requireDashboardGroupMembership(groupId, locale);
-  const { data: members } = await supabase
-    .schema('public')
-    .from('group_members')
-    .select('user_id')
-    .eq('group_id', groupId);
+  const { supabase, user } = await getCurrentAuthUser();
 
-  if ((members?.length ?? 0) < 2) {
-    redirect(withFeedback(sessionsPath, 'error', t('minimumMembersRequired')));
+  if (!user) {
+    redirect(`/${locale}/auth/login`);
+  }
+
+  const [membershipResult, memberCountResult, existingOpenSessionResult] =
+    await Promise.all([
+      supabase
+        .schema('public')
+        .from('group_members')
+        .select('group_id')
+        .eq('group_id', groupId)
+        .eq('user_id', user.id)
+        .maybeSingle(),
+      supabase
+        .schema('public')
+        .from('group_members')
+        .select('user_id', { count: 'exact', head: true })
+        .eq('group_id', groupId),
+      supabase
+        .schema('public')
+        .from('sessions')
+        .select('id')
+        .eq('group_id', groupId)
+        .eq('name', sessionName)
+        .in('status', ['scheduled', 'active', 'incomplete'])
+        .order('scheduled_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+
+  if (!membershipResult.data) {
+    redirect(
+      withFeedback(sessionsPath, 'error', await getFeedback('notAuthorized')),
+    );
+  }
+
+  if ((memberCountResult.count ?? 0) < 2) {
+    redirect(
+      withFeedback(
+        sessionsPath,
+        'error',
+        await getFeedback('minimumMembersRequired'),
+      ),
+    );
   }
 
   await requireUserTierCapability({
@@ -560,51 +643,38 @@ export async function createDashboardSessionAction(formData: FormData) {
     feedbackKey: 'upgradeRequiredToScheduleSession',
   });
 
-  const { data: existingOpenSession } = await supabase
-    .schema('public')
-    .from('sessions')
-    .select('id')
-    .eq('group_id', groupId)
-    .eq('name', sessionName)
-    .in('status', ['scheduled', 'active', 'incomplete'])
-    .order('scheduled_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const existingOpenSession = existingOpenSessionResult.data;
 
   if (existingOpenSession) {
-    redirect(withFeedback(`/${locale}/sessions/${existingOpenSession.id}`, 'success', t('sessionScheduled')));
+    redirect(
+      withFeedback(
+        `/${locale}/sessions/${existingOpenSession.id}`,
+        'success',
+        await getFeedback('sessionScheduled'),
+      ),
+    );
   }
 
-  let shareCode = generateSessionShareCode();
   const scheduledAt = new Date().toISOString();
 
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const { data: existingSession } = await supabase
-      .schema('public')
-      .from('sessions')
-      .select('id')
-      .eq('share_code', shareCode)
-      .maybeSingle();
-
-    if (!existingSession) {
-      break;
-    }
-
-    shareCode = generateSessionShareCode();
-  }
-
-  const { data: createdSession, error } = await supabase.schema('public').from('sessions').insert({
-    group_id: groupId,
-    name: sessionName,
-    scheduled_at: scheduledAt,
-    share_code: shareCode,
-    timer_mode: timerMode,
-    timer_seconds: timerSeconds,
-    question_goal: Math.min(Math.round(questionGoal), 500),
-    created_by: user.id,
-    leader_id: user.id,
-    status: 'scheduled',
-  }).select('id, group_id, name, scheduled_at, share_code, meeting_link, timer_seconds').single();
+  const { data: createdSession, error } = await supabase
+    .schema('public')
+    .from('sessions')
+    .insert({
+      group_id: groupId,
+      name: sessionName,
+      scheduled_at: scheduledAt,
+      timer_mode: timerMode,
+      timer_seconds: timerSeconds,
+      question_goal: Math.min(Math.round(questionGoal), 500),
+      created_by: user.id,
+      leader_id: user.id,
+      status: 'scheduled',
+    })
+    .select(
+      'id, group_id, name, scheduled_at, share_code, meeting_link, timer_seconds',
+    )
+    .single();
 
   if (error || !createdSession) {
     console.error('createDashboardSessionAction failed', {
@@ -617,38 +687,51 @@ export async function createDashboardSessionAction(formData: FormData) {
       timerSeconds,
       questionGoal,
     });
-    redirect(withFeedback(sessionsPath, 'error', t('actionFailed')));
+    redirect(
+      withFeedback(sessionsPath, 'error', await getFeedback('actionFailed')),
+    );
   }
 
-  await logAppEvent({
-    eventName: APP_EVENTS.sessionScheduled,
-    locale,
-    userId: user.id,
-    groupId,
-    sessionId: createdSession.id,
-    metadata: {
-      source: sessionsPath === groupDashboardPath(locale, groupId) ? 'group_page_session_modal' : 'dashboard_sessions_modal',
-      session_name: sessionName,
-      question_goal: questionGoal,
-      timer_seconds: timerSeconds,
-      timer_mode: timerMode,
-      share_code: shareCode,
-    },
-  });
+  void Promise.allSettled([
+    logAppEvent({
+      eventName: APP_EVENTS.sessionScheduled,
+      locale,
+      userId: user.id,
+      groupId,
+      sessionId: createdSession.id,
+      metadata: {
+        source:
+          sessionsPath === groupDashboardPath(locale, groupId)
+            ? 'group_page_session_modal'
+            : 'dashboard_sessions_modal',
+        session_name: sessionName,
+        question_goal: questionGoal,
+        timer_seconds: timerSeconds,
+        timer_mode: timerMode,
+        share_code: createdSession.share_code,
+      },
+    }),
+    hasEmailEnv()
+      ? sendSessionCalendarInvites(createdSession).catch((inviteError) => {
+          console.error('sendSessionCalendarInvites failed', {
+            sessionId: createdSession.id,
+            groupId,
+            error:
+              inviteError instanceof Error
+                ? inviteError.message
+                : 'Unknown calendar invite error',
+          });
+        })
+      : Promise.resolve(),
+  ]);
 
-  if (hasEmailEnv()) {
-    try {
-      await sendSessionCalendarInvites(createdSession);
-    } catch (inviteError) {
-      console.error('sendSessionCalendarInvites failed', {
-        sessionId: createdSession.id,
-        groupId,
-        error: inviteError instanceof Error ? inviteError.message : 'Unknown calendar invite error',
-      });
-    }
-  }
-
-  redirect(withFeedback(`/${locale}/sessions/${createdSession.id}`, 'success', t('sessionScheduled')));
+  redirect(
+    withFeedback(
+      `/${locale}/sessions/${createdSession.id}`,
+      'success',
+      await getFeedback('sessionScheduled'),
+    ),
+  );
 }
 
 export const createGroupSessionAction = createDashboardSessionAction;
@@ -687,11 +770,22 @@ export async function cancelDashboardSessionAction(formData: FormData) {
     .eq('user_id', user.id)
     .maybeSingle();
 
-  if (!membership || (session.leader_id !== user.id && session.created_by !== user.id && !membership.is_founder)) {
-    redirect(withFeedback(sessionReturnPath, 'error', t('deleteSessionNotAuthorized')));
+  if (
+    !membership ||
+    (session.leader_id !== user.id &&
+      session.created_by !== user.id &&
+      !membership.is_founder)
+  ) {
+    redirect(
+      withFeedback(sessionReturnPath, 'error', t('deleteSessionNotAuthorized')),
+    );
   }
 
-  const { error } = await supabase.schema('public').from('sessions').update({ status: 'cancelled' }).eq('id', sessionId);
+  const { error } = await supabase
+    .schema('public')
+    .from('sessions')
+    .update({ status: 'cancelled' })
+    .eq('id', sessionId);
 
   if (error) {
     redirect(withFeedback(sessionReturnPath, 'error', t('actionFailed')));
@@ -704,7 +798,10 @@ export async function cancelDashboardSessionAction(formData: FormData) {
     groupId: session.group_id,
     sessionId,
     metadata: {
-      source: sessionReturnPath === groupDashboardPath(locale, session.group_id) ? 'group_page_session_delete_icon' : 'dashboard_session_delete_icon',
+      source:
+        sessionReturnPath === groupDashboardPath(locale, session.group_id)
+          ? 'group_page_session_delete_icon'
+          : 'dashboard_session_delete_icon',
       previous_status: session.status,
       new_status: 'cancelled',
     },
@@ -713,7 +810,10 @@ export async function cancelDashboardSessionAction(formData: FormData) {
   redirect(withFeedback(sessionReturnPath, 'success', t('actionSucceeded')));
 }
 
-async function requireFounderDashboardMembership(groupId: string, locale: AppLocale) {
+async function requireFounderDashboardMembership(
+  groupId: string,
+  locale: AppLocale,
+) {
   const t = await getTranslations({ locale, namespace: 'Feedback' });
   const { supabase, user } = await getCurrentAuthUser();
 
@@ -742,8 +842,10 @@ function groupDashboardPath(locale: AppLocale, groupId: string) {
 
 export async function updateUserScheduleAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
-  const timezone = ((formData.get('timezone') as string | null) ?? '').trim() || 'UTC';
-  const availabilityGridRaw = (formData.get('availabilityGrid') as string | null) ?? '{}';
+  const timezone =
+    ((formData.get('timezone') as string | null) ?? '').trim() || 'UTC';
+  const availabilityGridRaw =
+    (formData.get('availabilityGrid') as string | null) ?? '{}';
   const t = await getTranslations({ locale, namespace: 'Feedback' });
   const { supabase, user } = await getCurrentAuthUser();
 
@@ -753,11 +855,14 @@ export async function updateUserScheduleAction(formData: FormData) {
 
   const availabilityGrid = parseAvailabilityGrid(availabilityGridRaw);
 
-  const { error } = await supabase.schema('public').from('user_schedules').upsert({
-    user_id: user.id,
-    timezone,
-    availability_grid: availabilityGrid,
-  });
+  const { error } = await supabase
+    .schema('public')
+    .from('user_schedules')
+    .upsert({
+      user_id: user.id,
+      timezone,
+      availability_grid: availabilityGrid,
+    });
 
   if (error) {
     redirect(withFeedback(`/${locale}/dashboard`, 'error', t('actionFailed')));
@@ -769,26 +874,38 @@ export async function updateUserScheduleAction(formData: FormData) {
     userId: user.id,
     metadata: {
       timezone,
-      availability_slot_count: Object.values(availabilityGrid).reduce((sum, hours) => sum + hours.length, 0),
+      availability_slot_count: Object.values(availabilityGrid).reduce(
+        (sum, hours) => sum + hours.length,
+        0,
+      ),
     },
   });
 
   revalidatePath(`/${locale}/dashboard`);
-  redirect(withFeedback(`/${locale}/dashboard`, 'success', t('actionSucceeded')));
+  redirect(
+    withFeedback(`/${locale}/dashboard`, 'success', t('actionSucceeded')),
+  );
 }
 
 export async function updateDashboardGroupNameAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
   const groupId = formData.get('groupId') as string;
   const groupName = ((formData.get('groupName') as string | null) ?? '').trim();
-  const { supabase, t } = await requireFounderDashboardMembership(groupId, locale);
+  const { supabase, t } = await requireFounderDashboardMembership(
+    groupId,
+    locale,
+  );
   const settingsPath = groupDashboardPath(locale, groupId);
 
   if (!groupId || !groupName) {
     redirect(withFeedback(settingsPath, 'error', t('missingFields')));
   }
 
-  const { error } = await supabase.schema('public').from('groups').update({ name: groupName }).eq('id', groupId);
+  const { error } = await supabase
+    .schema('public')
+    .from('groups')
+    .update({ name: groupName })
+    .eq('id', groupId);
 
   if (error) {
     redirect(withFeedback(settingsPath, 'error', t('actionFailed')));
@@ -803,7 +920,9 @@ function isValidMeetingLink(value: string) {
     const url = new URL(value);
     return (
       url.protocol === 'https:' &&
-      (url.hostname.includes('zoom.us') || url.hostname.includes('meet.google.com') || url.hostname.includes('teams.microsoft.com'))
+      (url.hostname.includes('zoom.us') ||
+        url.hostname.includes('meet.google.com') ||
+        url.hostname.includes('teams.microsoft.com'))
     );
   } catch {
     return false;
@@ -814,8 +933,13 @@ export async function updateDashboardGroupDetailsAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
   const groupId = formData.get('groupId') as string;
   const groupName = ((formData.get('groupName') as string | null) ?? '').trim();
-  const meetingLink = ((formData.get('meetingLink') as string | null) ?? '').trim();
-  const { supabase, t } = await requireFounderDashboardMembership(groupId, locale);
+  const meetingLink = (
+    (formData.get('meetingLink') as string | null) ?? ''
+  ).trim();
+  const { supabase, t } = await requireFounderDashboardMembership(
+    groupId,
+    locale,
+  );
   const settingsPath = groupDashboardPath(locale, groupId);
 
   if (!groupId || !groupName || !isValidMeetingLink(meetingLink)) {
@@ -839,31 +963,63 @@ export async function updateDashboardGroupDetailsAction(formData: FormData) {
   redirect(withFeedback(settingsPath, 'success', t('actionSucceeded')));
 }
 
-export async function updateDashboardGroupMeetingLinkAction(formData: FormData) {
+export async function updateDashboardGroupMeetingLinkAction(
+  formData: FormData,
+) {
   const locale = formData.get('locale') as AppLocale;
   const groupId = formData.get('groupId') as string;
-  const meetingLink = ((formData.get('meetingLink') as string | null) ?? '').trim();
-  const { supabase, t } = await requireFounderDashboardMembership(groupId, locale);
+  const meetingLink = (
+    (formData.get('meetingLink') as string | null) ?? ''
+  ).trim();
+  const { supabase, t } = await requireFounderDashboardMembership(
+    groupId,
+    locale,
+  );
 
   if (!groupId || !isValidMeetingLink(meetingLink)) {
-    redirect(withFeedback(groupDashboardPath(locale, groupId), 'error', t('missingFields')));
+    redirect(
+      withFeedback(
+        groupDashboardPath(locale, groupId),
+        'error',
+        t('missingFields'),
+      ),
+    );
   }
 
-  const { error } = await supabase.schema('public').from('groups').update({ meeting_link: meetingLink }).eq('id', groupId);
+  const { error } = await supabase
+    .schema('public')
+    .from('groups')
+    .update({ meeting_link: meetingLink })
+    .eq('id', groupId);
 
   if (error) {
-    redirect(withFeedback(groupDashboardPath(locale, groupId), 'error', t('actionFailed')));
+    redirect(
+      withFeedback(
+        groupDashboardPath(locale, groupId),
+        'error',
+        t('actionFailed'),
+      ),
+    );
   }
 
   revalidatePath(`/${locale}/dashboard`);
-  redirect(withFeedback(groupDashboardPath(locale, groupId), 'success', t('actionSucceeded')));
+  redirect(
+    withFeedback(
+      groupDashboardPath(locale, groupId),
+      'success',
+      t('actionSucceeded'),
+    ),
+  );
 }
 
 export async function inviteDashboardGroupMemberAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
   const groupId = formData.get('groupId') as string;
   const email = normalizeEmail((formData.get('email') as string | null) ?? '');
-  const { supabase, user, t } = await requireFounderDashboardMembership(groupId, locale);
+  const { supabase, user, t } = await requireFounderDashboardMembership(
+    groupId,
+    locale,
+  );
   const settingsPath = groupDashboardPath(locale, groupId);
 
   if (!groupId || !email) {
@@ -923,13 +1079,25 @@ export async function inviteDashboardGroupMemberAction(formData: FormData) {
 
   if (!hasEmailEnv()) {
     revalidatePath(`/${locale}/dashboard`);
-    redirect(withFeedback(settingsPath, 'error', t('inviteCreatedEmailFailed')));
+    redirect(
+      withFeedback(settingsPath, 'error', t('inviteCreatedEmailFailed')),
+    );
   }
 
   if (hasEmailEnv()) {
     const [{ data: group }, { data: inviter }] = await Promise.all([
-      supabase.schema('public').from('groups').select('name, invite_code').eq('id', groupId).maybeSingle(),
-      supabase.schema('public').from('users').select('display_name, email').eq('id', user.id).maybeSingle(),
+      supabase
+        .schema('public')
+        .from('groups')
+        .select('name, invite_code')
+        .eq('id', groupId)
+        .maybeSingle(),
+      supabase
+        .schema('public')
+        .from('users')
+        .select('display_name, email')
+        .eq('id', user.id)
+        .maybeSingle(),
     ]);
 
     const inviteEmailResult = await sendGroupInviteEmail({
@@ -940,11 +1108,14 @@ export async function inviteDashboardGroupMemberAction(formData: FormData) {
       inviteCode: group?.invite_code ?? '',
       inviteeEmail: email,
       inviterUserId: user.id,
-      inviterName: inviter?.display_name ?? inviter?.email ?? user.email ?? 'ActiveBoard',
+      inviterName:
+        inviter?.display_name ?? inviter?.email ?? user.email ?? 'ActiveBoard',
     });
 
     if (!inviteEmailResult.ok) {
-      redirect(withFeedback(settingsPath, 'error', t('inviteCreatedEmailFailed')));
+      redirect(
+        withFeedback(settingsPath, 'error', t('inviteCreatedEmailFailed')),
+      );
     }
   }
 
@@ -956,7 +1127,10 @@ export async function addDashboardExistingMemberAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
   const groupId = formData.get('groupId') as string;
   const email = normalizeEmail((formData.get('email') as string | null) ?? '');
-  const { supabase, user, t } = await requireFounderDashboardMembership(groupId, locale);
+  const { supabase, user, t } = await requireFounderDashboardMembership(
+    groupId,
+    locale,
+  );
   const groupPath = groupDashboardPath(locale, groupId);
 
   if (!groupId || !email) {
@@ -974,18 +1148,28 @@ export async function addDashboardExistingMemberAction(formData: FormData) {
     redirect(withFeedback(groupPath, 'error', t('notAuthorized')));
   }
 
-  const [{ data: existingUser }, { data: members }, { data: existingInvite }] = await Promise.all([
-    supabase.schema('public').from('users').select('id, email, display_name').eq('email', email).maybeSingle(),
-    supabase.schema('public').from('group_members').select('user_id').eq('group_id', groupId),
-    supabase
-      .schema('public')
-      .from('group_invites')
-      .select('id')
-      .eq('group_id', groupId)
-      .eq('invitee_email', email)
-      .eq('status', 'pending')
-      .maybeSingle(),
-  ]);
+  const [{ data: existingUser }, { data: members }, { data: existingInvite }] =
+    await Promise.all([
+      supabase
+        .schema('public')
+        .from('users')
+        .select('id, email, display_name')
+        .eq('email', email)
+        .maybeSingle(),
+      supabase
+        .schema('public')
+        .from('group_members')
+        .select('user_id')
+        .eq('group_id', groupId),
+      supabase
+        .schema('public')
+        .from('group_invites')
+        .select('id')
+        .eq('group_id', groupId)
+        .eq('invitee_email', email)
+        .eq('status', 'pending')
+        .maybeSingle(),
+    ]);
 
   if (!existingUser) {
     redirect(withFeedback(groupPath, 'error', t('userNotFound')));
@@ -1047,7 +1231,8 @@ export async function addDashboardExistingMemberAction(formData: FormData) {
       inviteCode: group.invite_code ?? '',
       inviteeEmail: existingUser.email,
       inviterUserId: user.id,
-      inviterName: inviter?.display_name ?? inviter?.email ?? user.email ?? 'ActiveBoard',
+      inviterName:
+        inviter?.display_name ?? inviter?.email ?? user.email ?? 'ActiveBoard',
     });
 
     if (!inviteEmailResult.ok) {
@@ -1065,13 +1250,25 @@ export async function addDashboardWeeklyScheduleAction(formData: FormData) {
   const weekdays = formData.getAll('weekday').map(String);
   const startTimes = formData.getAll('startTime').map(String);
   const endTimes = formData.getAll('endTime').map(String);
-  const questionGoals = formData.getAll('questionGoal').map((value) => Number(value));
-  const { supabase, t } = await requireFounderDashboardMembership(groupId, locale);
+  const questionGoals = formData
+    .getAll('questionGoal')
+    .map((value) => Number(value));
+  const { supabase, t } = await requireFounderDashboardMembership(
+    groupId,
+    locale,
+  );
   const settingsPath = groupDashboardPath(locale, groupId);
 
   const schedules: Array<{
     group_id: string;
-    weekday: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+    weekday:
+      | 'monday'
+      | 'tuesday'
+      | 'wednesday'
+      | 'thursday'
+      | 'friday'
+      | 'saturday'
+      | 'sunday';
     start_time: string;
     end_time: string;
     question_goal: number;
@@ -1082,24 +1279,44 @@ export async function addDashboardWeeklyScheduleAction(formData: FormData) {
     const endTime = endTimes[index];
     const questionGoal = questionGoals[index];
 
-    if (!weekday || !startTime || !endTime || !questionGoal || questionGoal <= 0) {
+    if (
+      !weekday ||
+      !startTime ||
+      !endTime ||
+      !questionGoal ||
+      questionGoal <= 0
+    ) {
       return;
     }
 
     schedules.push({
       group_id: groupId,
-      weekday: weekday as 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday',
+      weekday: weekday as
+        | 'monday'
+        | 'tuesday'
+        | 'wednesday'
+        | 'thursday'
+        | 'friday'
+        | 'saturday'
+        | 'sunday',
       start_time: startTime,
       end_time: endTime,
       question_goal: questionGoal,
     });
   });
 
-  if (!groupId || schedules.length === 0 || schedules.length !== weekdays.length) {
+  if (
+    !groupId ||
+    schedules.length === 0 ||
+    schedules.length !== weekdays.length
+  ) {
     redirect(withFeedback(settingsPath, 'error', t('missingFields')));
   }
 
-  const { error } = await supabase.schema('public').from('group_weekly_schedules').insert(schedules);
+  const { error } = await supabase
+    .schema('public')
+    .from('group_weekly_schedules')
+    .insert(schedules);
 
   if (error) {
     redirect(withFeedback(settingsPath, 'error', t('actionFailed')));
@@ -1116,8 +1333,13 @@ export async function updateDashboardWeeklySchedulesAction(formData: FormData) {
   const weekdays = formData.getAll('weekday').map(String);
   const startTimes = formData.getAll('startTime').map(String);
   const endTimes = formData.getAll('endTime').map(String);
-  const questionGoals = formData.getAll('questionGoal').map((value) => Number(value));
-  const { supabase, t } = await requireFounderDashboardMembership(groupId, locale);
+  const questionGoals = formData
+    .getAll('questionGoal')
+    .map((value) => Number(value));
+  const { supabase, t } = await requireFounderDashboardMembership(
+    groupId,
+    locale,
+  );
   const settingsPath = groupDashboardPath(locale, groupId);
 
   if (!groupId || scheduleIds.length === 0) {
@@ -1145,8 +1367,12 @@ export async function updateDashboardWeeklySchedulesAction(formData: FormData) {
     redirect(withFeedback(settingsPath, 'error', t('missingFields')));
   }
 
-  const existingSchedules = updates.filter((schedule) => schedule.id && !schedule.id.startsWith('new-'));
-  const newSchedules = updates.filter((schedule) => !schedule.id || schedule.id.startsWith('new-'));
+  const existingSchedules = updates.filter(
+    (schedule) => schedule.id && !schedule.id.startsWith('new-'),
+  );
+  const newSchedules = updates.filter(
+    (schedule) => !schedule.id || schedule.id.startsWith('new-'),
+  );
 
   const results = await Promise.all(
     existingSchedules.map((schedule) =>
@@ -1154,7 +1380,14 @@ export async function updateDashboardWeeklySchedulesAction(formData: FormData) {
         .schema('public')
         .from('group_weekly_schedules')
         .update({
-          weekday: schedule.weekday as 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday',
+          weekday: schedule.weekday as
+            | 'monday'
+            | 'tuesday'
+            | 'wednesday'
+            | 'thursday'
+            | 'friday'
+            | 'saturday'
+            | 'sunday',
           start_time: schedule.start_time,
           end_time: schedule.end_time,
           question_goal: schedule.question_goal,
@@ -1169,15 +1402,25 @@ export async function updateDashboardWeeklySchedulesAction(formData: FormData) {
   }
 
   if (newSchedules.length > 0) {
-    const { error } = await supabase.schema('public').from('group_weekly_schedules').insert(
-      newSchedules.map((schedule) => ({
-        group_id: groupId,
-        weekday: schedule.weekday as 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday',
-        start_time: schedule.start_time,
-        end_time: schedule.end_time,
-        question_goal: schedule.question_goal,
-      })),
-    );
+    const { error } = await supabase
+      .schema('public')
+      .from('group_weekly_schedules')
+      .insert(
+        newSchedules.map((schedule) => ({
+          group_id: groupId,
+          weekday: schedule.weekday as
+            | 'monday'
+            | 'tuesday'
+            | 'wednesday'
+            | 'thursday'
+            | 'friday'
+            | 'saturday'
+            | 'sunday',
+          start_time: schedule.start_time,
+          end_time: schedule.end_time,
+          question_goal: schedule.question_goal,
+        })),
+      );
 
     if (error) {
       redirect(withFeedback(settingsPath, 'error', t('actionFailed')));
@@ -1210,7 +1453,10 @@ export async function transferDashboardCaptainAction(formData: FormData) {
     .eq('id', sessionId)
     .maybeSingle();
 
-  if (!session || (session.status !== 'active' && session.status !== 'scheduled')) {
+  if (
+    !session ||
+    (session.status !== 'active' && session.status !== 'scheduled')
+  ) {
     redirect(withFeedback(`/${locale}/groups`, 'error', t('actionFailed')));
   }
 
@@ -1254,14 +1500,24 @@ export async function transferDashboardCaptainAction(formData: FormData) {
   });
 
   revalidatePath(`/${locale}/dashboard`);
-  redirect(withFeedback(groupDashboardPath(locale, session.group_id), 'success', t('leaderPassed')));
+  redirect(
+    withFeedback(
+      groupDashboardPath(locale, session.group_id),
+      'success',
+      t('leaderPassed'),
+    ),
+  );
 }
 
 export async function deleteDashboardWeeklyScheduleAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
   const groupId = formData.get('groupId') as string;
-  const scheduleId = (formData.get('deleteScheduleId') ?? formData.get('scheduleId')) as string;
-  const { supabase, t } = await requireFounderDashboardMembership(groupId, locale);
+  const scheduleId = (formData.get('deleteScheduleId') ??
+    formData.get('scheduleId')) as string;
+  const { supabase, t } = await requireFounderDashboardMembership(
+    groupId,
+    locale,
+  );
   const settingsPath = groupDashboardPath(locale, groupId);
 
   if (!groupId || !scheduleId) {

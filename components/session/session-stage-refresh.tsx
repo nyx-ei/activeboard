@@ -11,7 +11,7 @@ type SessionStageRefreshProps = {
   expectedQuestionId?: string | null;
 };
 
-const POLL_INTERVAL_MS = 2400;
+const POLL_INTERVAL_MS = 60000;
 
 export function SessionStageRefresh({
   sessionId,
@@ -23,10 +23,15 @@ export function SessionStageRefresh({
 
   useEffect(() => {
     let cancelled = false;
+    let paused = false;
     let intervalId: number | null = null;
 
     const syncStage = async () => {
-      if (document.visibilityState !== 'visible' || refreshInFlightRef.current) {
+      if (
+        paused ||
+        document.visibilityState !== 'visible' ||
+        refreshInFlightRef.current
+      ) {
         return;
       }
 
@@ -66,7 +71,6 @@ export function SessionStageRefresh({
       }, POLL_INTERVAL_MS);
     };
 
-    void syncStage();
     startPolling();
 
     const handleVisibilityChange = () => {
@@ -75,12 +79,21 @@ export function SessionStageRefresh({
       }
       startPolling();
     };
+    const handlePause = () => {
+      paused = true;
+      if (intervalId !== null) {
+        window.clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('activeboard:session-starting', handlePause);
 
     return () => {
       cancelled = true;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('activeboard:session-starting', handlePause);
       if (intervalId !== null) {
         window.clearInterval(intervalId);
       }

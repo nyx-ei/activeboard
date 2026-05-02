@@ -3,13 +3,22 @@ import { redirect } from 'next/navigation';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
 import { DashboardViewShell } from '@/components/dashboard/dashboard-view-shell';
-import { DashboardPerformanceView } from '@/components/dashboard/dashboard-performance-view';
-import { DashboardSessionsView } from '@/components/dashboard/dashboard-sessions-view';
+import type { DashboardPerformanceViewProps } from '@/components/dashboard/dashboard-performance-view';
+import type { DashboardSessionsViewProps } from '@/components/dashboard/dashboard-sessions-view';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
-import { getTrialProgressSnapshot, getUserBillingSnapshot } from '@/lib/billing/user-tier';
-import { getUserAccessState, hasUserTierCapability } from '@/lib/billing/gating';
-import { getDashboardPerformanceData, getDashboardSessionsData } from '@/lib/demo/data';
+import {
+  getTrialProgressSnapshot,
+  getUserBillingSnapshot,
+} from '@/lib/billing/user-tier';
+import {
+  getUserAccessState,
+  hasUserTierCapability,
+} from '@/lib/billing/gating';
+import {
+  getDashboardPerformanceData,
+  getDashboardSessionsData,
+} from '@/lib/demo/data';
 
 import {
   cancelDashboardSessionAction,
@@ -29,7 +38,10 @@ type DashboardPageProps = {
   };
 };
 
-export default async function DashboardPage({ params, searchParams }: DashboardPageProps) {
+export default async function DashboardPage({
+  params,
+  searchParams,
+}: DashboardPageProps) {
   const locale = params.locale as AppLocale;
   const user = await requireUser(locale);
   const t = await getTranslations('Dashboard');
@@ -41,18 +53,29 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
 
   const view = searchParams.view === 'performance' ? 'performance' : 'sessions';
   const isSessionsView = view === 'sessions';
-  const isSessionJoinFeedback = isSessionsView && searchParams.sessionJoinFeedback === '1' && Boolean(searchParams.feedbackMessage);
+  const isSessionJoinFeedback =
+    isSessionsView &&
+    searchParams.sessionJoinFeedback === '1' &&
+    Boolean(searchParams.feedbackMessage);
 
-  const [sessionsData, performanceData, accessState, billingSnapshot] = await Promise.all([
-    getDashboardSessionsData(user),
-    getDashboardPerformanceData(user.id),
-    getUserAccessState(user.id),
-    getUserBillingSnapshot(user.id),
-  ]);
+  const [sessionsData, performanceData, accessState, billingSnapshot] =
+    await Promise.all([
+      isSessionsView ? getDashboardSessionsData(user) : Promise.resolve(null),
+      !isSessionsView
+        ? getDashboardPerformanceData(user.id)
+        : Promise.resolve(null),
+      getUserAccessState(user.id),
+      getUserBillingSnapshot(user.id),
+    ]);
 
   const canJoinSessions = hasUserTierCapability(accessState, 'canJoinSessions');
-  const canCreateSession = hasUserTierCapability(accessState, 'canCreateSession');
-  const trialProgress = getTrialProgressSnapshot(billingSnapshot?.questions_answered ?? 0);
+  const canCreateSession = hasUserTierCapability(
+    accessState,
+    'canCreateSession',
+  );
+  const trialProgress = getTrialProgressSnapshot(
+    billingSnapshot?.questions_answered ?? 0,
+  );
 
   const sessionsProps = {
     locale,
@@ -69,7 +92,9 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
     joinSessionAction: joinSessionByCodeAction,
     createSessionAction: createDashboardSessionAction,
     sessionJoinFeedback:
-      isSessionJoinFeedback && searchParams.feedbackMessage && searchParams.feedbackTone
+      isSessionJoinFeedback &&
+      searchParams.feedbackMessage &&
+      searchParams.feedbackTone
         ? {
             tone: searchParams.feedbackTone === 'success' ? 'success' : 'error',
             message: searchParams.feedbackMessage,
@@ -107,21 +132,31 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
       soloSessionProgressHint: t('soloSessionProgressHint'),
       groupAccessHint: t('groupAccessHint'),
       trialProgressTitle: t('trialProgressTitle'),
-      trialProgressSummary: t('trialProgressSummary', { current: '{current}', total: '{total}' }),
-      trialProgressDescription: t('trialProgressDescription', { remaining: '{remaining}' }),
-      trialProgressWarning: t('trialProgressWarning', { remaining: '{remaining}' }),
+      trialProgressSummary: t('trialProgressSummary', {
+        current: '{current}',
+        total: '{total}',
+      }),
+      trialProgressDescription: t('trialProgressDescription', {
+        remaining: '{remaining}',
+      }),
+      trialProgressWarning: t('trialProgressWarning', {
+        remaining: '{remaining}',
+      }),
       trialProgressComplete: t('trialProgressComplete'),
     },
-  } satisfies React.ComponentProps<typeof DashboardSessionsView>;
+  } satisfies DashboardSessionsViewProps;
 
   const performanceProps = {
     answeredCount: performanceData?.metrics.answeredCount ?? 0,
-    completedSessionsCount: performanceData?.metrics.completedSessionsCount ?? 0,
+    completedSessionsCount:
+      performanceData?.metrics.completedSessionsCount ?? 0,
     successRate: performanceData?.metrics.successRate ?? null,
     averageConfidence: performanceData?.metrics.averageConfidence ?? null,
     heatmap: performanceData?.profileAnalytics.heatmap ?? [],
-    confidenceCalibration: performanceData?.profileAnalytics.confidenceCalibration ?? [],
-    sessionConfidenceBreakdown: performanceData?.sessionConfidenceBreakdown ?? [],
+    confidenceCalibration:
+      performanceData?.profileAnalytics.confidenceCalibration ?? [],
+    sessionConfidenceBreakdown:
+      performanceData?.sessionConfidenceBreakdown ?? [],
     labels: {
       sprintActivityTitle: t('sprintActivityTitle'),
       questionsAnswered: t('questionsAnswered'),
@@ -158,16 +193,19 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
       none: t('heatmapNone'),
       less: t('heatmapLess'),
       more: t('heatmapMore'),
-      sessionsFinished: t('sessionsFinished', { count: performanceData?.metrics.completedSessionsCount ?? 0 }),
+      sessionsFinishedOne: t('sessionsFinished', { count: 1 }),
+      sessionsFinishedOther: t('sessionsFinished', { count: 2 }),
       averagePerWeek: t('averagePerWeek'),
       completion: t('completion'),
       confidenceCalibrationTitle: t('confidenceCalibrationTitle'),
     },
-  } satisfies React.ComponentProps<typeof DashboardPerformanceView>;
+  } satisfies DashboardPerformanceViewProps;
   return (
     <main className="flex flex-1 flex-col gap-5">
       <FeedbackBanner
-        message={isSessionJoinFeedback ? undefined : searchParams.feedbackMessage}
+        message={
+          isSessionJoinFeedback ? undefined : searchParams.feedbackMessage
+        }
         tone={isSessionJoinFeedback ? undefined : searchParams.feedbackTone}
         feedbackId={isSessionJoinFeedback ? undefined : searchParams.feedbackId}
       />
@@ -177,6 +215,10 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
           initialView={view}
           sessionsProps={sessionsProps}
           performanceProps={performanceProps}
+          initialLoadedViews={{
+            sessions: isSessionsView,
+            performance: !isSessionsView,
+          }}
         />
       </section>
     </main>

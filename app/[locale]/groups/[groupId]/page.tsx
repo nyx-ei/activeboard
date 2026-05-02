@@ -4,9 +4,11 @@ import { FeedbackBanner } from '@/components/app/feedback-banner';
 import { GroupPageView } from '@/components/groups/group-page-view';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
-import { getUserAccessState, hasUserTierCapability } from '@/lib/billing/gating';
+import {
+  getUserAccessState,
+  hasUserTierCapability,
+} from '@/lib/billing/gating';
 import { getGroupCoreData } from '@/lib/demo/data';
-import { getGroupMemberPerformance, getGroupWeeklyProgress, getShellGroupsForUser } from '@/lib/groups/server';
 
 import {
   addDashboardExistingMemberAction,
@@ -35,20 +37,28 @@ export default async function GroupRoutePage({
   searchParams,
 }: {
   params: { locale: string; groupId: string };
-  searchParams: { feedbackMessage?: string; feedbackTone?: string; feedbackId?: string; live?: string };
+  searchParams: {
+    feedbackMessage?: string;
+    feedbackTone?: string;
+    feedbackId?: string;
+    live?: string;
+  };
 }) {
   const locale = params.locale as AppLocale;
   const user = await requireUser(locale);
-  const [t, accessState, data, shellGroups, memberPerformance, weeklyProgress] = await Promise.all([
+  const [t, accessState, data] = await Promise.all([
     getTranslations('Dashboard'),
     getUserAccessState(user.id),
     getGroupCoreData(params.groupId, user),
-    getShellGroupsForUser(user.id, locale),
-    getGroupMemberPerformance(params.groupId, user.email ?? ''),
-    getGroupWeeklyProgress(params.groupId),
   ]);
-  const canBrowseLookupLayer = hasUserTierCapability(accessState, 'canBrowseLookupLayer');
-  const canCreateSession = hasUserTierCapability(accessState, 'canCreateSession');
+  const canBrowseLookupLayer = hasUserTierCapability(
+    accessState,
+    'canBrowseLookupLayer',
+  );
+  const canCreateSession = hasUserTierCapability(
+    accessState,
+    'canCreateSession',
+  );
 
   if (!data) {
     return null;
@@ -57,8 +67,12 @@ export default async function GroupRoutePage({
   const primaryGroup = data.group;
   const currentCaptainId = data.currentCaptainId;
 
-  const examSession = typeof user.user_metadata.exam_session === 'string' ? user.user_metadata.exam_session : '';
-  const displayName = user.user_metadata.full_name ?? user.email ?? 'ActiveBoard';
+  const examSession =
+    typeof user.user_metadata.exam_session === 'string'
+      ? user.user_metadata.exam_session
+      : '';
+  const displayName =
+    user.user_metadata.full_name ?? user.email ?? 'ActiveBoard';
   const examSessionLabel =
     examSession === 'april_may_2026'
       ? t('examAprilMay2026')
@@ -93,7 +107,7 @@ export default async function GroupRoutePage({
       <section className="mx-auto w-full max-w-[620px] space-y-4">
         <GroupPageView
           locale={locale}
-          shellGroups={shellGroups}
+          shellGroups={[]}
           currentUserInitials={getInitials(displayName)}
           canBrowseLookupLayer={canBrowseLookupLayer}
           initialLiveOpen={searchParams.live === '1'}
@@ -101,8 +115,8 @@ export default async function GroupRoutePage({
           isPrimaryGroupFounder={Boolean(data.membership.is_founder)}
           currentCaptainId={currentCaptainId}
           schedules={data.weeklySchedules}
-          initialWeeklyProgress={weeklyProgress}
-          memberPerformance={memberPerformance}
+          initialWeeklyProgress={null}
+          memberPerformance={[]}
           weekdayLabels={weekdayLabels}
           groupInfoSummary={groupInfoSummary}
           sessions={data.sessions}
@@ -130,10 +144,14 @@ export default async function GroupRoutePage({
             liveGroupJoin: t('liveGroupJoin'),
             joinGroupPending: t('joinGroupPending'),
             unlimitedPlanRequired: t('unlimitedPlanRequired'),
-            unlimitedPlanRequiredDescription: t('unlimitedPlanRequiredDescription'),
+            unlimitedPlanRequiredDescription: t(
+              'unlimitedPlanRequiredDescription',
+            ),
             upgrade: t('upgrade'),
             liveGroupsEmpty: t('liveGroupsEmpty'),
-            liveGroupRemainingPlaces: t('liveGroupRemainingPlaces', { count: '{count}' }),
+            liveGroupRemainingPlaces: t('liveGroupRemainingPlaces', {
+              count: '{count}',
+            }),
             oneRemainingPlace: t('oneRemainingPlace'),
             liveGroupSecondsAgo: t('liveGroupSecondsAgo', { count: '{count}' }),
             liveGroupMinutesAgo: t('liveGroupMinutesAgo', { count: '{count}' }),

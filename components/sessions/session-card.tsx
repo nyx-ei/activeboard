@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { memo, useState, useTransition } from 'react';
 import { Share2, Trash2 } from 'lucide-react';
 
 import { useRouter } from '@/i18n/navigation';
-import { SubmitButton } from '@/components/ui/submit-button';
 
 export type SessionListItem = {
   id: string;
@@ -30,7 +29,13 @@ export type SessionCardLabels = {
   statusCancelled: string;
 };
 
-function StatusBadge({ status, labels }: { status: SessionListItem['status']; labels: SessionCardLabels }) {
+function StatusBadge({
+  status,
+  labels,
+}: {
+  status: SessionListItem['status'];
+  labels: SessionCardLabels;
+}) {
   const label =
     status === 'active'
       ? labels.statusActive
@@ -43,29 +48,38 @@ function StatusBadge({ status, labels }: { status: SessionListItem['status']; la
             : labels.statusScheduled;
 
   return (
-    <span className="inline-flex min-h-6 items-center rounded-full border border-brand/20 bg-brand/12 px-2.5 py-1 text-[11px] font-bold text-brand shadow-[0_0_0_1px_rgba(16,185,129,0.08)]">
+    <span className="border-brand/20 bg-brand/12 inline-flex min-h-6 items-center rounded-full border px-2.5 py-1 text-[11px] font-bold text-brand shadow-[0_0_0_1px_rgba(16,185,129,0.08)]">
       {label}
     </span>
   );
 }
 
-export function SessionCard({
+export const SessionCard = memo(function SessionCard({
   session,
   locale,
   labels,
-  cancelSessionAction,
   returnTo,
+  onCancelOptimistic,
+  onCancelRollback,
 }: {
   session: SessionListItem;
   locale: string;
   labels: SessionCardLabels;
-  cancelSessionAction: (formData: FormData) => void | Promise<void>;
   returnTo?: string;
+  onCancelOptimistic?: (sessionId: string) => void;
+  onCancelRollback?: (sessionId: string) => void;
 }) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [, startTransition] = useTransition();
   const answeredCount = session.answeredQuestionCount ?? 0;
   const targetCount = session.question_goal || session.questionCount || 10;
+  const openSession = () => {
+    startTransition(() => {
+      router.push(`/sessions/${session.id}`);
+    });
+  };
 
   async function shareSession(event: React.MouseEvent<HTMLButtonElement>) {
     event.stopPropagation();
@@ -82,34 +96,105 @@ export function SessionCard({
     window.setTimeout(() => setCopied(false), 1400);
   }
 
+  function showFeedback(tone: 'success' | 'error', message: string) {
+    window.dispatchEvent(
+      new CustomEvent('activeboard:feedback', {
+        detail: {
+          tone,
+          message,
+          id: `cancel-session-${session.id}-${tone}-${Date.now()}`,
+        },
+      }),
+    );
+  }
+
   return (
     <article
       role="button"
       tabIndex={0}
-      onClick={() => router.push(`/sessions/${session.id}`)}
+      onClick={openSession}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
-          router.push(`/sessions/${session.id}`);
+          openSession();
         }
       }}
-      className="group cursor-pointer rounded-[10px] border border-white/[0.07] bg-[#0f1628] px-4 py-3 transition hover:border-brand/70 hover:bg-[#111b30]"
+      className="hover:border-brand/70 group cursor-pointer rounded-[10px] border border-white/[0.07] bg-[#0f1628] px-4 py-3 transition hover:bg-[#111b30]"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h2 className="truncate text-sm font-extrabold text-white">{session.name ?? session.groupName ?? 'ActiveBoard'}</h2>
+            <h2 className="truncate text-sm font-extrabold text-white">
+              {session.name ?? session.groupName ?? 'ActiveBoard'}
+            </h2>
             <StatusBadge status={session.status} labels={labels} />
-            <form action={cancelSessionAction} onClick={(event) => event.stopPropagation()}>
-              <input type="hidden" name="locale" value={locale} />
-              <input type="hidden" name="sessionId" value={session.id} />
-              {returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
-              <SubmitButton
-                pendingLabel=""
-                className="rounded-md p-1.5 text-rose-300 transition hover:bg-white/[0.06] hover:text-rose-200"
-              >
-                <Trash2 className="h-4 w-4" aria-hidden="true" strokeWidth={1.8} />
-              </SubmitButton>
-            </form>
+            <button
+              type="button"
+              aria-label={labels.delete}
+              aria-busy={isCancelling}
+              disabled={isCancelling}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (isCancelling) {
+                  return;
+                }
+
+                setIsCancelling(true);
+                void fetch(`/api/sessions/${session.id}/cancel`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  credentials: 'same-origin',
+                  cache: 'no-store',
+                  body: JSON.stringify({ locale, returnTo }),
+                })
+                  .then(async (response) => {
+                    const payload = (await response
+                      .json()
+                      .catch(() => null)) as {
+                      ok?: boolean;
+                      message?: string;
+                      redirectTo?: string;
+                    } | null;
+
+                    if (!response.ok || payload?.ok === false) {
+                      onCancelRollback?.(session.id);
+                      showFeedback('error', payload?.message ?? labels.delete);
+                      setIsCancelling(false);
+                      return;
+                    }
+
+                    onCancelOptimistic?.(session.id);
+                    window.dispatchEvent(
+                      new CustomEvent('activeboard:dashboard-invalidate', {
+                        detail: { view: 'sessions' },
+                      }),
+                    );
+                    if (payload?.message) {
+                      showFeedback('success', payload.message);
+                    }
+                  })
+                  .catch(() => {
+                    onCancelRollback?.(session.id);
+                    showFeedback('error', labels.delete);
+                    setIsCancelling(false);
+                  });
+              }}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-rose-300 transition hover:bg-white/[0.06] hover:text-rose-200 disabled:cursor-wait disabled:opacity-80"
+            >
+              {isCancelling ? (
+                <span
+                  className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+                  aria-hidden="true"
+                />
+              ) : (
+                <Trash2
+                  className="h-4 w-4"
+                  aria-hidden="true"
+                  strokeWidth={1.8}
+                />
+              )}
+            </button>
           </div>
           <p className="mt-1 text-xs font-medium text-slate-500">
             {new Intl.DateTimeFormat(locale, {
@@ -123,7 +208,11 @@ export function SessionCard({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2 text-slate-500">
-          {copied ? <span className="text-[10px] font-bold text-brand">{labels.copied}</span> : null}
+          {copied ? (
+            <span className="text-[10px] font-bold text-brand">
+              {labels.copied}
+            </span>
+          ) : null}
           <button
             type="button"
             aria-label={labels.share}
@@ -136,4 +225,4 @@ export function SessionCard({
       </div>
     </article>
   );
-}
+});

@@ -4,18 +4,59 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 import { CreateSessionModal } from '@/components/sessions/create-session-modal';
-import { SessionCard, type SessionListItem } from '@/components/sessions/session-card';
+import {
+  SessionCard,
+  type SessionListItem,
+} from '@/components/sessions/session-card';
 import { GroupEditModal } from '@/components/dashboard/group-edit-modal';
 import { GroupScheduleModal } from '@/components/dashboard/group-schedule-modal';
 import { InviteMemberForm } from '@/components/dashboard/group-settings-forms';
 import { LiveGroupsModal } from '@/components/dashboard/live-groups-modal';
+import { fetchCachedGroupData } from '@/components/groups/group-data-cache';
 import { GroupSwitcherMenu } from '@/components/layout/group-switcher-menu';
 import { CalendarIcon, UsersIcon } from '@/components/ui/dashboard-icons';
 import type { AppLocale } from '@/i18n/routing';
 
+const CANCELLED_SESSION_STORAGE_KEY = 'activeboard:cancelled-session-ids';
+
+function readCancelledSessionIds() {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(
+      window.sessionStorage.getItem(CANCELLED_SESSION_STORAGE_KEY) ?? '[]',
+    );
+    return Array.isArray(parsed)
+      ? parsed.filter((value): value is string => typeof value === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeCancelledSessionIds(sessionIds: string[]) {
+  try {
+    window.sessionStorage.setItem(
+      CANCELLED_SESSION_STORAGE_KEY,
+      JSON.stringify(sessionIds.slice(-80)),
+    );
+  } catch {
+    // Ignore storage failures; the in-memory optimistic state still applies.
+  }
+}
+
 type Schedule = {
   id: string;
-  weekday: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+  weekday:
+    | 'monday'
+    | 'tuesday'
+    | 'wednesday'
+    | 'thursday'
+    | 'friday'
+    | 'saturday'
+    | 'sunday';
   start_time: string;
   end_time: string;
   question_goal: number;
@@ -190,17 +231,32 @@ export function GroupPageView({
   actions,
 }: GroupPageViewProps) {
   const [isCreateSessionOpen, setIsCreateSessionOpen] = useState(false);
+  const [cancelledSessionIds, setCancelledSessionIds] = useState<string[]>([]);
   const [resolvedShellGroups, setResolvedShellGroups] = useState(shellGroups);
-  const [resolvedMemberPerformance, setResolvedMemberPerformance] = useState(memberPerformance);
-  const [memberPerformanceLoaded, setMemberPerformanceLoaded] = useState(true);
+  const [resolvedMemberPerformance, setResolvedMemberPerformance] =
+    useState(memberPerformance);
+  const [memberPerformanceLoaded, setMemberPerformanceLoaded] = useState(
+    memberPerformance.length > 0,
+  );
   const [weeklyProgress, setWeeklyProgress] = useState(
     initialWeeklyProgress ?? {
       weeklyCompletedQuestions: 0,
-      weeklyTargetQuestions: schedules.reduce((sum, schedule) => sum + schedule.question_goal, 0),
+      weeklyTargetQuestions: schedules.reduce(
+        (sum, schedule) => sum + schedule.question_goal,
+        0,
+      ),
     },
   );
-  const [weeklyProgressLoaded, setWeeklyProgressLoaded] = useState(Boolean(initialWeeklyProgress));
-  const groupPath = primaryGroup ? `/${locale}/groups/${primaryGroup.id}` : `/${locale}/groups`;
+  const [weeklyProgressLoaded, setWeeklyProgressLoaded] = useState(
+    Boolean(initialWeeklyProgress),
+  );
+  const groupPath = primaryGroup
+    ? `/${locale}/groups/${primaryGroup.id}`
+    : `/${locale}/groups`;
+  const visibleSessions = sessions.filter(
+    (session) =>
+      session.status !== 'cancelled' && !cancelledSessionIds.includes(session.id),
+  );
   const sessionGroupChoices =
     resolvedShellGroups.length > 0
       ? resolvedShellGroups.map((group) => ({
@@ -219,13 +275,18 @@ export function GroupPageView({
         : [];
 
   useEffect(() => {
+    setCancelledSessionIds(readCancelledSessionIds());
+  }, []);
+
+  useEffect(() => {
     if (resolvedShellGroups.length > 0) {
       return;
     }
 
     let cancelled = false;
-    fetch(`/api/groups/shell?locale=${locale}`, { credentials: 'include' })
-      .then((response) => response.json())
+    fetchCachedGroupData<{ ok?: boolean; groups?: typeof shellGroups }>(
+      `/api/groups/shell?locale=${locale}`,
+    )
       .then((payload) => {
         if (!cancelled && payload?.ok && Array.isArray(payload.groups)) {
           setResolvedShellGroups(payload.groups);
@@ -242,7 +303,10 @@ export function GroupPageView({
     setWeeklyProgress(
       initialWeeklyProgress ?? {
         weeklyCompletedQuestions: 0,
-        weeklyTargetQuestions: schedules.reduce((sum, schedule) => sum + schedule.question_goal, 0),
+        weeklyTargetQuestions: schedules.reduce(
+          (sum, schedule) => sum + schedule.question_goal,
+          0,
+        ),
       },
     );
     setWeeklyProgressLoaded(Boolean(initialWeeklyProgress));
@@ -250,7 +314,7 @@ export function GroupPageView({
 
   useEffect(() => {
     setResolvedMemberPerformance(memberPerformance);
-    setMemberPerformanceLoaded(true);
+    setMemberPerformanceLoaded(memberPerformance.length > 0);
   }, [memberPerformance]);
 
   useEffect(() => {
@@ -259,8 +323,9 @@ export function GroupPageView({
     }
 
     let cancelled = false;
-    fetch(`/api/groups/member-performance?groupId=${primaryGroup.id}`, { credentials: 'include' })
-      .then((response) => response.json())
+    fetchCachedGroupData<{ ok?: boolean; members?: MemberPerformance[] }>(
+      `/api/groups/member-performance?groupId=${primaryGroup.id}`,
+    )
       .then((payload) => {
         if (!cancelled && payload?.ok && Array.isArray(payload.members)) {
           setResolvedMemberPerformance(payload.members);
@@ -284,8 +349,11 @@ export function GroupPageView({
     }
 
     let cancelled = false;
-    fetch(`/api/groups/weekly-progress?groupId=${primaryGroup.id}`, { credentials: 'include' })
-      .then((response) => response.json())
+    fetchCachedGroupData<{
+      ok?: boolean;
+      weeklyCompletedQuestions?: number;
+      weeklyTargetQuestions?: number;
+    }>(`/api/groups/weekly-progress?groupId=${primaryGroup.id}`)
       .then((payload) => {
         if (
           !cancelled &&
@@ -360,8 +428,12 @@ export function GroupPageView({
       <section className="surface-mockup p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-white">{primaryGroup?.name ?? labels.unknownGroup}</p>
-            <p className="mt-1 break-words text-xs leading-5 text-slate-500">{groupInfoSummary}</p>
+            <p className="truncate text-sm font-bold text-white">
+              {primaryGroup?.name ?? labels.unknownGroup}
+            </p>
+            <p className="mt-1 break-words text-xs leading-5 text-slate-500">
+              {groupInfoSummary}
+            </p>
             {!primaryGroup?.meeting_link ? (
               <p className="mt-3 flex items-center gap-1.5 text-[11px] font-bold text-amber-400">
                 <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
@@ -415,8 +487,8 @@ export function GroupPageView({
         </div>
 
         <div className="mt-4 space-y-3">
-          {sessions.length > 0 ? (
-            sessions.map((session) => (
+          {visibleSessions.length > 0 ? (
+            visibleSessions.map((session) => (
               <SessionCard
                 key={session.id}
                 session={session}
@@ -431,8 +503,23 @@ export function GroupPageView({
                   statusIncomplete: labels.statusIncomplete,
                   statusCancelled: labels.statusCancelled,
                 }}
-                cancelSessionAction={actions.cancelSessionAction}
                 returnTo={groupPath}
+                onCancelOptimistic={(sessionId) =>
+                  setCancelledSessionIds((current) => {
+                    const next = current.includes(sessionId)
+                      ? current
+                      : [...current, sessionId];
+                    writeCancelledSessionIds(next);
+                    return next;
+                  })
+                }
+                onCancelRollback={(sessionId) =>
+                  setCancelledSessionIds((current) => {
+                    const next = current.filter((id) => id !== sessionId);
+                    writeCancelledSessionIds(next);
+                    return next;
+                  })
+                }
               />
             ))
           ) : (
@@ -445,7 +532,9 @@ export function GroupPageView({
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <CalendarIcon />
-            <p className="text-sm font-bold text-white">{labels.scheduleAndGoalTitle}</p>
+            <p className="text-sm font-bold text-white">
+              {labels.scheduleAndGoalTitle}
+            </p>
           </div>
           {isPrimaryGroupFounder && primaryGroup ? (
             <div className="flex shrink-0 items-center gap-1">
@@ -458,7 +547,10 @@ export function GroupPageView({
                 schedules={schedules}
                 weekdayLabels={weekdayLabels}
                 labels={{
-                  open: locale === 'fr' ? 'Modifier les horaires' : 'Edit schedules',
+                  open:
+                    locale === 'fr'
+                      ? 'Modifier les horaires'
+                      : 'Edit schedules',
                   title: labels.scheduleAndGoalTitle,
                   description: labels.scheduleAndGoalDescription,
                   close: labels.close,
@@ -477,35 +569,50 @@ export function GroupPageView({
         <div className="mt-4 space-y-2">
           {schedules.length > 0 ? (
             schedules.map((schedule) => (
-              <div key={schedule.id} className="rounded-[10px] bg-white/[0.04] p-3">
+              <div
+                key={schedule.id}
+                className="rounded-[10px] bg-white/[0.04] p-3"
+              >
                 <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   <div className="flex min-w-max items-center gap-3 whitespace-nowrap text-sm">
-                    <span className="rounded-full bg-brand/12 px-3 py-1 text-xs font-semibold text-brand">
+                    <span className="bg-brand/12 rounded-full px-3 py-1 text-xs font-semibold text-brand">
                       {weekdayLabels[schedule.weekday]}
                     </span>
                     <span className="font-semibold text-slate-300">
-                      {formatMeridiemTime(schedule.start_time)} - {formatMeridiemTime(schedule.end_time)}
+                      {formatMeridiemTime(schedule.start_time)} -{' '}
+                      {formatMeridiemTime(schedule.end_time)}
                     </span>
                     <span className="inline-flex rounded-[7px] bg-white/[0.05] px-3 py-1 text-xs font-extrabold text-white">
-                      {labels.questionGoalValue.replace('{count}', String(schedule.question_goal))}
+                      {labels.questionGoalValue.replace(
+                        '{count}',
+                        String(schedule.question_goal),
+                      )}
                     </span>
                   </div>
                 </div>
               </div>
             ))
           ) : (
-            <p className="text-sm text-slate-400">{labels.groupScheduleEmpty}</p>
+            <p className="text-sm text-slate-400">
+              {labels.groupScheduleEmpty}
+            </p>
           )}
         </div>
 
         <div className="mt-4 flex items-center justify-between border-t border-white/[0.06] pt-4 text-sm">
-          <span className="font-semibold text-slate-500">{labels.weeklyTotal}</span>
+          <span className="font-semibold text-slate-500">
+            {labels.weeklyTotal}
+          </span>
           {weeklyProgressLoaded ? (
             <span className="font-extrabold text-white">
-              {weeklyProgress.weeklyCompletedQuestions} / {weeklyProgress.weeklyTargetQuestions || 100} Q
+              {weeklyProgress.weeklyCompletedQuestions} /{' '}
+              {weeklyProgress.weeklyTargetQuestions || 100} Q
             </span>
           ) : (
-            <span className="h-5 w-24 animate-pulse rounded bg-white/[0.06]" aria-hidden="true" />
+            <span
+              className="h-5 w-24 animate-pulse rounded bg-white/[0.06]"
+              aria-hidden="true"
+            />
           )}
         </div>
       </section>
@@ -514,7 +621,9 @@ export function GroupPageView({
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <UsersIcon />
-            <p className="text-sm font-bold text-white">{labels.membersTitle}</p>
+            <p className="text-sm font-bold text-white">
+              {labels.membersTitle}
+            </p>
           </div>
         </div>
 
@@ -537,35 +646,59 @@ export function GroupPageView({
         <div className="mt-4 space-y-3">
           {resolvedMemberPerformance.length > 0 ? (
             resolvedMemberPerformance.map((member) => (
-              <div key={member.userId} className="rounded-[12px] bg-white/[0.04] px-3 py-3">
+              <div
+                key={member.userId}
+                className="rounded-[12px] bg-white/[0.04] px-3 py-3"
+              >
                 <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   <div className="flex min-w-max items-center justify-between gap-4 whitespace-nowrap">
                     <div className="flex min-w-0 items-center gap-3">
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-brand" />
-                    <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/20 text-xs font-bold text-brand">
-                      {member.initials}
-                      {member.userId === currentCaptainId ? (
-                        <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-400 text-[8px] font-extrabold uppercase leading-none text-[#3b2600]">
-                          c
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="truncate text-sm font-bold text-white">{member.name}</p>
+                      <span className="h-2 w-2 shrink-0 rounded-full bg-brand" />
+                      <div className="bg-brand/20 relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-brand">
+                        {member.initials}
                         {member.userId === currentCaptainId ? (
-                          <span className="text-[11px] font-semibold text-amber-300">{labels.captainLabel}</span>
+                          <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-400 text-[8px] font-extrabold uppercase leading-none text-[#3b2600]">
+                            c
+                          </span>
                         ) : null}
                       </div>
-                      <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
-                        <span className="rounded-full bg-white/[0.05] px-2 py-1">{labels.memberAverageWeekly.replace('{value}', String(member.averageWeeklyQuestions))}</span>
-                        <span className="rounded-full bg-white/[0.05] px-2 py-1">{labels.memberCompletion.replace('{value}', String(member.completionRate))}</span>
-                        <span className="rounded-full bg-white/[0.05] px-2 py-1">{labels.memberTotal.replace('{value}', String(member.totalAnswers))}</span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="truncate text-sm font-bold text-white">
+                            {member.name}
+                          </p>
+                          {member.userId === currentCaptainId ? (
+                            <span className="text-[11px] font-semibold text-amber-300">
+                              {labels.captainLabel}
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="mt-1 flex items-center gap-2 text-xs text-slate-400">
+                          <span className="rounded-full bg-white/[0.05] px-2 py-1">
+                            {labels.memberAverageWeekly.replace(
+                              '{value}',
+                              String(member.averageWeeklyQuestions),
+                            )}
+                          </span>
+                          <span className="rounded-full bg-white/[0.05] px-2 py-1">
+                            {labels.memberCompletion.replace(
+                              '{value}',
+                              String(member.completionRate),
+                            )}
+                          </span>
+                          <span className="rounded-full bg-white/[0.05] px-2 py-1">
+                            {labels.memberTotal.replace(
+                              '{value}',
+                              String(member.totalAnswers),
+                            )}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                    <span className="rounded-full border border-brand/25 bg-brand/10 px-3 py-1 text-[10px] font-bold text-brand">
-                      {member.status === 'setup' ? labels.memberStatusSetup : labels.memberStatusActive}
+                    <span className="border-brand/25 bg-brand/10 rounded-full border px-3 py-1 text-[10px] font-bold text-brand">
+                      {member.status === 'setup'
+                        ? labels.memberStatusSetup
+                        : labels.memberStatusActive}
                     </span>
                   </div>
                 </div>
@@ -576,7 +709,10 @@ export function GroupPageView({
           ) : (
             <div className="space-y-3">
               {[0, 1, 2].map((item) => (
-                <div key={item} className="h-[72px] animate-pulse rounded-[12px] bg-white/[0.04]" />
+                <div
+                  key={item}
+                  className="h-[72px] animate-pulse rounded-[12px] bg-white/[0.04]"
+                />
               ))}
             </div>
           )}
