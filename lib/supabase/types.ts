@@ -228,6 +228,7 @@ type QuestionsRow = {
   options: Json;
   order_index: number;
   phase: 'draft' | 'answering' | 'review' | 'closed';
+  review_version: number;
   session_id: string;
 };
 
@@ -242,6 +243,7 @@ type QuestionsInsert = {
   options: Json;
   order_index: number;
   phase?: 'draft' | 'answering' | 'review' | 'closed';
+  review_version?: number;
   session_id: string;
 };
 
@@ -256,6 +258,7 @@ type QuestionsUpdate = {
   options?: Json;
   order_index?: number;
   phase?: 'draft' | 'answering' | 'review' | 'closed';
+  review_version?: number;
   session_id?: string;
 };
 
@@ -688,6 +691,30 @@ export type Database = {
       };
     };
     Functions: {
+      activeboard_get_review_question_snapshot: {
+        Args: {
+          target_session_id: string;
+          target_question_index: number;
+        };
+        Returns: {
+          question: Json;
+          answers: Json;
+          reviewed_question_count: number;
+          review_version: number;
+        }[];
+      };
+      activeboard_save_review_snapshot: {
+        Args: {
+          target_session_id: string;
+          target_question_id: string;
+          correct_option_input: string;
+        };
+        Returns: {
+          question_id: string;
+          review_version: number;
+          answer_count: number;
+        }[];
+      };
       find_group_by_invite_code: {
         Args: {
           target_invite_code: string;

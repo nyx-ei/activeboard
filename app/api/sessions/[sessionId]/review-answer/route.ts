@@ -10,6 +10,7 @@ import {
   getSessionAccessSnapshot,
   loadSessionRuntimeAccess,
 } from '@/lib/session/flow';
+import { saveReviewSnapshot } from '@/lib/session/review-consistency';
 import { ANSWER_OPTIONS } from '@/lib/types/demo';
 
 type RouteContext = {
@@ -131,38 +132,29 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
   perf.step('session_validated');
 
-  const { data: updatedQuestion } = await supabase
-    .schema('public')
-    .from('questions')
-    .update({ correct_option: correctOption, phase: 'review' })
-    .eq('id', questionId)
-    .eq('session_id', sessionId)
-    .select('id')
-    .maybeSingle();
-  perf.step('question_updated');
+  const { result: reviewResult, error: reviewError } = await saveReviewSnapshot(
+    supabase,
+    {
+      sessionId,
+      questionId,
+      correctOption,
+    },
+  );
+  perf.step('review_snapshot_saved');
 
-  if (!updatedQuestion?.id) {
+  if (reviewError) {
+    return NextResponse.json(
+      { ok: false, message: await getFeedback('actionFailed') },
+      { status: 500 },
+    );
+  }
+
+  if (!reviewResult?.question_id) {
     return NextResponse.json(
       { ok: false, message: await getFeedback('notAuthorized') },
       { status: 403 },
     );
   }
-
-  await Promise.all([
-    supabase
-      .schema('public')
-      .from('answers')
-      .update({ is_correct: true })
-      .eq('question_id', questionId)
-      .eq('selected_option', correctOption),
-    supabase
-      .schema('public')
-      .from('answers')
-      .update({ is_correct: false })
-      .eq('question_id', questionId)
-      .neq('selected_option', correctOption),
-  ]);
-  perf.step('review_updates_saved');
 
   void logAppEvent({
     eventName: APP_EVENTS.answerRevealed,
@@ -192,6 +184,8 @@ export async function POST(request: Request, { params }: RouteContext) {
     questionId,
     correctOption,
     targetQuestionIndex,
+    reviewVersion: reviewResult.review_version,
+    answerCount: reviewResult.answer_count,
   });
 
   return NextResponse.json({
@@ -199,5 +193,6 @@ export async function POST(request: Request, { params }: RouteContext) {
     redirectTo,
     correctOption,
     targetQuestionIndex,
+    reviewVersion: reviewResult.review_version,
   });
 }
