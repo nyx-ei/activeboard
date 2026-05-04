@@ -60,6 +60,13 @@ export default async function SessionPage({
     notFound();
   }
 
+  const quitConfirmLabels = {
+    title: t('quitConfirmTitle'),
+    description: t('quitConfirmDescription'),
+    cancel: t('quitConfirmCancel'),
+    confirm: t('quitConfirmConfirm'),
+  };
+
   const questionGoal = data.questionGoal;
   const currentIndex = Math.max(
     0,
@@ -138,6 +145,7 @@ export default async function SessionPage({
             }),
             goToReview: t('goToReview'),
             quitPending: t('quitPending'),
+            quitConfirm: quitConfirmLabels,
           }}
         />
       </main>
@@ -178,6 +186,7 @@ export default async function SessionPage({
               sessionId={params.sessionId}
               label={t('quitSession')}
               pendingLabel={t('quitPending')}
+              confirmLabels={quitConfirmLabels}
             />
           </div>
         </section>
@@ -227,6 +236,7 @@ export default async function SessionPage({
             saveAndNext: t('saveAndNextReview'),
             updateAndNext: t('updateAndNextReview'),
             savePending: t('saveReviewPending'),
+            quitConfirm: quitConfirmLabels,
             reviewStatus: {
               clearMastery: t('reviewStatus.clearMastery'),
               overconfidence: t('reviewStatus.overconfidence'),
@@ -319,6 +329,7 @@ export default async function SessionPage({
           goToReview: t('goToReview'),
           quitSession: t('quitSession'),
           quitPending: t('quitPending'),
+          quitConfirm: quitConfirmLabels,
         }}
       />
     </main>

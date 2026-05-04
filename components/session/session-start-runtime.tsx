@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { SessionDashboardBackButton } from '@/components/session/session-dashboard-back-button';
+import type { SessionLeaveConfirmLabels } from '@/components/session/session-leave-confirm-dialog';
 import { SessionStageRefresh } from '@/components/session/session-stage-refresh';
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
 
@@ -44,6 +45,7 @@ type SessionStartRuntimeProps = {
     questionsCompletedValue: string;
     goToReview: string;
     quitPending: string;
+    quitConfirm: SessionLeaveConfirmLabels;
   };
 };
 
@@ -123,6 +125,7 @@ export function SessionStartRuntime({
           goToReview: labels.goToReview,
           quitSession: labels.quitSession,
           quitPending: labels.quitPending,
+          quitConfirm: labels.quitConfirm,
         }}
       />
     );
@@ -247,6 +250,8 @@ export function SessionStartRuntime({
             locale={locale}
             label={labels.quitSession}
             variant="text"
+            sessionId={sessionId}
+            confirmLabels={labels.quitConfirm}
           />
         </section>
       </div>
