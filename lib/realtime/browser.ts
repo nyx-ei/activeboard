@@ -10,11 +10,13 @@ type RealtimeTable = {
 };
 
 type RealtimeCallback = () => void;
+type RealtimeStatusCallback = (status: string) => void;
 
 type RegistryEntry = {
   channel: RealtimeChannel;
   subscribers: number;
   callbacks: Set<RealtimeCallback>;
+  statusCallbacks: Set<RealtimeStatusCallback>;
 };
 
 const realtimeRegistry = new Map<string, RegistryEntry>();
@@ -37,7 +39,11 @@ function getRegistryKey(channelName: string, tables: RealtimeTable[]) {
   });
 }
 
-function wireChannelSubscriptions(channel: RealtimeChannel, tables: RealtimeTable[], notify: () => void) {
+function wireChannelSubscriptions(
+  channel: RealtimeChannel,
+  tables: RealtimeTable[],
+  notify: () => void,
+) {
   for (const table of tables) {
     channel.on(
       'postgres_changes',
@@ -57,11 +63,13 @@ export function registerRealtimeSubscription({
   channelName,
   tables,
   onEvent,
+  onStatus,
 }: {
   supabase: ReturnType<typeof createSupabaseBrowserClient>;
   channelName: string;
   tables: RealtimeTable[];
   onEvent: RealtimeCallback;
+  onStatus?: RealtimeStatusCallback;
 }) {
   const registryKey = getRegistryKey(channelName, tables);
   const existingEntry = realtimeRegistry.get(registryKey);
@@ -69,6 +77,9 @@ export function registerRealtimeSubscription({
   if (existingEntry) {
     existingEntry.subscribers += 1;
     existingEntry.callbacks.add(onEvent);
+    if (onStatus) {
+      existingEntry.statusCallbacks.add(onStatus);
+    }
     logRealtime('subscription_reused', {
       channelName,
       registryKey,
@@ -77,6 +88,9 @@ export function registerRealtimeSubscription({
 
     return async () => {
       existingEntry.callbacks.delete(onEvent);
+      if (onStatus) {
+        existingEntry.statusCallbacks.delete(onStatus);
+      }
       existingEntry.subscribers -= 1;
 
       logRealtime('subscription_released', {
@@ -94,6 +108,10 @@ export function registerRealtimeSubscription({
   }
 
   const callbacks = new Set<RealtimeCallback>([onEvent]);
+  const statusCallbacks = new Set<RealtimeStatusCallback>();
+  if (onStatus) {
+    statusCallbacks.add(onStatus);
+  }
   const notify = () => {
     for (const callback of callbacks) {
       callback();
@@ -109,18 +127,25 @@ export function registerRealtimeSubscription({
       registryKey,
       status,
     });
+    for (const callback of statusCallbacks) {
+      callback(status);
+    }
   });
 
   realtimeRegistry.set(registryKey, {
     channel,
     subscribers: 1,
     callbacks,
+    statusCallbacks,
   });
 
   logRealtime('channel_created', {
     channelName,
     registryKey,
-    tables: tables.map((table) => ({ table: table.table, filter: table.filter ?? null })),
+    tables: tables.map((table) => ({
+      table: table.table,
+      filter: table.filter ?? null,
+    })),
   });
 
   return async () => {
@@ -130,6 +155,9 @@ export function registerRealtimeSubscription({
     }
 
     entry.callbacks.delete(onEvent);
+    if (onStatus) {
+      entry.statusCallbacks.delete(onStatus);
+    }
     entry.subscribers -= 1;
 
     logRealtime('subscription_released', {

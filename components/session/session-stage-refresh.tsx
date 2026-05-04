@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -11,7 +12,15 @@ type SessionStageRefreshProps = {
   expectedQuestionId?: string | null;
 };
 
-const POLL_INTERVAL_MS = 60000;
+const POLL_INTERVAL_MS = 15000;
+
+const SessionStateRealtimeSync = dynamic(
+  () =>
+    import('@/components/session/session-state-realtime-sync').then(
+      (mod) => mod.SessionStateRealtimeSync,
+    ),
+  { ssr: false },
+);
 
 export function SessionStageRefresh({
   sessionId,
@@ -38,7 +47,9 @@ export function SessionStageRefresh({
       refreshInFlightRef.current = true;
 
       try {
-        const payload = await fetchSessionRuntime(`/api/sessions/${sessionId}/runtime`);
+        const payload = await fetchSessionRuntime(
+          `/api/sessions/${sessionId}/runtime`,
+        );
 
         if (!payload || cancelled) {
           return;
@@ -79,6 +90,16 @@ export function SessionStageRefresh({
       }
       startPolling();
     };
+    const handleOnline = () => {
+      void syncStage();
+      startPolling();
+    };
+    const handleSessionStateSync = (event: Event) => {
+      const detail = (event as CustomEvent<{ sessionId?: string }>).detail;
+      if (detail?.sessionId === sessionId) {
+        void syncStage();
+      }
+    };
     const handlePause = () => {
       paused = true;
       if (intervalId !== null) {
@@ -88,11 +109,21 @@ export function SessionStageRefresh({
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener(
+      'activeboard:session-state-sync',
+      handleSessionStateSync,
+    );
     window.addEventListener('activeboard:session-starting', handlePause);
 
     return () => {
       cancelled = true;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener(
+        'activeboard:session-state-sync',
+        handleSessionStateSync,
+      );
       window.removeEventListener('activeboard:session-starting', handlePause);
       if (intervalId !== null) {
         window.clearInterval(intervalId);
@@ -100,5 +131,5 @@ export function SessionStageRefresh({
     };
   }, [expectedQuestionId, expectedStatus, router, sessionId]);
 
-  return null;
+  return <SessionStateRealtimeSync sessionId={sessionId} />;
 }
