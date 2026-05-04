@@ -1035,6 +1035,7 @@ export function ReviewAnswerForm({
       redirectTo?: string;
       correctOption?: string;
       targetQuestionIndex?: number;
+      reviewVersion?: number;
     }>(
       {
         key: `review:${sessionId}:${questionId}:${nextCorrectOption}`,
