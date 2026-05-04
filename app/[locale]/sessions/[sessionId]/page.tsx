@@ -86,6 +86,7 @@ export default async function SessionPage({
       answeredCount >= questionGoal &&
       searchParams.stage !== 'review');
   const isReview = searchParams.stage === 'review';
+  const canAdvanceQuestion = data.session.leader_id === user.id;
 
   if (data.session.status === 'scheduled') {
     const timerLabel =
@@ -131,6 +132,7 @@ export default async function SessionPage({
             nextQuestion: t('nextQuestion'),
             nextQuestionPending: t('nextQuestionPending'),
             allAnswersReceived: t('allAnswersSubmitted'),
+            waitingForCaptainAdvance: t('waitingForCaptainAdvance'),
             allAnswersSubmitted: t('allAnswersSubmitted'),
             questionsCompletedValue: t('questionsCompletedValue', {
               current: questionGoal,
@@ -291,6 +293,7 @@ export default async function SessionPage({
         timerMode={data.session.timer_mode}
         timerSeconds={data.session.timer_seconds}
         startedAt={data.session.started_at}
+        canAdvanceQuestion={canAdvanceQuestion}
         initialAnswer={myAnswer?.selected_option}
         initialConfidence={
           myAnswer?.confidence as ConfidenceLevel | null | undefined
@@ -311,6 +314,7 @@ export default async function SessionPage({
           nextQuestion: t('nextQuestion'),
           nextQuestionPending: t('nextQuestionPending'),
           allAnswersReceived: t('allAnswersSubmitted'),
+          waitingForCaptainAdvance: t('waitingForCaptainAdvance'),
           allAnswersSubmitted: t('allAnswersSubmitted'),
           questionsCompletedValue: t('questionsCompletedValue', {
             current: questionGoal,
