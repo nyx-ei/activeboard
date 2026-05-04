@@ -1538,14 +1538,17 @@ export const getSessionPageData = cache(
           correct_option?: string | null;
         }>,
         currentQuestion: null,
-        currentQuestionAnswers: [] as Array<{
-          id: string;
-          user_id: string;
+        currentQuestionSubmittedCount: 0,
+        currentUserAnswer: null as {
           selected_option: string | null;
           confidence: string | null;
           is_correct: boolean | null;
           answered_at: string | null;
-        }>,
+        } | null,
+        currentQuestionDistribution: computeAnswerDistribution(
+          [],
+          members.length,
+        ),
         allAnswers: [] as Array<{
           id: string;
           question_id: string;
@@ -1668,11 +1671,14 @@ export const getSessionPageData = cache(
               .schema('public')
               .from('answers')
               .select(
-                'id, question_id, user_id, selected_option, confidence, is_correct, answered_at',
+                'user_id, selected_option, confidence, is_correct, answered_at',
               )
               .eq('question_id', currentReviewQuestion.id)
           ).data ?? [])
         : [];
+      const currentUserAnswer =
+        currentQuestionAnswers.find((answer) => answer.user_id === user.id) ??
+        null;
 
       return {
         session,
@@ -1685,7 +1691,19 @@ export const getSessionPageData = cache(
         questionGoal: session.question_goal ?? 10,
         questions: currentReviewQuestion ? [currentReviewQuestion] : [],
         currentQuestion: currentReviewQuestion,
-        currentQuestionAnswers,
+        currentQuestionSubmittedCount: currentQuestionAnswers.length,
+        currentUserAnswer: currentUserAnswer
+          ? {
+              selected_option: currentUserAnswer.selected_option,
+              confidence: currentUserAnswer.confidence,
+              is_correct: currentUserAnswer.is_correct,
+              answered_at: currentUserAnswer.answered_at,
+            }
+          : null,
+        currentQuestionDistribution: computeAnswerDistribution(
+          currentQuestionAnswers,
+          members.length,
+        ),
         allAnswers: [] as Array<{
           id: string;
           question_id: string;
@@ -1739,12 +1757,11 @@ export const getSessionPageData = cache(
             .schema('public')
             .from('answers')
             .select(
-              'id, user_id, selected_option, confidence, is_correct, answered_at',
+              'user_id, selected_option, confidence, is_correct, answered_at',
             )
             .eq('question_id', currentQuestion.id)
         : Promise.resolve({
             data: [] as Array<{
-              id: string;
               user_id: string;
               selected_option: string | null;
               confidence: string | null;
@@ -1767,7 +1784,20 @@ export const getSessionPageData = cache(
         Math.max((currentQuestion?.order_index ?? 0) + 1, 10),
       questions: currentQuestion ? [currentQuestion] : [],
       currentQuestion,
-      currentQuestionAnswers: questionAnswersResult.data ?? [],
+      currentQuestionSubmittedCount: questionAnswersResult.data?.length ?? 0,
+      currentUserAnswer:
+        questionAnswersResult.data
+          ?.filter((answer) => answer.user_id === user.id)
+          .map((answer) => ({
+            selected_option: answer.selected_option,
+            confidence: answer.confidence,
+            is_correct: answer.is_correct,
+            answered_at: answer.answered_at,
+          }))[0] ?? null,
+      currentQuestionDistribution: computeAnswerDistribution(
+        questionAnswersResult.data ?? [],
+        members.length,
+      ),
       allAnswers: [] as Array<{
         id: string;
         question_id: string;

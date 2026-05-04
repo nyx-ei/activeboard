@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { computeAnswerDistribution } from '@/lib/demo/distribution';
 import { createPerfTracker } from '@/lib/observability/perf';
 import {
   getCurrentAuthUser,
@@ -38,12 +39,7 @@ export async function GET(request: Request, { params }: RouteContext) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
-  const access = await loadSessionRuntimeAccess(
-    supabase,
-    sessionId,
-    user.id,
-    false,
-  );
+  const access = await loadSessionRuntimeAccess(supabase, sessionId, user.id);
   const session = getSessionAccessSnapshot(access);
   perf.step('session_loaded');
 
@@ -82,21 +78,33 @@ export async function GET(request: Request, { params }: RouteContext) {
   const { data: answers } = await supabase
     .schema('public')
     .from('answers')
-    .select(
-      'id, question_id, user_id, selected_option, confidence, is_correct, answered_at',
-    )
+    .select('user_id, selected_option, confidence, is_correct, answered_at')
     .eq('question_id', question.id);
   perf.step('answers_loaded');
+  const answerRows = answers ?? [];
+  const ownAnswer =
+    answerRows.find((answer) => answer.user_id === user.id) ?? null;
   perf.done({
     questionId: question.id,
     questionIndex: clampedIndex,
-    answerCount: answers?.length ?? 0,
+    answerCount: answerRows.length,
   });
 
   return NextResponse.json({
     ok: true,
     question,
-    answers: answers ?? [],
+    distribution: computeAnswerDistribution(
+      answerRows,
+      access?.member_count ?? 1,
+    ),
+    ownAnswer: ownAnswer
+      ? {
+          selected_option: ownAnswer.selected_option,
+          confidence: ownAnswer.confidence,
+          is_correct: ownAnswer.is_correct,
+          answered_at: ownAnswer.answered_at,
+        }
+      : null,
     reviewedQuestionCount: reviewedQuestionCount ?? 0,
   });
 }
