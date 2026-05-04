@@ -52,16 +52,8 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ ok: false }, { status: 403 });
   }
 
-  if (session.status !== 'completed' && session.status !== 'incomplete') {
-    await supabase
-      .schema('public')
-      .from('sessions')
-      .update({ status: 'incomplete' })
-      .eq('id', sessionId);
-    perf.step('session_marked_incomplete');
-  }
-
-  perf.done({ status: session.status });
+  perf.step('leave_authorized');
+  perf.done({ status: session.status, mode: 'member_leave' });
 
   return NextResponse.json({
     ok: true,

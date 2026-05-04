@@ -429,15 +429,7 @@ export async function advanceSessionStepAction(formData: FormData) {
 export async function quitIncompleteSessionAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
   const sessionId = formData.get('sessionId') as string;
-  const { supabase, session } = await requireSessionMember(sessionId, locale);
-
-  if (session.status !== 'completed') {
-    await supabase
-      .schema('public')
-      .from('sessions')
-      .update({ status: 'incomplete' })
-      .eq('id', sessionId);
-  }
+  await requireSessionMember(sessionId, locale);
 
   redirect(`/${locale}/dashboard?view=sessions`);
 }
