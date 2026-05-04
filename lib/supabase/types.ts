@@ -1,6 +1,10 @@
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
 import type { AvailabilityGrid } from '@/lib/schedule/availability';
-import type { DimensionOfCare, ErrorType, PhysicianActivity } from '@/lib/types/demo';
+import type {
+  DimensionOfCare,
+  ErrorType,
+  PhysicianActivity,
+} from '@/lib/types/demo';
 
 export type Json =
   | string
@@ -11,6 +15,8 @@ export type Json =
   | Json[];
 
 type AnswersRow = {
+  answer_request_mode: 'submit' | 'timeout';
+  answer_request_sequence: number;
   answered_at: string;
   confidence: ConfidenceLevel | null;
   id: string;
@@ -21,6 +27,8 @@ type AnswersRow = {
 };
 
 type AnswersInsert = {
+  answer_request_mode?: 'submit' | 'timeout';
+  answer_request_sequence?: number;
   answered_at?: string;
   confidence?: ConfidenceLevel | null;
   id?: string;
@@ -31,6 +39,8 @@ type AnswersInsert = {
 };
 
 type AnswersUpdate = {
+  answer_request_mode?: 'submit' | 'timeout';
+  answer_request_sequence?: number;
   answered_at?: string;
   confidence?: ConfidenceLevel | null;
   id?: string;
@@ -194,7 +204,14 @@ type GroupWeeklySchedulesRow = {
   id: string;
   question_goal: number;
   start_time: string;
-  weekday: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+  weekday:
+    | 'monday'
+    | 'tuesday'
+    | 'wednesday'
+    | 'thursday'
+    | 'friday'
+    | 'saturday'
+    | 'sunday';
 };
 
 type GroupWeeklySchedulesInsert = {
@@ -204,7 +221,14 @@ type GroupWeeklySchedulesInsert = {
   id?: string;
   question_goal?: number;
   start_time: string;
-  weekday: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+  weekday:
+    | 'monday'
+    | 'tuesday'
+    | 'wednesday'
+    | 'thursday'
+    | 'friday'
+    | 'saturday'
+    | 'sunday';
 };
 
 type GroupWeeklySchedulesUpdate = {
@@ -214,7 +238,14 @@ type GroupWeeklySchedulesUpdate = {
   id?: string;
   question_goal?: number;
   start_time?: string;
-  weekday?: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+  weekday?:
+    | 'monday'
+    | 'tuesday'
+    | 'wednesday'
+    | 'thursday'
+    | 'friday'
+    | 'saturday'
+    | 'sunday';
 };
 
 type QuestionsRow = {
@@ -434,7 +465,12 @@ type UsersRow = {
   display_name: string | null;
   email: string;
   exam_type: 'mccqe1' | 'usmle' | 'plab' | 'other' | null;
-  exam_session: 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead' | null;
+  exam_session:
+    | 'april_may_2026'
+    | 'august_september_2026'
+    | 'october_2026'
+    | 'planning_ahead'
+    | null;
   has_valid_payment_method: boolean;
   id: string;
   locale: 'en' | 'fr';
@@ -463,7 +499,12 @@ type UsersInsert = {
   display_name?: string | null;
   email: string;
   exam_type?: 'mccqe1' | 'usmle' | 'plab' | 'other' | null;
-  exam_session?: 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead' | null;
+  exam_session?:
+    | 'april_may_2026'
+    | 'august_september_2026'
+    | 'october_2026'
+    | 'planning_ahead'
+    | null;
   has_valid_payment_method?: boolean;
   id: string;
   locale?: 'en' | 'fr';
@@ -492,7 +533,12 @@ type UsersUpdate = {
   display_name?: string | null;
   email?: string;
   exam_type?: 'mccqe1' | 'usmle' | 'plab' | 'other' | null;
-  exam_session?: 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead' | null;
+  exam_session?:
+    | 'april_may_2026'
+    | 'august_september_2026'
+    | 'october_2026'
+    | 'planning_ahead'
+    | null;
   has_valid_payment_method?: boolean;
   id?: string;
   locale?: 'en' | 'fr';
@@ -688,6 +734,38 @@ export type Database = {
       };
     };
     Functions: {
+      activeboard_save_session_answer_concurrent: {
+        Args: {
+          target_question_id: string;
+          selected_option_input: string;
+          confidence_input: ConfidenceLevel | null;
+          request_sequence_input: number;
+          request_mode_input: 'submit' | 'timeout';
+        };
+        Returns: {
+          applied: boolean;
+          selected_option: string | null;
+          confidence: ConfidenceLevel | null;
+          request_sequence: number;
+          request_mode: 'submit' | 'timeout';
+        }[];
+      };
+      activeboard_transfer_session_captain: {
+        Args: {
+          target_session_id: string;
+          expected_leader_id: string | null;
+          target_user_id: string;
+          allowed_statuses: string[];
+        };
+        Returns: {
+          ok: boolean;
+          message_key: string | null;
+          group_id: string | null;
+          previous_leader_id: string | null;
+          current_leader_id: string | null;
+          state_changed: boolean;
+        }[];
+      };
       find_group_by_invite_code: {
         Args: {
           target_invite_code: string;

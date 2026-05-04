@@ -12,6 +12,7 @@ import { logAppEvent } from '@/lib/logging/logger';
 import { sendSessionCalendarInvites } from '@/lib/notifications/calendar-invites';
 import { sendGroupInviteEmail } from '@/lib/notifications/group-invites';
 import { parseAvailabilityGrid } from '@/lib/schedule/availability';
+import { transferSessionCaptain } from '@/lib/session/captain-transfer';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { generateInviteCode, normalizeEmail, withFeedback } from '@/lib/utils';
@@ -1476,25 +1477,34 @@ export async function transferDashboardCaptainAction(formData: FormData) {
     redirect(withFeedback(`/${locale}/groups`, 'error', t('notAuthorized')));
   }
 
-  const { error } = await supabase
-    .schema('public')
-    .from('sessions')
-    .update({ leader_id: targetUserId })
-    .eq('id', sessionId);
+  const { result, error } = await transferSessionCaptain(supabase, {
+    sessionId,
+    expectedLeaderId: session.leader_id,
+    targetUserId,
+    allowedStatuses: ['active', 'scheduled'],
+  });
 
-  if (error) {
+  if (error || !result) {
     redirect(withFeedback(`/${locale}/groups`, 'error', t('actionFailed')));
+  }
+
+  if (!result.ok) {
+    const redirectPath = result.group_id
+      ? groupDashboardPath(locale, result.group_id)
+      : `/${locale}/groups`;
+    const messageKey = result.message_key ?? 'sessionStateChanged';
+    redirect(withFeedback(redirectPath, 'error', t(messageKey)));
   }
 
   await logAppEvent({
     eventName: APP_EVENTS.leaderPassed,
     locale,
     userId: user.id,
-    groupId: session.group_id,
+    groupId: result.group_id ?? session.group_id,
     sessionId,
     metadata: {
       next_leader_id: targetUserId,
-      previous_leader_id: session.leader_id,
+      previous_leader_id: result.previous_leader_id ?? session.leader_id,
       source: 'dashboard_settings',
     },
   });
@@ -1502,7 +1512,7 @@ export async function transferDashboardCaptainAction(formData: FormData) {
   revalidatePath(`/${locale}/dashboard`);
   redirect(
     withFeedback(
-      groupDashboardPath(locale, session.group_id),
+      groupDashboardPath(locale, result.group_id ?? session.group_id),
       'success',
       t('leaderPassed'),
     ),

@@ -12,6 +12,7 @@ import { logAppEvent } from '@/lib/logging/logger';
 import { sendTrialWarningEmailIfNeeded } from '@/lib/notifications/trial-progress';
 import { isConfidenceLevel } from '@/lib/demo/confidence';
 import { refreshDashboardProfileAnalytics } from '@/lib/demo/profile-analytics';
+import { transferSessionCaptain } from '@/lib/session/captain-transfer';
 import {
   ensureQuestion,
   getCurrentAuthUser,
@@ -1441,21 +1442,42 @@ export async function passLeaderAction(formData: FormData) {
     );
   }
 
-  await supabase
-    .schema('public')
-    .from('sessions')
-    .update({ leader_id: nextLeaderId })
-    .eq('id', sessionId);
+  const { result, error } = await transferSessionCaptain(supabase, {
+    sessionId,
+    expectedLeaderId: session.leader_id,
+    targetUserId: nextLeaderId,
+    allowedStatuses: ['active'],
+  });
+
+  if (error || !result) {
+    redirect(
+      withFeedback(
+        `/${locale}/sessions/${sessionId}`,
+        'error',
+        t('actionFailed'),
+      ),
+    );
+  }
+
+  if (!result.ok) {
+    redirect(
+      withFeedback(
+        `/${locale}/sessions/${sessionId}`,
+        'error',
+        t(result.message_key ?? 'sessionStateChanged'),
+      ),
+    );
+  }
 
   await logAppEvent({
     eventName: APP_EVENTS.leaderPassed,
     locale,
     userId: user.id,
-    groupId: session.group_id,
+    groupId: result.group_id ?? session.group_id,
     sessionId,
     metadata: {
       next_leader_id: nextLeaderId,
-      previous_leader_id: session.leader_id,
+      previous_leader_id: result.previous_leader_id ?? session.leader_id,
     },
   });
 

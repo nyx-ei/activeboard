@@ -30,6 +30,15 @@ type SubmitPayload = {
   customOption?: string | null;
   confidence?: string | null;
   mode?: 'submit' | 'timeout';
+  requestSequence?: number;
+};
+
+type ConcurrentAnswerSaveResult = {
+  applied: boolean | null;
+  selected_option: string | null;
+  confidence: string | null;
+  request_sequence: number | null;
+  request_mode: 'submit' | 'timeout' | null;
 };
 
 function runDeferredTasks(tasks: Array<Promise<unknown>>) {
@@ -50,6 +59,11 @@ export async function POST(request: Request, { params }: RouteContext) {
       ? confidenceValue
       : null;
   const mode = body?.mode === 'timeout' ? 'timeout' : 'submit';
+  const requestSequence =
+    typeof body?.requestSequence === 'number' &&
+    Number.isFinite(body.requestSequence)
+      ? Math.max(0, Math.trunc(body.requestSequence))
+      : Date.now();
   const perf = createPerfTracker(
     `submitSessionAnswerRoute:${sessionId}:${questionIndex}`,
   );
@@ -169,22 +183,40 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
   perf.step('question_ensured');
 
-  const questionAnswerDeadlineAt = ensuredQuestion.answerDeadlineAt;
-  const isExpired = questionAnswerDeadlineAt
-    ? new Date(questionAnswerDeadlineAt).getTime() <= Date.now()
-    : false;
   perf.step('deadline_checked');
 
-  if (mode === 'timeout' || isExpired) {
-    await supabase.schema('public').from('answers').upsert(
-      {
-        question_id: ensuredQuestion.id,
-        user_id: user.id,
-        selected_option: '?',
-        confidence: null,
-      },
-      { onConflict: 'question_id,user_id' },
-    );
+  if (mode === 'timeout') {
+    const { data: saveRows, error: saveError } = await (
+      supabase.schema('public') as unknown as {
+        rpc: (
+          fn: 'activeboard_save_session_answer_concurrent',
+          args: {
+            target_question_id: string;
+            selected_option_input: string;
+            confidence_input: string | null;
+            request_sequence_input: number;
+            request_mode_input: 'submit' | 'timeout';
+          },
+        ) => Promise<{
+          data: ConcurrentAnswerSaveResult[] | null;
+          error: { message?: string } | null;
+        }>;
+      }
+    ).rpc('activeboard_save_session_answer_concurrent', {
+      target_question_id: ensuredQuestion.id,
+      selected_option_input: '?',
+      confidence_input: null,
+      request_sequence_input: requestSequence,
+      request_mode_input: 'timeout',
+    });
+
+    if (saveError) {
+      return NextResponse.json(
+        { ok: false, message: await getFeedback('actionFailed') },
+        { status: 500 },
+      );
+    }
+    const savedAnswer = saveRows?.[0] ?? null;
     perf.step('answer_upserted');
     scheduleDashboardProfileAnalyticsRefresh();
     perf.step('deferred_side_effects_started');
@@ -192,24 +224,57 @@ export async function POST(request: Request, { params }: RouteContext) {
 
     return NextResponse.json({
       ok: true,
-      mode: 'timeout',
+      mode: savedAnswer?.request_mode ?? 'timeout',
       questionId: ensuredQuestion.id,
-      selectedOption: '?',
-      confidence: null,
+      selectedOption: savedAnswer?.selected_option ?? '?',
+      confidence: savedAnswer?.confidence ?? null,
+      applied: Boolean(savedAnswer?.applied),
     });
   }
 
   const resolvedSelectedOption =
     selectedOption === '?' ? customOption : selectedOption;
-  await supabase.schema('public').from('answers').upsert(
-    {
-      question_id: ensuredQuestion.id,
-      user_id: user.id,
-      selected_option: resolvedSelectedOption,
-      confidence,
-    },
-    { onConflict: 'question_id,user_id' },
-  );
+  const { data: saveRows, error: saveError } = await (
+    supabase.schema('public') as unknown as {
+      rpc: (
+        fn: 'activeboard_save_session_answer_concurrent',
+        args: {
+          target_question_id: string;
+          selected_option_input: string;
+          confidence_input: string | null;
+          request_sequence_input: number;
+          request_mode_input: 'submit';
+        },
+      ) => Promise<{
+        data: ConcurrentAnswerSaveResult[] | null;
+        error: { message?: string } | null;
+      }>;
+    }
+  ).rpc('activeboard_save_session_answer_concurrent', {
+    target_question_id: ensuredQuestion.id,
+    selected_option_input: resolvedSelectedOption,
+    confidence_input: confidence,
+    request_sequence_input: requestSequence,
+    request_mode_input: 'submit',
+  });
+
+  if (saveError) {
+    return NextResponse.json(
+      { ok: false, message: await getFeedback('actionFailed') },
+      { status: 500 },
+    );
+  }
+  const savedAnswer = saveRows?.[0] ?? null;
+  if (savedAnswer?.request_mode === 'timeout') {
+    return NextResponse.json({
+      ok: true,
+      mode: 'timeout',
+      questionId: ensuredQuestion.id,
+      selectedOption: savedAnswer.selected_option ?? '?',
+      confidence: null,
+      applied: false,
+    });
+  }
   perf.step('answer_upserted');
 
   runDeferredTasks([
@@ -245,7 +310,8 @@ export async function POST(request: Request, { params }: RouteContext) {
     ok: true,
     mode: 'submitted',
     questionId: ensuredQuestion.id,
-    selectedOption: resolvedSelectedOption,
-    confidence,
+    selectedOption: savedAnswer?.selected_option ?? resolvedSelectedOption,
+    confidence: (savedAnswer?.confidence as typeof confidence) ?? confidence,
+    applied: Boolean(savedAnswer?.applied),
   });
 }
