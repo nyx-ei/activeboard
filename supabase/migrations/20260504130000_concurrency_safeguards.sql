@@ -151,7 +151,7 @@ begin
   from public.sessions s
   where s.id = target_session_id;
 
-  if session_row.id is null then
+  if not found then
     return query
     select false, 'notAuthorized', null::uuid, null::uuid, null::uuid, false;
     return;
@@ -189,10 +189,10 @@ begin
           and gm.is_founder = true
       )
     )
-  returning s.group_id, actor_user_id as previous_leader_id, s.leader_id as current_leader_id
+  returning s.group_id, expected_leader_id as previous_leader_id, s.leader_id as current_leader_id
   into updated_row;
 
-  if updated_row.group_id is not null then
+  if found then
     return query
     select true, null::text, updated_row.group_id, updated_row.previous_leader_id, updated_row.current_leader_id, false;
     return;
