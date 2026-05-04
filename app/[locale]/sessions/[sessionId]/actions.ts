@@ -265,7 +265,8 @@ export async function submitSessionStepAction(formData: FormData) {
       {
         question_id: resolvedQuestionId,
         user_id: user.id,
-        selected_option: '?',
+        answer_state: 'skipped',
+        selected_option: null,
         confidence: null,
       },
       { onConflict: 'question_id,user_id' },
@@ -280,6 +281,7 @@ export async function submitSessionStepAction(formData: FormData) {
     {
       question_id: resolvedQuestionId,
       user_id: user.id,
+      answer_state: 'submitted',
       selected_option: resolvedSelectedOption,
       confidence,
     },
@@ -365,7 +367,8 @@ export async function timeoutSessionStepAction(formData: FormData) {
     {
       question_id: resolvedQuestionId,
       user_id: user.id,
-      selected_option: '?',
+      answer_state: 'skipped',
+      selected_option: null,
       confidence: null,
     },
     { onConflict: 'question_id,user_id' },
@@ -509,6 +512,7 @@ export async function saveReviewAnswerAction(formData: FormData) {
     .schema('public')
     .from('answers')
     .select('id, selected_option')
+    .eq('answer_state', 'submitted')
     .eq('question_id', questionId);
 
   await Promise.all(
@@ -964,6 +968,7 @@ export async function submitAnswerAction(formData: FormData) {
     {
       question_id: questionId,
       user_id: user.id,
+      answer_state: 'submitted',
       selected_option: resolvedSelectedOption,
       confidence,
     },
@@ -1099,6 +1104,7 @@ export async function revealAnswerAction(formData: FormData) {
     .schema('public')
     .from('answers')
     .select('id, selected_option')
+    .eq('answer_state', 'submitted')
     .eq('question_id', questionId);
 
   await Promise.all(

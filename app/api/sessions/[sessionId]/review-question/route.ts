@@ -83,7 +83,7 @@ export async function GET(request: Request, { params }: RouteContext) {
     .schema('public')
     .from('answers')
     .select(
-      'id, question_id, user_id, selected_option, confidence, is_correct, answered_at',
+      'id, question_id, user_id, answer_state, selected_option, confidence, is_correct, answered_at',
     )
     .eq('question_id', question.id);
   perf.step('answers_loaded');

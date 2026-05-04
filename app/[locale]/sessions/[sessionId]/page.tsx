@@ -219,6 +219,7 @@ export default async function SessionPage({
             next: t('next'),
             questionUpper: t('questionUpper'),
             distribution: t('distribution'),
+            skippedAnswer: t('skippedAnswer'),
             finishSession: t('finishSession'),
             finishSessionPending: t('finishSessionPending'),
             correctAnswer: t('correctAnswer'),

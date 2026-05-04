@@ -10,12 +10,17 @@ import type {
   CertaintyCorrectnessStatus,
   ConfidenceLevel,
 } from '@/lib/demo/confidence';
-import { ANSWER_OPTIONS, type AnswerOption } from '@/lib/types/demo';
+import {
+  ANSWER_OPTIONS,
+  type AnswerOption,
+  type AnswerState,
+} from '@/lib/types/demo';
 
 type ReviewAnswer = {
   id: string;
   question_id?: string;
   user_id: string;
+  answer_state?: AnswerState | null;
   selected_option: string | null;
   confidence: string | null;
   is_correct: boolean | null;
@@ -56,6 +61,7 @@ type SessionReviewRuntimeProps = {
     next: string;
     questionUpper: string;
     distribution: string;
+    skippedAnswer: string;
     finishSession: string;
     finishSessionPending: string;
     correctAnswer: string;
@@ -69,15 +75,23 @@ type SessionReviewRuntimeProps = {
 };
 
 function getDistribution(
-  answers: Array<{ selected_option: string | null }>,
+  answers: Array<{
+    answer_state?: AnswerState | null;
+    selected_option: string | null;
+  }>,
   memberCount: number,
 ) {
   const distribution = new Map<string, number>();
-  for (const option of [...ANSWER_OPTIONS, '?']) {
+  for (const option of [...ANSWER_OPTIONS, '?', 'skipped']) {
     distribution.set(option, 0);
   }
 
   for (const answer of answers) {
+    if (answer.answer_state === 'skipped') {
+      distribution.set('skipped', (distribution.get('skipped') ?? 0) + 1);
+      continue;
+    }
+
     const option = (answer.selected_option ?? '?').toUpperCase();
     const normalizedOption = ANSWER_OPTIONS.includes(option as AnswerOption)
       ? option
@@ -90,8 +104,8 @@ function getDistribution(
 
   const submitted = answers.length;
   distribution.set(
-    '?',
-    Math.max(distribution.get('?') ?? 0, Math.max(0, memberCount - submitted)),
+    'skipped',
+    (distribution.get('skipped') ?? 0) + Math.max(0, memberCount - submitted),
   );
   return distribution;
 }
@@ -301,8 +315,8 @@ export function SessionReviewRuntime({
               {labels.distribution}
             </h2>
           </div>
-          <div className="mt-2 grid grid-cols-6 gap-1.5 sm:hidden">
-            {[...ANSWER_OPTIONS, '?'].map((option) => (
+          <div className="mt-2 grid grid-cols-4 gap-1.5 min-[420px]:grid-cols-7 sm:hidden">
+            {([...ANSWER_OPTIONS, '?', 'skipped'] as const).map((option) => (
               <div
                 key={option}
                 className={`inline-flex min-h-7 items-center justify-center rounded-[7px] border px-1 text-center text-[10px] font-semibold ${
@@ -311,12 +325,13 @@ export function SessionReviewRuntime({
                     : 'border-white/[0.08] bg-[#121b2e] text-slate-400'
                 }`}
               >
-                {option}-{distribution.get(option) ?? 0}
+                {option === 'skipped' ? labels.skippedAnswer : option}-
+                {distribution.get(option) ?? 0}
               </div>
             ))}
           </div>
-          <div className="mt-8 hidden grid-cols-3 gap-x-2 gap-y-4 min-[420px]:grid-cols-6 sm:grid">
-            {[...ANSWER_OPTIONS, '?'].map((option) => (
+          <div className="mt-8 hidden grid-cols-3 gap-x-2 gap-y-4 min-[420px]:grid-cols-7 sm:grid">
+            {([...ANSWER_OPTIONS, '?', 'skipped'] as const).map((option) => (
               <div
                 key={option}
                 className="flex w-full flex-col items-center gap-1 text-center"
@@ -328,7 +343,7 @@ export function SessionReviewRuntime({
                       : 'text-sm font-bold text-slate-500'
                   }
                 >
-                  {option}
+                  {option === 'skipped' ? labels.skippedAnswer : option}
                   {currentQuestion.correct_option === option ? ' *' : ''}
                 </span>
                 <span className="text-xs font-bold text-slate-600">

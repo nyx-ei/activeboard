@@ -180,7 +180,8 @@ export async function POST(request: Request, { params }: RouteContext) {
       {
         question_id: ensuredQuestion.id,
         user_id: user.id,
-        selected_option: '?',
+        answer_state: 'skipped',
+        selected_option: null,
         confidence: null,
       },
       { onConflict: 'question_id,user_id' },
@@ -194,8 +195,9 @@ export async function POST(request: Request, { params }: RouteContext) {
       ok: true,
       mode: 'timeout',
       questionId: ensuredQuestion.id,
-      selectedOption: '?',
+      selectedOption: null,
       confidence: null,
+      answerState: 'skipped',
     });
   }
 
@@ -205,6 +207,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     {
       question_id: ensuredQuestion.id,
       user_id: user.id,
+      answer_state: 'submitted',
       selected_option: resolvedSelectedOption,
       confidence,
     },
@@ -247,5 +250,6 @@ export async function POST(request: Request, { params }: RouteContext) {
     questionId: ensuredQuestion.id,
     selectedOption: resolvedSelectedOption,
     confidence,
+    answerState: 'submitted',
   });
 }
