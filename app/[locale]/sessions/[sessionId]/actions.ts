@@ -407,6 +407,10 @@ export async function advanceSessionStepAction(formData: FormData) {
     await redirectSessionActionError(locale, sessionId, 'actionFailed');
   }
 
+  if (session.leader_id !== user.id) {
+    await redirectSessionActionError(locale, sessionId, 'notAuthorized');
+  }
+
   const nextIndex = questionIndex + 1;
   if (nextIndex >= session.question_goal) {
     await supabase
