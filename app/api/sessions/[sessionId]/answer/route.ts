@@ -16,6 +16,7 @@ import {
   precreateQuestionShell,
   resolveSessionQuestion,
 } from '@/lib/session/flow';
+import { recordSessionStateEvent } from '@/lib/session/state-events';
 import { ANSWER_OPTIONS } from '@/lib/types/demo';
 
 type RouteContext = {
@@ -186,6 +187,14 @@ export async function POST(request: Request, { params }: RouteContext) {
       { onConflict: 'question_id,user_id' },
     );
     perf.step('answer_upserted');
+    await recordSessionStateEvent(supabase, {
+      sessionId,
+      groupId: session.group_id,
+      questionId: ensuredQuestion.id,
+      actorId: user.id,
+      eventType: 'answer_timed_out',
+    }).catch(() => undefined);
+    perf.step('state_event_recorded');
     scheduleDashboardProfileAnalyticsRefresh();
     perf.step('deferred_side_effects_started');
     perf.done({ mode: 'timeout', questionId: ensuredQuestion.id });
@@ -211,6 +220,14 @@ export async function POST(request: Request, { params }: RouteContext) {
     { onConflict: 'question_id,user_id' },
   );
   perf.step('answer_upserted');
+  await recordSessionStateEvent(supabase, {
+    sessionId,
+    groupId: session.group_id,
+    questionId: ensuredQuestion.id,
+    actorId: user.id,
+    eventType: 'answer_submitted',
+  }).catch(() => undefined);
+  perf.step('state_event_recorded');
 
   runDeferredTasks([
     questionIndex + 1 < session.question_goal

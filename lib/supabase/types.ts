@@ -1,6 +1,10 @@
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
 import type { AvailabilityGrid } from '@/lib/schedule/availability';
-import type { DimensionOfCare, ErrorType, PhysicianActivity } from '@/lib/types/demo';
+import type {
+  DimensionOfCare,
+  ErrorType,
+  PhysicianActivity,
+} from '@/lib/types/demo';
 
 export type Json =
   | string
@@ -194,7 +198,14 @@ type GroupWeeklySchedulesRow = {
   id: string;
   question_goal: number;
   start_time: string;
-  weekday: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+  weekday:
+    | 'monday'
+    | 'tuesday'
+    | 'wednesday'
+    | 'thursday'
+    | 'friday'
+    | 'saturday'
+    | 'sunday';
 };
 
 type GroupWeeklySchedulesInsert = {
@@ -204,7 +215,14 @@ type GroupWeeklySchedulesInsert = {
   id?: string;
   question_goal?: number;
   start_time: string;
-  weekday: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+  weekday:
+    | 'monday'
+    | 'tuesday'
+    | 'wednesday'
+    | 'thursday'
+    | 'friday'
+    | 'saturday'
+    | 'sunday';
 };
 
 type GroupWeeklySchedulesUpdate = {
@@ -214,7 +232,14 @@ type GroupWeeklySchedulesUpdate = {
   id?: string;
   question_goal?: number;
   start_time?: string;
-  weekday?: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+  weekday?:
+    | 'monday'
+    | 'tuesday'
+    | 'wednesday'
+    | 'thursday'
+    | 'friday'
+    | 'saturday'
+    | 'sunday';
 };
 
 type QuestionsRow = {
@@ -256,6 +281,48 @@ type QuestionsUpdate = {
   options?: Json;
   order_index?: number;
   phase?: 'draft' | 'answering' | 'review' | 'closed';
+  session_id?: string;
+};
+
+type SessionStateEventsRow = {
+  actor_id: string | null;
+  created_at: string;
+  event_type:
+    | 'answer_submitted'
+    | 'answer_timed_out'
+    | 'question_advanced'
+    | 'session_completed';
+  group_id: string;
+  id: string;
+  question_id: string | null;
+  session_id: string;
+};
+
+type SessionStateEventsInsert = {
+  actor_id?: string | null;
+  created_at?: string;
+  event_type:
+    | 'answer_submitted'
+    | 'answer_timed_out'
+    | 'question_advanced'
+    | 'session_completed';
+  group_id: string;
+  id?: string;
+  question_id?: string | null;
+  session_id: string;
+};
+
+type SessionStateEventsUpdate = {
+  actor_id?: string | null;
+  created_at?: string;
+  event_type?:
+    | 'answer_submitted'
+    | 'answer_timed_out'
+    | 'question_advanced'
+    | 'session_completed';
+  group_id?: string;
+  id?: string;
+  question_id?: string | null;
   session_id?: string;
 };
 
@@ -434,7 +501,12 @@ type UsersRow = {
   display_name: string | null;
   email: string;
   exam_type: 'mccqe1' | 'usmle' | 'plab' | 'other' | null;
-  exam_session: 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead' | null;
+  exam_session:
+    | 'april_may_2026'
+    | 'august_september_2026'
+    | 'october_2026'
+    | 'planning_ahead'
+    | null;
   has_valid_payment_method: boolean;
   id: string;
   locale: 'en' | 'fr';
@@ -463,7 +535,12 @@ type UsersInsert = {
   display_name?: string | null;
   email: string;
   exam_type?: 'mccqe1' | 'usmle' | 'plab' | 'other' | null;
-  exam_session?: 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead' | null;
+  exam_session?:
+    | 'april_may_2026'
+    | 'august_september_2026'
+    | 'october_2026'
+    | 'planning_ahead'
+    | null;
   has_valid_payment_method?: boolean;
   id: string;
   locale?: 'en' | 'fr';
@@ -492,7 +569,12 @@ type UsersUpdate = {
   display_name?: string | null;
   email?: string;
   exam_type?: 'mccqe1' | 'usmle' | 'plab' | 'other' | null;
-  exam_session?: 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead' | null;
+  exam_session?:
+    | 'april_may_2026'
+    | 'august_september_2026'
+    | 'october_2026'
+    | 'planning_ahead'
+    | null;
   has_valid_payment_method?: boolean;
   id?: string;
   locale?: 'en' | 'fr';
@@ -638,6 +720,12 @@ export type Database = {
         Row: SessionsRow;
         Insert: SessionsInsert;
         Update: SessionsUpdate;
+        Relationships: [];
+      };
+      session_state_events: {
+        Row: SessionStateEventsRow;
+        Insert: SessionStateEventsInsert;
+        Update: SessionStateEventsUpdate;
         Relationships: [];
       };
       session_email_reminders: {
