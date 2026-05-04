@@ -13,6 +13,7 @@
     "cleanup:qa-test-data": "node scripts/qa-test-data.js cleanup",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "test:concurrency": "node --test tests/concurrency-safeguards.test.mjs",
     "test:load:smoke": "cd e2e-load-tests && bash run-tests.sh smoke session-lifecycle",
     "test:load:load": "cd e2e-load-tests && bash run-tests.sh load session-lifecycle",
     "test:load:stress": "cd e2e-load-tests && bash run-tests.sh stress session-lifecycle",
