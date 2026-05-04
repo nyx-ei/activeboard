@@ -227,6 +227,7 @@ export default async function SessionPage({
             saveAndNext: t('saveAndNextReview'),
             updateAndNext: t('updateAndNextReview'),
             savePending: t('saveReviewPending'),
+            reviewLocked: t('reviewLocked'),
             reviewStatus: {
               clearMastery: t('reviewStatus.clearMastery'),
               overconfidence: t('reviewStatus.overconfidence'),

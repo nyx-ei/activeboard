@@ -64,6 +64,7 @@ type SessionReviewRuntimeProps = {
     saveAndNext: string;
     updateAndNext: string;
     savePending: string;
+    reviewLocked: string;
     reviewStatus: Record<CertaintyCorrectnessStatus, string>;
   };
 };
@@ -360,6 +361,7 @@ export function SessionReviewRuntime({
                 saveAndNext: labels.saveAndNext,
                 updateAndNext: labels.updateAndNext,
                 savePending: labels.savePending,
+                reviewLocked: labels.reviewLocked,
                 reviewStatus: labels.reviewStatus,
               }}
             />
