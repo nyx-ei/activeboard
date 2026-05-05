@@ -111,6 +111,11 @@ export function SessionActiveRuntime({
   const submittedCountRef = useRef(initialSubmittedCount);
   const memberCountRef = useRef(initialMemberCount);
   const currentAnswerRef = useRef<string | null>(initialAnswer ?? null);
+  const runtimeQuestionIdRef = useRef<string | null>(questionId);
+  const runtimeQuestionIndexRef = useRef(questionIndex);
+  const currentAnswerQuestionIndexRef = useRef<number | null>(
+    initialAnswer ? questionIndex : null,
+  );
 
   useEffect(() => {
     setRuntimeQuestionId(questionId);
@@ -127,6 +132,11 @@ export function SessionActiveRuntime({
     submittedCountRef.current = initialSubmittedCount;
     memberCountRef.current = initialMemberCount;
     currentAnswerRef.current = initialAnswer ?? null;
+    runtimeQuestionIdRef.current = questionId;
+    runtimeQuestionIndexRef.current = questionIndex;
+    currentAnswerQuestionIndexRef.current = initialAnswer
+      ? questionIndex
+      : null;
   }, [
     initialAnswer,
     initialAnswerDeadlineAt,
@@ -148,6 +158,14 @@ export function SessionActiveRuntime({
   useEffect(() => {
     currentAnswerRef.current = currentAnswer;
   }, [currentAnswer]);
+
+  useEffect(() => {
+    runtimeQuestionIdRef.current = runtimeQuestionId;
+  }, [runtimeQuestionId]);
+
+  useEffect(() => {
+    runtimeQuestionIndexRef.current = runtimeQuestionIndex;
+  }, [runtimeQuestionIndex]);
 
   const getOptimisticDeadline = () => {
     const now = Date.now();
@@ -371,7 +389,26 @@ export function SessionActiveRuntime({
             savedAnswer,
             savedConfidence,
             savedQuestionId,
+            savedQuestionIndex,
           ) => {
+            const activeQuestionIndex = runtimeQuestionIndexRef.current;
+            const activeQuestionId = runtimeQuestionIdRef.current;
+
+            if (
+              typeof savedQuestionIndex === 'number' &&
+              savedQuestionIndex !== activeQuestionIndex
+            ) {
+              return;
+            }
+
+            if (
+              savedQuestionId &&
+              activeQuestionId &&
+              savedQuestionId !== activeQuestionId
+            ) {
+              return;
+            }
+
             if (!answeredLocallyRef.current) {
               answeredLocallyRef.current = true;
               setSubmittedCount((current) => {
@@ -385,7 +422,8 @@ export function SessionActiveRuntime({
             }
             setCurrentAnswer(savedAnswer);
             setCurrentConfidence(savedConfidence);
-            if (!runtimeQuestionId && savedQuestionId) {
+            currentAnswerQuestionIndexRef.current = activeQuestionIndex;
+            if (!activeQuestionId && savedQuestionId) {
               setRuntimeQuestionId(savedQuestionId);
             }
             currentAnswerRef.current = savedAnswer;
@@ -412,6 +450,7 @@ export function SessionActiveRuntime({
             setCurrentAnswer(null);
             setCurrentConfidence(null);
             currentAnswerRef.current = null;
+            currentAnswerQuestionIndexRef.current = null;
             answeredLocallyRef.current = false;
             refreshInFlightRef.current = false;
             setIsSubmitting(false);
@@ -422,16 +461,19 @@ export function SessionActiveRuntime({
             );
           }}
           onQuestionAdvanced={(nextQuestion) => {
-            const hasLocalAnswer = Boolean(currentAnswerRef.current);
+            const hasLocalAnswerForNextQuestion =
+              currentAnswerQuestionIndexRef.current ===
+                nextQuestion.questionIndex && Boolean(currentAnswerRef.current);
             setRuntimeQuestionId(nextQuestion.questionId);
             setRuntimeQuestionIndex(nextQuestion.questionIndex);
             setAnswerDeadlineAt(nextQuestion.answerDeadlineAt);
-            if (!hasLocalAnswer) {
+            if (!hasLocalAnswerForNextQuestion) {
               setSubmittedCount(0);
               submittedCountRef.current = 0;
               setCurrentAnswer(null);
               setCurrentConfidence(null);
               currentAnswerRef.current = null;
+              currentAnswerQuestionIndexRef.current = null;
               answeredLocallyRef.current = false;
             }
             refreshInFlightRef.current = false;
