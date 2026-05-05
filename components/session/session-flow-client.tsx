@@ -946,6 +946,7 @@ export function ReviewAnswerForm({
     saveAndNext: string;
     updateAndNext: string;
     savePending: string;
+    reviewLocked: string;
     reviewStatus: Record<CertaintyCorrectnessStatus, string>;
   };
 }) {
@@ -959,8 +960,11 @@ export function ReviewAnswerForm({
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const isPending = saveStatus === 'saving';
+  const isReviewed = Boolean(savedCorrectOption);
   const canSubmit =
-    Boolean(correctOption) && correctOption !== savedCorrectOption;
+    !isReviewed &&
+    Boolean(correctOption) &&
+    correctOption !== savedCorrectOption;
   const hasCorrectOption = Boolean(correctOption);
   const normalizedParticipantAnswer = participantAnswer?.toUpperCase() ?? '?';
   const isCorrect = hasCorrectOption
@@ -1012,7 +1016,7 @@ export function ReviewAnswerForm({
       }
 
       const key = event.key.toUpperCase();
-      if (ANSWER_OPTIONS.includes(key as AnswerOption)) {
+      if (!isReviewed && ANSWER_OPTIONS.includes(key as AnswerOption)) {
         event.preventDefault();
         setCorrectOption(key as AnswerOption);
       }
@@ -1020,7 +1024,7 @@ export function ReviewAnswerForm({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [isReviewed]);
 
   async function saveReviewAnswer() {
     if (!canSubmit || isPending) {
@@ -1098,14 +1102,16 @@ export function ReviewAnswerForm({
             key={option}
             type="button"
             onClick={() => {
-              if (option !== '?') setCorrectOption(option as AnswerOption);
+              if (!isReviewed && option !== '?') {
+                setCorrectOption(option as AnswerOption);
+              }
             }}
             className={`h-9 w-full rounded-[7px] border text-sm font-extrabold transition sm:h-11 sm:text-base ${
               correctOption === option
                 ? 'border-brand bg-brand text-white'
-                : 'hover:border-brand/50 border-white/[0.08] bg-[#202b3e] text-slate-300'
+                : 'hover:border-brand/50 border-white/[0.08] bg-[#202b3e] text-slate-300 disabled:hover:border-white/[0.08]'
             }`}
-            disabled={false}
+            disabled={isReviewed || isPending}
           >
             {option}
           </button>
@@ -1131,35 +1137,35 @@ export function ReviewAnswerForm({
           </div>
         </section>
       ) : null}
-      <button
-        type="button"
-        className="button-primary disabled:bg-brand/40 relative h-9 w-full rounded-[7px] py-2 text-sm disabled:cursor-not-allowed disabled:text-white/60 disabled:opacity-70 sm:h-10"
-        disabled={!canSubmit || isPending}
-        onClick={() => {
-          void saveReviewAnswer();
-        }}
-        aria-disabled={!canSubmit || isPending}
-        aria-busy={isPending}
-      >
-        <span className={isPending ? 'text-transparent' : ''}>
-          {isLastQuestion
-            ? savedCorrectOption
-              ? labels.update
-              : labels.save
-            : savedCorrectOption
-              ? labels.updateAndNext
-              : labels.saveAndNext}
-        </span>
-        {isPending ? (
-          <span className="absolute inset-0 inline-flex items-center justify-center gap-2">
-            <span
-              className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
-              aria-hidden="true"
-            />
-            {labels.savePending}
+      {isReviewed ? (
+        <p className="text-center text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+          {labels.reviewLocked}
+        </p>
+      ) : (
+        <button
+          type="button"
+          className="button-primary disabled:bg-brand/40 relative h-9 w-full rounded-[7px] py-2 text-sm disabled:cursor-not-allowed disabled:text-white/60 disabled:opacity-70 sm:h-10"
+          disabled={!canSubmit || isPending}
+          onClick={() => {
+            void saveReviewAnswer();
+          }}
+          aria-disabled={!canSubmit || isPending}
+          aria-busy={isPending}
+        >
+          <span className={isPending ? 'text-transparent' : ''}>
+            {isLastQuestion ? labels.save : labels.saveAndNext}
           </span>
-        ) : null}
-      </button>
+          {isPending ? (
+            <span className="absolute inset-0 inline-flex items-center justify-center gap-2">
+              <span
+                className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+                aria-hidden="true"
+              />
+              {labels.savePending}
+            </span>
+          ) : null}
+        </button>
+      )}
       {saveStatus === 'saved' ? (
         <p className="text-center text-xs font-bold uppercase tracking-[0.14em] text-brand">
           {labels.save}
