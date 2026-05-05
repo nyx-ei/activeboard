@@ -1,4 +1,12 @@
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'answer_state') then
+    create type public.answer_state as enum ('submitted', 'skipped');
+  end if;
+end $$;
+
 alter table public.answers
+  add column if not exists answer_state public.answer_state not null default 'submitted',
   add column if not exists answer_request_sequence bigint not null default 0,
   add column if not exists answer_request_mode text not null default 'submit';
 
@@ -29,6 +37,7 @@ returns table (
   applied boolean,
   selected_option text,
   confidence text,
+  answer_state text,
   request_sequence bigint,
   request_mode text
 )
@@ -46,13 +55,14 @@ declare
 begin
   if actor_user_id is null then
     return query
-    select false, null::text, null::text, 0::bigint, normalized_mode;
+    select false, null::text, null::text, null::text, 0::bigint, normalized_mode;
     return;
   end if;
 
   insert into public.answers (
     question_id,
     user_id,
+    answer_state,
     selected_option,
     confidence,
     answer_request_sequence,
@@ -62,6 +72,7 @@ begin
   values (
     target_question_id,
     actor_user_id,
+    case when normalized_mode = 'timeout' then 'skipped'::public.answer_state else 'submitted'::public.answer_state end,
     selected_option_input,
     confidence_input,
     normalized_sequence,
@@ -70,6 +81,7 @@ begin
   )
   on conflict (question_id, user_id) do update
   set
+    answer_state = excluded.answer_state,
     selected_option = excluded.selected_option,
     confidence = excluded.confidence,
     answer_request_sequence = excluded.answer_request_sequence,
@@ -94,9 +106,10 @@ begin
     true,
     public.answers.selected_option,
     public.answers.confidence,
+    public.answers.answer_state::text,
     public.answers.answer_request_sequence,
     public.answers.answer_request_mode
-  into applied, selected_option, confidence, request_sequence, request_mode;
+  into applied, selected_option, confidence, answer_state, request_sequence, request_mode;
 
   if found then
     return next;
@@ -108,6 +121,7 @@ begin
     false,
     a.selected_option,
     a.confidence,
+    a.answer_state::text,
     a.answer_request_sequence,
     a.answer_request_mode
   from public.answers a

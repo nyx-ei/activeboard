@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { SessionDashboardBackButton } from '@/components/session/session-dashboard-back-button';
+import type { SessionLeaveConfirmLabels } from '@/components/session/session-leave-confirm-dialog';
 import { SessionStageRefresh } from '@/components/session/session-stage-refresh';
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
 
@@ -40,10 +41,12 @@ type SessionStartRuntimeProps = {
     nextQuestion: string;
     nextQuestionPending: string;
     allAnswersReceived: string;
+    waitingForCaptainAdvance: string;
     allAnswersSubmitted: string;
     questionsCompletedValue: string;
     goToReview: string;
     quitPending: string;
+    quitConfirm: SessionLeaveConfirmLabels;
   };
 };
 
@@ -100,6 +103,7 @@ export function SessionStartRuntime({
         timerMode={timerMode}
         timerSeconds={timerSeconds}
         startedAt={activeQuestion.startedAt}
+        canAdvanceQuestion={true}
         initialAnswer={null}
         initialConfidence={null as ConfidenceLevel | null}
         initialSubmittedCount={0}
@@ -118,11 +122,13 @@ export function SessionStartRuntime({
           nextQuestion: labels.nextQuestion,
           nextQuestionPending: labels.nextQuestionPending,
           allAnswersReceived: labels.allAnswersReceived,
+          waitingForCaptainAdvance: labels.waitingForCaptainAdvance,
           allAnswersSubmitted: labels.allAnswersSubmitted,
           questionsCompletedValue: labels.questionsCompletedValue,
           goToReview: labels.goToReview,
           quitSession: labels.quitSession,
           quitPending: labels.quitPending,
+          quitConfirm: labels.quitConfirm,
         }}
       />
     );
@@ -247,6 +253,8 @@ export function SessionStartRuntime({
             locale={locale}
             label={labels.quitSession}
             variant="text"
+            sessionId={sessionId}
+            confirmLabels={labels.quitConfirm}
           />
         </section>
       </div>

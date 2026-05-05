@@ -1,6 +1,9 @@
-import { ANSWER_OPTIONS } from '@/lib/types/demo';
+import { ANSWER_OPTIONS, type AnswerState } from '@/lib/types/demo';
 
-type DistributionInput = Array<{ selected_option: string | null }>;
+type DistributionInput = Array<{
+  answer_state?: AnswerState | null;
+  selected_option: string | null;
+}>;
 
 export function computeAnswerDistribution(
   answers: DistributionInput,
@@ -13,12 +16,21 @@ export function computeAnswerDistribution(
     D: 0,
     E: 0,
     blank: 0,
+    skipped: 0,
   };
 
   for (const answer of answers) {
+    if (answer.answer_state === 'skipped') {
+      counts.skipped++;
+      continue;
+    }
+
     const option = answer.selected_option?.toUpperCase();
 
-    if (option && ANSWER_OPTIONS.includes(option as (typeof ANSWER_OPTIONS)[number])) {
+    if (
+      option &&
+      ANSWER_OPTIONS.includes(option as (typeof ANSWER_OPTIONS)[number])
+    ) {
       counts[option as keyof typeof counts]++;
     } else {
       counts.blank++;
@@ -26,7 +38,7 @@ export function computeAnswerDistribution(
   }
 
   const missing = Math.max(0, participantCount - answers.length);
-  counts.blank += missing;
+  counts.skipped += missing;
 
   return counts;
 }

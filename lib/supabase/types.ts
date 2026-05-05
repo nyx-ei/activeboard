@@ -1,6 +1,7 @@
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
 import type { AvailabilityGrid } from '@/lib/schedule/availability';
 import type {
+  AnswerState,
   DimensionOfCare,
   ErrorType,
   PhysicianActivity,
@@ -15,6 +16,7 @@ export type Json =
   | Json[];
 
 type AnswersRow = {
+  answer_state: AnswerState;
   answer_request_mode: 'submit' | 'timeout';
   answer_request_sequence: number;
   answered_at: string;
@@ -27,6 +29,7 @@ type AnswersRow = {
 };
 
 type AnswersInsert = {
+  answer_state?: AnswerState;
   answer_request_mode?: 'submit' | 'timeout';
   answer_request_sequence?: number;
   answered_at?: string;
@@ -39,6 +42,7 @@ type AnswersInsert = {
 };
 
 type AnswersUpdate = {
+  answer_state?: AnswerState;
   answer_request_mode?: 'submit' | 'timeout';
   answer_request_sequence?: number;
   answered_at?: string;
@@ -287,6 +291,48 @@ type QuestionsUpdate = {
   options?: Json;
   order_index?: number;
   phase?: 'draft' | 'answering' | 'review' | 'closed';
+  session_id?: string;
+};
+
+type SessionStateEventsRow = {
+  actor_id: string | null;
+  created_at: string;
+  event_type:
+    | 'answer_submitted'
+    | 'answer_timed_out'
+    | 'question_advanced'
+    | 'session_completed';
+  group_id: string;
+  id: string;
+  question_id: string | null;
+  session_id: string;
+};
+
+type SessionStateEventsInsert = {
+  actor_id?: string | null;
+  created_at?: string;
+  event_type:
+    | 'answer_submitted'
+    | 'answer_timed_out'
+    | 'question_advanced'
+    | 'session_completed';
+  group_id: string;
+  id?: string;
+  question_id?: string | null;
+  session_id: string;
+};
+
+type SessionStateEventsUpdate = {
+  actor_id?: string | null;
+  created_at?: string;
+  event_type?:
+    | 'answer_submitted'
+    | 'answer_timed_out'
+    | 'question_advanced'
+    | 'session_completed';
+  group_id?: string;
+  id?: string;
+  question_id?: string | null;
   session_id?: string;
 };
 
@@ -684,6 +730,12 @@ export type Database = {
         Row: SessionsRow;
         Insert: SessionsInsert;
         Update: SessionsUpdate;
+        Relationships: [];
+      };
+      session_state_events: {
+        Row: SessionStateEventsRow;
+        Insert: SessionStateEventsInsert;
+        Update: SessionStateEventsUpdate;
         Relationships: [];
       };
       session_email_reminders: {

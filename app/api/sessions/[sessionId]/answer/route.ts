@@ -9,6 +9,10 @@ import { logAppEvent } from '@/lib/logging/logger';
 import { sendTrialWarningEmailIfNeeded } from '@/lib/notifications/trial-progress';
 import { createPerfTracker } from '@/lib/observability/perf';
 import {
+  decideAnswerDeadline,
+  hasQuestionAdvanced,
+} from '@/lib/session/deadline-policy';
+import {
   getCurrentAuthUser,
   getSessionAccessSnapshot,
   isCustomAnswerLetter,
@@ -16,6 +20,7 @@ import {
   precreateQuestionShell,
   resolveSessionQuestion,
 } from '@/lib/session/flow';
+import { recordSessionStateEvent } from '@/lib/session/state-events';
 import { ANSWER_OPTIONS } from '@/lib/types/demo';
 
 type RouteContext = {
@@ -37,6 +42,7 @@ type ConcurrentAnswerSaveResult = {
   applied: boolean | null;
   selected_option: string | null;
   confidence: string | null;
+  answer_state: 'submitted' | 'skipped' | null;
   request_sequence: number | null;
   request_mode: 'submit' | 'timeout' | null;
 };
@@ -46,6 +52,7 @@ function runDeferredTasks(tasks: Array<Promise<unknown>>) {
 }
 
 export async function POST(request: Request, { params }: RouteContext) {
+  const requestReceivedAtMs = Date.now();
   const sessionId = params.sessionId;
   const body = (await request.json().catch(() => null)) as SubmitPayload | null;
   const locale = (body?.locale ?? 'en') as AppLocale;
@@ -77,6 +84,19 @@ export async function POST(request: Request, { params }: RouteContext) {
     });
     return feedbackTranslations(key);
   };
+
+  const lateSubmitResponse = async (reason: string) =>
+    NextResponse.json(
+      {
+        ok: false,
+        code: 'answer_window_closed',
+        reason,
+        retryable: false,
+        refetch: true,
+        message: await getFeedback('answerWindowClosed'),
+      },
+      { status: 409 },
+    );
 
   if (!sessionId) {
     return NextResponse.json(
@@ -183,16 +203,68 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
   perf.step('question_ensured');
 
+  const [
+    { data: questionState },
+    { data: latestQuestion },
+    { data: existingAnswer },
+  ] = await Promise.all([
+    supabase
+      .schema('public')
+      .from('questions')
+      .select('id, order_index, phase, answer_deadline_at')
+      .eq('id', ensuredQuestion.id)
+      .eq('session_id', sessionId)
+      .maybeSingle(),
+    supabase
+      .schema('public')
+      .from('questions')
+      .select('order_index')
+      .eq('session_id', sessionId)
+      .not('launched_at', 'is', null)
+      .order('order_index', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .schema('public')
+      .from('answers')
+      .select('answer_state, selected_option, confidence')
+      .eq('question_id', ensuredQuestion.id)
+      .eq('user_id', user.id)
+      .maybeSingle(),
+  ]);
+  const questionAnswerDeadlineAt =
+    questionState?.answer_deadline_at ?? ensuredQuestion.answerDeadlineAt;
+  const deadlineDecision = decideAnswerDeadline({
+    deadlineAt: questionAnswerDeadlineAt,
+    mode,
+    requestReceivedAtMs,
+  });
   perf.step('deadline_checked');
 
-  if (mode === 'timeout') {
-    const { data: saveRows, error: saveError } = await (
+  if (
+    !questionState?.id ||
+    questionState.phase !== 'answering' ||
+    hasQuestionAdvanced(questionIndex, latestQuestion?.order_index ?? null)
+  ) {
+    return lateSubmitResponse('question_advanced');
+  }
+
+  if (!deadlineDecision.accepted) {
+    return lateSubmitResponse(deadlineDecision.reason);
+  }
+
+  const saveAnswer = async (
+    requestMode: 'submit' | 'timeout',
+    option: string | null,
+    answerConfidence: string | null,
+  ) =>
+    (
       supabase.schema('public') as unknown as {
         rpc: (
           fn: 'activeboard_save_session_answer_concurrent',
           args: {
             target_question_id: string;
-            selected_option_input: string;
+            selected_option_input: string | null;
             confidence_input: string | null;
             request_sequence_input: number;
             request_mode_input: 'submit' | 'timeout';
@@ -204,11 +276,35 @@ export async function POST(request: Request, { params }: RouteContext) {
       }
     ).rpc('activeboard_save_session_answer_concurrent', {
       target_question_id: ensuredQuestion.id,
-      selected_option_input: '?',
-      confidence_input: null,
+      selected_option_input: option,
+      confidence_input: answerConfidence,
       request_sequence_input: requestSequence,
-      request_mode_input: 'timeout',
+      request_mode_input: requestMode,
     });
+
+  if (mode === 'timeout') {
+    if (existingAnswer?.selected_option) {
+      perf.done({
+        mode: 'timeout_existing_answer',
+        questionId: ensuredQuestion.id,
+      });
+
+      return NextResponse.json({
+        ok: true,
+        mode: 'timeout',
+        questionId: ensuredQuestion.id,
+        selectedOption: existingAnswer.selected_option,
+        confidence: existingAnswer.confidence,
+        answerState: existingAnswer.answer_state ?? 'submitted',
+        deadlinePolicy: deadlineDecision.reason,
+      });
+    }
+
+    const { data: saveRows, error: saveError } = await saveAnswer(
+      'timeout',
+      null,
+      null,
+    );
 
     if (saveError) {
       return NextResponse.json(
@@ -218,6 +314,14 @@ export async function POST(request: Request, { params }: RouteContext) {
     }
     const savedAnswer = saveRows?.[0] ?? null;
     perf.step('answer_upserted');
+    await recordSessionStateEvent(supabase, {
+      sessionId,
+      groupId: session.group_id,
+      questionId: ensuredQuestion.id,
+      actorId: user.id,
+      eventType: 'answer_timed_out',
+    }).catch(() => undefined);
+    perf.step('state_event_recorded');
     scheduleDashboardProfileAnalyticsRefresh();
     perf.step('deferred_side_effects_started');
     perf.done({ mode: 'timeout', questionId: ensuredQuestion.id });
@@ -226,37 +330,21 @@ export async function POST(request: Request, { params }: RouteContext) {
       ok: true,
       mode: savedAnswer?.request_mode ?? 'timeout',
       questionId: ensuredQuestion.id,
-      selectedOption: savedAnswer?.selected_option ?? '?',
+      selectedOption: savedAnswer?.selected_option ?? null,
       confidence: savedAnswer?.confidence ?? null,
       applied: Boolean(savedAnswer?.applied),
+      answerState: savedAnswer?.answer_state ?? 'skipped',
+      deadlinePolicy: deadlineDecision.reason,
     });
   }
 
   const resolvedSelectedOption =
     selectedOption === '?' ? customOption : selectedOption;
-  const { data: saveRows, error: saveError } = await (
-    supabase.schema('public') as unknown as {
-      rpc: (
-        fn: 'activeboard_save_session_answer_concurrent',
-        args: {
-          target_question_id: string;
-          selected_option_input: string;
-          confidence_input: string | null;
-          request_sequence_input: number;
-          request_mode_input: 'submit';
-        },
-      ) => Promise<{
-        data: ConcurrentAnswerSaveResult[] | null;
-        error: { message?: string } | null;
-      }>;
-    }
-  ).rpc('activeboard_save_session_answer_concurrent', {
-    target_question_id: ensuredQuestion.id,
-    selected_option_input: resolvedSelectedOption,
-    confidence_input: confidence,
-    request_sequence_input: requestSequence,
-    request_mode_input: 'submit',
-  });
+  const { data: saveRows, error: saveError } = await saveAnswer(
+    'submit',
+    resolvedSelectedOption,
+    confidence,
+  );
 
   if (saveError) {
     return NextResponse.json(
@@ -270,12 +358,22 @@ export async function POST(request: Request, { params }: RouteContext) {
       ok: true,
       mode: 'timeout',
       questionId: ensuredQuestion.id,
-      selectedOption: savedAnswer.selected_option ?? '?',
+      selectedOption: savedAnswer.selected_option,
       confidence: null,
+      answerState: savedAnswer.answer_state ?? 'skipped',
+      deadlinePolicy: deadlineDecision.reason,
       applied: false,
     });
   }
   perf.step('answer_upserted');
+  await recordSessionStateEvent(supabase, {
+    sessionId,
+    groupId: session.group_id,
+    questionId: ensuredQuestion.id,
+    actorId: user.id,
+    eventType: 'answer_submitted',
+  }).catch(() => undefined);
+  perf.step('state_event_recorded');
 
   runDeferredTasks([
     questionIndex + 1 < session.question_goal
@@ -304,6 +402,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     questionId: ensuredQuestion.id,
     selectedOption: resolvedSelectedOption,
     confidence,
+    deadlinePolicy: deadlineDecision.reason,
   });
 
   return NextResponse.json({
@@ -313,5 +412,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     selectedOption: savedAnswer?.selected_option ?? resolvedSelectedOption,
     confidence: (savedAnswer?.confidence as typeof confidence) ?? confidence,
     applied: Boolean(savedAnswer?.applied),
+    answerState: savedAnswer?.answer_state ?? 'submitted',
+    deadlinePolicy: deadlineDecision.reason,
   });
 }
