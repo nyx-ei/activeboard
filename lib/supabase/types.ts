@@ -1,6 +1,11 @@
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
 import type { AvailabilityGrid } from '@/lib/schedule/availability';
-import type { DimensionOfCare, ErrorType, PhysicianActivity } from '@/lib/types/demo';
+import type {
+  AnswerState,
+  DimensionOfCare,
+  ErrorType,
+  PhysicianActivity,
+} from '@/lib/types/demo';
 
 export type Json =
   | string
@@ -11,6 +16,9 @@ export type Json =
   | Json[];
 
 type AnswersRow = {
+  answer_state: AnswerState;
+  answer_request_mode: 'submit' | 'timeout';
+  answer_request_sequence: number;
   answered_at: string;
   confidence: ConfidenceLevel | null;
   id: string;
@@ -21,6 +29,9 @@ type AnswersRow = {
 };
 
 type AnswersInsert = {
+  answer_state?: AnswerState;
+  answer_request_mode?: 'submit' | 'timeout';
+  answer_request_sequence?: number;
   answered_at?: string;
   confidence?: ConfidenceLevel | null;
   id?: string;
@@ -31,6 +42,9 @@ type AnswersInsert = {
 };
 
 type AnswersUpdate = {
+  answer_state?: AnswerState;
+  answer_request_mode?: 'submit' | 'timeout';
+  answer_request_sequence?: number;
   answered_at?: string;
   confidence?: ConfidenceLevel | null;
   id?: string;
@@ -194,7 +208,14 @@ type GroupWeeklySchedulesRow = {
   id: string;
   question_goal: number;
   start_time: string;
-  weekday: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+  weekday:
+    | 'monday'
+    | 'tuesday'
+    | 'wednesday'
+    | 'thursday'
+    | 'friday'
+    | 'saturday'
+    | 'sunday';
 };
 
 type GroupWeeklySchedulesInsert = {
@@ -204,7 +225,14 @@ type GroupWeeklySchedulesInsert = {
   id?: string;
   question_goal?: number;
   start_time: string;
-  weekday: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+  weekday:
+    | 'monday'
+    | 'tuesday'
+    | 'wednesday'
+    | 'thursday'
+    | 'friday'
+    | 'saturday'
+    | 'sunday';
 };
 
 type GroupWeeklySchedulesUpdate = {
@@ -214,7 +242,14 @@ type GroupWeeklySchedulesUpdate = {
   id?: string;
   question_goal?: number;
   start_time?: string;
-  weekday?: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+  weekday?:
+    | 'monday'
+    | 'tuesday'
+    | 'wednesday'
+    | 'thursday'
+    | 'friday'
+    | 'saturday'
+    | 'sunday';
 };
 
 type QuestionsRow = {
@@ -259,6 +294,48 @@ type QuestionsUpdate = {
   order_index?: number;
   phase?: 'draft' | 'answering' | 'review' | 'closed';
   review_version?: number;
+  session_id?: string;
+};
+
+type SessionStateEventsRow = {
+  actor_id: string | null;
+  created_at: string;
+  event_type:
+    | 'answer_submitted'
+    | 'answer_timed_out'
+    | 'question_advanced'
+    | 'session_completed';
+  group_id: string;
+  id: string;
+  question_id: string | null;
+  session_id: string;
+};
+
+type SessionStateEventsInsert = {
+  actor_id?: string | null;
+  created_at?: string;
+  event_type:
+    | 'answer_submitted'
+    | 'answer_timed_out'
+    | 'question_advanced'
+    | 'session_completed';
+  group_id: string;
+  id?: string;
+  question_id?: string | null;
+  session_id: string;
+};
+
+type SessionStateEventsUpdate = {
+  actor_id?: string | null;
+  created_at?: string;
+  event_type?:
+    | 'answer_submitted'
+    | 'answer_timed_out'
+    | 'question_advanced'
+    | 'session_completed';
+  group_id?: string;
+  id?: string;
+  question_id?: string | null;
   session_id?: string;
 };
 
@@ -437,7 +514,12 @@ type UsersRow = {
   display_name: string | null;
   email: string;
   exam_type: 'mccqe1' | 'usmle' | 'plab' | 'other' | null;
-  exam_session: 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead' | null;
+  exam_session:
+    | 'april_may_2026'
+    | 'august_september_2026'
+    | 'october_2026'
+    | 'planning_ahead'
+    | null;
   has_valid_payment_method: boolean;
   id: string;
   locale: 'en' | 'fr';
@@ -466,7 +548,12 @@ type UsersInsert = {
   display_name?: string | null;
   email: string;
   exam_type?: 'mccqe1' | 'usmle' | 'plab' | 'other' | null;
-  exam_session?: 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead' | null;
+  exam_session?:
+    | 'april_may_2026'
+    | 'august_september_2026'
+    | 'october_2026'
+    | 'planning_ahead'
+    | null;
   has_valid_payment_method?: boolean;
   id: string;
   locale?: 'en' | 'fr';
@@ -495,7 +582,12 @@ type UsersUpdate = {
   display_name?: string | null;
   email?: string;
   exam_type?: 'mccqe1' | 'usmle' | 'plab' | 'other' | null;
-  exam_session?: 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead' | null;
+  exam_session?:
+    | 'april_may_2026'
+    | 'august_september_2026'
+    | 'october_2026'
+    | 'planning_ahead'
+    | null;
   has_valid_payment_method?: boolean;
   id?: string;
   locale?: 'en' | 'fr';
@@ -643,6 +735,12 @@ export type Database = {
         Update: SessionsUpdate;
         Relationships: [];
       };
+      session_state_events: {
+        Row: SessionStateEventsRow;
+        Insert: SessionStateEventsInsert;
+        Update: SessionStateEventsUpdate;
+        Relationships: [];
+      };
       session_email_reminders: {
         Row: SessionEmailRemindersRow;
         Insert: SessionEmailRemindersInsert;
@@ -698,7 +796,8 @@ export type Database = {
         };
         Returns: {
           question: Json;
-          answers: Json;
+          distribution: Json;
+          own_answer: Json;
           reviewed_question_count: number;
           review_version: number;
         }[];
@@ -713,6 +812,38 @@ export type Database = {
           question_id: string;
           review_version: number;
           answer_count: number;
+        }[];
+      };
+      activeboard_save_session_answer_concurrent: {
+        Args: {
+          target_question_id: string;
+          selected_option_input: string;
+          confidence_input: ConfidenceLevel | null;
+          request_sequence_input: number;
+          request_mode_input: 'submit' | 'timeout';
+        };
+        Returns: {
+          applied: boolean;
+          selected_option: string | null;
+          confidence: ConfidenceLevel | null;
+          request_sequence: number;
+          request_mode: 'submit' | 'timeout';
+        }[];
+      };
+      activeboard_transfer_session_captain: {
+        Args: {
+          target_session_id: string;
+          expected_leader_id: string | null;
+          target_user_id: string;
+          allowed_statuses: string[];
+        };
+        Returns: {
+          ok: boolean;
+          message_key: string | null;
+          group_id: string | null;
+          previous_leader_id: string | null;
+          current_leader_id: string | null;
+          state_changed: boolean;
         }[];
       };
       find_group_by_invite_code: {

@@ -18,18 +18,27 @@ export type ReviewSnapshotQuestion = {
 };
 
 export type ReviewSnapshotAnswer = {
-  id: string;
-  question_id: string;
-  user_id: string;
+  answer_state?: 'submitted' | 'skipped' | null;
   selected_option: string | null;
   confidence: string | null;
   is_correct: boolean | null;
   answered_at: string | null;
 };
 
+export type ReviewSnapshotDistribution = {
+  A: number;
+  B: number;
+  C: number;
+  D: number;
+  E: number;
+  blank: number;
+  skipped: number;
+};
+
 type ReviewSnapshotRow = {
   question: Json;
-  answers: Json;
+  distribution: Json;
+  own_answer: Json;
   reviewed_question_count: number | null;
   review_version: number | null;
 };
@@ -71,9 +80,10 @@ export async function getReviewQuestionSnapshot(
     snapshot: row
       ? {
           question: row.question as ReviewSnapshotQuestion,
-          answers: Array.isArray(row.answers)
-            ? (row.answers as ReviewSnapshotAnswer[])
-            : [],
+          distribution: row.distribution as ReviewSnapshotDistribution,
+          ownAnswer: row.own_answer
+            ? (row.own_answer as ReviewSnapshotAnswer)
+            : null,
           reviewedQuestionCount: row.reviewed_question_count ?? 0,
           reviewVersion: row.review_version ?? 0,
         }

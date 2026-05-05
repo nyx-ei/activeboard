@@ -151,11 +151,11 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   if (!reviewResult?.question_id) {
     return NextResponse.json(
-      { ok: false, message: await getFeedback('notAuthorized') },
-      { status: 403 },
+      { ok: false, message: await getFeedback('reviewQuestionLocked') },
+      { status: 409 },
     );
   }
-
+  perf.step('review_updates_saved');
   void logAppEvent({
     eventName: APP_EVENTS.answerRevealed,
     locale,

@@ -4,17 +4,26 @@ type RuntimePayload = {
   ok: boolean;
   sessionStatus: string;
   questionId: string | null;
+  questionIndex?: number | null;
   questionPhase: string | null;
   answerDeadlineAt?: string | null;
   submittedCount?: number;
   memberCount?: number;
 };
 
-const inflightRuntimeRequests = new Map<string, Promise<RuntimePayload | null>>();
-const recentRuntimeResponses = new Map<string, { payload: RuntimePayload; expiresAt: number }>();
+const inflightRuntimeRequests = new Map<
+  string,
+  Promise<RuntimePayload | null>
+>();
+const recentRuntimeResponses = new Map<
+  string,
+  { payload: RuntimePayload; expiresAt: number }
+>();
 const RECENT_RESPONSE_TTL_MS = 500;
 
-export async function fetchSessionRuntime(url: string): Promise<RuntimePayload | null> {
+export async function fetchSessionRuntime(
+  url: string,
+): Promise<RuntimePayload | null> {
   const now = Date.now();
   const cached = recentRuntimeResponses.get(url);
   if (cached && cached.expiresAt > now) {

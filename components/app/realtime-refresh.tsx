@@ -17,7 +17,11 @@ type RealtimeRefreshProps = {
   throttleMs?: number;
 };
 
-export function RealtimeRefresh({ channelName, tables, throttleMs = 450 }: RealtimeRefreshProps) {
+export function RealtimeRefresh({
+  channelName,
+  tables,
+  throttleMs = 450,
+}: RealtimeRefreshProps) {
   const router = useRouter();
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const refreshTimerRef = useRef<number | null>(null);
@@ -39,6 +43,11 @@ export function RealtimeRefresh({ channelName, tables, throttleMs = 450 }: Realt
       channelName,
       tables: parsedTables,
       onEvent: scheduleRefresh,
+      onStatus: (status) => {
+        if (status === 'SUBSCRIBED') {
+          scheduleRefresh();
+        }
+      },
     });
 
     return () => {

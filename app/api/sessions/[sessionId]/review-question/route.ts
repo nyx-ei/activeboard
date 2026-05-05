@@ -39,12 +39,7 @@ export async function GET(request: Request, { params }: RouteContext) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
-  const access = await loadSessionRuntimeAccess(
-    supabase,
-    sessionId,
-    user.id,
-    false,
-  );
+  const access = await loadSessionRuntimeAccess(supabase, sessionId, user.id);
   const session = getSessionAccessSnapshot(access);
   perf.step('session_loaded');
 
@@ -69,14 +64,14 @@ export async function GET(request: Request, { params }: RouteContext) {
   perf.done({
     questionId: snapshot.question.id,
     questionIndex: snapshot.question.order_index,
-    answerCount: snapshot.answers.length,
     reviewVersion: snapshot.reviewVersion,
   });
 
   return NextResponse.json({
     ok: true,
     question: snapshot.question,
-    answers: snapshot.answers,
+    distribution: snapshot.distribution,
+    ownAnswer: snapshot.ownAnswer,
     reviewedQuestionCount: snapshot.reviewedQuestionCount,
     reviewVersion: snapshot.reviewVersion,
   });

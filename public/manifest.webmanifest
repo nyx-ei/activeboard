@@ -2,7 +2,7 @@
   "name": "ActiveBoard",
   "short_name": "ActiveBoard",
   "description": "Phone-first collaborative study platform for real-time medical exam prep.",
-  "start_url": "/en",
+  "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f8fafc",

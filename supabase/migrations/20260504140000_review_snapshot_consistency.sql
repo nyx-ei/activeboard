@@ -29,6 +29,8 @@ begin
   select
     q.id,
     q.session_id,
+    q.correct_option,
+    q.review_version,
     q.asked_by,
     s.group_id,
     s.leader_id
@@ -51,6 +53,22 @@ begin
     return;
   end if;
 
+  if question_row.correct_option is not null then
+    if upper(question_row.correct_option) <> normalized_correct_option then
+      return;
+    end if;
+
+    select count(*)::bigint
+    into updated_answer_count
+    from public.answers a
+    where a.question_id = target_question_id
+      and a.answer_state = 'submitted';
+
+    return query
+    select target_question_id, question_row.review_version, updated_answer_count;
+    return;
+  end if;
+
   update public.questions q
   set
     correct_option = normalized_correct_option,
@@ -63,7 +81,8 @@ begin
 
   update public.answers a
   set is_correct = upper(coalesce(a.selected_option, '')) = normalized_correct_option
-  where a.question_id = target_question_id;
+  where a.question_id = target_question_id
+    and a.answer_state = 'submitted';
 
   get diagnostics updated_answer_count = row_count;
 
@@ -78,7 +97,8 @@ create or replace function public.activeboard_get_review_question_snapshot(
 )
 returns table (
   question jsonb,
-  answers jsonb,
+  distribution jsonb,
+  own_answer jsonb,
   reviewed_question_count bigint,
   review_version bigint
 )
@@ -90,6 +110,7 @@ declare
   actor_user_id uuid := auth.uid();
   session_row record;
   clamped_index integer;
+  member_count bigint;
 begin
   if actor_user_id is null then
     return;
@@ -113,6 +134,11 @@ begin
     return;
   end if;
 
+  select count(*)::bigint
+  into member_count
+  from public.group_members gm
+  where gm.group_id = session_row.group_id;
+
   clamped_index := greatest(
     0,
     least(target_question_index, greatest(session_row.question_goal - 1, 0))
@@ -131,25 +157,37 @@ begin
       'correct_option', q.correct_option,
       'review_version', q.review_version
     ) as question,
-    coalesce(
-      (
-        select jsonb_agg(
-          jsonb_build_object(
-            'id', a.id,
-            'question_id', a.question_id,
-            'user_id', a.user_id,
-            'selected_option', a.selected_option,
-            'confidence', a.confidence,
-            'is_correct', a.is_correct,
-            'answered_at', a.answered_at
-          )
-          order by a.answered_at, a.id
-        )
-        from public.answers a
-        where a.question_id = q.id
-      ),
-      '[]'::jsonb
-    ) as answers,
+    (
+      select jsonb_build_object(
+        'A', count(*) filter (where a.answer_state = 'submitted' and upper(coalesce(a.selected_option, '')) = 'A'),
+        'B', count(*) filter (where a.answer_state = 'submitted' and upper(coalesce(a.selected_option, '')) = 'B'),
+        'C', count(*) filter (where a.answer_state = 'submitted' and upper(coalesce(a.selected_option, '')) = 'C'),
+        'D', count(*) filter (where a.answer_state = 'submitted' and upper(coalesce(a.selected_option, '')) = 'D'),
+        'E', count(*) filter (where a.answer_state = 'submitted' and upper(coalesce(a.selected_option, '')) = 'E'),
+        'blank', count(*) filter (
+          where a.answer_state = 'submitted'
+            and upper(coalesce(a.selected_option, '')) not in ('A', 'B', 'C', 'D', 'E')
+        ),
+        'skipped',
+          count(*) filter (where a.answer_state = 'skipped')
+          + greatest(member_count - count(*), 0)
+      )
+      from public.answers a
+      where a.question_id = q.id
+    ) as distribution,
+    (
+      select jsonb_build_object(
+        'answer_state', own.answer_state,
+        'selected_option', own.selected_option,
+        'confidence', own.confidence,
+        'is_correct', own.is_correct,
+        'answered_at', own.answered_at
+      )
+      from public.answers own
+      where own.question_id = q.id
+        and own.user_id = actor_user_id
+      limit 1
+    ) as own_answer,
     (
       select count(*)::bigint
       from public.questions reviewed

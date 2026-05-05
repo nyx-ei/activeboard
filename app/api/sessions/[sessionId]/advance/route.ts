@@ -102,6 +102,13 @@ export async function POST(request: Request, { params }: RouteContext) {
     },
   });
 
+  if (session.leader_id !== user.id) {
+    return NextResponse.json(
+      { ok: false, message: await getFeedback('captainOnlyAction') },
+      { status: 403 },
+    );
+  }
+
   if (session.status !== 'active' || questionIndex >= session.question_goal) {
     return NextResponse.json(
       { ok: false, message: await getFeedback('actionFailed') },
