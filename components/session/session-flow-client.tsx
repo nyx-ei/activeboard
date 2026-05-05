@@ -17,7 +17,10 @@ type ServerAction = (formData: FormData) => void | Promise<void>;
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 type SubmitAnswerResponse = {
   ok: boolean;
+  code?: string;
   message?: string;
+  refetch?: boolean;
+  retryable?: boolean;
   redirectTo?: string;
   selectedOption?: string | null;
   confidence?: ConfidenceLevel | null;
@@ -40,7 +43,14 @@ type QueuedSaveRequest = {
 };
 type QueuedSaveResult<TPayload> =
   | { ok: true; payload: TPayload; elapsedMs: number }
-  | { ok: false; message?: string; redirectTo?: string; elapsedMs: number };
+  | {
+      ok: false;
+      code?: string;
+      message?: string;
+      redirectTo?: string;
+      refetch?: boolean;
+      elapsedMs: number;
+    };
 
 const PENDING_SAVE_STORAGE_KEY = 'activeboard:pending-session-saves:v1';
 const queuedSaveRequests = new Map<
@@ -132,8 +142,11 @@ async function postQueuedSave<TPayload>(
       const payload = (await response
         .json()
         .catch(parseFallback)) as TPayload & {
+        code?: string;
         ok?: boolean;
         message?: string;
+        refetch?: boolean;
+        retryable?: boolean;
         redirectTo?: string;
       };
 
@@ -150,10 +163,23 @@ async function postQueuedSave<TPayload>(
 
       lastMessage = payload.message;
       redirectTo = payload.redirectTo;
+      if (payload.refetch || payload.retryable === false) {
+        forgetPendingSave(request.key);
+        return {
+          ok: false,
+          code: payload.code,
+          message: lastMessage,
+          redirectTo,
+          refetch: payload.refetch,
+          elapsedMs: Math.round(performance.now() - startedAt),
+        };
+      }
+
       if (redirectTo) {
         forgetPendingSave(request.key);
         return {
           ok: false,
+          code: payload.code,
           message: lastMessage,
           redirectTo,
           elapsedMs: Math.round(performance.now() - startedAt),
@@ -509,6 +535,9 @@ export function SessionAnswerForm({
       }
 
       activeSubmitPromiseRef.current = null;
+      if (result.refetch) {
+        router.refresh();
+      }
       setSaveStatus('error');
       setSubmissionError(result.message ?? labels.submitPending);
     },
