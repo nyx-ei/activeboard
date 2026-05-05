@@ -310,6 +310,7 @@ export function SessionAnswerForm({
   onQuestionAdvanced,
   onSessionCompleted,
   onQuestionAdvanceFailed,
+  canAdvanceQuestion,
   labels,
 }: {
   advanceAction: ServerAction;
@@ -337,6 +338,7 @@ export function SessionAnswerForm({
   }) => void;
   onSessionCompleted?: (href: string) => void;
   onQuestionAdvanceFailed?: () => void;
+  canAdvanceQuestion: boolean;
   labels: {
     confidenceTitle: string;
     confidenceLow: string;
@@ -349,6 +351,7 @@ export function SessionAnswerForm({
     nextQuestion: string;
     nextQuestionPending: string;
     allAnswersReceived: string;
+    waitingForCaptainAdvance: string;
   };
 }) {
   const router = useRouter();
@@ -875,30 +878,36 @@ export function SessionAnswerForm({
           <div className="text-center text-sm font-bold text-brand">
             {labels.allAnswersReceived}
           </div>
-          <button
-            type="button"
-            disabled={advanceStatus === 'saving'}
-            onClick={() => {
-              void advanceToNextQuestion();
-            }}
-            className="relative h-10 w-full rounded-[7px] bg-[#223047] px-4 py-2 text-sm font-extrabold text-white transition hover:bg-[#2a3a55] disabled:cursor-not-allowed disabled:opacity-70"
-            aria-busy={advanceStatus === 'saving'}
-          >
-            <span
-              className={advanceStatus === 'saving' ? 'text-transparent' : ''}
+          {canAdvanceQuestion ? (
+            <button
+              type="button"
+              disabled={advanceStatus === 'saving'}
+              onClick={() => {
+                void advanceToNextQuestion();
+              }}
+              className="relative h-10 w-full rounded-[7px] bg-[#223047] px-4 py-2 text-sm font-extrabold text-white transition hover:bg-[#2a3a55] disabled:cursor-not-allowed disabled:opacity-70"
+              aria-busy={advanceStatus === 'saving'}
             >
-              {labels.nextQuestion} <span aria-hidden="true">&gt;</span>
-            </span>
-            {advanceStatus === 'saving' ? (
-              <span className="absolute inset-0 inline-flex items-center justify-center gap-2">
-                <span
-                  className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
-                  aria-hidden="true"
-                />
-                {labels.nextQuestionPending}
+              <span
+                className={advanceStatus === 'saving' ? 'text-transparent' : ''}
+              >
+                {labels.nextQuestion} <span aria-hidden="true">&gt;</span>
               </span>
-            ) : null}
-          </button>
+              {advanceStatus === 'saving' ? (
+                <span className="absolute inset-0 inline-flex items-center justify-center gap-2">
+                  <span
+                    className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+                    aria-hidden="true"
+                  />
+                  {labels.nextQuestionPending}
+                </span>
+              ) : null}
+            </button>
+          ) : (
+            <p className="rounded-[7px] border border-white/[0.08] bg-[#101827] px-3 py-2 text-center text-xs font-bold text-slate-400">
+              {labels.waitingForCaptainAdvance}
+            </p>
+          )}
         </>
       ) : null}
     </div>

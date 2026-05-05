@@ -602,6 +602,7 @@
                     "nextQuestion":  "Question suivante",
                     "nextQuestionPending":  "Sauvegarde...",
                     "allAnswersSubmitted":  "Toutes les réponses soumises !",
+                    "waitingForCaptainAdvance":  "En attente du capitaine pour continuer.",
                     "questionsCompletedValue":  "{current}/{total} questions complétées",
                     "goToReview":  "Passer à la révision",
                     "quitSession":  "Quitter",
@@ -981,6 +982,7 @@
                      "questionActive":  "Termine la question en cours avant d\u0027en lancer une autre.",
                      "questionClosed":  "Cette question n\u0027accepte plus de réponses.",
                      "answerWindowClosed":  "Le temps de réponse est écoulé pour cette question.",
+                    "captainOnlyAction":  "Seul le capitaine de la session peut faire cette action.",
                     "minimumMembers":  "Au moins 2 membres du groupe sont nécessaires pour démarrer une session.",
                     "minimumMembersRequired":  "Minimum 2 membres requis pour démarrer une session."
                 }

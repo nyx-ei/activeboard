@@ -602,6 +602,7 @@
     "nextQuestion": "Next question",
     "nextQuestionPending": "Saving...",
     "allAnswersSubmitted": "All answers submitted!",
+    "waitingForCaptainAdvance": "Waiting for the captain to continue.",
     "questionsCompletedValue": "{current}/{total} questions completed",
     "goToReview": "Go to review",
     "quitSession": "Quit",
@@ -981,6 +982,7 @@
     "questionActive": "Finish the current question before launching a new one.",
     "questionClosed": "This question is no longer accepting answers.",
     "answerWindowClosed": "The answer timer has expired for this question.",
+    "captainOnlyAction": "Only the session captain can do this.",
     "minimumMembers": "At least 2 group members are required to start a session.",
     "minimumMembersRequired": "Minimum 2 members required to start a session."
   }
