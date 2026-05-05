@@ -93,6 +93,7 @@ export default async function SessionPage({
       answeredCount >= questionGoal &&
       searchParams.stage !== 'review');
   const isReview = searchParams.stage === 'review';
+  const canAdvanceQuestion = data.session.leader_id === user.id;
 
   if (data.session.status === 'scheduled') {
     const timerLabel =
@@ -138,6 +139,7 @@ export default async function SessionPage({
             nextQuestion: t('nextQuestion'),
             nextQuestionPending: t('nextQuestionPending'),
             allAnswersReceived: t('allAnswersSubmitted'),
+            waitingForCaptainAdvance: t('waitingForCaptainAdvance'),
             allAnswersSubmitted: t('allAnswersSubmitted'),
             questionsCompletedValue: t('questionsCompletedValue', {
               current: questionGoal,
@@ -196,7 +198,6 @@ export default async function SessionPage({
 
   if (isReview && question) {
     const reviewQuestion = question as ReviewQuestion;
-    const questionAnswers = data.currentQuestionAnswers;
     const reviewedQuestionCount =
       'reviewedQuestionCount' in data &&
       typeof data.reviewedQuestionCount === 'number'
@@ -215,19 +216,19 @@ export default async function SessionPage({
           locale={locale}
           sessionId={params.sessionId}
           sessionTitle={data.session.name ?? data.group.name}
-          userId={user.id}
           questionGoal={questionGoal}
-          memberCount={data.members.length}
           initialQuestionIndex={currentIndex}
           initialReviewedQuestionCount={reviewedQuestionCount}
           initialQuestion={reviewQuestion}
-          initialAnswers={questionAnswers}
+          initialDistribution={data.currentQuestionDistribution}
+          initialOwnAnswer={data.currentUserAnswer}
           labels={{
             reviewShort: t('reviewShort'),
             previous: t('previous'),
             next: t('next'),
             questionUpper: t('questionUpper'),
             distribution: t('distribution'),
+            skippedAnswer: t('skippedAnswer'),
             finishSession: t('finishSession'),
             finishSessionPending: t('finishSessionPending'),
             correctAnswer: t('correctAnswer'),
@@ -237,6 +238,7 @@ export default async function SessionPage({
             updateAndNext: t('updateAndNextReview'),
             savePending: t('saveReviewPending'),
             quitConfirm: quitConfirmLabels,
+            reviewLocked: t('reviewLocked'),
             reviewStatus: {
               clearMastery: t('reviewStatus.clearMastery'),
               overconfidence: t('reviewStatus.overconfidence'),
@@ -271,16 +273,13 @@ export default async function SessionPage({
     );
   }
 
-  const myAnswer =
-    data.currentQuestionAnswers.find((answer) => answer.user_id === user.id) ??
-    null;
-  const questionAnswers = data.currentQuestionAnswers;
+  const myAnswer = data.currentUserAnswer;
   const isQuestionExpired =
     Boolean(question.answer_deadline_at) &&
     new Date(question.answer_deadline_at ?? '').getTime() <= Date.now();
   const submittedCount = isQuestionExpired
     ? memberCount
-    : questionAnswers.length;
+    : data.currentQuestionSubmittedCount;
 
   return (
     <main className="flex flex-1 flex-col">
@@ -301,6 +300,7 @@ export default async function SessionPage({
         timerMode={data.session.timer_mode}
         timerSeconds={data.session.timer_seconds}
         startedAt={data.session.started_at}
+        canAdvanceQuestion={canAdvanceQuestion}
         initialAnswer={myAnswer?.selected_option}
         initialConfidence={
           myAnswer?.confidence as ConfidenceLevel | null | undefined
@@ -321,6 +321,7 @@ export default async function SessionPage({
           nextQuestion: t('nextQuestion'),
           nextQuestionPending: t('nextQuestionPending'),
           allAnswersReceived: t('allAnswersSubmitted'),
+          waitingForCaptainAdvance: t('waitingForCaptainAdvance'),
           allAnswersSubmitted: t('allAnswersSubmitted'),
           questionsCompletedValue: t('questionsCompletedValue', {
             current: questionGoal,

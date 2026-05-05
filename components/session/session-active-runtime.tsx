@@ -26,6 +26,7 @@ type SessionActiveRuntimeProps = {
   timerMode: 'per_question' | 'global';
   timerSeconds: number;
   startedAt: string | null;
+  canAdvanceQuestion: boolean;
   initialSubmittedCount: number;
   initialMemberCount: number;
   initialAnswerDeadlineAt: string | null;
@@ -45,6 +46,7 @@ type SessionActiveRuntimeProps = {
     nextQuestion: string;
     nextQuestionPending: string;
     allAnswersReceived: string;
+    waitingForCaptainAdvance: string;
     allAnswersSubmitted: string;
     questionsCompletedValue: string;
     goToReview: string;
@@ -68,6 +70,7 @@ export function SessionActiveRuntime({
   timerMode,
   timerSeconds,
   startedAt,
+  canAdvanceQuestion,
   initialSubmittedCount,
   initialMemberCount,
   initialAnswerDeadlineAt,
@@ -328,6 +331,7 @@ export function SessionActiveRuntime({
           answerDeadlineAt={answerDeadlineAt}
           submittedCount={submittedCount}
           memberCount={memberCount}
+          canAdvanceQuestion={canAdvanceQuestion}
           onSubmissionStateChange={setIsSubmitting}
           onAnswerPersisted={(
             savedAnswer,
@@ -420,6 +424,7 @@ export function SessionActiveRuntime({
             nextQuestion: labels.nextQuestion,
             nextQuestionPending: labels.nextQuestionPending,
             allAnswersReceived: labels.allAnswersReceived,
+            waitingForCaptainAdvance: labels.waitingForCaptainAdvance,
           }}
         />
       </section>

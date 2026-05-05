@@ -41,6 +41,7 @@ type SessionStartRuntimeProps = {
     nextQuestion: string;
     nextQuestionPending: string;
     allAnswersReceived: string;
+    waitingForCaptainAdvance: string;
     allAnswersSubmitted: string;
     questionsCompletedValue: string;
     goToReview: string;
@@ -102,6 +103,7 @@ export function SessionStartRuntime({
         timerMode={timerMode}
         timerSeconds={timerSeconds}
         startedAt={activeQuestion.startedAt}
+        canAdvanceQuestion={true}
         initialAnswer={null}
         initialConfidence={null as ConfidenceLevel | null}
         initialSubmittedCount={0}
@@ -120,6 +122,7 @@ export function SessionStartRuntime({
           nextQuestion: labels.nextQuestion,
           nextQuestionPending: labels.nextQuestionPending,
           allAnswersReceived: labels.allAnswersReceived,
+          waitingForCaptainAdvance: labels.waitingForCaptainAdvance,
           allAnswersSubmitted: labels.allAnswersSubmitted,
           questionsCompletedValue: labels.questionsCompletedValue,
           goToReview: labels.goToReview,
