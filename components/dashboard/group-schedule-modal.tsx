@@ -156,16 +156,16 @@ export function GroupScheduleModal({
                     <span />
                   </div>
                   {drafts.map((draft) => (
-                    <div key={draft.id} className="rounded-[9px] bg-white/[0.045] p-3 text-sm">
+                    <div key={draft.id} className="rounded-[9px] bg-white/[0.045] p-2 text-sm min-[360px]:p-3">
                       {mode === 'edit' ? <input type="hidden" name="scheduleId" value={draft.id} /> : null}
-                      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(56px,0.7fr)_32px] items-center gap-2 min-[520px]:grid-cols-[minmax(88px,1fr)_minmax(68px,0.75fr)_minmax(68px,0.75fr)_minmax(52px,0.55fr)_28px]">
-                        <label className="col-span-4 block min-w-0 min-[520px]:col-span-1">
+                      <div className="grid grid-cols-[minmax(68px,1.1fr)_minmax(48px,0.78fr)_minmax(48px,0.78fr)_minmax(38px,0.58fr)_24px] items-center gap-1 min-[360px]:grid-cols-[minmax(78px,1.1fr)_minmax(56px,0.8fr)_minmax(56px,0.8fr)_minmax(46px,0.62fr)_28px] min-[360px]:gap-1.5 min-[520px]:grid-cols-[minmax(88px,1fr)_minmax(68px,0.75fr)_minmax(68px,0.75fr)_minmax(52px,0.55fr)_28px] min-[520px]:gap-2">
+                        <label className="block min-w-0">
                           <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500 min-[520px]:sr-only">
                             {locale === 'fr' ? 'Jour' : 'Day'}
                           </span>
                           <select
                             name="weekday"
-                            className="h-10 w-full min-w-0 rounded-[6px] border border-white/[0.08] bg-white/[0.08] px-2 text-xs font-bold text-white outline-none focus:border-brand"
+                            className="h-10 w-full min-w-0 truncate rounded-[6px] border border-white/[0.08] bg-white/[0.08] px-1.5 text-[11px] font-bold text-white outline-none focus:border-brand min-[360px]:px-2 min-[360px]:text-xs"
                             value={draft.weekday}
                             onChange={(event) => updateDraft(draft.id, { weekday: event.target.value })}
                           >
@@ -178,13 +178,13 @@ export function GroupScheduleModal({
                         </label>
                         <label className="block min-w-0">
                           <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500 min-[520px]:sr-only">
-                            {locale === 'fr' ? 'DÃ©but' : 'Start'}
+                            {locale === 'fr' ? 'Début' : 'Start'}
                           </span>
-                          <div className="flex h-10 min-w-0 items-center rounded-[6px] border border-white/[0.08] bg-white/[0.08] px-2 focus-within:border-brand">
+                          <div className="flex h-10 min-w-0 items-center overflow-hidden rounded-[6px] border border-white/[0.08] bg-white/[0.08] px-0.5 focus-within:border-brand min-[360px]:px-1">
                             <input
                               name="startTime"
                               type="time"
-                              className="min-w-0 flex-1 bg-transparent p-0 text-[11px] font-bold text-white outline-none sm:text-xs"
+                              className="w-full min-w-0 flex-1 bg-transparent p-0 text-center text-[11px] font-bold text-white outline-none [color-scheme:dark] min-[360px]:text-xs [&::-webkit-calendar-picker-indicator]:hidden"
                               value={draft.startTime}
                               onChange={(event) => updateDraft(draft.id, { startTime: event.target.value })}
                             />
@@ -194,11 +194,11 @@ export function GroupScheduleModal({
                           <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500 min-[520px]:sr-only">
                             {locale === 'fr' ? 'Fin' : 'End'}
                           </span>
-                          <div className="flex h-10 min-w-0 items-center rounded-[6px] border border-white/[0.08] bg-white/[0.08] px-2 focus-within:border-brand">
+                          <div className="flex h-10 min-w-0 items-center overflow-hidden rounded-[6px] border border-white/[0.08] bg-white/[0.08] px-0.5 focus-within:border-brand min-[360px]:px-1">
                             <input
                               name="endTime"
                               type="time"
-                              className="min-w-0 flex-1 bg-transparent p-0 text-[11px] font-bold text-white outline-none sm:text-xs"
+                              className="w-full min-w-0 flex-1 bg-transparent p-0 text-center text-[11px] font-bold text-white outline-none [color-scheme:dark] min-[360px]:text-xs [&::-webkit-calendar-picker-indicator]:hidden"
                               value={draft.endTime}
                               onChange={(event) => updateDraft(draft.id, { endTime: event.target.value })}
                             />
@@ -213,19 +213,19 @@ export function GroupScheduleModal({
                             type="number"
                             min="1"
                             max="500"
-                            className="h-10 w-full min-w-0 rounded-[6px] border border-white/[0.08] bg-white/[0.08] px-2 text-center text-xs font-bold text-white outline-none focus:border-brand"
+                            className="h-10 w-full min-w-0 rounded-[6px] border border-white/[0.08] bg-white/[0.08] px-0.5 text-center text-[11px] font-bold text-white outline-none focus:border-brand min-[360px]:px-1 min-[360px]:text-xs"
                             value={draft.questionGoal}
                             onChange={(event) => updateDraft(draft.id, { questionGoal: event.target.value })}
                             aria-label={labels.questionGoal}
                           />
                         </label>
-                        <div className="flex h-full items-end justify-center min-[520px]:items-center">
+                        <div className="flex h-10 self-end items-center justify-center min-[520px]:self-auto">
                           {draft.persisted ? (
-                            <button type="submit" formAction={deleteAction} name="deleteScheduleId" value={draft.id} className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition hover:bg-white/[0.06] hover:text-white" aria-label={labels.removeDay}>
+                            <button type="submit" formAction={deleteAction} name="deleteScheduleId" value={draft.id} className="flex h-10 w-6 min-w-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-white/[0.06] hover:text-white min-[360px]:w-7" aria-label={labels.removeDay}>
                               <Trash2 className="h-4 w-4" aria-hidden="true" />
                             </button>
                           ) : (
-                            <button type="button" onClick={() => removeDraft(draft.id)} className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition hover:bg-white/[0.06] hover:text-white" aria-label={labels.removeDay}>
+                            <button type="button" onClick={() => removeDraft(draft.id)} className="flex h-10 w-6 min-w-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-white/[0.06] hover:text-white min-[360px]:w-7" aria-label={labels.removeDay}>
                               <Trash2 className="h-4 w-4" aria-hidden="true" />
                             </button>
                           )}
