@@ -964,6 +964,7 @@
                      "sessionStarted":  "Session démarrée.",
                      "sessionCompleted":  "Session terminée.",
                      "leaderPassed":  "Le rôle de capitaine a été transféré.",
+                     "sessionStateChanged":  "L'état de la session a changé. Actualisation du capitaine en cours.",
                      "questionLaunched":  "Question lancée avec timer.",
                      "answerSubmitted":  "Réponse envoyée.",
                      "answerRevealed":  "Réponse révélée.",

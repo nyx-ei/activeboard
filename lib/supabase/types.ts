@@ -17,6 +17,8 @@ export type Json =
 
 type AnswersRow = {
   answer_state: AnswerState;
+  answer_request_mode: 'submit' | 'timeout';
+  answer_request_sequence: number;
   answered_at: string;
   confidence: ConfidenceLevel | null;
   id: string;
@@ -28,6 +30,8 @@ type AnswersRow = {
 
 type AnswersInsert = {
   answer_state?: AnswerState;
+  answer_request_mode?: 'submit' | 'timeout';
+  answer_request_sequence?: number;
   answered_at?: string;
   confidence?: ConfidenceLevel | null;
   id?: string;
@@ -39,6 +43,8 @@ type AnswersInsert = {
 
 type AnswersUpdate = {
   answer_state?: AnswerState;
+  answer_request_mode?: 'submit' | 'timeout';
+  answer_request_sequence?: number;
   answered_at?: string;
   confidence?: ConfidenceLevel | null;
   id?: string;
@@ -780,6 +786,38 @@ export type Database = {
       };
     };
     Functions: {
+      activeboard_save_session_answer_concurrent: {
+        Args: {
+          target_question_id: string;
+          selected_option_input: string;
+          confidence_input: ConfidenceLevel | null;
+          request_sequence_input: number;
+          request_mode_input: 'submit' | 'timeout';
+        };
+        Returns: {
+          applied: boolean;
+          selected_option: string | null;
+          confidence: ConfidenceLevel | null;
+          request_sequence: number;
+          request_mode: 'submit' | 'timeout';
+        }[];
+      };
+      activeboard_transfer_session_captain: {
+        Args: {
+          target_session_id: string;
+          expected_leader_id: string | null;
+          target_user_id: string;
+          allowed_statuses: string[];
+        };
+        Returns: {
+          ok: boolean;
+          message_key: string | null;
+          group_id: string | null;
+          previous_leader_id: string | null;
+          current_leader_id: string | null;
+          state_changed: boolean;
+        }[];
+      };
       find_group_by_invite_code: {
         Args: {
           target_invite_code: string;

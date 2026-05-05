@@ -25,6 +25,7 @@ type SubmitAnswerResponse = {
   selectedOption?: string | null;
   confidence?: ConfidenceLevel | null;
   questionId?: string;
+  applied?: boolean;
 };
 type AdvanceQuestionResponse = {
   ok?: boolean;
@@ -471,6 +472,7 @@ export function SessionAnswerForm({
 
   const submitAnswer = useCallback(
     async (mode: 'submit' | 'timeout') => {
+      const requestSequence = Date.now();
       const resolvedSelectedOption =
         mode === 'timeout'
           ? '?'
@@ -510,6 +512,7 @@ export function SessionAnswerForm({
             customOption: normalizedCustomOption,
             confidence,
             mode,
+            requestSequence,
           },
         },
         () => ({ ok: false }),

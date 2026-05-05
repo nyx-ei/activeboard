@@ -35,6 +35,16 @@ type SubmitPayload = {
   customOption?: string | null;
   confidence?: string | null;
   mode?: 'submit' | 'timeout';
+  requestSequence?: number;
+};
+
+type ConcurrentAnswerSaveResult = {
+  applied: boolean | null;
+  selected_option: string | null;
+  confidence: string | null;
+  answer_state: 'submitted' | 'skipped' | null;
+  request_sequence: number | null;
+  request_mode: 'submit' | 'timeout' | null;
 };
 
 function runDeferredTasks(tasks: Array<Promise<unknown>>) {
@@ -56,6 +66,11 @@ export async function POST(request: Request, { params }: RouteContext) {
       ? confidenceValue
       : null;
   const mode = body?.mode === 'timeout' ? 'timeout' : 'submit';
+  const requestSequence =
+    typeof body?.requestSequence === 'number' &&
+    Number.isFinite(body.requestSequence)
+      ? Math.max(0, Math.trunc(body.requestSequence))
+      : Date.now();
   const perf = createPerfTracker(
     `submitSessionAnswerRoute:${sessionId}:${questionIndex}`,
   );
@@ -238,6 +253,35 @@ export async function POST(request: Request, { params }: RouteContext) {
     return lateSubmitResponse(deadlineDecision.reason);
   }
 
+  const saveAnswer = async (
+    requestMode: 'submit' | 'timeout',
+    option: string | null,
+    answerConfidence: string | null,
+  ) =>
+    (
+      supabase.schema('public') as unknown as {
+        rpc: (
+          fn: 'activeboard_save_session_answer_concurrent',
+          args: {
+            target_question_id: string;
+            selected_option_input: string | null;
+            confidence_input: string | null;
+            request_sequence_input: number;
+            request_mode_input: 'submit' | 'timeout';
+          },
+        ) => Promise<{
+          data: ConcurrentAnswerSaveResult[] | null;
+          error: { message?: string } | null;
+        }>;
+      }
+    ).rpc('activeboard_save_session_answer_concurrent', {
+      target_question_id: ensuredQuestion.id,
+      selected_option_input: option,
+      confidence_input: answerConfidence,
+      request_sequence_input: requestSequence,
+      request_mode_input: requestMode,
+    });
+
   if (mode === 'timeout') {
     if (existingAnswer?.selected_option) {
       perf.done({
@@ -256,16 +300,19 @@ export async function POST(request: Request, { params }: RouteContext) {
       });
     }
 
-    await supabase.schema('public').from('answers').upsert(
-      {
-        question_id: ensuredQuestion.id,
-        user_id: user.id,
-        answer_state: 'skipped',
-        selected_option: null,
-        confidence: null,
-      },
-      { onConflict: 'question_id,user_id', ignoreDuplicates: true },
+    const { data: saveRows, error: saveError } = await saveAnswer(
+      'timeout',
+      null,
+      null,
     );
+
+    if (saveError) {
+      return NextResponse.json(
+        { ok: false, message: await getFeedback('actionFailed') },
+        { status: 500 },
+      );
+    }
+    const savedAnswer = saveRows?.[0] ?? null;
     perf.step('answer_upserted');
     await recordSessionStateEvent(supabase, {
       sessionId,
@@ -281,27 +328,43 @@ export async function POST(request: Request, { params }: RouteContext) {
 
     return NextResponse.json({
       ok: true,
-      mode: 'timeout',
+      mode: savedAnswer?.request_mode ?? 'timeout',
       questionId: ensuredQuestion.id,
-      selectedOption: null,
-      confidence: null,
-      answerState: 'skipped',
+      selectedOption: savedAnswer?.selected_option ?? null,
+      confidence: savedAnswer?.confidence ?? null,
+      applied: Boolean(savedAnswer?.applied),
+      answerState: savedAnswer?.answer_state ?? 'skipped',
       deadlinePolicy: deadlineDecision.reason,
     });
   }
 
   const resolvedSelectedOption =
     selectedOption === '?' ? customOption : selectedOption;
-  await supabase.schema('public').from('answers').upsert(
-    {
-      question_id: ensuredQuestion.id,
-      user_id: user.id,
-      answer_state: 'submitted',
-      selected_option: resolvedSelectedOption,
-      confidence,
-    },
-    { onConflict: 'question_id,user_id' },
+  const { data: saveRows, error: saveError } = await saveAnswer(
+    'submit',
+    resolvedSelectedOption,
+    confidence,
   );
+
+  if (saveError) {
+    return NextResponse.json(
+      { ok: false, message: await getFeedback('actionFailed') },
+      { status: 500 },
+    );
+  }
+  const savedAnswer = saveRows?.[0] ?? null;
+  if (savedAnswer?.request_mode === 'timeout') {
+    return NextResponse.json({
+      ok: true,
+      mode: 'timeout',
+      questionId: ensuredQuestion.id,
+      selectedOption: savedAnswer.selected_option,
+      confidence: null,
+      answerState: savedAnswer.answer_state ?? 'skipped',
+      deadlinePolicy: deadlineDecision.reason,
+      applied: false,
+    });
+  }
   perf.step('answer_upserted');
   await recordSessionStateEvent(supabase, {
     sessionId,
@@ -346,9 +409,10 @@ export async function POST(request: Request, { params }: RouteContext) {
     ok: true,
     mode: 'submitted',
     questionId: ensuredQuestion.id,
-    selectedOption: resolvedSelectedOption,
-    confidence,
-    answerState: 'submitted',
+    selectedOption: savedAnswer?.selected_option ?? resolvedSelectedOption,
+    confidence: (savedAnswer?.confidence as typeof confidence) ?? confidence,
+    applied: Boolean(savedAnswer?.applied),
+    answerState: savedAnswer?.answer_state ?? 'submitted',
     deadlinePolicy: deadlineDecision.reason,
   });
 }
