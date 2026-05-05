@@ -36,6 +36,7 @@ type ReviewQuestion = {
   launched_at: string | null;
   answer_deadline_at: string | null;
   correct_option?: string | null;
+  review_version?: number;
 };
 
 export default async function SessionPage({

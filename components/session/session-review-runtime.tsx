@@ -34,6 +34,7 @@ type ReviewQuestion = {
   launched_at: string | null;
   answer_deadline_at: string | null;
   correct_option?: string | null;
+  review_version?: number;
 };
 
 type ReviewPayload = {
@@ -41,6 +42,7 @@ type ReviewPayload = {
   distribution: ReviewDistribution;
   ownAnswer: ReviewOwnAnswer | null;
   reviewedQuestionCount: number;
+  reviewVersion?: number;
 };
 
 type ReviewDistribution = {
@@ -132,12 +134,12 @@ export function SessionReviewRuntime({
   const canFinish = reviewedQuestionCount >= questionGoal;
 
   const loadQuestion = useCallback(
-    async (targetIndex: number, makeCurrent: boolean) => {
+    async (targetIndex: number, makeCurrent: boolean, force = false) => {
       const clampedIndex = Math.max(
         0,
         Math.min(targetIndex, Math.max(questionGoal - 1, 0)),
       );
-      if (cache[clampedIndex]) {
+      if (cache[clampedIndex] && !force) {
         if (makeCurrent) {
           setCurrentIndex(clampedIndex);
           window.history.replaceState(
@@ -176,6 +178,7 @@ export function SessionReviewRuntime({
             distribution: payload.distribution,
             ownAnswer: payload.ownAnswer,
             reviewedQuestionCount: payload.reviewedQuestionCount,
+            reviewVersion: payload.reviewVersion,
           },
         }));
         setReviewedQuestionCount((current) =>
@@ -204,6 +207,25 @@ export function SessionReviewRuntime({
     void loadQuestion(currentIndex - 1, false);
   }, [currentIndex, loadQuestion]);
 
+  useEffect(() => {
+    const refetchCurrentQuestion = () => {
+      void loadQuestion(currentIndex, false, true);
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refetchCurrentQuestion();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('online', refetchCurrentQuestion);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', refetchCurrentQuestion);
+    };
+  }, [currentIndex, loadQuestion]);
+
   const moveToQuestion = (targetIndex: number) => {
     void loadQuestion(targetIndex, true);
   };
@@ -228,7 +250,18 @@ export function SessionReviewRuntime({
             ...payload.question,
             correct_option: correctOption,
             phase: 'review',
+            review_version: (payload.question.review_version ?? 0) + 1,
           },
+          ownAnswer: payload.ownAnswer
+            ? {
+                ...payload.ownAnswer,
+                is_correct:
+                  payload.ownAnswer.answer_state === 'submitted'
+                    ? (payload.ownAnswer.selected_option ?? '').toUpperCase() ===
+                      correctOption
+                    : payload.ownAnswer.is_correct,
+              }
+            : null,
         },
       };
     });

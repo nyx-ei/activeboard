@@ -22,6 +22,7 @@ import {
   loadSessionRuntimeAccess,
   resolveSessionQuestion,
 } from '@/lib/session/flow';
+import { saveReviewSnapshot } from '@/lib/session/review-consistency';
 import { recordSessionStateEvent } from '@/lib/session/state-events';
 import {
   ANSWER_OPTIONS,
@@ -521,35 +522,26 @@ export async function saveReviewAnswerAction(formData: FormData) {
     );
   }
 
-  if (question.correct_option) {
-    const targetQuestionIndex =
-      advanceAfterSave && Number.isInteger(nextQuestionIndex)
-        ? Math.max(0, Math.min(nextQuestionIndex, session.question_goal - 1))
-        : questionIndex;
-    const feedback =
-      question.correct_option.toUpperCase() === correctOption
-        ? { tone: 'success' as const, message: t('reviewSaved') }
-        : { tone: 'error' as const, message: t('reviewQuestionLocked') };
+  const { result: reviewResult, error: reviewError } = await saveReviewSnapshot(
+    supabase,
+    {
+      sessionId,
+      questionId,
+      correctOption,
+    },
+  );
 
+  if (reviewError) {
     redirect(
       withFeedback(
-        `/${locale}/sessions/${sessionId}?stage=review&q=${targetQuestionIndex}`,
-        feedback.tone,
-        feedback.message,
+        `/${locale}/sessions/${sessionId}?stage=review&q=${questionIndex}`,
+        'error',
+        t('actionFailed'),
       ),
     );
   }
 
-  const { data: updatedQuestion } = await supabase
-    .schema('public')
-    .from('questions')
-    .update({ correct_option: correctOption, phase: 'review' })
-    .eq('id', questionId)
-    .is('correct_option', null)
-    .select('id')
-    .maybeSingle();
-
-  if (!updatedQuestion?.id) {
+  if (!reviewResult?.question_id) {
     redirect(
       withFeedback(
         `/${locale}/sessions/${sessionId}?stage=review&q=${questionIndex}`,
@@ -558,26 +550,6 @@ export async function saveReviewAnswerAction(formData: FormData) {
       ),
     );
   }
-
-  const { data: answers } = await supabase
-    .schema('public')
-    .from('answers')
-    .select('id, selected_option')
-    .eq('answer_state', 'submitted')
-    .eq('question_id', questionId);
-
-  await Promise.all(
-    (answers ?? []).map((answer) =>
-      supabase
-        .schema('public')
-        .from('answers')
-        .update({
-          is_correct:
-            (answer.selected_option ?? '').toUpperCase() === correctOption,
-        })
-        .eq('id', answer.id),
-    ),
-  );
 
   runDeferredTasks([
     logAppEvent({
@@ -589,6 +561,8 @@ export async function saveReviewAnswerAction(formData: FormData) {
       metadata: {
         question_id: questionId,
         correct_option: correctOption,
+        review_version: reviewResult.review_version,
+        answer_count: reviewResult.answer_count,
         source: 'review_flow',
       },
     }),
@@ -1142,33 +1116,26 @@ export async function revealAnswerAction(formData: FormData) {
     );
   }
 
-  if (safeQuestion.correct_option) {
+  const { result: reviewResult, error: reviewError } = await saveReviewSnapshot(
+    supabase,
+    {
+      sessionId,
+      questionId,
+      correctOption,
+    },
+  );
+
+  if (reviewError) {
     redirect(
       withFeedback(
         `/${locale}/sessions/${sessionId}`,
-        safeQuestion.correct_option.toUpperCase() === correctOption
-          ? 'success'
-          : 'error',
-        safeQuestion.correct_option.toUpperCase() === correctOption
-          ? t('answerRevealed')
-          : t('reviewQuestionLocked'),
+        'error',
+        t('actionFailed'),
       ),
     );
   }
 
-  const { data: updatedQuestion } = await supabase
-    .schema('public')
-    .from('questions')
-    .update({
-      correct_option: correctOption,
-      phase: 'review',
-    })
-    .eq('id', questionId)
-    .is('correct_option', null)
-    .select('id')
-    .maybeSingle();
-
-  if (!updatedQuestion?.id) {
+  if (!reviewResult?.question_id) {
     redirect(
       withFeedback(
         `/${locale}/sessions/${sessionId}`,
@@ -1177,26 +1144,6 @@ export async function revealAnswerAction(formData: FormData) {
       ),
     );
   }
-
-  const { data: answers } = await supabase
-    .schema('public')
-    .from('answers')
-    .select('id, selected_option')
-    .eq('answer_state', 'submitted')
-    .eq('question_id', questionId);
-
-  await Promise.all(
-    (answers ?? []).map((answer) =>
-      supabase
-        .schema('public')
-        .from('answers')
-        .update({
-          is_correct:
-            (answer.selected_option ?? '').toUpperCase() === correctOption,
-        })
-        .eq('id', answer.id),
-    ),
-  );
 
   runDeferredTasks([
     logAppEvent({
@@ -1208,7 +1155,8 @@ export async function revealAnswerAction(formData: FormData) {
       metadata: {
         question_id: questionId,
         correct_option: correctOption,
-        answer_count: answers?.length ?? 0,
+        review_version: reviewResult.review_version,
+        answer_count: reviewResult.answer_count,
       },
     }),
   ]);

@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 
-import { computeAnswerDistribution } from '@/lib/demo/distribution';
 import { createPerfTracker } from '@/lib/observability/perf';
 import {
   getCurrentAuthUser,
   getSessionAccessSnapshot,
   loadSessionRuntimeAccess,
 } from '@/lib/session/flow';
+import { getReviewQuestionSnapshot } from '@/lib/session/review-consistency';
 
 type RouteContext = {
   params: { sessionId: string };
@@ -47,67 +47,32 @@ export async function GET(request: Request, { params }: RouteContext) {
     return NextResponse.json({ ok: false }, { status: 403 });
   }
 
-  const clampedIndex = Math.max(
-    0,
-    Math.min(questionIndex, Math.max(session.question_goal - 1, 0)),
-  );
-  const [{ data: question }, { count: reviewedQuestionCount }] =
-    await Promise.all([
-      supabase
-        .schema('public')
-        .from('questions')
-        .select(
-          'id, body, options, order_index, phase, launched_at, answer_deadline_at, correct_option',
-        )
-        .eq('session_id', sessionId)
-        .eq('order_index', clampedIndex)
-        .maybeSingle(),
-      supabase
-        .schema('public')
-        .from('questions')
-        .select('id', { count: 'exact', head: true })
-        .eq('session_id', sessionId)
-        .not('correct_option', 'is', null),
-    ]);
-  perf.step('question_loaded');
+  const { snapshot, error } = await getReviewQuestionSnapshot(supabase, {
+    sessionId,
+    questionIndex,
+  });
+  perf.step('review_snapshot_loaded');
 
-  if (!question?.id) {
+  if (error) {
+    return NextResponse.json({ ok: false }, { status: 500 });
+  }
+
+  if (!snapshot?.question.id) {
     return NextResponse.json({ ok: false }, { status: 404 });
   }
 
-  const { data: answers } = await supabase
-    .schema('public')
-    .from('answers')
-    .select(
-      'id, question_id, user_id, answer_state, selected_option, confidence, is_correct, answered_at',
-    )
-    .eq('question_id', question.id);
-  perf.step('answers_loaded');
-  const answerRows = answers ?? [];
-  const ownAnswer =
-    answerRows.find((answer) => answer.user_id === user.id) ?? null;
   perf.done({
-    questionId: question.id,
-    questionIndex: clampedIndex,
-    answerCount: answerRows.length,
+    questionId: snapshot.question.id,
+    questionIndex: snapshot.question.order_index,
+    reviewVersion: snapshot.reviewVersion,
   });
 
   return NextResponse.json({
     ok: true,
-    question,
-    distribution: computeAnswerDistribution(
-      answerRows,
-      access?.member_count ?? 1,
-    ),
-    ownAnswer: ownAnswer
-      ? {
-          selected_option: ownAnswer.selected_option,
-          confidence: ownAnswer.confidence,
-          is_correct: ownAnswer.is_correct,
-          answered_at: ownAnswer.answered_at,
-          answer_state: ownAnswer.answer_state,
-        }
-      : null,
-    reviewedQuestionCount: reviewedQuestionCount ?? 0,
+    question: snapshot.question,
+    distribution: snapshot.distribution,
+    ownAnswer: snapshot.ownAnswer,
+    reviewedQuestionCount: snapshot.reviewedQuestionCount,
+    reviewVersion: snapshot.reviewVersion,
   });
 }

@@ -13,6 +13,7 @@
     "cleanup:qa-test-data": "node scripts/qa-test-data.js cleanup",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "test:review-consistency": "node --test tests/review-snapshot-consistency.test.mjs",
     "test:concurrency": "node --test tests/concurrency-safeguards.test.mjs",
     "test:api:skipped-answer": "node --test scripts/skipped-answer-state.test.mjs",
     "test:api:deadline": "node --test scripts/session-deadline-policy.test.mjs",
