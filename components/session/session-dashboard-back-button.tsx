@@ -36,6 +36,14 @@ export function SessionDashboardBackButton({
     return () => window.clearTimeout(id);
   }, [href, router]);
 
+  useEffect(() => {
+    if (!isConfirming) {
+      return;
+    }
+
+    router.prefetch(href as never);
+  }, [href, isConfirming, router]);
+
   const goBack = () => {
     if (isNavigating) {
       return;
@@ -63,6 +71,7 @@ export function SessionDashboardBackButton({
 
   const handleClick = () => {
     if (confirmLabels && !isConfirming) {
+      router.prefetch(href as never);
       setIsConfirming(true);
       return;
     }

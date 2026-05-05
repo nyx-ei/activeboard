@@ -80,6 +80,7 @@ type SessionReviewRuntimeProps = {
     saveAndNext: string;
     updateAndNext: string;
     savePending: string;
+    saved: string;
     quitConfirm: SessionLeaveConfirmLabels;
     reviewLocked: string;
     reviewStatus: Record<CertaintyCorrectnessStatus, string>;
@@ -257,8 +258,9 @@ export function SessionReviewRuntime({
                 ...payload.ownAnswer,
                 is_correct:
                   payload.ownAnswer.answer_state === 'submitted'
-                    ? (payload.ownAnswer.selected_option ?? '').toUpperCase() ===
-                      correctOption
+                    ? (
+                        payload.ownAnswer.selected_option ?? ''
+                      ).toUpperCase() === correctOption
                     : payload.ownAnswer.is_correct,
               }
             : null,
@@ -397,6 +399,7 @@ export function SessionReviewRuntime({
                 saveAndNext: labels.saveAndNext,
                 updateAndNext: labels.updateAndNext,
                 savePending: labels.savePending,
+                saved: labels.saved,
                 reviewLocked: labels.reviewLocked,
                 reviewStatus: labels.reviewStatus,
               }}

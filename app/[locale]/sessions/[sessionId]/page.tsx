@@ -238,6 +238,7 @@ export default async function SessionPage({
             saveAndNext: t('saveAndNextReview'),
             updateAndNext: t('updateAndNextReview'),
             savePending: t('saveReviewPending'),
+            saved: t('reviewSaved'),
             quitConfirm: quitConfirmLabels,
             reviewLocked: t('reviewLocked'),
             reviewStatus: {

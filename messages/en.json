@@ -621,6 +621,7 @@
     "saveAndNextReview": "Save and next",
     "updateAndNextReview": "Update and next",
     "saveReviewPending": "Saving review...",
+    "reviewSaved": "Review saved",
     "reviewLocked": "Reviewed question locked",
     "stabilityUnstable": "Unstable",
     "stabilityAlmostSolid": "Almost solid",

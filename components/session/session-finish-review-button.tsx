@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { markDashboardPayloadStale } from '@/components/dashboard/dashboard-data-cache';
+
 export function SessionFinishReviewButton({
   locale,
   sessionId,
@@ -47,7 +49,14 @@ export function SessionFinishReviewButton({
               } | null;
 
               if (payload?.redirectTo && response.ok) {
+                window.sessionStorage.removeItem(
+                  'activeboard:session-flow-active',
+                );
+                markDashboardPayloadStale('sessions');
+                markDashboardPayloadStale('performance');
+                router.prefetch(payload.redirectTo as never);
                 router.replace(payload.redirectTo as never);
+                window.setTimeout(() => router.refresh(), 0);
                 return;
               }
 
