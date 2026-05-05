@@ -355,6 +355,7 @@ export function SessionAnswerForm({
     selectedOption: string,
     confidence: ConfidenceLevel | null,
     questionId?: string | null,
+    questionIndex?: number,
   ) => void;
   onQuestionAdvanceRequested?: () => void;
   onQuestionAdvanced?: (question: {
@@ -496,7 +497,12 @@ export function SessionAnswerForm({
       if (!optimisticPersistedRef.current) {
         optimisticPersistedRef.current = true;
         setOptimisticAnswer(resolvedSelectedOption);
-        onAnswerPersisted?.(resolvedSelectedOption, resolvedConfidence);
+        onAnswerPersisted?.(
+          resolvedSelectedOption,
+          resolvedConfidence,
+          questionId,
+          questionIndex,
+        );
       }
 
       const savePromise = enqueueSessionSave<SubmitAnswerResponse>(
@@ -526,6 +532,7 @@ export function SessionAnswerForm({
           result.payload.selectedOption ?? resolvedSelectedOption,
           result.payload.confidence ?? resolvedConfidence,
           result.payload.questionId ?? questionId,
+          questionIndex,
         );
         activeSubmitPromiseRef.current = null;
         return;
