@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { SessionDashboardBackButton } from '@/components/session/session-dashboard-back-button';
 import { SessionFinishReviewButton } from '@/components/session/session-finish-review-button';
 import { ReviewAnswerForm } from '@/components/session/session-flow-client';
+import type { SessionLeaveConfirmLabels } from '@/components/session/session-leave-confirm-dialog';
 import type {
   CertaintyCorrectnessStatus,
   ConfidenceLevel,
@@ -77,6 +78,7 @@ type SessionReviewRuntimeProps = {
     saveAndNext: string;
     updateAndNext: string;
     savePending: string;
+    quitConfirm: SessionLeaveConfirmLabels;
     reviewLocked: string;
     reviewStatus: Record<CertaintyCorrectnessStatus, string>;
   };
@@ -236,7 +238,12 @@ export function SessionReviewRuntime({
     <main className="flex flex-1 flex-col">
       <header className="bg-background/95 sticky top-0 z-20 border-b border-white/[0.07] backdrop-blur">
         <div className="mx-auto flex min-h-10 w-full max-w-[700px] items-center gap-2 px-4 py-1 sm:grid sm:min-h-16 sm:grid-cols-[40px_minmax(0,1fr)_40px] sm:gap-3 sm:py-0">
-          <SessionDashboardBackButton locale={locale} label={sessionTitle} />
+          <SessionDashboardBackButton
+            locale={locale}
+            label={sessionTitle}
+            sessionId={sessionId}
+            confirmLabels={labels.quitConfirm}
+          />
           <div className="min-w-0 flex-1 sm:hidden">
             <p className="truncate text-xs font-semibold leading-tight text-white">
               {sessionTitle}

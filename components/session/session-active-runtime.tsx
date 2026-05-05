@@ -11,6 +11,7 @@ import {
   SessionHeaderMeta,
 } from '@/components/session/session-flow-client';
 import { SessionQuitButton } from '@/components/session/session-quit-button';
+import type { SessionLeaveConfirmLabels } from '@/components/session/session-leave-confirm-dialog';
 import { Link } from '@/i18n/navigation';
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
 
@@ -51,6 +52,7 @@ type SessionActiveRuntimeProps = {
     goToReview: string;
     quitSession: string;
     quitPending: string;
+    quitConfirm: SessionLeaveConfirmLabels;
   };
   advanceAction: ServerAction;
 };
@@ -280,6 +282,7 @@ export function SessionActiveRuntime({
               sessionId={sessionId}
               label={labels.quitSession}
               pendingLabel={labels.quitPending}
+              confirmLabels={labels.quitConfirm}
             />
           </div>
         </section>
@@ -294,6 +297,8 @@ export function SessionActiveRuntime({
           <SessionDashboardBackButton
             locale={locale}
             label={labels.quitSession}
+            sessionId={sessionId}
+            confirmLabels={labels.quitConfirm}
           />
           <div className="min-w-0 flex-1 text-center">
             <p className="truncate text-sm font-extrabold uppercase tracking-[0.18em] text-white sm:text-base">
