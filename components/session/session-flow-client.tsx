@@ -985,6 +985,7 @@ export function ReviewAnswerForm({
     saveAndNext: string;
     updateAndNext: string;
     savePending: string;
+    saved: string;
     reviewLocked: string;
     reviewStatus: Record<CertaintyCorrectnessStatus, string>;
   };
@@ -1206,9 +1207,9 @@ export function ReviewAnswerForm({
           ) : null}
         </button>
       )}
-      {saveStatus === 'saved' ? (
+      {saveStatus === 'saved' && !isReviewed ? (
         <p className="text-center text-xs font-bold uppercase tracking-[0.14em] text-brand">
-          {labels.save}
+          {labels.saved}
         </p>
       ) : null}
       {submissionError ? (

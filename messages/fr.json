@@ -621,6 +621,7 @@
                     "saveAndNextReview":  "Sauvegarder et suivante",
                     "updateAndNextReview":  "Mettre à jour et suivante",
                     "saveReviewPending":  "Sauvegarde de la révision...",
+                    "reviewSaved":  "Révision sauvegardée",
                     "reviewLocked":  "Question révisée verrouillée",
                     "stabilityUnstable":  "Instable",
                     "stabilityAlmostSolid":  "Presque solide",
