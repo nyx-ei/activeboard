@@ -1,7 +1,7 @@
 'use client';
 
 import { BarChart3 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { SessionDashboardBackButton } from '@/components/session/session-dashboard-back-button';
 import { SessionFinishReviewButton } from '@/components/session/session-finish-review-button';
@@ -12,10 +12,7 @@ import type {
 } from '@/lib/demo/confidence';
 import { ANSWER_OPTIONS, type AnswerOption } from '@/lib/types/demo';
 
-type ReviewAnswer = {
-  id: string;
-  question_id?: string;
-  user_id: string;
+type ReviewOwnAnswer = {
   selected_option: string | null;
   confidence: string | null;
   is_correct: boolean | null;
@@ -35,21 +32,30 @@ type ReviewQuestion = {
 
 type ReviewPayload = {
   question: ReviewQuestion;
-  answers: ReviewAnswer[];
+  distribution: ReviewDistribution;
+  ownAnswer: ReviewOwnAnswer | null;
   reviewedQuestionCount: number;
+};
+
+type ReviewDistribution = {
+  A: number;
+  B: number;
+  C: number;
+  D: number;
+  E: number;
+  blank: number;
 };
 
 type SessionReviewRuntimeProps = {
   locale: string;
   sessionId: string;
   sessionTitle: string;
-  userId: string;
   questionGoal: number;
-  memberCount: number;
   initialQuestionIndex: number;
   initialReviewedQuestionCount: number;
   initialQuestion: ReviewQuestion;
-  initialAnswers: ReviewAnswer[];
+  initialDistribution: ReviewDistribution;
+  initialOwnAnswer: ReviewOwnAnswer | null;
   labels: {
     reviewShort: string;
     previous: string;
@@ -68,45 +74,28 @@ type SessionReviewRuntimeProps = {
   };
 };
 
-function getDistribution(
-  answers: Array<{ selected_option: string | null }>,
-  memberCount: number,
+const REVIEW_DISTRIBUTION_OPTIONS: Array<AnswerOption | '?'> = [
+  ...ANSWER_OPTIONS,
+  '?',
+];
+
+function getDistributionCount(
+  distribution: ReviewDistribution,
+  option: AnswerOption | '?',
 ) {
-  const distribution = new Map<string, number>();
-  for (const option of [...ANSWER_OPTIONS, '?']) {
-    distribution.set(option, 0);
-  }
-
-  for (const answer of answers) {
-    const option = (answer.selected_option ?? '?').toUpperCase();
-    const normalizedOption = ANSWER_OPTIONS.includes(option as AnswerOption)
-      ? option
-      : '?';
-    distribution.set(
-      normalizedOption,
-      (distribution.get(normalizedOption) ?? 0) + 1,
-    );
-  }
-
-  const submitted = answers.length;
-  distribution.set(
-    '?',
-    Math.max(distribution.get('?') ?? 0, Math.max(0, memberCount - submitted)),
-  );
-  return distribution;
+  return option === '?' ? distribution.blank : distribution[option];
 }
 
 export function SessionReviewRuntime({
   locale,
   sessionId,
   sessionTitle,
-  userId,
   questionGoal,
-  memberCount,
   initialQuestionIndex,
   initialReviewedQuestionCount,
   initialQuestion,
-  initialAnswers,
+  initialDistribution,
+  initialOwnAnswer,
   labels,
 }: SessionReviewRuntimeProps) {
   const [currentIndex, setCurrentIndex] = useState(initialQuestionIndex);
@@ -116,20 +105,16 @@ export function SessionReviewRuntime({
   const [cache, setCache] = useState<Record<number, ReviewPayload>>({
     [initialQuestionIndex]: {
       question: initialQuestion,
-      answers: initialAnswers,
+      distribution: initialDistribution,
+      ownAnswer: initialOwnAnswer,
       reviewedQuestionCount: initialReviewedQuestionCount,
     },
   });
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
   const currentPayload = cache[currentIndex];
   const currentQuestion = currentPayload?.question ?? initialQuestion;
-  const currentAnswers = currentPayload?.answers ?? initialAnswers;
-  const distribution = useMemo(
-    () => getDistribution(currentAnswers, memberCount),
-    [currentAnswers, memberCount],
-  );
-  const myReviewAnswer =
-    currentAnswers.find((answer) => answer.user_id === userId) ?? null;
+  const distribution = currentPayload?.distribution ?? initialDistribution;
+  const myReviewAnswer = currentPayload?.ownAnswer ?? initialOwnAnswer;
   const isLastQuestion = currentIndex >= questionGoal - 1;
   const isFirstQuestion = currentIndex <= 0;
   const canFinish = reviewedQuestionCount >= questionGoal;
@@ -176,7 +161,8 @@ export function SessionReviewRuntime({
           ...current,
           [clampedIndex]: {
             question: payload.question,
-            answers: payload.answers,
+            distribution: payload.distribution,
+            ownAnswer: payload.ownAnswer,
             reviewedQuestionCount: payload.reviewedQuestionCount,
           },
         }));
@@ -302,7 +288,7 @@ export function SessionReviewRuntime({
             </h2>
           </div>
           <div className="mt-2 grid grid-cols-6 gap-1.5 sm:hidden">
-            {[...ANSWER_OPTIONS, '?'].map((option) => (
+            {REVIEW_DISTRIBUTION_OPTIONS.map((option) => (
               <div
                 key={option}
                 className={`inline-flex min-h-7 items-center justify-center rounded-[7px] border px-1 text-center text-[10px] font-semibold ${
@@ -311,12 +297,12 @@ export function SessionReviewRuntime({
                     : 'border-white/[0.08] bg-[#121b2e] text-slate-400'
                 }`}
               >
-                {option}-{distribution.get(option) ?? 0}
+                {option}-{getDistributionCount(distribution, option)}
               </div>
             ))}
           </div>
           <div className="mt-8 hidden grid-cols-3 gap-x-2 gap-y-4 min-[420px]:grid-cols-6 sm:grid">
-            {[...ANSWER_OPTIONS, '?'].map((option) => (
+            {REVIEW_DISTRIBUTION_OPTIONS.map((option) => (
               <div
                 key={option}
                 className="flex w-full flex-col items-center gap-1 text-center"
@@ -332,7 +318,7 @@ export function SessionReviewRuntime({
                   {currentQuestion.correct_option === option ? ' *' : ''}
                 </span>
                 <span className="text-xs font-bold text-slate-600">
-                  {distribution.get(option) ?? 0}
+                  {getDistributionCount(distribution, option)}
                 </span>
               </div>
             ))}
