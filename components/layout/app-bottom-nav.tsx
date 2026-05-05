@@ -29,6 +29,15 @@ type NavItem = {
   href: string;
   Icon: LucideIcon;
 };
+
+type IdleWindow = Window & {
+  requestIdleCallback?: (
+    callback: IdleRequestCallback,
+    options?: IdleRequestOptions,
+  ) => number;
+  cancelIdleCallback?: (handle: number) => void;
+};
+
 function getDashboardView(value: string | null): 'sessions' | 'performance' {
   return value === 'performance' ? 'performance' : 'sessions';
 }
@@ -104,6 +113,45 @@ export function AppBottomNav({
   }, [pathname, searchParams]);
 
   useEffect(() => {
+    if (isSessionPath) {
+      return;
+    }
+
+    const prefetchVisibleRoutes = () => {
+      for (const item of items) {
+        if (isDashboardPath && item.key !== 'group') {
+          continue;
+        }
+
+        router.prefetch(item.href);
+      }
+    };
+
+    const idleWindow = window as IdleWindow;
+    if (typeof idleWindow.requestIdleCallback === 'function') {
+      const idleId = idleWindow.requestIdleCallback(prefetchVisibleRoutes, {
+        timeout: 1800,
+      });
+      return () => idleWindow.cancelIdleCallback?.(idleId);
+    }
+
+    const timeoutId = window.setTimeout(prefetchVisibleRoutes, 900);
+    return () => window.clearTimeout(timeoutId);
+  }, [isDashboardPath, isSessionPath, items, router]);
+
+  useEffect(() => {
+    if (!pendingTargetKey) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setPendingTargetKey(null);
+    }, 6000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [pendingTargetKey]);
+
+  useEffect(() => {
     if (isDashboardPath) {
       setOptimisticDashboardView(dashboardView);
     }
@@ -177,8 +225,9 @@ export function AppBottomNav({
       >
         {items.map((item) => {
           const Icon = item.Icon;
-          const active =
-            item.key === 'group'
+          const active = pendingTargetKey
+            ? pendingTargetKey === item.key
+            : item.key === 'group'
               ? isGroupsPath
               : isDashboardPath && optimisticDashboardView === item.key;
           const busy = pendingTargetKey === item.key && !active;
@@ -208,6 +257,7 @@ export function AppBottomNav({
               className={className}
               aria-busy={busy || undefined}
               onMouseEnter={() => prefetchIfRouteChange(item)}
+              onPointerDown={() => prefetchIfRouteChange(item)}
               onTouchStart={() => prefetchIfRouteChange(item)}
               onClick={() => {
                 if (isDashboardPath && item.key !== 'group') {
