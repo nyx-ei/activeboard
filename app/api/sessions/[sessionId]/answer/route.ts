@@ -9,6 +9,10 @@ import { logAppEvent } from '@/lib/logging/logger';
 import { sendTrialWarningEmailIfNeeded } from '@/lib/notifications/trial-progress';
 import { createPerfTracker } from '@/lib/observability/perf';
 import {
+  decideAnswerDeadline,
+  hasQuestionAdvanced,
+} from '@/lib/session/deadline-policy';
+import {
   getCurrentAuthUser,
   getSessionAccessSnapshot,
   isCustomAnswerLetter,
@@ -38,6 +42,7 @@ function runDeferredTasks(tasks: Array<Promise<unknown>>) {
 }
 
 export async function POST(request: Request, { params }: RouteContext) {
+  const requestReceivedAtMs = Date.now();
   const sessionId = params.sessionId;
   const body = (await request.json().catch(() => null)) as SubmitPayload | null;
   const locale = (body?.locale ?? 'en') as AppLocale;
@@ -64,6 +69,19 @@ export async function POST(request: Request, { params }: RouteContext) {
     });
     return feedbackTranslations(key);
   };
+
+  const lateSubmitResponse = async (reason: string) =>
+    NextResponse.json(
+      {
+        ok: false,
+        code: 'answer_window_closed',
+        reason,
+        retryable: false,
+        refetch: true,
+        message: await getFeedback('answerWindowClosed'),
+      },
+      { status: 409 },
+    );
 
   if (!sessionId) {
     return NextResponse.json(
@@ -170,21 +188,83 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
   perf.step('question_ensured');
 
-  const questionAnswerDeadlineAt = ensuredQuestion.answerDeadlineAt;
-  const isExpired = questionAnswerDeadlineAt
-    ? new Date(questionAnswerDeadlineAt).getTime() <= Date.now()
-    : false;
+  const [
+    { data: questionState },
+    { data: latestQuestion },
+    { data: existingAnswer },
+  ] = await Promise.all([
+    supabase
+      .schema('public')
+      .from('questions')
+      .select('id, order_index, phase, answer_deadline_at')
+      .eq('id', ensuredQuestion.id)
+      .eq('session_id', sessionId)
+      .maybeSingle(),
+    supabase
+      .schema('public')
+      .from('questions')
+      .select('order_index')
+      .eq('session_id', sessionId)
+      .not('launched_at', 'is', null)
+      .order('order_index', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .schema('public')
+      .from('answers')
+      .select('answer_state, selected_option, confidence')
+      .eq('question_id', ensuredQuestion.id)
+      .eq('user_id', user.id)
+      .maybeSingle(),
+  ]);
+  const questionAnswerDeadlineAt =
+    questionState?.answer_deadline_at ?? ensuredQuestion.answerDeadlineAt;
+  const deadlineDecision = decideAnswerDeadline({
+    deadlineAt: questionAnswerDeadlineAt,
+    mode,
+    requestReceivedAtMs,
+  });
   perf.step('deadline_checked');
 
-  if (mode === 'timeout' || isExpired) {
+  if (
+    !questionState?.id ||
+    questionState.phase !== 'answering' ||
+    hasQuestionAdvanced(questionIndex, latestQuestion?.order_index ?? null)
+  ) {
+    return lateSubmitResponse('question_advanced');
+  }
+
+  if (!deadlineDecision.accepted) {
+    return lateSubmitResponse(deadlineDecision.reason);
+  }
+
+  if (mode === 'timeout') {
+    if (existingAnswer?.selected_option) {
+      perf.done({
+        mode: 'timeout_existing_answer',
+        questionId: ensuredQuestion.id,
+      });
+
+      return NextResponse.json({
+        ok: true,
+        mode: 'timeout',
+        questionId: ensuredQuestion.id,
+        selectedOption: existingAnswer.selected_option,
+        confidence: existingAnswer.confidence,
+        answerState: existingAnswer.answer_state ?? 'submitted',
+        deadlinePolicy: deadlineDecision.reason,
+      });
+    }
+
     await supabase.schema('public').from('answers').upsert(
       {
         question_id: ensuredQuestion.id,
         user_id: user.id,
-        selected_option: '?',
+        answer_state: 'skipped',
+        selected_option: null,
         confidence: null,
       },
-      { onConflict: 'question_id,user_id' },
+      { onConflict: 'question_id,user_id', ignoreDuplicates: true },
     );
     perf.step('answer_upserted');
     await recordSessionStateEvent(supabase, {
@@ -203,8 +283,10 @@ export async function POST(request: Request, { params }: RouteContext) {
       ok: true,
       mode: 'timeout',
       questionId: ensuredQuestion.id,
-      selectedOption: '?',
+      selectedOption: null,
       confidence: null,
+      answerState: 'skipped',
+      deadlinePolicy: deadlineDecision.reason,
     });
   }
 
@@ -214,6 +296,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     {
       question_id: ensuredQuestion.id,
       user_id: user.id,
+      answer_state: 'submitted',
       selected_option: resolvedSelectedOption,
       confidence,
     },
@@ -256,6 +339,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     questionId: ensuredQuestion.id,
     selectedOption: resolvedSelectedOption,
     confidence,
+    deadlinePolicy: deadlineDecision.reason,
   });
 
   return NextResponse.json({
@@ -264,5 +348,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     questionId: ensuredQuestion.id,
     selectedOption: resolvedSelectedOption,
     confidence,
+    answerState: 'submitted',
+    deadlinePolicy: deadlineDecision.reason,
   });
 }

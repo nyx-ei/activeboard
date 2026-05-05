@@ -17,7 +17,10 @@ type ServerAction = (formData: FormData) => void | Promise<void>;
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 type SubmitAnswerResponse = {
   ok: boolean;
+  code?: string;
   message?: string;
+  refetch?: boolean;
+  retryable?: boolean;
   redirectTo?: string;
   selectedOption?: string | null;
   confidence?: ConfidenceLevel | null;
@@ -40,7 +43,14 @@ type QueuedSaveRequest = {
 };
 type QueuedSaveResult<TPayload> =
   | { ok: true; payload: TPayload; elapsedMs: number }
-  | { ok: false; message?: string; redirectTo?: string; elapsedMs: number };
+  | {
+      ok: false;
+      code?: string;
+      message?: string;
+      redirectTo?: string;
+      refetch?: boolean;
+      elapsedMs: number;
+    };
 
 const PENDING_SAVE_STORAGE_KEY = 'activeboard:pending-session-saves:v1';
 const queuedSaveRequests = new Map<
@@ -132,8 +142,11 @@ async function postQueuedSave<TPayload>(
       const payload = (await response
         .json()
         .catch(parseFallback)) as TPayload & {
+        code?: string;
         ok?: boolean;
         message?: string;
+        refetch?: boolean;
+        retryable?: boolean;
         redirectTo?: string;
       };
 
@@ -150,10 +163,23 @@ async function postQueuedSave<TPayload>(
 
       lastMessage = payload.message;
       redirectTo = payload.redirectTo;
+      if (payload.refetch || payload.retryable === false) {
+        forgetPendingSave(request.key);
+        return {
+          ok: false,
+          code: payload.code,
+          message: lastMessage,
+          redirectTo,
+          refetch: payload.refetch,
+          elapsedMs: Math.round(performance.now() - startedAt),
+        };
+      }
+
       if (redirectTo) {
         forgetPendingSave(request.key);
         return {
           ok: false,
+          code: payload.code,
           message: lastMessage,
           redirectTo,
           elapsedMs: Math.round(performance.now() - startedAt),
@@ -310,6 +336,7 @@ export function SessionAnswerForm({
   onQuestionAdvanced,
   onSessionCompleted,
   onQuestionAdvanceFailed,
+  canAdvanceQuestion,
   labels,
 }: {
   advanceAction: ServerAction;
@@ -337,6 +364,7 @@ export function SessionAnswerForm({
   }) => void;
   onSessionCompleted?: (href: string) => void;
   onQuestionAdvanceFailed?: () => void;
+  canAdvanceQuestion: boolean;
   labels: {
     confidenceTitle: string;
     confidenceLow: string;
@@ -349,6 +377,7 @@ export function SessionAnswerForm({
     nextQuestion: string;
     nextQuestionPending: string;
     allAnswersReceived: string;
+    waitingForCaptainAdvance: string;
   };
 }) {
   const router = useRouter();
@@ -506,6 +535,9 @@ export function SessionAnswerForm({
       }
 
       activeSubmitPromiseRef.current = null;
+      if (result.refetch) {
+        router.refresh();
+      }
       setSaveStatus('error');
       setSubmissionError(result.message ?? labels.submitPending);
     },
@@ -875,30 +907,36 @@ export function SessionAnswerForm({
           <div className="text-center text-sm font-bold text-brand">
             {labels.allAnswersReceived}
           </div>
-          <button
-            type="button"
-            disabled={advanceStatus === 'saving'}
-            onClick={() => {
-              void advanceToNextQuestion();
-            }}
-            className="relative h-10 w-full rounded-[7px] bg-[#223047] px-4 py-2 text-sm font-extrabold text-white transition hover:bg-[#2a3a55] disabled:cursor-not-allowed disabled:opacity-70"
-            aria-busy={advanceStatus === 'saving'}
-          >
-            <span
-              className={advanceStatus === 'saving' ? 'text-transparent' : ''}
+          {canAdvanceQuestion ? (
+            <button
+              type="button"
+              disabled={advanceStatus === 'saving'}
+              onClick={() => {
+                void advanceToNextQuestion();
+              }}
+              className="relative h-10 w-full rounded-[7px] bg-[#223047] px-4 py-2 text-sm font-extrabold text-white transition hover:bg-[#2a3a55] disabled:cursor-not-allowed disabled:opacity-70"
+              aria-busy={advanceStatus === 'saving'}
             >
-              {labels.nextQuestion} <span aria-hidden="true">&gt;</span>
-            </span>
-            {advanceStatus === 'saving' ? (
-              <span className="absolute inset-0 inline-flex items-center justify-center gap-2">
-                <span
-                  className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
-                  aria-hidden="true"
-                />
-                {labels.nextQuestionPending}
+              <span
+                className={advanceStatus === 'saving' ? 'text-transparent' : ''}
+              >
+                {labels.nextQuestion} <span aria-hidden="true">&gt;</span>
               </span>
-            ) : null}
-          </button>
+              {advanceStatus === 'saving' ? (
+                <span className="absolute inset-0 inline-flex items-center justify-center gap-2">
+                  <span
+                    className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+                    aria-hidden="true"
+                  />
+                  {labels.nextQuestionPending}
+                </span>
+              ) : null}
+            </button>
+          ) : (
+            <p className="rounded-[7px] border border-white/[0.08] bg-[#101827] px-3 py-2 text-center text-xs font-bold text-slate-400">
+              {labels.waitingForCaptainAdvance}
+            </p>
+          )}
         </>
       ) : null}
     </div>
@@ -937,6 +975,7 @@ export function ReviewAnswerForm({
     saveAndNext: string;
     updateAndNext: string;
     savePending: string;
+    reviewLocked: string;
     reviewStatus: Record<CertaintyCorrectnessStatus, string>;
   };
 }) {
@@ -950,8 +989,11 @@ export function ReviewAnswerForm({
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const isPending = saveStatus === 'saving';
+  const isReviewed = Boolean(savedCorrectOption);
   const canSubmit =
-    Boolean(correctOption) && correctOption !== savedCorrectOption;
+    !isReviewed &&
+    Boolean(correctOption) &&
+    correctOption !== savedCorrectOption;
   const hasCorrectOption = Boolean(correctOption);
   const normalizedParticipantAnswer = participantAnswer?.toUpperCase() ?? '?';
   const isCorrect = hasCorrectOption
@@ -1003,7 +1045,7 @@ export function ReviewAnswerForm({
       }
 
       const key = event.key.toUpperCase();
-      if (ANSWER_OPTIONS.includes(key as AnswerOption)) {
+      if (!isReviewed && ANSWER_OPTIONS.includes(key as AnswerOption)) {
         event.preventDefault();
         setCorrectOption(key as AnswerOption);
       }
@@ -1011,7 +1053,7 @@ export function ReviewAnswerForm({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [isReviewed]);
 
   async function saveReviewAnswer() {
     if (!canSubmit || isPending) {
@@ -1089,14 +1131,16 @@ export function ReviewAnswerForm({
             key={option}
             type="button"
             onClick={() => {
-              if (option !== '?') setCorrectOption(option as AnswerOption);
+              if (!isReviewed && option !== '?') {
+                setCorrectOption(option as AnswerOption);
+              }
             }}
             className={`h-9 w-full rounded-[7px] border text-sm font-extrabold transition sm:h-11 sm:text-base ${
               correctOption === option
                 ? 'border-brand bg-brand text-white'
-                : 'hover:border-brand/50 border-white/[0.08] bg-[#202b3e] text-slate-300'
+                : 'hover:border-brand/50 border-white/[0.08] bg-[#202b3e] text-slate-300 disabled:hover:border-white/[0.08]'
             }`}
-            disabled={false}
+            disabled={isReviewed || isPending}
           >
             {option}
           </button>
@@ -1122,35 +1166,35 @@ export function ReviewAnswerForm({
           </div>
         </section>
       ) : null}
-      <button
-        type="button"
-        className="button-primary disabled:bg-brand/40 relative h-9 w-full rounded-[7px] py-2 text-sm disabled:cursor-not-allowed disabled:text-white/60 disabled:opacity-70 sm:h-10"
-        disabled={!canSubmit || isPending}
-        onClick={() => {
-          void saveReviewAnswer();
-        }}
-        aria-disabled={!canSubmit || isPending}
-        aria-busy={isPending}
-      >
-        <span className={isPending ? 'text-transparent' : ''}>
-          {isLastQuestion
-            ? savedCorrectOption
-              ? labels.update
-              : labels.save
-            : savedCorrectOption
-              ? labels.updateAndNext
-              : labels.saveAndNext}
-        </span>
-        {isPending ? (
-          <span className="absolute inset-0 inline-flex items-center justify-center gap-2">
-            <span
-              className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
-              aria-hidden="true"
-            />
-            {labels.savePending}
+      {isReviewed ? (
+        <p className="text-center text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+          {labels.reviewLocked}
+        </p>
+      ) : (
+        <button
+          type="button"
+          className="button-primary disabled:bg-brand/40 relative h-9 w-full rounded-[7px] py-2 text-sm disabled:cursor-not-allowed disabled:text-white/60 disabled:opacity-70 sm:h-10"
+          disabled={!canSubmit || isPending}
+          onClick={() => {
+            void saveReviewAnswer();
+          }}
+          aria-disabled={!canSubmit || isPending}
+          aria-busy={isPending}
+        >
+          <span className={isPending ? 'text-transparent' : ''}>
+            {isLastQuestion ? labels.save : labels.saveAndNext}
           </span>
-        ) : null}
-      </button>
+          {isPending ? (
+            <span className="absolute inset-0 inline-flex items-center justify-center gap-2">
+              <span
+                className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+                aria-hidden="true"
+              />
+              {labels.savePending}
+            </span>
+          ) : null}
+        </button>
+      )}
       {saveStatus === 'saved' ? (
         <p className="text-center text-xs font-bold uppercase tracking-[0.14em] text-brand">
           {labels.save}

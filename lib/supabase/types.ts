@@ -1,6 +1,7 @@
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
 import type { AvailabilityGrid } from '@/lib/schedule/availability';
 import type {
+  AnswerState,
   DimensionOfCare,
   ErrorType,
   PhysicianActivity,
@@ -15,6 +16,7 @@ export type Json =
   | Json[];
 
 type AnswersRow = {
+  answer_state: AnswerState;
   answered_at: string;
   confidence: ConfidenceLevel | null;
   id: string;
@@ -25,6 +27,7 @@ type AnswersRow = {
 };
 
 type AnswersInsert = {
+  answer_state?: AnswerState;
   answered_at?: string;
   confidence?: ConfidenceLevel | null;
   id?: string;
@@ -35,6 +38,7 @@ type AnswersInsert = {
 };
 
 type AnswersUpdate = {
+  answer_state?: AnswerState;
   answered_at?: string;
   confidence?: ConfidenceLevel | null;
   id?: string;

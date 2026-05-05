@@ -266,7 +266,8 @@ export async function submitSessionStepAction(formData: FormData) {
       {
         question_id: resolvedQuestionId,
         user_id: user.id,
-        selected_option: '?',
+        answer_state: 'skipped',
+        selected_option: null,
         confidence: null,
       },
       { onConflict: 'question_id,user_id' },
@@ -281,6 +282,7 @@ export async function submitSessionStepAction(formData: FormData) {
     {
       question_id: resolvedQuestionId,
       user_id: user.id,
+      answer_state: 'submitted',
       selected_option: resolvedSelectedOption,
       confidence,
     },
@@ -366,7 +368,8 @@ export async function timeoutSessionStepAction(formData: FormData) {
     {
       question_id: resolvedQuestionId,
       user_id: user.id,
-      selected_option: '?',
+      answer_state: 'skipped',
+      selected_option: null,
       confidence: null,
     },
     { onConflict: 'question_id,user_id' },
@@ -406,6 +409,10 @@ export async function advanceSessionStepAction(formData: FormData) {
     questionIndex >= session.question_goal
   ) {
     await redirectSessionActionError(locale, sessionId, 'actionFailed');
+  }
+
+  if (session.leader_id !== user.id) {
+    await redirectSessionActionError(locale, sessionId, 'notAuthorized');
   }
 
   const nextIndex = questionIndex + 1;
@@ -451,15 +458,7 @@ export async function advanceSessionStepAction(formData: FormData) {
 export async function quitIncompleteSessionAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
   const sessionId = formData.get('sessionId') as string;
-  const { supabase, session } = await requireSessionMember(sessionId, locale);
-
-  if (session.status !== 'completed') {
-    await supabase
-      .schema('public')
-      .from('sessions')
-      .update({ status: 'incomplete' })
-      .eq('id', sessionId);
-  }
+  await requireSessionMember(sessionId, locale);
 
   redirect(`/${locale}/dashboard?view=sessions`);
 }
@@ -507,11 +506,11 @@ export async function saveReviewAnswerAction(formData: FormData) {
   const { data: question } = await supabase
     .schema('public')
     .from('questions')
-    .select('id, session_id')
+    .select('id, session_id, correct_option')
     .eq('id', questionId)
     .maybeSingle();
 
-  if (!question || question.session_id !== sessionId) {
+  if (!question) {
     redirect(
       withFeedback(
         `/${locale}/sessions/${sessionId}?stage=review&q=${questionIndex}`,
@@ -521,16 +520,49 @@ export async function saveReviewAnswerAction(formData: FormData) {
     );
   }
 
-  await supabase
+  if (question.correct_option) {
+    const targetQuestionIndex =
+      advanceAfterSave && Number.isInteger(nextQuestionIndex)
+        ? Math.max(0, Math.min(nextQuestionIndex, session.question_goal - 1))
+        : questionIndex;
+    const feedback =
+      question.correct_option.toUpperCase() === correctOption
+        ? { tone: 'success' as const, message: t('reviewSaved') }
+        : { tone: 'error' as const, message: t('reviewQuestionLocked') };
+
+    redirect(
+      withFeedback(
+        `/${locale}/sessions/${sessionId}?stage=review&q=${targetQuestionIndex}`,
+        feedback.tone,
+        feedback.message,
+      ),
+    );
+  }
+
+  const { data: updatedQuestion } = await supabase
     .schema('public')
     .from('questions')
     .update({ correct_option: correctOption, phase: 'review' })
-    .eq('id', questionId);
+    .eq('id', questionId)
+    .is('correct_option', null)
+    .select('id')
+    .maybeSingle();
+
+  if (!updatedQuestion?.id) {
+    redirect(
+      withFeedback(
+        `/${locale}/sessions/${sessionId}?stage=review&q=${questionIndex}`,
+        'error',
+        t('reviewQuestionLocked'),
+      ),
+    );
+  }
 
   const { data: answers } = await supabase
     .schema('public')
     .from('answers')
     .select('id, selected_option')
+    .eq('answer_state', 'submitted')
     .eq('question_id', questionId);
 
   await Promise.all(
@@ -986,6 +1018,7 @@ export async function submitAnswerAction(formData: FormData) {
     {
       question_id: questionId,
       user_id: user.id,
+      answer_state: 'submitted',
       selected_option: resolvedSelectedOption,
       confidence,
     },
@@ -1030,11 +1063,11 @@ export async function revealAnswerAction(formData: FormData) {
   const { data: question } = await supabase
     .schema('public')
     .from('questions')
-    .select('session_id, asked_by')
+    .select('session_id, asked_by, correct_option')
     .eq('id', questionId)
     .maybeSingle();
 
-  if (!question) {
+  if (!question || question.session_id !== sessionId) {
     redirect(
       withFeedback(
         `/${locale}/sessions/${sessionId}`,
@@ -1108,19 +1141,47 @@ export async function revealAnswerAction(formData: FormData) {
     );
   }
 
-  await supabase
+  if (safeQuestion.correct_option) {
+    redirect(
+      withFeedback(
+        `/${locale}/sessions/${sessionId}`,
+        safeQuestion.correct_option.toUpperCase() === correctOption
+          ? 'success'
+          : 'error',
+        safeQuestion.correct_option.toUpperCase() === correctOption
+          ? t('answerRevealed')
+          : t('reviewQuestionLocked'),
+      ),
+    );
+  }
+
+  const { data: updatedQuestion } = await supabase
     .schema('public')
     .from('questions')
     .update({
       correct_option: correctOption,
       phase: 'review',
     })
-    .eq('id', questionId);
+    .eq('id', questionId)
+    .is('correct_option', null)
+    .select('id')
+    .maybeSingle();
+
+  if (!updatedQuestion?.id) {
+    redirect(
+      withFeedback(
+        `/${locale}/sessions/${sessionId}`,
+        'error',
+        t('reviewQuestionLocked'),
+      ),
+    );
+  }
 
   const { data: answers } = await supabase
     .schema('public')
     .from('answers')
     .select('id, selected_option')
+    .eq('answer_state', 'submitted')
     .eq('question_id', questionId);
 
   await Promise.all(
