@@ -131,20 +131,64 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
   perf.step('session_validated');
 
+  const { data: question } = await supabase
+    .schema('public')
+    .from('questions')
+    .select('id, correct_option')
+    .eq('id', questionId)
+    .eq('session_id', sessionId)
+    .maybeSingle();
+  perf.step('question_loaded');
+
+  if (!question?.id) {
+    return NextResponse.json(
+      { ok: false, message: await getFeedback('notAuthorized') },
+      { status: 403 },
+    );
+  }
+
+  if (question.correct_option) {
+    if (question.correct_option.toUpperCase() === correctOption) {
+      const targetQuestionIndex =
+        advanceAfterSave && Number.isInteger(nextQuestionIndex)
+          ? Math.max(
+              0,
+              Math.min(
+                nextQuestionIndex,
+                Math.max(session.question_goal - 1, 0),
+              ),
+            )
+          : questionIndex;
+
+      return NextResponse.json({
+        ok: true,
+        redirectTo: `/${locale}/sessions/${sessionId}?stage=review&q=${targetQuestionIndex}`,
+        correctOption,
+        targetQuestionIndex,
+      });
+    }
+
+    return NextResponse.json(
+      { ok: false, message: await getFeedback('reviewQuestionLocked') },
+      { status: 409 },
+    );
+  }
+
   const { data: updatedQuestion } = await supabase
     .schema('public')
     .from('questions')
     .update({ correct_option: correctOption, phase: 'review' })
     .eq('id', questionId)
     .eq('session_id', sessionId)
+    .is('correct_option', null)
     .select('id')
     .maybeSingle();
   perf.step('question_updated');
 
   if (!updatedQuestion?.id) {
     return NextResponse.json(
-      { ok: false, message: await getFeedback('notAuthorized') },
-      { status: 403 },
+      { ok: false, message: await getFeedback('reviewQuestionLocked') },
+      { status: 409 },
     );
   }
 

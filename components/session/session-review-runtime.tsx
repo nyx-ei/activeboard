@@ -1,7 +1,7 @@
 'use client';
 
 import { BarChart3 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { SessionDashboardBackButton } from '@/components/session/session-dashboard-back-button';
 import { SessionFinishReviewButton } from '@/components/session/session-finish-review-button';
@@ -16,10 +16,7 @@ import {
   type AnswerState,
 } from '@/lib/types/demo';
 
-type ReviewAnswer = {
-  id: string;
-  question_id?: string;
-  user_id: string;
+type ReviewOwnAnswer = {
   answer_state?: AnswerState | null;
   selected_option: string | null;
   confidence: string | null;
@@ -40,21 +37,31 @@ type ReviewQuestion = {
 
 type ReviewPayload = {
   question: ReviewQuestion;
-  answers: ReviewAnswer[];
+  distribution: ReviewDistribution;
+  ownAnswer: ReviewOwnAnswer | null;
   reviewedQuestionCount: number;
+};
+
+type ReviewDistribution = {
+  A: number;
+  B: number;
+  C: number;
+  D: number;
+  E: number;
+  blank: number;
+  skipped: number;
 };
 
 type SessionReviewRuntimeProps = {
   locale: string;
   sessionId: string;
   sessionTitle: string;
-  userId: string;
   questionGoal: number;
-  memberCount: number;
   initialQuestionIndex: number;
   initialReviewedQuestionCount: number;
   initialQuestion: ReviewQuestion;
-  initialAnswers: ReviewAnswer[];
+  initialDistribution: ReviewDistribution;
+  initialOwnAnswer: ReviewOwnAnswer | null;
   labels: {
     reviewShort: string;
     previous: string;
@@ -70,57 +77,35 @@ type SessionReviewRuntimeProps = {
     saveAndNext: string;
     updateAndNext: string;
     savePending: string;
+    reviewLocked: string;
     reviewStatus: Record<CertaintyCorrectnessStatus, string>;
   };
 };
 
-function getDistribution(
-  answers: Array<{
-    answer_state?: AnswerState | null;
-    selected_option: string | null;
-  }>,
-  memberCount: number,
+const REVIEW_DISTRIBUTION_OPTIONS: Array<AnswerOption | '?' | 'skipped'> = [
+  ...ANSWER_OPTIONS,
+  '?',
+  'skipped',
+];
+
+function getDistributionCount(
+  distribution: ReviewDistribution,
+  option: AnswerOption | '?' | 'skipped',
 ) {
-  const distribution = new Map<string, number>();
-  for (const option of [...ANSWER_OPTIONS, '?', 'skipped']) {
-    distribution.set(option, 0);
-  }
-
-  for (const answer of answers) {
-    if (answer.answer_state === 'skipped') {
-      distribution.set('skipped', (distribution.get('skipped') ?? 0) + 1);
-      continue;
-    }
-
-    const option = (answer.selected_option ?? '?').toUpperCase();
-    const normalizedOption = ANSWER_OPTIONS.includes(option as AnswerOption)
-      ? option
-      : '?';
-    distribution.set(
-      normalizedOption,
-      (distribution.get(normalizedOption) ?? 0) + 1,
-    );
-  }
-
-  const submitted = answers.length;
-  distribution.set(
-    'skipped',
-    (distribution.get('skipped') ?? 0) + Math.max(0, memberCount - submitted),
-  );
-  return distribution;
+  if (option === '?') return distribution.blank;
+  return distribution[option];
 }
 
 export function SessionReviewRuntime({
   locale,
   sessionId,
   sessionTitle,
-  userId,
   questionGoal,
-  memberCount,
   initialQuestionIndex,
   initialReviewedQuestionCount,
   initialQuestion,
-  initialAnswers,
+  initialDistribution,
+  initialOwnAnswer,
   labels,
 }: SessionReviewRuntimeProps) {
   const [currentIndex, setCurrentIndex] = useState(initialQuestionIndex);
@@ -130,20 +115,16 @@ export function SessionReviewRuntime({
   const [cache, setCache] = useState<Record<number, ReviewPayload>>({
     [initialQuestionIndex]: {
       question: initialQuestion,
-      answers: initialAnswers,
+      distribution: initialDistribution,
+      ownAnswer: initialOwnAnswer,
       reviewedQuestionCount: initialReviewedQuestionCount,
     },
   });
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
   const currentPayload = cache[currentIndex];
   const currentQuestion = currentPayload?.question ?? initialQuestion;
-  const currentAnswers = currentPayload?.answers ?? initialAnswers;
-  const distribution = useMemo(
-    () => getDistribution(currentAnswers, memberCount),
-    [currentAnswers, memberCount],
-  );
-  const myReviewAnswer =
-    currentAnswers.find((answer) => answer.user_id === userId) ?? null;
+  const distribution = currentPayload?.distribution ?? initialDistribution;
+  const myReviewAnswer = currentPayload?.ownAnswer ?? initialOwnAnswer;
   const isLastQuestion = currentIndex >= questionGoal - 1;
   const isFirstQuestion = currentIndex <= 0;
   const canFinish = reviewedQuestionCount >= questionGoal;
@@ -190,7 +171,8 @@ export function SessionReviewRuntime({
           ...current,
           [clampedIndex]: {
             question: payload.question,
-            answers: payload.answers,
+            distribution: payload.distribution,
+            ownAnswer: payload.ownAnswer,
             reviewedQuestionCount: payload.reviewedQuestionCount,
           },
         }));
@@ -316,7 +298,7 @@ export function SessionReviewRuntime({
             </h2>
           </div>
           <div className="mt-2 grid grid-cols-4 gap-1.5 min-[420px]:grid-cols-7 sm:hidden">
-            {([...ANSWER_OPTIONS, '?', 'skipped'] as const).map((option) => (
+            {REVIEW_DISTRIBUTION_OPTIONS.map((option) => (
               <div
                 key={option}
                 className={`inline-flex min-h-7 items-center justify-center rounded-[7px] border px-1 text-center text-[10px] font-semibold ${
@@ -326,12 +308,12 @@ export function SessionReviewRuntime({
                 }`}
               >
                 {option === 'skipped' ? labels.skippedAnswer : option}-
-                {distribution.get(option) ?? 0}
+                {getDistributionCount(distribution, option)}
               </div>
             ))}
           </div>
           <div className="mt-8 hidden grid-cols-3 gap-x-2 gap-y-4 min-[420px]:grid-cols-7 sm:grid">
-            {([...ANSWER_OPTIONS, '?', 'skipped'] as const).map((option) => (
+            {REVIEW_DISTRIBUTION_OPTIONS.map((option) => (
               <div
                 key={option}
                 className="flex w-full flex-col items-center gap-1 text-center"
@@ -347,7 +329,7 @@ export function SessionReviewRuntime({
                   {currentQuestion.correct_option === option ? ' *' : ''}
                 </span>
                 <span className="text-xs font-bold text-slate-600">
-                  {distribution.get(option) ?? 0}
+                  {getDistributionCount(distribution, option)}
                 </span>
               </div>
             ))}
@@ -375,6 +357,7 @@ export function SessionReviewRuntime({
                 saveAndNext: labels.saveAndNext,
                 updateAndNext: labels.updateAndNext,
                 savePending: labels.savePending,
+                reviewLocked: labels.reviewLocked,
                 reviewStatus: labels.reviewStatus,
               }}
             />

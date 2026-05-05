@@ -602,6 +602,7 @@
     "nextQuestion": "Next question",
     "nextQuestionPending": "Saving...",
     "allAnswersSubmitted": "All answers submitted!",
+    "waitingForCaptainAdvance": "Waiting for the captain to continue.",
     "questionsCompletedValue": "{current}/{total} questions completed",
     "goToReview": "Go to review",
     "quitSession": "Quit",
@@ -616,6 +617,7 @@
     "saveAndNextReview": "Save and next",
     "updateAndNextReview": "Update and next",
     "saveReviewPending": "Saving review...",
+    "reviewLocked": "Reviewed question locked",
     "stabilityUnstable": "Unstable",
     "stabilityAlmostSolid": "Almost solid",
     "reviewStatus": {
@@ -968,6 +970,7 @@
     "passwordTooShort": "Password must contain at least 8 characters.",
     "notAuthorized": "You do not have access to this resource.",
     "deleteSessionNotAuthorized": "Only the current session captain, the session creator, or the group founder can delete this session.",
+    "reviewQuestionLocked": "This reviewed question can no longer be changed.",
     "groupFull": "This group is already full.",
     "invalidCode": "The invite code is invalid.",
     "invalidSessionCode": "The session code is invalid.",
@@ -982,6 +985,7 @@
     "questionActive": "Finish the current question before launching a new one.",
     "questionClosed": "This question is no longer accepting answers.",
     "answerWindowClosed": "The answer timer has expired for this question.",
+    "captainOnlyAction": "Only the session captain can do this.",
     "minimumMembers": "At least 2 group members are required to start a session.",
     "minimumMembersRequired": "Minimum 2 members required to start a session."
   }

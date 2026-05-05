@@ -602,6 +602,7 @@
                     "nextQuestion":  "Question suivante",
                     "nextQuestionPending":  "Sauvegarde...",
                     "allAnswersSubmitted":  "Toutes les réponses soumises !",
+                    "waitingForCaptainAdvance":  "En attente du capitaine pour continuer.",
                     "questionsCompletedValue":  "{current}/{total} questions complétées",
                     "goToReview":  "Passer à la révision",
                     "quitSession":  "Quitter",
@@ -616,6 +617,7 @@
                     "saveAndNextReview":  "Sauvegarder et suivante",
                     "updateAndNextReview":  "Mettre à jour et suivante",
                     "saveReviewPending":  "Sauvegarde de la révision...",
+                    "reviewLocked":  "Question révisée verrouillée",
                     "stabilityUnstable":  "Instable",
                     "stabilityAlmostSolid":  "Presque solide",
                     "reviewStatus":  {
@@ -968,6 +970,7 @@
                      "passwordTooShort":  "Le mot de passe doit contenir au moins 8 caractères.",
                      "notAuthorized":  "Tu n\u0027as pas accès à cette ressource.",
                      "deleteSessionNotAuthorized":  "Seuls le capitaine actuel de la session, le créateur de la session ou le fondateur du groupe peuvent supprimer cette session.",
+                     "reviewQuestionLocked":  "Cette question déjà révisée ne peut plus être modifiée.",
                      "groupFull":  "Ce groupe est déjà complet.",
                      "invalidCode":  "Le code d\u0027invitation est invalide.",
                      "invalidSessionCode":  "Le code de session est invalide.",
@@ -982,6 +985,7 @@
                      "questionActive":  "Termine la question en cours avant d\u0027en lancer une autre.",
                      "questionClosed":  "Cette question n\u0027accepte plus de réponses.",
                      "answerWindowClosed":  "Le temps de réponse est écoulé pour cette question.",
+                    "captainOnlyAction":  "Seul le capitaine de la session peut faire cette action.",
                     "minimumMembers":  "Au moins 2 membres du groupe sont nécessaires pour démarrer une session.",
                     "minimumMembersRequired":  "Minimum 2 membres requis pour démarrer une session."
                 }
