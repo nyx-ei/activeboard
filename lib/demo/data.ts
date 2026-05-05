@@ -1201,6 +1201,7 @@ export const getGroupData = cache(async (groupId: string, user: User) => {
           .schema('public')
           .from('answers')
           .select('question_id, user_id')
+          .eq('answer_state', 'submitted')
           .in('question_id', groupQuestionIds)
       : { data: [] as { question_id: string; user_id: string }[] };
 
@@ -1540,6 +1541,7 @@ export const getSessionPageData = cache(
         currentQuestion: null,
         currentQuestionSubmittedCount: 0,
         currentUserAnswer: null as {
+          answer_state?: 'submitted' | 'skipped' | null;
           selected_option: string | null;
           confidence: string | null;
           is_correct: boolean | null;
@@ -1553,6 +1555,7 @@ export const getSessionPageData = cache(
           id: string;
           question_id: string;
           user_id: string;
+          answer_state: 'submitted' | 'skipped';
           selected_option: string | null;
           confidence: string | null;
           is_correct: boolean | null;
@@ -1671,7 +1674,7 @@ export const getSessionPageData = cache(
               .schema('public')
               .from('answers')
               .select(
-                'user_id, selected_option, confidence, is_correct, answered_at',
+                'id, question_id, user_id, answer_state, selected_option, confidence, is_correct, answered_at',
               )
               .eq('question_id', currentReviewQuestion.id)
           ).data ?? [])
@@ -1694,6 +1697,7 @@ export const getSessionPageData = cache(
         currentQuestionSubmittedCount: currentQuestionAnswers.length,
         currentUserAnswer: currentUserAnswer
           ? {
+              answer_state: currentUserAnswer.answer_state,
               selected_option: currentUserAnswer.selected_option,
               confidence: currentUserAnswer.confidence,
               is_correct: currentUserAnswer.is_correct,
@@ -1708,6 +1712,7 @@ export const getSessionPageData = cache(
           id: string;
           question_id: string;
           user_id: string;
+          answer_state: 'submitted' | 'skipped';
           selected_option: string | null;
           confidence: string | null;
           is_correct: boolean | null;
@@ -1757,12 +1762,13 @@ export const getSessionPageData = cache(
             .schema('public')
             .from('answers')
             .select(
-              'user_id, selected_option, confidence, is_correct, answered_at',
+              'id, user_id, answer_state, selected_option, confidence, is_correct, answered_at',
             )
             .eq('question_id', currentQuestion.id)
         : Promise.resolve({
             data: [] as Array<{
               user_id: string;
+              answer_state: 'submitted' | 'skipped';
               selected_option: string | null;
               confidence: string | null;
               is_correct: boolean | null;
@@ -1789,6 +1795,7 @@ export const getSessionPageData = cache(
         questionAnswersResult.data
           ?.filter((answer) => answer.user_id === user.id)
           .map((answer) => ({
+            answer_state: answer.answer_state,
             selected_option: answer.selected_option,
             confidence: answer.confidence,
             is_correct: answer.is_correct,
@@ -1802,6 +1809,7 @@ export const getSessionPageData = cache(
         id: string;
         question_id: string;
         user_id: string;
+        answer_state: 'submitted' | 'skipped';
         selected_option: string | null;
         confidence: string | null;
         is_correct: boolean | null;
@@ -1877,7 +1885,7 @@ export const getSessionData = cache(async (sessionId: string, user: User) => {
           .schema('public')
           .from('answers')
           .select(
-            'id, user_id, selected_option, confidence, is_correct, answered_at',
+            'id, user_id, answer_state, selected_option, confidence, is_correct, answered_at',
           )
           .eq('question_id', currentQuestion.id)
       ).data ?? [])
@@ -1889,7 +1897,7 @@ export const getSessionData = cache(async (sessionId: string, user: User) => {
             .schema('public')
             .from('answers')
             .select(
-              'id, question_id, user_id, selected_option, confidence, is_correct, answered_at',
+              'id, question_id, user_id, answer_state, selected_option, confidence, is_correct, answered_at',
             )
             .in('question_id', questionIds)
         ).data ?? [])
@@ -2043,7 +2051,7 @@ export const getSessionSummaryData = cache(
               .schema('public')
               .from('answers')
               .select(
-                'question_id, user_id, selected_option, confidence, is_correct',
+                'question_id, user_id, answer_state, selected_option, confidence, is_correct',
               )
               .in('question_id', questionIds)
           ).data ?? [])
@@ -2077,7 +2085,12 @@ export const getSessionSummaryData = cache(
         : [];
 
     const memberCount = members?.length ?? 0;
-    const myAnswers = answers.filter((answer) => answer.user_id === user.id);
+    const submittedAnswers = answers.filter(
+      (answer) => answer.answer_state !== 'skipped',
+    );
+    const myAnswers = submittedAnswers.filter(
+      (answer) => answer.user_id === user.id,
+    );
     const correctCount = myAnswers.filter((answer) => answer.is_correct).length;
     const totalQuestions = questions?.length ?? 0;
     const answeredCount = myAnswers.length;
@@ -2103,7 +2116,7 @@ export const getSessionSummaryData = cache(
         : 0;
 
     const breakdown = (questions ?? []).map((question) => {
-      const questionAnswers = answers.filter(
+      const questionAnswers = submittedAnswers.filter(
         (answer) => answer.question_id === question.id,
       );
       const myAnswer =

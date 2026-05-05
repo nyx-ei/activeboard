@@ -1,6 +1,11 @@
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
 import type { AvailabilityGrid } from '@/lib/schedule/availability';
-import type { DimensionOfCare, ErrorType, PhysicianActivity } from '@/lib/types/demo';
+import type {
+  AnswerState,
+  DimensionOfCare,
+  ErrorType,
+  PhysicianActivity,
+} from '@/lib/types/demo';
 
 export type Json =
   | string
@@ -11,6 +16,7 @@ export type Json =
   | Json[];
 
 type AnswersRow = {
+  answer_state: AnswerState;
   answered_at: string;
   confidence: ConfidenceLevel | null;
   id: string;
@@ -21,6 +27,7 @@ type AnswersRow = {
 };
 
 type AnswersInsert = {
+  answer_state?: AnswerState;
   answered_at?: string;
   confidence?: ConfidenceLevel | null;
   id?: string;
@@ -31,6 +38,7 @@ type AnswersInsert = {
 };
 
 type AnswersUpdate = {
+  answer_state?: AnswerState;
   answered_at?: string;
   confidence?: ConfidenceLevel | null;
   id?: string;
@@ -194,7 +202,14 @@ type GroupWeeklySchedulesRow = {
   id: string;
   question_goal: number;
   start_time: string;
-  weekday: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+  weekday:
+    | 'monday'
+    | 'tuesday'
+    | 'wednesday'
+    | 'thursday'
+    | 'friday'
+    | 'saturday'
+    | 'sunday';
 };
 
 type GroupWeeklySchedulesInsert = {
@@ -204,7 +219,14 @@ type GroupWeeklySchedulesInsert = {
   id?: string;
   question_goal?: number;
   start_time: string;
-  weekday: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+  weekday:
+    | 'monday'
+    | 'tuesday'
+    | 'wednesday'
+    | 'thursday'
+    | 'friday'
+    | 'saturday'
+    | 'sunday';
 };
 
 type GroupWeeklySchedulesUpdate = {
@@ -214,7 +236,14 @@ type GroupWeeklySchedulesUpdate = {
   id?: string;
   question_goal?: number;
   start_time?: string;
-  weekday?: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+  weekday?:
+    | 'monday'
+    | 'tuesday'
+    | 'wednesday'
+    | 'thursday'
+    | 'friday'
+    | 'saturday'
+    | 'sunday';
 };
 
 type QuestionsRow = {
@@ -434,7 +463,12 @@ type UsersRow = {
   display_name: string | null;
   email: string;
   exam_type: 'mccqe1' | 'usmle' | 'plab' | 'other' | null;
-  exam_session: 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead' | null;
+  exam_session:
+    | 'april_may_2026'
+    | 'august_september_2026'
+    | 'october_2026'
+    | 'planning_ahead'
+    | null;
   has_valid_payment_method: boolean;
   id: string;
   locale: 'en' | 'fr';
@@ -463,7 +497,12 @@ type UsersInsert = {
   display_name?: string | null;
   email: string;
   exam_type?: 'mccqe1' | 'usmle' | 'plab' | 'other' | null;
-  exam_session?: 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead' | null;
+  exam_session?:
+    | 'april_may_2026'
+    | 'august_september_2026'
+    | 'october_2026'
+    | 'planning_ahead'
+    | null;
   has_valid_payment_method?: boolean;
   id: string;
   locale?: 'en' | 'fr';
@@ -492,7 +531,12 @@ type UsersUpdate = {
   display_name?: string | null;
   email?: string;
   exam_type?: 'mccqe1' | 'usmle' | 'plab' | 'other' | null;
-  exam_session?: 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead' | null;
+  exam_session?:
+    | 'april_may_2026'
+    | 'august_september_2026'
+    | 'october_2026'
+    | 'planning_ahead'
+    | null;
   has_valid_payment_method?: boolean;
   id?: string;
   locale?: 'en' | 'fr';

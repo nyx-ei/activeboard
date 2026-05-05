@@ -10,9 +10,14 @@ import type {
   CertaintyCorrectnessStatus,
   ConfidenceLevel,
 } from '@/lib/demo/confidence';
-import { ANSWER_OPTIONS, type AnswerOption } from '@/lib/types/demo';
+import {
+  ANSWER_OPTIONS,
+  type AnswerOption,
+  type AnswerState,
+} from '@/lib/types/demo';
 
 type ReviewOwnAnswer = {
+  answer_state?: AnswerState | null;
   selected_option: string | null;
   confidence: string | null;
   is_correct: boolean | null;
@@ -44,6 +49,7 @@ type ReviewDistribution = {
   D: number;
   E: number;
   blank: number;
+  skipped: number;
 };
 
 type SessionReviewRuntimeProps = {
@@ -62,6 +68,7 @@ type SessionReviewRuntimeProps = {
     next: string;
     questionUpper: string;
     distribution: string;
+    skippedAnswer: string;
     finishSession: string;
     finishSessionPending: string;
     correctAnswer: string;
@@ -75,16 +82,18 @@ type SessionReviewRuntimeProps = {
   };
 };
 
-const REVIEW_DISTRIBUTION_OPTIONS: Array<AnswerOption | '?'> = [
+const REVIEW_DISTRIBUTION_OPTIONS: Array<AnswerOption | '?' | 'skipped'> = [
   ...ANSWER_OPTIONS,
   '?',
+  'skipped',
 ];
 
 function getDistributionCount(
   distribution: ReviewDistribution,
-  option: AnswerOption | '?',
+  option: AnswerOption | '?' | 'skipped',
 ) {
-  return option === '?' ? distribution.blank : distribution[option];
+  if (option === '?') return distribution.blank;
+  return distribution[option];
 }
 
 export function SessionReviewRuntime({
@@ -288,7 +297,7 @@ export function SessionReviewRuntime({
               {labels.distribution}
             </h2>
           </div>
-          <div className="mt-2 grid grid-cols-6 gap-1.5 sm:hidden">
+          <div className="mt-2 grid grid-cols-4 gap-1.5 min-[420px]:grid-cols-7 sm:hidden">
             {REVIEW_DISTRIBUTION_OPTIONS.map((option) => (
               <div
                 key={option}
@@ -298,11 +307,12 @@ export function SessionReviewRuntime({
                     : 'border-white/[0.08] bg-[#121b2e] text-slate-400'
                 }`}
               >
-                {option}-{getDistributionCount(distribution, option)}
+                {option === 'skipped' ? labels.skippedAnswer : option}-
+                {getDistributionCount(distribution, option)}
               </div>
             ))}
           </div>
-          <div className="mt-8 hidden grid-cols-3 gap-x-2 gap-y-4 min-[420px]:grid-cols-6 sm:grid">
+          <div className="mt-8 hidden grid-cols-3 gap-x-2 gap-y-4 min-[420px]:grid-cols-7 sm:grid">
             {REVIEW_DISTRIBUTION_OPTIONS.map((option) => (
               <div
                 key={option}
@@ -315,7 +325,7 @@ export function SessionReviewRuntime({
                       : 'text-sm font-bold text-slate-500'
                   }
                 >
-                  {option}
+                  {option === 'skipped' ? labels.skippedAnswer : option}
                   {currentQuestion.correct_option === option ? ' *' : ''}
                 </span>
                 <span className="text-xs font-bold text-slate-600">

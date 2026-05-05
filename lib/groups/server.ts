@@ -322,6 +322,7 @@ export async function getGroupWeeklyProgress(groupId: string) {
     .schema('public')
     .from('answers')
     .select('question_id')
+    .eq('answer_state', 'submitted')
     .in('question_id', questionIds);
 
   const questionAnswerCounts = new Map<string, number>();

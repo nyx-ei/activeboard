@@ -2,15 +2,26 @@ export type Locale = 'en' | 'fr';
 
 export type GroupMembershipKind = 'founder' | 'member';
 
-export type GroupInviteStatus = 'pending' | 'accepted' | 'declined' | 'cancelled';
+export type GroupInviteStatus =
+  | 'pending'
+  | 'accepted'
+  | 'declined'
+  | 'cancelled';
 
-export type SessionStatus = 'scheduled' | 'active' | 'incomplete' | 'completed' | 'cancelled';
+export type SessionStatus =
+  | 'scheduled'
+  | 'active'
+  | 'incomplete'
+  | 'completed'
+  | 'cancelled';
 
 export type QuestionPhase = 'draft' | 'answering' | 'review' | 'closed';
 
 export type AnswerOption = 'A' | 'B' | 'C' | 'D' | 'E';
 
 export const ANSWER_OPTIONS: AnswerOption[] = ['A', 'B', 'C', 'D', 'E'];
+
+export type AnswerState = 'submitted' | 'skipped';
 
 export type PhysicianActivity =
   | 'history_taking'
@@ -62,4 +73,3 @@ export const ERROR_TYPE_OPTIONS: ErrorType[] = [
   'time_pressure',
   'careless_mistake',
 ];
-

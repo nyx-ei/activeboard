@@ -211,7 +211,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     supabase
       .schema('public')
       .from('answers')
-      .select('selected_option, confidence')
+      .select('answer_state, selected_option, confidence')
       .eq('question_id', ensuredQuestion.id)
       .eq('user_id', user.id)
       .maybeSingle(),
@@ -250,6 +250,7 @@ export async function POST(request: Request, { params }: RouteContext) {
         questionId: ensuredQuestion.id,
         selectedOption: existingAnswer.selected_option,
         confidence: existingAnswer.confidence,
+        answerState: existingAnswer.answer_state ?? 'submitted',
         deadlinePolicy: deadlineDecision.reason,
       });
     }
@@ -258,7 +259,8 @@ export async function POST(request: Request, { params }: RouteContext) {
       {
         question_id: ensuredQuestion.id,
         user_id: user.id,
-        selected_option: '?',
+        answer_state: 'skipped',
+        selected_option: null,
         confidence: null,
       },
       { onConflict: 'question_id,user_id', ignoreDuplicates: true },
@@ -272,8 +274,9 @@ export async function POST(request: Request, { params }: RouteContext) {
       ok: true,
       mode: 'timeout',
       questionId: ensuredQuestion.id,
-      selectedOption: '?',
+      selectedOption: null,
       confidence: null,
+      answerState: 'skipped',
       deadlinePolicy: deadlineDecision.reason,
     });
   }
@@ -284,6 +287,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     {
       question_id: ensuredQuestion.id,
       user_id: user.id,
+      answer_state: 'submitted',
       selected_option: resolvedSelectedOption,
       confidence,
     },
@@ -327,6 +331,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     questionId: ensuredQuestion.id,
     selectedOption: resolvedSelectedOption,
     confidence,
+    answerState: 'submitted',
     deadlinePolicy: deadlineDecision.reason,
   });
 }

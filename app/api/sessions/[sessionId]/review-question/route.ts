@@ -78,7 +78,9 @@ export async function GET(request: Request, { params }: RouteContext) {
   const { data: answers } = await supabase
     .schema('public')
     .from('answers')
-    .select('user_id, selected_option, confidence, is_correct, answered_at')
+    .select(
+      'id, question_id, user_id, answer_state, selected_option, confidence, is_correct, answered_at',
+    )
     .eq('question_id', question.id);
   perf.step('answers_loaded');
   const answerRows = answers ?? [];
@@ -103,6 +105,7 @@ export async function GET(request: Request, { params }: RouteContext) {
           confidence: ownAnswer.confidence,
           is_correct: ownAnswer.is_correct,
           answered_at: ownAnswer.answered_at,
+          answer_state: ownAnswer.answer_state,
         }
       : null,
     reviewedQuestionCount: reviewedQuestionCount ?? 0,

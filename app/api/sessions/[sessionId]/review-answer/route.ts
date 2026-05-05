@@ -198,12 +198,14 @@ export async function POST(request: Request, { params }: RouteContext) {
       .from('answers')
       .update({ is_correct: true })
       .eq('question_id', questionId)
+      .eq('answer_state', 'submitted')
       .eq('selected_option', correctOption),
     supabase
       .schema('public')
       .from('answers')
       .update({ is_correct: false })
       .eq('question_id', questionId)
+      .eq('answer_state', 'submitted')
       .neq('selected_option', correctOption),
   ]);
   perf.step('review_updates_saved');
