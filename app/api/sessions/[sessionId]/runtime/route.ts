@@ -52,7 +52,7 @@ export async function GET(request: Request, { params }: RouteContext) {
       supabase
         .schema('public')
         .from('questions')
-        .select('id, phase, answer_deadline_at')
+        .select('id, phase, answer_deadline_at, order_index')
         .eq('id', questionId)
         .eq('session_id', sessionId)
         .maybeSingle(),
@@ -74,6 +74,7 @@ export async function GET(request: Request, { params }: RouteContext) {
       ok: true,
       sessionStatus: access.status,
       questionId: question?.id ?? null,
+      questionIndex: question?.order_index ?? null,
       questionPhase: question?.phase ?? null,
       answerDeadlineAt: question?.answer_deadline_at ?? null,
       submittedCount: submittedCount ?? 0,
@@ -84,16 +85,24 @@ export async function GET(request: Request, { params }: RouteContext) {
   const { data: question } = await supabase
     .schema('public')
     .from('questions')
-    .select('id, phase, answer_deadline_at')
+    .select('id, phase, answer_deadline_at, order_index')
     .eq('session_id', sessionId)
     .not('launched_at', 'is', null)
     .order('order_index', { ascending: false })
     .limit(1)
     .maybeSingle();
-  perf.step('latest_question_loaded');
+  const { count: submittedCount } = question?.id
+    ? await supabase
+        .schema('public')
+        .from('answers')
+        .select('id', { count: 'exact', head: true })
+        .eq('question_id', question.id)
+    : { count: 0 };
+  perf.step('latest_question_and_counts_loaded');
   perf.done({
     mode: 'latest',
     questionFound: Boolean(question?.id),
+    submittedCount: submittedCount ?? 0,
     memberCount: access.member_count ?? 0,
   });
 
@@ -101,9 +110,10 @@ export async function GET(request: Request, { params }: RouteContext) {
     ok: true,
     sessionStatus: access.status,
     questionId: question?.id ?? null,
+    questionIndex: question?.order_index ?? null,
     questionPhase: question?.phase ?? null,
     answerDeadlineAt: question?.answer_deadline_at ?? null,
-    submittedCount: 0,
+    submittedCount: submittedCount ?? 0,
     memberCount: access.member_count ?? 0,
   });
 }

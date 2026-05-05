@@ -30,7 +30,7 @@ export type SessionAccessSnapshot = {
   started_at: string | null;
 };
 
-type SessionSupabaseClient =
+export type SessionSupabaseClient =
   | ReturnType<typeof createSupabaseServerClient>
   | ReturnType<typeof createSupabaseAdminClient>;
 

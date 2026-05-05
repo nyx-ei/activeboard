@@ -288,6 +288,48 @@ type QuestionsUpdate = {
   session_id?: string;
 };
 
+type SessionStateEventsRow = {
+  actor_id: string | null;
+  created_at: string;
+  event_type:
+    | 'answer_submitted'
+    | 'answer_timed_out'
+    | 'question_advanced'
+    | 'session_completed';
+  group_id: string;
+  id: string;
+  question_id: string | null;
+  session_id: string;
+};
+
+type SessionStateEventsInsert = {
+  actor_id?: string | null;
+  created_at?: string;
+  event_type:
+    | 'answer_submitted'
+    | 'answer_timed_out'
+    | 'question_advanced'
+    | 'session_completed';
+  group_id: string;
+  id?: string;
+  question_id?: string | null;
+  session_id: string;
+};
+
+type SessionStateEventsUpdate = {
+  actor_id?: string | null;
+  created_at?: string;
+  event_type?:
+    | 'answer_submitted'
+    | 'answer_timed_out'
+    | 'question_advanced'
+    | 'session_completed';
+  group_id?: string;
+  id?: string;
+  question_id?: string | null;
+  session_id?: string;
+};
+
 type QuestionClassificationsRow = {
   classified_at: string;
   classified_by: string;
@@ -682,6 +724,12 @@ export type Database = {
         Row: SessionsRow;
         Insert: SessionsInsert;
         Update: SessionsUpdate;
+        Relationships: [];
+      };
+      session_state_events: {
+        Row: SessionStateEventsRow;
+        Insert: SessionStateEventsInsert;
+        Update: SessionStateEventsUpdate;
         Relationships: [];
       };
       session_email_reminders: {

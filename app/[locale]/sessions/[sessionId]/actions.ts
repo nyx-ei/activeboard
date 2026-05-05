@@ -21,6 +21,7 @@ import {
   loadSessionRuntimeAccess,
   resolveSessionQuestion,
 } from '@/lib/session/flow';
+import { recordSessionStateEvent } from '@/lib/session/state-events';
 import {
   ANSWER_OPTIONS,
   DIMENSION_OF_CARE_OPTIONS,
@@ -421,14 +422,35 @@ export async function advanceSessionStepAction(formData: FormData) {
       .from('sessions')
       .update({ status: 'incomplete' })
       .eq('id', sessionId);
+    await recordSessionStateEvent(supabase, {
+      sessionId,
+      groupId: session.group_id,
+      actorId: user.id,
+      eventType: 'session_completed',
+    }).catch(() => undefined);
     redirect(`/${locale}/sessions/${sessionId}?stage=complete`);
   }
 
+  let nextQuestionId: string | null = null;
   try {
-    await ensureQuestion(supabase, sessionId, nextIndex, user.id, session);
+    const nextQuestion = await ensureQuestion(
+      supabase,
+      sessionId,
+      nextIndex,
+      user.id,
+      session,
+    );
+    nextQuestionId = nextQuestion.id;
   } catch {
     await redirectSessionActionError(locale, sessionId, 'actionFailed');
   }
+  await recordSessionStateEvent(supabase, {
+    sessionId,
+    groupId: session.group_id,
+    questionId: nextQuestionId,
+    actorId: user.id,
+    eventType: 'question_advanced',
+  }).catch(() => undefined);
 
   redirect(`/${locale}/sessions/${sessionId}?q=${nextIndex}`);
 }

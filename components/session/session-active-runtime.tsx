@@ -1,6 +1,7 @@
 'use client';
 
 import { Check } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -60,6 +61,14 @@ type SessionActiveRuntimeProps = {
 const BASE_POLL_INTERVAL_MS = 5000;
 const ANSWERED_POLL_INTERVAL_MS = 7000;
 const READY_POLL_INTERVAL_MS = 2500;
+
+const SessionStateRealtimeSync = dynamic(
+  () =>
+    import('@/components/session/session-state-realtime-sync').then(
+      (mod) => mod.SessionStateRealtimeSync,
+    ),
+  { ssr: false },
+);
 
 export function SessionActiveRuntime({
   sessionId,
@@ -178,12 +187,8 @@ export function SessionActiveRuntime({
       refreshInFlightRef.current = true;
 
       try {
-        if (!runtimeQuestionId) {
-          return;
-        }
-
         const payload = await fetchSessionRuntime(
-          `/api/sessions/${sessionId}/runtime?questionId=${encodeURIComponent(runtimeQuestionId)}`,
+          `/api/sessions/${sessionId}/runtime`,
         );
 
         if (!payload || cancelled) {
@@ -193,6 +198,8 @@ export function SessionActiveRuntime({
         if (
           payload.sessionStatus !== 'active' ||
           payload.questionId !== runtimeQuestionId ||
+          (typeof payload.questionIndex === 'number' &&
+            payload.questionIndex !== runtimeQuestionIndex) ||
           payload.questionPhase !== 'answering'
         ) {
           router.refresh();
@@ -244,17 +251,43 @@ export function SessionActiveRuntime({
       }
       startPolling();
     };
+    const handleOnline = () => {
+      void syncRuntime();
+      startPolling();
+    };
+    const handleSessionStateSync = (event: Event) => {
+      const detail = (event as CustomEvent<{ sessionId?: string }>).detail;
+      if (detail?.sessionId === sessionId) {
+        void syncRuntime();
+      }
+    };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener(
+      'activeboard:session-state-sync',
+      handleSessionStateSync,
+    );
 
     return () => {
       cancelled = true;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener(
+        'activeboard:session-state-sync',
+        handleSessionStateSync,
+      );
       if (timeoutId !== null) {
         window.clearTimeout(timeoutId);
       }
     };
-  }, [isSubmitting, router, runtimeQuestionId, sessionId]);
+  }, [
+    isSubmitting,
+    router,
+    runtimeQuestionId,
+    runtimeQuestionIndex,
+    sessionId,
+  ]);
 
   if (showCompletion) {
     return (
@@ -292,6 +325,7 @@ export function SessionActiveRuntime({
 
   return (
     <>
+      <SessionStateRealtimeSync sessionId={sessionId} />
       <header className="border-b border-white/[0.07]">
         <div className="mx-auto flex min-h-16 w-full max-w-[560px] items-center justify-between gap-3 px-4 py-3 sm:h-16 sm:py-0">
           <SessionDashboardBackButton
