@@ -13,17 +13,15 @@ type LocaleHomePageProps = {
 
 function ActiveBoardLandingLogo() {
   return (
-    <div className="-ml-4 mt-2 sm:-ml-5">
-      <Image
-        src="/landing/activeboard-logo.png"
-        alt="ActiveBoard"
-        width={254}
-        height={76}
-        priority
-        unoptimized
-        className="h-auto w-[236px] object-contain sm:w-[240px]"
-      />
-    </div>
+    <Image
+      src="/landing/activeboard-logo.png"
+      alt="ActiveBoard"
+      width={254}
+      height={76}
+      priority
+      unoptimized
+      className="-ml-4 mt-2 h-auto w-[236px] object-contain sm:-ml-5 sm:w-[240px]"
+    />
   );
 }
 

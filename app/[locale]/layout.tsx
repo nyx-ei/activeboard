@@ -4,6 +4,7 @@ import { NextIntlClientProvider, type AbstractIntlMessages } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
 
 import { AppBottomNav } from '@/components/layout/app-bottom-nav';
+import { LandingSignInLink } from '@/components/layout/landing-sign-in-link';
 import { LanguageSwitcher } from '@/components/layout/language-switcher';
 import { LiveGroupsPill } from '@/components/layout/live-groups-pill';
 import { ProfileMenu } from '@/components/layout/profile-menu';
@@ -149,12 +150,7 @@ export default async function LocaleLayout({
                 </>
               ) : (
                 <div className="flex shrink-0 items-center gap-3">
-                  <Link
-                    href="/auth/login"
-                    className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm font-bold text-slate-200 transition hover:border-brand/40 hover:text-white"
-                  >
-                    {t('signIn')}
-                  </Link>
+                  <LandingSignInLink />
                   <Suspense
                     fallback={
                       <div className="inline-flex items-center gap-2 rounded-full border border-border bg-white/[0.04] px-4 py-2 text-sm text-slate-400">
