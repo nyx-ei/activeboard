@@ -13,15 +13,26 @@ type LocaleHomePageProps = {
 
 function ActiveBoardLandingLogo() {
   return (
-    <Image
-      src="/landing/activeboard-logo.png"
-      alt="ActiveBoard"
-      width={211}
-      height={45}
-      priority
-      unoptimized
-      className="h-[45px] w-[211px] object-contain"
-    />
+    <div className="flex items-center gap-3">
+      <Image
+        src="/landing/activeboard-mark.png"
+        alt=""
+        width={56}
+        height={105}
+        priority
+        unoptimized
+        className="h-[42px] w-auto object-contain"
+        aria-hidden="true"
+      />
+      <div className="min-w-0">
+        <p className="text-[28px] font-bold leading-none tracking-[-0.035em] text-white">
+          ActiveBoard
+        </p>
+        <p className="mt-1 text-[9px] font-bold uppercase leading-none tracking-[0.2em] text-brand">
+          Study. Simulate. Succeed.
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -36,7 +47,7 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
 
   return (
     <main className="-mx-2 -mb-24 -mt-4 min-h-screen overflow-hidden bg-[#01070d] px-5 pb-10 pt-8 sm:-mx-6 sm:px-9 lg:px-9">
-      <section className="mx-auto grid min-h-[690px] max-w-[1280px] grid-cols-1 items-center gap-6 lg:grid-cols-[480px_1fr]">
+      <section className="mx-auto grid min-h-[690px] max-w-[1280px] grid-cols-1 items-center gap-6 lg:grid-cols-[minmax(420px,480px)_minmax(0,1fr)]">
         <div className="relative z-10 w-full max-w-[454px]">
           <ActiveBoardLandingLogo />
 
@@ -96,17 +107,19 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
           </div>
         </div>
 
-        <div className="relative hidden min-h-[610px] items-center justify-end lg:flex">
-          <Image
-            src="/landing/direct-signup-devices.png"
-            alt="ActiveBoard live question phone and review laptop"
-            width={772}
-            height={535}
-            priority
-            unoptimized
-            className="relative z-10 mt-9 w-[772px] max-w-none object-contain"
-            sizes="772px"
-          />
+        <div className="relative hidden min-h-[610px] min-w-0 items-center justify-end overflow-visible lg:flex">
+          <div className="relative flex w-full min-w-0 justify-end">
+            <Image
+              src="/landing/direct-signup-devices.png"
+              alt="ActiveBoard live question phone and review laptop"
+              width={772}
+              height={535}
+              priority
+              unoptimized
+              className="relative z-10 mt-9 h-auto w-full max-w-[772px] object-contain"
+              sizes="(min-width: 1280px) 772px, calc(100vw - 560px)"
+            />
+          </div>
         </div>
         <div className="relative lg:hidden">
           <Image
