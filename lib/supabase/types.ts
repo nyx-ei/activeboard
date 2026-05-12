@@ -141,6 +141,7 @@ type GroupMembersUpdate = {
 type GroupsRow = {
   created_at: string;
   created_by: string | null;
+  difficulty_level: 'low' | 'medium' | 'high';
   id: string;
   invite_code: string;
   max_members: number;
@@ -151,6 +152,7 @@ type GroupsRow = {
 type GroupsInsert = {
   created_at?: string;
   created_by?: string | null;
+  difficulty_level?: 'low' | 'medium' | 'high';
   id?: string;
   invite_code: string;
   max_members?: number;
@@ -161,6 +163,7 @@ type GroupsInsert = {
 type GroupsUpdate = {
   created_at?: string;
   created_by?: string | null;
+  difficulty_level?: 'low' | 'medium' | 'high';
   id?: string;
   invite_code?: string;
   max_members?: number;

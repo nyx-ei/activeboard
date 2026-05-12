@@ -14,9 +14,21 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { generateInviteCode, normalizeEmail } from '@/lib/utils';
 
 type FounderExamType = 'mccqe1' | 'usmle' | 'plab' | 'other';
-type FounderExamSession = 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead';
+type FounderExamSession =
+  | 'april_may_2026'
+  | 'august_september_2026'
+  | 'october_2026'
+  | 'planning_ahead';
 type FounderPlan = 'starter' | 'unlimited';
-type FounderWeekday = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+type FounderDifficultyLevel = 'low' | 'medium' | 'high';
+type FounderWeekday =
+  | 'monday'
+  | 'tuesday'
+  | 'wednesday'
+  | 'thursday'
+  | 'friday'
+  | 'saturday'
+  | 'sunday';
 
 type FounderScheduleSlot = {
   weekday: FounderWeekday;
@@ -34,6 +46,7 @@ type FounderOnboardingDraft = {
   locale: AppLocale;
   timezone: string;
   plan: FounderPlan;
+  difficultyLevel?: FounderDifficultyLevel;
   questionBanks: string[];
   schedule: FounderScheduleSlot[];
   groupName: string;
@@ -41,7 +54,13 @@ type FounderOnboardingDraft = {
 };
 
 type FounderOnboardingResult =
-  | { ok: true; groupId: string; inviteCode: string; requiresLogin: boolean; emailDeliveryFailed: boolean }
+  | {
+      ok: true;
+      groupId: string;
+      inviteCode: string;
+      requiresLogin: boolean;
+      emailDeliveryFailed: boolean;
+    }
   | {
       ok: false;
       reason:
@@ -52,20 +71,51 @@ type FounderOnboardingResult =
         | 'invite_exists';
     };
 
-const VALID_EXAM_TYPES = new Set<FounderExamType>(['mccqe1', 'usmle', 'plab', 'other']);
+const VALID_EXAM_TYPES = new Set<FounderExamType>([
+  'mccqe1',
+  'usmle',
+  'plab',
+  'other',
+]);
+const VALID_DIFFICULTY_LEVELS = new Set<FounderDifficultyLevel>([
+  'low',
+  'medium',
+  'high',
+]);
 const VALID_EXAM_SESSIONS = new Set<FounderExamSession>([
   'april_may_2026',
   'august_september_2026',
   'october_2026',
   'planning_ahead',
 ]);
-const VALID_WEEKDAYS = new Set<FounderWeekday>(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']);
+const VALID_WEEKDAYS = new Set<FounderWeekday>([
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+  'sunday',
+]);
 
 function parseDraft(rawDraft: string): FounderOnboardingDraft | null {
   try {
     const draft = JSON.parse(rawDraft) as Partial<FounderOnboardingDraft>;
-    const normalizedBanks = [...new Set((draft.questionBanks ?? []).filter((value): value is string => typeof value === 'string' && value.length > 0))];
-    const normalizedMembers = [...new Set((draft.memberEmails ?? []).map((email) => normalizeEmail(email ?? '')).filter(Boolean))];
+    const normalizedBanks = [
+      ...new Set(
+        (draft.questionBanks ?? []).filter(
+          (value): value is string =>
+            typeof value === 'string' && value.length > 0,
+        ),
+      ),
+    ];
+    const normalizedMembers = [
+      ...new Set(
+        (draft.memberEmails ?? [])
+          .map((email) => normalizeEmail(email ?? ''))
+          .filter(Boolean),
+      ),
+    ];
     const normalizedSchedule = (draft.schedule ?? [])
       .map((slot) => ({
         weekday: slot?.weekday,
@@ -110,6 +160,11 @@ function parseDraft(rawDraft: string): FounderOnboardingDraft | null {
       locale: draft.locale,
       timezone: draft.timezone.trim() || 'UTC',
       plan: draft.plan,
+      difficultyLevel: VALID_DIFFICULTY_LEVELS.has(
+        draft.difficultyLevel as FounderDifficultyLevel,
+      )
+        ? (draft.difficultyLevel as FounderDifficultyLevel)
+        : 'medium',
       questionBanks: normalizedBanks,
       schedule: normalizedSchedule,
       groupName: draft.groupName.trim(),
@@ -120,7 +175,9 @@ function parseDraft(rawDraft: string): FounderOnboardingDraft | null {
   }
 }
 
-export async function completeFounderOnboardingAction(formData: FormData): Promise<FounderOnboardingResult> {
+export async function completeFounderOnboardingAction(
+  formData: FormData,
+): Promise<FounderOnboardingResult> {
   const locale = formData.get('locale') as AppLocale;
   const rawDraft = ((formData.get('draft') as string | null) ?? '').trim();
   const draft = parseDraft(rawDraft);
@@ -135,8 +192,12 @@ export async function completeFounderOnboardingAction(formData: FormData): Promi
     data: { user: authUser },
   } = await serverClient.auth.getUser();
 
-  const founderEmail = authUser?.email ? normalizeEmail(authUser.email) : draft.email;
-  const inviteEmails = draft.memberEmails.filter((email) => email !== founderEmail).slice(0, 4);
+  const founderEmail = authUser?.email
+    ? normalizeEmail(authUser.email)
+    : draft.email;
+  const inviteEmails = draft.memberEmails
+    .filter((email) => email !== founderEmail)
+    .slice(0, 5);
 
   if (
     !draft.displayName ||
@@ -158,24 +219,30 @@ export async function completeFounderOnboardingAction(formData: FormData): Promi
 
   try {
     if (!authUser) {
-      const { data: existingUser } = await adminClient.schema('public').from('users').select('id').eq('email', draft.email).maybeSingle();
+      const { data: existingUser } = await adminClient
+        .schema('public')
+        .from('users')
+        .select('id')
+        .eq('email', draft.email)
+        .maybeSingle();
 
       if (existingUser) {
         return { ok: false, reason: 'account_exists' };
       }
 
-      const { data: createdAuthUser, error: authError } = await adminClient.auth.admin.createUser({
-        email: draft.email,
-        password: draft.password!,
-        email_confirm: true,
-        user_metadata: {
-          full_name: draft.displayName,
-          locale: draft.locale,
-          exam_type: draft.examType,
-          exam_session: draft.examSession,
-          question_banks: draft.questionBanks,
-        },
-      });
+      const { data: createdAuthUser, error: authError } =
+        await adminClient.auth.admin.createUser({
+          email: draft.email,
+          password: draft.password!,
+          email_confirm: true,
+          user_metadata: {
+            full_name: draft.displayName,
+            locale: draft.locale,
+            exam_type: draft.examType,
+            exam_session: draft.examSession,
+            question_banks: draft.questionBanks,
+          },
+        });
 
       if (authError || !createdAuthUser.user?.id) {
         return { ok: false, reason: 'action_failed' };
@@ -192,7 +259,12 @@ export async function completeFounderOnboardingAction(formData: FormData): Promi
 
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const candidate = generateInviteCode();
-      const { data: existingGroup } = await adminClient.schema('public').from('groups').select('id').eq('invite_code', candidate).maybeSingle();
+      const { data: existingGroup } = await adminClient
+        .schema('public')
+        .from('groups')
+        .select('id')
+        .eq('invite_code', candidate)
+        .maybeSingle();
 
       if (!existingGroup) {
         inviteCode = candidate;
@@ -211,6 +283,8 @@ export async function completeFounderOnboardingAction(formData: FormData): Promi
         name: draft.groupName,
         invite_code: inviteCode,
         created_by: founderId,
+        difficulty_level: draft.difficultyLevel ?? 'medium',
+        max_members: Math.max(2, Math.min(inviteEmails.length + 1, 6)),
       })
       .select('id')
       .single();
@@ -221,26 +295,32 @@ export async function completeFounderOnboardingAction(formData: FormData): Promi
 
     groupId = group.id;
 
-    const { error: founderMembershipError } = await adminClient.schema('public').from('group_members').insert({
-      group_id: groupId,
-      is_founder: true,
-      user_id: founderId,
-    });
+    const { error: founderMembershipError } = await adminClient
+      .schema('public')
+      .from('group_members')
+      .insert({
+        group_id: groupId,
+        is_founder: true,
+        user_id: founderId,
+      });
 
     if (founderMembershipError) {
       return { ok: false, reason: 'action_failed' };
     }
 
     if (draft.schedule.length > 0) {
-      const { error: scheduleError } = await adminClient.schema('public').from('group_weekly_schedules').insert(
-        draft.schedule.map((slot) => ({
-          group_id: group.id,
-          weekday: slot.weekday,
-          start_time: slot.startTime,
-          end_time: slot.endTime,
-          question_goal: slot.questionGoal,
-        })),
-      );
+      const { error: scheduleError } = await adminClient
+        .schema('public')
+        .from('group_weekly_schedules')
+        .insert(
+          draft.schedule.map((slot) => ({
+            group_id: group.id,
+            weekday: slot.weekday,
+            start_time: slot.startTime,
+            end_time: slot.endTime,
+            question_goal: slot.questionGoal,
+          })),
+        );
 
       if (scheduleError) {
         return { ok: false, reason: 'action_failed' };
@@ -268,12 +348,23 @@ export async function completeFounderOnboardingAction(formData: FormData): Promi
 
     const existingUsersByEmail = await Promise.all(
       inviteEmails.map(async (email) => {
-        const { data: existingUser } = await adminClient.schema('public').from('users').select('id, email, display_name').eq('email', email).maybeSingle();
-        return { email, userId: existingUser?.id ?? null, displayName: existingUser?.display_name ?? null };
+        const { data: existingUser } = await adminClient
+          .schema('public')
+          .from('users')
+          .select('id, email, display_name')
+          .eq('email', email)
+          .maybeSingle();
+        return {
+          email,
+          userId: existingUser?.id ?? null,
+          displayName: existingUser?.display_name ?? null,
+        };
       }),
     );
 
-    const invitees = existingUsersByEmail.filter((entry) => entry.userId !== founderId);
+    const invitees = existingUsersByEmail.filter(
+      (entry) => entry.userId !== founderId,
+    );
 
     if (invitees.length > 0) {
       const { data: insertedInvites, error: inviteError } = await adminClient
@@ -290,10 +381,16 @@ export async function completeFounderOnboardingAction(formData: FormData): Promi
         .select('id, invitee_email');
 
       if (inviteError) {
-        return { ok: false, reason: inviteError.code === '23505' ? 'invite_exists' : 'action_failed' };
+        return {
+          ok: false,
+          reason:
+            inviteError.code === '23505' ? 'invite_exists' : 'action_failed',
+        };
       }
 
-      cleanupInviteIds.push(...(insertedInvites ?? []).map((entry) => entry.id));
+      cleanupInviteIds.push(
+        ...(insertedInvites ?? []).map((entry) => entry.id),
+      );
     }
 
     await logAppEvent({
@@ -304,11 +401,14 @@ export async function completeFounderOnboardingAction(formData: FormData): Promi
       metadata: {
         source: 'founder_onboarding_v2',
         plan: draft.plan,
+        difficulty_level: draft.difficultyLevel ?? 'medium',
         exam_type: draft.examType,
         exam_session: draft.examSession,
         question_banks: draft.questionBanks,
         invite_count: invitees.length,
-        existing_user_invite_count: invitees.filter((entry) => Boolean(entry.userId)).length,
+        existing_user_invite_count: invitees.filter((entry) =>
+          Boolean(entry.userId),
+        ).length,
         schedule_count: draft.schedule.length,
       },
       useAdmin: true,
@@ -327,10 +427,16 @@ export async function completeFounderOnboardingAction(formData: FormData): Promi
 
       const inviteEmailResults = await Promise.all(
         invitees.map(async (entry) => {
-          const inviteId = cleanupInviteIds[invitees.findIndex((invitee) => invitee.email === entry.email)];
+          const inviteId =
+            cleanupInviteIds[
+              invitees.findIndex((invitee) => invitee.email === entry.email)
+            ];
 
           if (!inviteId) {
-            return { ok: false as const, errorMessage: 'Missing invite id for email delivery.' };
+            return {
+              ok: false as const,
+              errorMessage: 'Missing invite id for email delivery.',
+            };
           }
 
           return sendGroupInviteEmail({
@@ -363,19 +469,47 @@ export async function completeFounderOnboardingAction(formData: FormData): Promi
     };
   } catch {
     if (groupId) {
-      await adminClient.schema('public').from('group_invites').delete().eq('group_id', groupId);
-      await adminClient.schema('public').from('group_weekly_schedules').delete().eq('group_id', groupId);
-      await adminClient.schema('public').from('group_members').delete().eq('group_id', groupId);
-      await adminClient.schema('public').from('groups').delete().eq('id', groupId);
+      await adminClient
+        .schema('public')
+        .from('group_invites')
+        .delete()
+        .eq('group_id', groupId);
+      await adminClient
+        .schema('public')
+        .from('group_weekly_schedules')
+        .delete()
+        .eq('group_id', groupId);
+      await adminClient
+        .schema('public')
+        .from('group_members')
+        .delete()
+        .eq('group_id', groupId);
+      await adminClient
+        .schema('public')
+        .from('groups')
+        .delete()
+        .eq('id', groupId);
     } else {
       if (cleanupInviteIds.length > 0) {
-        await adminClient.schema('public').from('group_invites').delete().in('id', cleanupInviteIds);
+        await adminClient
+          .schema('public')
+          .from('group_invites')
+          .delete()
+          .in('id', cleanupInviteIds);
       }
     }
 
     if (createdAuthUserId && shouldDeleteFounderProfile) {
-      await adminClient.schema('public').from('user_schedules').delete().eq('user_id', createdAuthUserId);
-      await adminClient.schema('public').from('users').delete().eq('id', createdAuthUserId);
+      await adminClient
+        .schema('public')
+        .from('user_schedules')
+        .delete()
+        .eq('user_id', createdAuthUserId);
+      await adminClient
+        .schema('public')
+        .from('users')
+        .delete()
+        .eq('id', createdAuthUserId);
       await adminClient.auth.admin.deleteUser(createdAuthUserId);
     }
 
