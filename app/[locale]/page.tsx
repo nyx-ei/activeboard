@@ -11,29 +11,17 @@ type LocaleHomePageProps = {
   params: { locale: string };
 };
 
-const proofItems = [
-  ['landingProofFree', CheckCircle2],
-  ['landingProofQbanks', null],
-  ['landingProofCard', CreditCard],
-] as const;
-
 function ActiveBoardLandingLogo() {
   return (
-    <div className="flex items-center gap-3">
-      <div className="relative h-[46px] w-[39px]">
-        <span className="absolute left-0 top-[6px] h-[36px] w-[11px] rotate-[28deg] rounded-full bg-brand" />
-        <span className="absolute left-[17px] top-[6px] h-[36px] w-[11px] -rotate-[28deg] rounded-full bg-brand" />
-        <span className="bg-brand/90 absolute left-[13px] top-[26px] h-[10px] w-[24px] rotate-[28deg] rounded-full" />
-      </div>
-      <div>
-        <p className="text-[26px] font-extrabold leading-none tracking-[-0.03em] text-white">
-          ActiveBoard
-        </p>
-        <p className="mt-1 text-[10px] font-extrabold uppercase tracking-[0.18em] text-brand">
-          Study. Simulate. Succeed.
-        </p>
-      </div>
-    </div>
+    <Image
+      src="/landing/activeboard-logo.png"
+      alt="ActiveBoard"
+      width={211}
+      height={45}
+      priority
+      unoptimized
+      className="h-[45px] w-[211px] object-contain"
+    />
   );
 }
 
@@ -52,7 +40,7 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
         <div className="relative z-10 w-full max-w-[454px]">
           <ActiveBoardLandingLogo />
 
-          <p className="mt-10 inline-flex max-w-full items-center gap-3 rounded-full border border-white/[0.11] bg-[#050d15]/80 px-4 py-2.5 text-[15px] font-medium text-[#d6dce5] shadow-[0_0_0_1px_rgba(22,210,144,0.02)]">
+          <p className="mt-10 inline-flex max-w-full items-center gap-3 rounded-full border border-white/[0.11] bg-[#050d15]/80 px-4 py-2.5 text-[14px] font-medium text-[#d6dce5] shadow-[0_0_0_1px_rgba(22,210,144,0.02)]">
             <Users
               className="h-[18px] w-[18px] text-brand"
               aria-hidden="true"
@@ -60,11 +48,11 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
             {t('landingBadge')}
           </p>
 
-          <h1 className="mt-6 text-[42px] font-extrabold leading-[0.98] tracking-[-0.045em] text-white sm:text-[50px]">
+          <h1 className="mt-6 text-[39px] font-bold leading-[1.02] tracking-[-0.04em] text-white sm:text-[46px]">
             {t('landingTitle')}
             <span className="block text-brand">{t('landingTitleAccent')}</span>
           </h1>
-          <p className="mt-5 max-w-[430px] text-[21px] font-medium leading-[1.28] tracking-[-0.02em] text-[#c5c9d0]">
+          <p className="mt-5 max-w-[430px] text-[19px] font-normal leading-[1.32] tracking-[-0.015em] text-[#c5c9d0]">
             {t('landingSubtitle')}
           </p>
 
@@ -93,20 +81,18 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
             />
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[15px] font-medium text-[#d6dce5]">
-            {proofItems.map(([item, Icon], index) => (
-              <span key={item} className="inline-flex items-center gap-2">
-                {Icon ? (
-                  <Icon className="h-5 w-5 text-brand" aria-hidden="true" />
-                ) : (
-                  <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-                )}
-                {t(item)}
-                {index < proofItems.length - 1 ? (
-                  <span className="ml-2 h-1.5 w-1.5 rounded-full bg-brand" />
-                ) : null}
-              </span>
-            ))}
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[14px] font-normal text-[#d6dce5]">
+            <span className="inline-flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-brand" aria-hidden="true" />
+              {t('landingProofFree')}
+            </span>
+            <span className="h-1.5 w-1.5 rounded-full bg-brand" />
+            <span>{t('landingProofQbanks')}</span>
+            <span className="h-1.5 w-1.5 rounded-full bg-brand" />
+            <span className="inline-flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-brand" aria-hidden="true" />
+              {t('landingProofCard')}
+            </span>
           </div>
         </div>
 
@@ -114,20 +100,22 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
           <Image
             src="/landing/direct-signup-devices.png"
             alt="ActiveBoard live question phone and review laptop"
-            width={981}
-            height={585}
+            width={772}
+            height={535}
             priority
-            className="relative z-10 mt-9 w-[760px] max-w-none object-contain"
-            sizes="760px"
+            unoptimized
+            className="relative z-10 mt-9 w-[772px] max-w-none object-contain"
+            sizes="772px"
           />
         </div>
         <div className="relative lg:hidden">
           <Image
             src="/landing/direct-signup-devices.png"
             alt="ActiveBoard live question phone and review laptop"
-            width={981}
-            height={585}
+            width={772}
+            height={535}
             priority
+            unoptimized
             className="mx-auto w-full max-w-[620px] object-contain"
             sizes="100vw"
           />

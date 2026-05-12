@@ -209,7 +209,7 @@ export function LandingDirectSignupForm({
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="h-[45px] w-full rounded-[5px] border border-[#1c2d40] bg-[#020910]/70 pl-[54px] pr-4 text-[15px] font-medium text-white outline-none transition placeholder:text-[#c1c7cf] focus:border-brand focus:ring-2 focus:ring-emerald-400/20"
+            className="h-[45px] w-full rounded-[5px] border border-[#1c2d40] bg-[#020910]/70 pl-[54px] pr-4 text-[14px] font-medium text-white outline-none transition placeholder:text-[#c1c7cf] focus:border-brand focus:ring-2 focus:ring-emerald-400/20"
             placeholder={labels.email}
             autoComplete="email"
           />
@@ -229,7 +229,7 @@ export function LandingDirectSignupForm({
                   onChange={(event) =>
                     updatePartnerEmail(index, event.target.value)
                   }
-                  className="h-[45px] w-full rounded-[5px] border border-[#1c2d40] bg-[#020910]/70 pl-[54px] pr-4 text-[15px] font-medium text-white outline-none transition placeholder:text-[#c1c7cf] focus:border-brand focus:ring-2 focus:ring-emerald-400/20"
+                  className="h-[45px] w-full rounded-[5px] border border-[#1c2d40] bg-[#020910]/70 pl-[54px] pr-4 text-[14px] font-medium text-white outline-none transition placeholder:text-[#c1c7cf] focus:border-brand focus:ring-2 focus:ring-emerald-400/20"
                   placeholder={labels.partnerEmail}
                   autoComplete="email"
                 />
@@ -252,7 +252,7 @@ export function LandingDirectSignupForm({
           <button
             type="button"
             onClick={() => setPartnerEmails((current) => [...current, ''])}
-            className="hover:border-brand/50 flex h-[45px] w-full items-center gap-[18px] rounded-[5px] border border-[#1c2d40] bg-[#020910]/70 px-[18px] text-left text-[15px] font-medium text-[#c1c7cf] transition hover:text-white"
+            className="hover:border-brand/50 flex h-[45px] w-full items-center gap-[18px] rounded-[5px] border border-[#1c2d40] bg-[#020910]/70 px-[18px] text-left text-[14px] font-medium text-[#c1c7cf] transition hover:text-white"
           >
             <Plus className="h-5 w-5 text-brand" aria-hidden="true" />
             {labels.addPartner}
@@ -297,7 +297,7 @@ export function LandingDirectSignupForm({
         type="button"
         disabled={!isValid || isPending}
         onClick={submitSignup}
-        className="mt-[10px] flex h-[49px] w-full items-center justify-center rounded-[5px] bg-brand text-[22px] font-extrabold tracking-[-0.03em] text-[#05110d] transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-[10px] flex h-[49px] w-full items-center justify-center rounded-[5px] bg-brand text-[20px] font-bold tracking-[-0.02em] text-[#05110d] transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isPending ? labels.pending : labels.submit}
       </button>
