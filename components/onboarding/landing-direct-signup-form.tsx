@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, useTransition } from 'react';
-import { Check, Lock, Mail, Plus, Trash2, UserRound } from 'lucide-react';
+import { Check, Mail, Plus, Trash2, UserRound } from 'lucide-react';
 
 import { completeFounderOnboardingAction } from '@/app/[locale]/create-group/actions';
 import { cn, normalizeEmail } from '@/lib/utils';
@@ -10,8 +10,6 @@ type DifficultyLevel = 'low' | 'medium' | 'high';
 
 type LandingDirectSignupLabels = {
   email: string;
-  password: string;
-  passwordHint: string;
   partnerEmail: string;
   addPartner: string;
   difficultyTitle: string;
@@ -85,7 +83,6 @@ export function LandingDirectSignupForm({
   labels,
 }: LandingDirectSignupFormProps) {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [partnerEmails, setPartnerEmails] = useState(['']);
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('medium');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -107,9 +104,7 @@ export function LandingDirectSignupForm({
   );
   const canAddPartner = partnerEmails.length < MAX_PARTNERS;
   const isValid =
-    normalizedFounderEmail.includes('@') &&
-    password.trim().length >= 8 &&
-    normalizedPartnerEmails.length >= 1;
+    normalizedFounderEmail.includes('@') && normalizedPartnerEmails.length >= 1;
 
   function updatePartnerEmail(index: number, value: string) {
     setPartnerEmails((current) =>
@@ -137,7 +132,6 @@ export function LandingDirectSignupForm({
     const draft = {
       displayName,
       email: normalizedFounderEmail,
-      password,
       examType: 'mccqe1',
       examSession: 'planning_ahead',
       locale: locale === 'fr' ? 'fr' : 'en',
@@ -204,47 +198,29 @@ export function LandingDirectSignupForm({
   }
 
   return (
-    <div className="w-full max-w-[430px]">
-      <div className="space-y-2">
+    <div className="w-full max-w-[420px]">
+      <div className="space-y-[7px]">
         <label className="relative block">
           <UserRound
-            className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-brand"
+            className="pointer-events-none absolute left-[18px] top-1/2 h-5 w-5 -translate-y-1/2 text-brand"
             aria-hidden="true"
           />
           <input
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="field h-12 rounded-[7px] pl-11 text-sm"
+            className="h-[45px] w-full rounded-[5px] border border-[#1c2d40] bg-[#020910]/70 pl-[54px] pr-4 text-[15px] font-medium text-white outline-none transition placeholder:text-[#c1c7cf] focus:border-brand focus:ring-2 focus:ring-emerald-400/20"
             placeholder={labels.email}
             autoComplete="email"
           />
         </label>
 
-        <label className="relative block">
-          <Lock
-            className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-brand"
-            aria-hidden="true"
-          />
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="field h-12 rounded-[7px] pl-11 text-sm"
-            placeholder={labels.password}
-            autoComplete="new-password"
-          />
-        </label>
-        <p className="px-1 text-xs font-medium text-slate-500">
-          {labels.passwordHint}
-        </p>
-
-        <div className="space-y-2">
+        <div className="space-y-[7px]">
           {partnerEmails.map((partnerEmail, index) => (
             <div key={index} className="flex items-center gap-2">
               <label className="relative block min-w-0 flex-1">
                 <Mail
-                  className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-brand"
+                  className="pointer-events-none absolute left-[18px] top-1/2 h-5 w-5 -translate-y-1/2 text-brand"
                   aria-hidden="true"
                 />
                 <input
@@ -253,7 +229,7 @@ export function LandingDirectSignupForm({
                   onChange={(event) =>
                     updatePartnerEmail(index, event.target.value)
                   }
-                  className="field h-12 rounded-[7px] pl-11 text-sm"
+                  className="h-[45px] w-full rounded-[5px] border border-[#1c2d40] bg-[#020910]/70 pl-[54px] pr-4 text-[15px] font-medium text-white outline-none transition placeholder:text-[#c1c7cf] focus:border-brand focus:ring-2 focus:ring-emerald-400/20"
                   placeholder={labels.partnerEmail}
                   autoComplete="email"
                 />
@@ -262,7 +238,7 @@ export function LandingDirectSignupForm({
                 <button
                   type="button"
                   onClick={() => removePartnerEmail(index)}
-                  className="flex h-12 w-10 shrink-0 items-center justify-center rounded-[7px] border border-white/[0.08] text-slate-500 transition hover:border-rose-400/40 hover:text-rose-300"
+                  className="flex h-[45px] w-10 shrink-0 items-center justify-center rounded-[5px] border border-[#1c2d40] text-slate-500 transition hover:border-rose-400/40 hover:text-rose-300"
                   aria-label="Remove partner"
                 >
                   <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -276,19 +252,17 @@ export function LandingDirectSignupForm({
           <button
             type="button"
             onClick={() => setPartnerEmails((current) => [...current, ''])}
-            className="hover:border-brand/50 flex h-12 w-full items-center gap-3 rounded-[7px] border border-white/[0.08] bg-white/[0.02] px-4 text-left text-sm font-semibold text-slate-300 transition hover:text-white"
+            className="hover:border-brand/50 flex h-[45px] w-full items-center gap-[18px] rounded-[5px] border border-[#1c2d40] bg-[#020910]/70 px-[18px] text-left text-[15px] font-medium text-[#c1c7cf] transition hover:text-white"
           >
-            <Plus className="h-4 w-4 text-brand" aria-hidden="true" />
+            <Plus className="h-5 w-5 text-brand" aria-hidden="true" />
             {labels.addPartner}
           </button>
         ) : null}
       </div>
 
-      <div className="mt-4">
-        <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-          {labels.difficultyTitle}
-        </p>
-        <div className="grid grid-cols-3 gap-2">
+      <div className="mt-[9px]">
+        <p className="sr-only">{labels.difficultyTitle}</p>
+        <div className="grid grid-cols-3 gap-[7px]">
           {(
             [
               ['low', labels.difficultyLow],
@@ -301,7 +275,7 @@ export function LandingDirectSignupForm({
               type="button"
               onClick={() => setDifficulty(value)}
               className={cn(
-                'h-10 rounded-[7px] border text-xs font-extrabold transition',
+                'h-8 rounded-[5px] border text-[12px] font-extrabold transition',
                 difficulty === value
                   ? 'border-brand bg-brand text-[#04110d]'
                   : 'hover:border-brand/50 border-white/[0.08] bg-white/[0.04] text-slate-300',
@@ -323,7 +297,7 @@ export function LandingDirectSignupForm({
         type="button"
         disabled={!isValid || isPending}
         onClick={submitSignup}
-        className="button-primary mt-4 h-14 w-full rounded-[7px] text-base font-extrabold disabled:opacity-50"
+        className="mt-[10px] flex h-[49px] w-full items-center justify-center rounded-[5px] bg-brand text-[22px] font-extrabold tracking-[-0.03em] text-[#05110d] transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isPending ? labels.pending : labels.submit}
       </button>

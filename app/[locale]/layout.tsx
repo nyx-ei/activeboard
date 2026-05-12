@@ -4,7 +4,6 @@ import { NextIntlClientProvider, type AbstractIntlMessages } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
 
 import { AppBottomNav } from '@/components/layout/app-bottom-nav';
-import { HomeHeaderNav } from '@/components/layout/home-header-nav';
 import { LanguageSwitcher } from '@/components/layout/language-switcher';
 import { LiveGroupsPill } from '@/components/layout/live-groups-pill';
 import { ProfileMenu } from '@/components/layout/profile-menu';
@@ -99,21 +98,24 @@ export default async function LocaleLayout({
           <OfflineStatusBanner />
           <InstallPrompt locale={locale} />
           {user ? <PwaLaunchTracker locale={locale} /> : null}
-          <header className="border-b border-[#1f2937]/80 pb-2 pt-1">
+          <header
+            className={
+              user
+                ? 'border-b border-[#1f2937]/80 pb-2 pt-1'
+                : 'absolute right-3 top-3 z-50 border-0 p-0 sm:right-6 sm:top-4'
+            }
+          >
             <div className="flex min-w-0 items-start justify-between gap-3 sm:items-center sm:gap-4">
-            <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
-              <Link href="/" className="flex min-w-0 shrink-0 items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-[5px] bg-brand text-xs font-extrabold text-white">
-                  AB
-                </div>
-                <p className="truncate text-base font-extrabold tracking-tight text-white sm:text-lg">{t('appName')}</p>
-              </Link>
-              {!user ? (
-                <div className="hidden min-w-0 flex-1 items-center justify-end sm:flex">
-                  <HomeHeaderNav />
-                </div>
-              ) : null}
-            </div>
+            {user ? (
+              <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
+                <Link href="/" className="flex min-w-0 shrink-0 items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-[5px] bg-brand text-xs font-extrabold text-white">
+                    AB
+                  </div>
+                  <p className="truncate text-base font-extrabold tracking-tight text-white sm:text-lg">{t('appName')}</p>
+                </Link>
+              </div>
+            ) : null}
 
             <div className="flex min-w-0 shrink-0 items-center justify-end gap-2 sm:gap-3">
               {user ? (
@@ -160,11 +162,6 @@ export default async function LocaleLayout({
               )}
             </div>
             </div>
-            {!user ? (
-              <div className="mt-2.5 sm:hidden">
-                <HomeHeaderNav />
-              </div>
-            ) : null}
           </header>
           {children}
         </div>

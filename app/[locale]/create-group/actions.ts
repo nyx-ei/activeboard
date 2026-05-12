@@ -1,5 +1,6 @@
 'use server';
 
+import { randomBytes } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 
 import type { AppLocale } from '@/i18n/routing';
@@ -175,6 +176,10 @@ function parseDraft(rawDraft: string): FounderOnboardingDraft | null {
   }
 }
 
+function createTemporaryPassword() {
+  return `AB-${randomBytes(24).toString('base64url')}`;
+}
+
 export async function completeFounderOnboardingAction(
   formData: FormData,
 ): Promise<FounderOnboardingResult> {
@@ -205,7 +210,9 @@ export async function completeFounderOnboardingAction(
     !draft.groupName ||
     draft.questionBanks.length === 0 ||
     inviteEmails.length < 1 ||
-    (!authUser && (!draft.password || draft.password.length < 8))
+    (!authUser &&
+      typeof draft.password === 'string' &&
+      draft.password.length < 8)
   ) {
     return { ok: false, reason: 'missing_fields' };
   }
@@ -233,7 +240,10 @@ export async function completeFounderOnboardingAction(
       const { data: createdAuthUser, error: authError } =
         await adminClient.auth.admin.createUser({
           email: draft.email,
-          password: draft.password!,
+          password:
+            draft.password && draft.password.length >= 8
+              ? draft.password
+              : createTemporaryPassword(),
           email_confirm: true,
           user_metadata: {
             full_name: draft.displayName,
