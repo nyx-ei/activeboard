@@ -7,6 +7,10 @@ import { getTranslations } from 'next-intl/server';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUserTierCapability } from '@/lib/billing/gating';
 import { hasEmailEnv } from '@/lib/env';
+import {
+  getInviteAdmissionFeedbackKey,
+  verifyInviteAdmission,
+} from '@/lib/invites/admission';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
 import { sendSessionCalendarInvites } from '@/lib/notifications/calendar-invites';
@@ -312,29 +316,31 @@ export async function respondToInviteAction(formData: FormData) {
   }
 
   if (intent === 'accept') {
-    await requireUserTierCapability({
+    const verification = await verifyInviteAdmission({
+      admin: createSupabaseAdminClient(),
+      inviteId,
       userId: user.id,
-      capability: 'canJoinMultipleGroups',
-      locale,
-      redirectTo: safeRedirectTo,
+      userEmail: user.email,
     });
 
-    const { data: members } = await supabase
-      .schema('public')
-      .from('group_members')
-      .select('group_id')
-      .eq('group_id', invite.group_id);
-
-    if ((members?.length ?? 0) >= 5) {
-      redirect(withFeedback(safeRedirectTo, 'error', t('groupFull')));
+    if (!verification.ok) {
+      redirect(
+        withFeedback(
+          safeRedirectTo,
+          'error',
+          t(getInviteAdmissionFeedbackKey(verification.reason)),
+        ),
+      );
     }
 
-    await supabase.schema('public').from('group_members').insert({
-      group_id: invite.group_id,
-      is_founder: false,
-      invited_during_session_id: invite.invited_during_session_id,
-      user_id: user.id,
-    });
+    if (!verification.alreadyMember) {
+      await supabase.schema('public').from('group_members').insert({
+        group_id: verification.invite.groupId,
+        is_founder: false,
+        invited_during_session_id: verification.invite.invitedDuringSessionId,
+        user_id: user.id,
+      });
+    }
   }
 
   await supabase
@@ -425,12 +431,22 @@ export async function completeInviteOnboardingAction(formData: FormData) {
     redirect(withFeedback(safeRedirectTo, 'error', t('notAuthorized')));
   }
 
-  await requireUserTierCapability({
+  const verification = await verifyInviteAdmission({
+    admin: createSupabaseAdminClient(),
+    inviteId,
     userId: user.id,
-    capability: 'canJoinMultipleGroups',
-    locale,
-    redirectTo: safeRedirectTo,
+    userEmail: user.email,
   });
+
+  if (!verification.ok) {
+    redirect(
+      withFeedback(
+        safeRedirectTo,
+        'error',
+        t(getInviteAdmissionFeedbackKey(verification.reason)),
+      ),
+    );
+  }
 
   const availabilityGrid = parseAvailabilityGrid(availabilityGridRaw);
 
@@ -478,32 +494,14 @@ export async function completeInviteOnboardingAction(formData: FormData) {
     redirect(withFeedback(safeRedirectTo, 'error', t('actionFailed')));
   }
 
-  const { data: existingMembership } = await supabase
-    .schema('public')
-    .from('group_members')
-    .select('group_id')
-    .eq('group_id', invite.group_id)
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  if (!existingMembership) {
-    const { data: members } = await supabase
-      .schema('public')
-      .from('group_members')
-      .select('group_id')
-      .eq('group_id', invite.group_id);
-
-    if ((members?.length ?? 0) >= 5) {
-      redirect(withFeedback(safeRedirectTo, 'error', t('groupFull')));
-    }
-
+  if (!verification.alreadyMember) {
     const { error: membershipError } = await supabase
       .schema('public')
       .from('group_members')
       .insert({
-        group_id: invite.group_id,
+        group_id: verification.invite.groupId,
         is_founder: false,
-        invited_during_session_id: invite.invited_during_session_id,
+        invited_during_session_id: verification.invite.invitedDuringSessionId,
         user_id: user.id,
       });
 
