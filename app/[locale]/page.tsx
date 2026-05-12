@@ -13,26 +13,15 @@ type LocaleHomePageProps = {
 
 function ActiveBoardLandingLogo() {
   return (
-    <div className="flex items-center gap-4">
-      <Image
-        src="/landing/activeboard-mark.png"
-        alt=""
-        width={40}
-        height={80}
-        priority
-        unoptimized
-        className="h-[50px] w-auto object-contain"
-        aria-hidden="true"
-      />
-      <div className="min-w-0">
-        <p className="text-[34px] font-bold leading-none tracking-[-0.04em] text-white">
-          ActiveBoard
-        </p>
-        <p className="mt-1 text-[10px] font-bold uppercase leading-none tracking-[0.2em] text-brand">
-          Study. Simulate. Succeed.
-        </p>
-      </div>
-    </div>
+    <Image
+      src="/landing/activeboard-logo.png"
+      alt="ActiveBoard"
+      width={220}
+      height={48}
+      priority
+      unoptimized
+      className="h-[48px] w-[220px] object-contain"
+    />
   );
 }
 
