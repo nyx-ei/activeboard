@@ -206,6 +206,7 @@ type GroupInvitesRow = {
   group_id: string;
   id: string;
   invited_by: string;
+  invited_during_session_id: string | null;
   invitee_email: string;
   invitee_user_id: string | null;
   responded_at: string | null;
@@ -217,6 +218,7 @@ type GroupInvitesInsert = {
   group_id: string;
   id?: string;
   invited_by: string;
+  invited_during_session_id?: string | null;
   invitee_email: string;
   invitee_user_id?: string | null;
   responded_at?: string | null;
@@ -228,6 +230,7 @@ type GroupInvitesUpdate = {
   group_id?: string;
   id?: string;
   invited_by?: string;
+  invited_during_session_id?: string | null;
   invitee_email?: string;
   invitee_user_id?: string | null;
   responded_at?: string | null;

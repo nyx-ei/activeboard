@@ -303,7 +303,7 @@ export async function respondToInviteAction(formData: FormData) {
   const { data: invite } = await supabase
     .schema('public')
     .from('group_invites')
-    .select('id, group_id, status')
+    .select('id, group_id, status, invited_during_session_id')
     .eq('id', inviteId)
     .maybeSingle();
 
@@ -332,6 +332,7 @@ export async function respondToInviteAction(formData: FormData) {
     await supabase.schema('public').from('group_members').insert({
       group_id: invite.group_id,
       is_founder: false,
+      invited_during_session_id: invite.invited_during_session_id,
       user_id: user.id,
     });
   }
@@ -410,7 +411,7 @@ export async function completeInviteOnboardingAction(formData: FormData) {
   const { data: invite } = await supabase
     .schema('public')
     .from('group_invites')
-    .select('id, group_id, invitee_email, status')
+    .select('id, group_id, invitee_email, status, invited_during_session_id')
     .eq('id', inviteId)
     .maybeSingle();
 
@@ -502,6 +503,7 @@ export async function completeInviteOnboardingAction(formData: FormData) {
       .insert({
         group_id: invite.group_id,
         is_founder: false,
+        invited_during_session_id: invite.invited_during_session_id,
         user_id: user.id,
       });
 
