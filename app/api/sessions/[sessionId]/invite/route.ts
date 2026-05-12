@@ -213,6 +213,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       invitee_email: inviteeEmail,
       invitee_user_id: existingUser?.id ?? null,
       source: 'session_on_the_fly_invite',
+      funnel_stage: 'created',
     },
     useAdmin: true,
   });

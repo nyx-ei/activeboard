@@ -5,6 +5,8 @@ import {
   getInviteAdmissionFeedbackKey,
   verifyInviteAdmission,
 } from '@/lib/invites/admission';
+import { APP_EVENTS } from '@/lib/logging/events';
+import { logAppEvent } from '@/lib/logging/logger';
 import { createPerfTracker } from '@/lib/observability/perf';
 import { getCurrentAuthUser } from '@/lib/session/flow';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
@@ -63,6 +65,25 @@ async function handleVerify(
   perf.step('invite_verified');
 
   if (!verification.ok) {
+    if (verification.sessionAdmission?.sessionId) {
+      await logAppEvent({
+        eventName: APP_EVENTS.onTheFlyInviteVerificationBlocked,
+        level: verification.reason === 'phase_3_required' ? 'warn' : 'info',
+        locale,
+        userId: user.id,
+        sessionId: verification.sessionAdmission.sessionId,
+        metadata: {
+          invite_id: inviteId,
+          reason: verification.reason,
+          current_question_phase:
+            verification.sessionAdmission.currentQuestionPhase,
+          source: 'session_on_the_fly_invite',
+          funnel_stage: 'verification_blocked',
+        },
+        useAdmin: true,
+      });
+    }
+
     perf.done({ reason: verification.reason });
     return NextResponse.json(
       {
@@ -73,6 +94,25 @@ async function handleVerify(
       },
       { status: verification.status },
     );
+  }
+
+  if (verification.invite.invitedDuringSessionId) {
+    await logAppEvent({
+      eventName: APP_EVENTS.onTheFlyInviteVerificationPassed,
+      locale,
+      userId: user.id,
+      groupId: verification.invite.groupId,
+      sessionId: verification.invite.invitedDuringSessionId,
+      metadata: {
+        invite_id: inviteId,
+        already_member: verification.alreadyMember,
+        current_question_phase:
+          verification.sessionAdmission.currentQuestionPhase,
+        source: 'session_on_the_fly_invite',
+        funnel_stage: 'verification_passed',
+      },
+      useAdmin: true,
+    });
   }
 
   perf.done({
