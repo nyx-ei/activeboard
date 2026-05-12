@@ -1,6 +1,7 @@
 'use server';
 
 import { randomBytes } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 
 import type { AppLocale } from '@/i18n/routing';
@@ -57,10 +58,11 @@ type FounderOnboardingDraft = {
 type FounderOnboardingResult =
   | {
       ok: true;
-      groupId: string;
-      inviteCode: string;
-      requiresLogin: boolean;
-      emailDeliveryFailed: boolean;
+    groupId: string;
+    inviteCode: string;
+    passwordSetupToken?: string;
+    requiresLogin: boolean;
+    emailDeliveryFailed: boolean;
     }
   | {
       ok: false;
@@ -178,6 +180,14 @@ function parseDraft(rawDraft: string): FounderOnboardingDraft | null {
 
 function createTemporaryPassword() {
   return `AB-${randomBytes(24).toString('base64url')}`;
+}
+
+function createPasswordSetupToken() {
+  return randomBytes(32).toString('base64url');
+}
+
+function hashPasswordSetupToken(token: string) {
+  return createHash('sha256').update(token).digest('hex');
 }
 
 export async function completeFounderOnboardingAction(
@@ -470,10 +480,30 @@ export async function completeFounderOnboardingAction(
     revalidatePath(`/${locale}/dashboard`);
     revalidatePath(`/${locale}/groups`);
 
+    let passwordSetupToken: string | undefined;
+    if (!authUser && createdAuthUserId) {
+      passwordSetupToken = createPasswordSetupToken();
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+      const { error: setupTokenError } = await adminClient
+        .schema('public')
+        .from('password_setup_tokens')
+        .insert({
+          token_hash: hashPasswordSetupToken(passwordSetupToken),
+          user_id: createdAuthUserId,
+          email: founderEmail,
+          expires_at: expiresAt,
+        });
+
+      if (setupTokenError) {
+        throw setupTokenError;
+      }
+    }
+
     return {
       ok: true,
       groupId,
       inviteCode,
+      passwordSetupToken,
       requiresLogin: !authUser,
       emailDeliveryFailed,
     };

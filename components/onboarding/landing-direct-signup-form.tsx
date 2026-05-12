@@ -88,6 +88,7 @@ export function LandingDirectSignupForm({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [createdGroupId, setCreatedGroupId] = useState<string | null>(null);
   const [inviteCode, setInviteCode] = useState('');
+  const [passwordSetupToken, setPasswordSetupToken] = useState('');
   const [isPending, startTransition] = useTransition();
 
   const normalizedFounderEmail = normalizeEmail(email);
@@ -158,11 +159,17 @@ export function LandingDirectSignupForm({
 
       setCreatedGroupId(result.groupId);
       setInviteCode(result.inviteCode);
+      setPasswordSetupToken(result.passwordSetupToken ?? '');
     });
   }
 
   if (createdGroupId) {
     const nextPath = `/${locale}/groups/${createdGroupId}`;
+    const continuePath = passwordSetupToken
+      ? `/${locale}/auth/set-password?token=${encodeURIComponent(
+          passwordSetupToken,
+        )}&next=${encodeURIComponent(nextPath)}`
+      : `/${locale}/auth/login?next=${encodeURIComponent(nextPath)}`;
     return (
       <div className="border-brand/20 bg-brand/[0.08] rounded-[12px] border p-4 sm:p-5">
         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-brand text-[#04110d]">
@@ -184,11 +191,7 @@ export function LandingDirectSignupForm({
         </div>
         <button
           type="button"
-          onClick={() =>
-            window.location.assign(
-              `/${locale}/auth/login?next=${encodeURIComponent(nextPath)}`,
-            )
-          }
+          onClick={() => window.location.assign(continuePath)}
           className="button-primary mt-4 h-12 w-full rounded-[7px] text-base"
         >
           {labels.signInToContinue}
