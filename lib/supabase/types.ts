@@ -147,6 +147,7 @@ type PasswordSetupTokensUpdate = {
 type GroupMembersRow = {
   group_id: string;
   is_founder: boolean;
+  invited_during_session_id: string | null;
   joined_at: string;
   user_id: string;
 };
@@ -154,6 +155,7 @@ type GroupMembersRow = {
 type GroupMembersInsert = {
   group_id: string;
   is_founder?: boolean;
+  invited_during_session_id?: string | null;
   joined_at?: string;
   user_id: string;
 };
@@ -161,6 +163,7 @@ type GroupMembersInsert = {
 type GroupMembersUpdate = {
   group_id?: string;
   is_founder?: boolean;
+  invited_during_session_id?: string | null;
   joined_at?: string;
   user_id?: string;
 };
