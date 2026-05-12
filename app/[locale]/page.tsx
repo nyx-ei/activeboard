@@ -16,11 +16,11 @@ function ActiveBoardLandingLogo() {
     <Image
       src="/landing/activeboard-logo.png"
       alt="ActiveBoard"
-      width={220}
-      height={48}
+      width={296}
+      height={102}
       priority
       unoptimized
-      className="h-[48px] w-[220px] object-contain"
+      className="h-auto w-[220px] object-contain sm:w-[224px]"
     />
   );
 }
