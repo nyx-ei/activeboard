@@ -1,7 +1,10 @@
 import type { AppLocale } from '@/i18n/routing';
 import { getAppUrl } from '@/lib/env';
 import { sendEmail } from '@/lib/email/mailersend';
-import { renderPlainTextEmail, renderTransactionalEmail } from '@/lib/email/templates';
+import {
+  renderPlainTextEmail,
+  renderTransactionalEmail,
+} from '@/lib/email/templates';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
 
@@ -14,6 +17,10 @@ type SendGroupInviteEmailInput = {
   inviteeEmail: string;
   inviterUserId: string;
   inviterName: string;
+  variant?: 'group_invite' | 'mid_session_check_in';
+  sessionId?: string;
+  sessionName?: string | null;
+  sessionShareCode?: string | null;
 };
 
 type SendGroupMemberAddedEmailInput = {
@@ -28,8 +35,43 @@ type SendGroupMemberAddedEmailInput = {
 
 function buildGroupInviteCopy(input: SendGroupInviteEmailInput) {
   const authUrl = `${getAppUrl()}/${input.locale}/auth/login?next=/${input.locale}/invite/${input.inviteId}`;
+  const isMidSessionInvite = input.variant === 'mid_session_check_in';
 
   if (input.locale === 'fr') {
+    if (isMidSessionInvite) {
+      return {
+        subject: `Check-in ActiveBoard : ${input.groupName}`,
+        content: {
+          title: 'Invitation à rejoindre le check-in de session',
+          preheader: `${input.inviterName} vous invite à rejoindre une session ActiveBoard en cours.`,
+          intro: [
+            'Bonjour,',
+            `${input.inviterName} vous invite à rejoindre le groupe "${input.groupName}" pendant une session ActiveBoard en cours.`,
+            'Acceptez l’invitation avec cette adresse email. Vous pourrez entrer dans le groupe et rejoindre le flux de session selon les règles d’admission en cours.',
+          ],
+          details: [
+            { label: 'Groupe', value: input.groupName },
+            { label: 'Invité par', value: input.inviterName },
+            ...(input.sessionName
+              ? [{ label: 'Session', value: input.sessionName }]
+              : []),
+            ...(input.sessionShareCode
+              ? [{ label: 'Code de session', value: input.sessionShareCode }]
+              : []),
+            {
+              label: "Code d'invitation",
+              value: input.inviteCode || 'Disponible dans ActiveBoard',
+            },
+          ],
+          action: { label: "Accepter l'invitation", url: authUrl },
+          secondaryNote:
+            'Si vous avez déjà un compte ActiveBoard, connectez-vous avec cette adresse email. Sinon, créez un compte puis poursuivez depuis la page d’invitation.',
+          safetyNote:
+            'Cette invitation ne modifie pas les réponses déjà soumises par les participants.',
+        },
+      };
+    }
+
     return {
       subject: `Invitation ActiveBoard : ${input.groupName}`,
       content: {
@@ -43,11 +85,48 @@ function buildGroupInviteCopy(input: SendGroupInviteEmailInput) {
         details: [
           { label: 'Groupe', value: input.groupName },
           { label: 'Invité par', value: input.inviterName },
-          { label: "Code d'invitation", value: input.inviteCode || 'Disponible dans ActiveBoard' },
+          {
+            label: "Code d'invitation",
+            value: input.inviteCode || 'Disponible dans ActiveBoard',
+          },
         ],
         action: { label: "Accepter l'invitation", url: authUrl },
         secondaryNote:
           'Si vous avez déjà un compte ActiveBoard, connectez-vous avec cette adresse email. Sinon, créez un compte puis poursuivez depuis la page d’invitation.',
+      },
+    };
+  }
+
+  if (isMidSessionInvite) {
+    return {
+      subject: `ActiveBoard check-in: ${input.groupName}`,
+      content: {
+        title: 'Join this session check-in',
+        preheader: `${input.inviterName} invited you to join an active ActiveBoard session.`,
+        intro: [
+          'Hi,',
+          `${input.inviterName} invited you to join "${input.groupName}" during an active ActiveBoard session.`,
+          'Accept the invitation with this email address. You can enter the group and join the session flow according to the current admission rules.',
+        ],
+        details: [
+          { label: 'Group', value: input.groupName },
+          { label: 'Invited by', value: input.inviterName },
+          ...(input.sessionName
+            ? [{ label: 'Session', value: input.sessionName }]
+            : []),
+          ...(input.sessionShareCode
+            ? [{ label: 'Session code', value: input.sessionShareCode }]
+            : []),
+          {
+            label: 'Invitation code',
+            value: input.inviteCode || 'Available in ActiveBoard',
+          },
+        ],
+        action: { label: 'Accept invitation', url: authUrl },
+        secondaryNote:
+          'If you already have an ActiveBoard account, sign in with this email address. Otherwise, create an account and continue from the invitation page.',
+        safetyNote:
+          'This invitation does not change answers that participants have already submitted.',
       },
     };
   }
@@ -65,7 +144,10 @@ function buildGroupInviteCopy(input: SendGroupInviteEmailInput) {
       details: [
         { label: 'Group', value: input.groupName },
         { label: 'Invited by', value: input.inviterName },
-        { label: 'Invitation code', value: input.inviteCode || 'Available in ActiveBoard' },
+        {
+          label: 'Invitation code',
+          value: input.inviteCode || 'Available in ActiveBoard',
+        },
       ],
       action: { label: 'Accept invitation', url: authUrl },
       secondaryNote:
@@ -93,6 +175,9 @@ export async function sendGroupInviteEmail(input: SendGroupInviteEmailInput) {
       metadata: {
         invite_id: input.inviteId,
         invitee_email: input.inviteeEmail,
+        template_variant: input.variant ?? 'group_invite',
+        session_id: input.sessionId,
+        session_share_code: input.sessionShareCode,
         provider: 'mailersend',
         provider_message_id: response.id,
       },
@@ -101,7 +186,10 @@ export async function sendGroupInviteEmail(input: SendGroupInviteEmailInput) {
 
     return { ok: true as const };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown group invite email error';
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : 'Unknown group invite email error';
 
     await logAppEvent({
       eventName: APP_EVENTS.groupInviteEmailFailed,
@@ -112,6 +200,9 @@ export async function sendGroupInviteEmail(input: SendGroupInviteEmailInput) {
       metadata: {
         invite_id: input.inviteId,
         invitee_email: input.inviteeEmail,
+        template_variant: input.variant ?? 'group_invite',
+        session_id: input.sessionId,
+        session_share_code: input.sessionShareCode,
         error_message: errorMessage,
       },
       useAdmin: true,
@@ -121,9 +212,14 @@ export async function sendGroupInviteEmail(input: SendGroupInviteEmailInput) {
   }
 }
 
-export async function sendGroupMemberAddedEmail(input: SendGroupMemberAddedEmailInput) {
+export async function sendGroupMemberAddedEmail(
+  input: SendGroupMemberAddedEmailInput,
+) {
   const dashboardUrl = `${getAppUrl()}/${input.locale}/groups/${input.groupId}`;
-  const memberName = input.memberName?.trim() || input.memberEmail.split('@')[0] || 'ActiveBoard member';
+  const memberName =
+    input.memberName?.trim() ||
+    input.memberEmail.split('@')[0] ||
+    'ActiveBoard member';
   const isFrench = input.locale === 'fr';
   const content = isFrench
     ? {
@@ -164,7 +260,9 @@ export async function sendGroupMemberAddedEmail(input: SendGroupMemberAddedEmail
   try {
     const response = await sendEmail({
       to: input.memberEmail,
-      subject: isFrench ? `Vous avez été ajouté à ${input.groupName}` : `You were added to ${input.groupName}`,
+      subject: isFrench
+        ? `Vous avez été ajouté à ${input.groupName}`
+        : `You were added to ${input.groupName}`,
       html: renderTransactionalEmail(content),
       text: renderPlainTextEmail(content),
     });
@@ -190,7 +288,10 @@ export async function sendGroupMemberAddedEmail(input: SendGroupMemberAddedEmail
       groupId: input.groupId,
       metadata: {
         member_email: input.memberEmail,
-        error_message: error instanceof Error ? error.message : 'Unknown group member added email error',
+        error_message:
+          error instanceof Error
+            ? error.message
+            : 'Unknown group member added email error',
       },
       useAdmin: true,
     });
