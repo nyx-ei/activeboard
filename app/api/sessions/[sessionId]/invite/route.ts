@@ -77,7 +77,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   const { data: session } = await admin
     .schema('public')
     .from('sessions')
-    .select('id, group_id, leader_id, status')
+    .select('id, group_id, leader_id, name, share_code, status')
     .eq('id', sessionId)
     .maybeSingle();
   perf.step('session_loaded');
@@ -230,6 +230,10 @@ export async function POST(request: Request, { params }: RouteContext) {
       inviterUserId: user.id,
       inviterName:
         inviter?.display_name ?? inviter?.email ?? user.email ?? 'ActiveBoard',
+      variant: 'mid_session_check_in',
+      sessionId: session.id,
+      sessionName: session.name,
+      sessionShareCode: session.share_code,
     });
 
     emailDeliveryFailed = !inviteEmailResult.ok;
