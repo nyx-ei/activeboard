@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { SessionDashboardBackButton } from '@/components/session/session-dashboard-back-button';
+import type { SessionInviteTeammateLabels } from '@/components/session/session-invite-teammate-button';
 import type { SessionLeaveConfirmLabels } from '@/components/session/session-leave-confirm-dialog';
 import { SessionStageRefresh } from '@/components/session/session-stage-refresh';
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
@@ -47,6 +48,7 @@ type SessionStartRuntimeProps = {
     goToReview: string;
     quitPending: string;
     quitConfirm: SessionLeaveConfirmLabels;
+    inviteTeammate: SessionInviteTeammateLabels;
   };
 };
 
@@ -104,6 +106,7 @@ export function SessionStartRuntime({
         timerSeconds={timerSeconds}
         startedAt={activeQuestion.startedAt}
         canAdvanceQuestion={true}
+        canInviteTeammate={true}
         initialAnswer={null}
         initialConfidence={null as ConfidenceLevel | null}
         initialSubmittedCount={0}
@@ -129,6 +132,7 @@ export function SessionStartRuntime({
           quitSession: labels.quitSession,
           quitPending: labels.quitPending,
           quitConfirm: labels.quitConfirm,
+          inviteTeammate: labels.inviteTeammate,
         }}
       />
     );

@@ -67,6 +67,27 @@ export default async function SessionPage({
     cancel: t('quitConfirmCancel'),
     confirm: t('quitConfirmConfirm'),
   };
+  const inviteTeammateLabels = {
+    button: t('inviteTeammateButton'),
+    title: t('inviteTeammateTitle'),
+    description: t('inviteTeammateDescription'),
+    email: t('inviteTeammateEmail'),
+    emailPlaceholder: t('inviteTeammateEmailPlaceholder'),
+    send: t('inviteTeammateSend'),
+    sending: t('inviteTeammateSending'),
+    cancel: t('inviteTeammateCancel'),
+    close: t('inviteTeammateClose'),
+    success: t('inviteTeammateSuccess'),
+    successEmailWarning: t('inviteTeammateSuccessEmailWarning'),
+    invalidEmail: t('inviteTeammateInvalidEmail'),
+    cannotInviteSelf: t('inviteTeammateCannotInviteSelf'),
+    alreadyMember: t('inviteTeammateAlreadyMember'),
+    groupFull: t('inviteTeammateGroupFull'),
+    inviteExists: t('inviteTeammateInviteExists'),
+    sessionNotActive: t('inviteTeammateSessionNotActive'),
+    notAuthorized: t('inviteTeammateNotAuthorized'),
+    genericError: t('inviteTeammateGenericError'),
+  };
 
   const questionGoal = data.questionGoal;
   const currentIndex = Math.max(
@@ -95,6 +116,7 @@ export default async function SessionPage({
       searchParams.stage !== 'review');
   const isReview = searchParams.stage === 'review';
   const canAdvanceQuestion = data.session.leader_id === user.id;
+  const canInviteTeammate = canAdvanceQuestion || data.membership.is_founder;
 
   if (data.session.status === 'scheduled') {
     const timerLabel =
@@ -149,6 +171,7 @@ export default async function SessionPage({
             goToReview: t('goToReview'),
             quitPending: t('quitPending'),
             quitConfirm: quitConfirmLabels,
+            inviteTeammate: inviteTeammateLabels,
           }}
         />
       </main>
@@ -303,6 +326,7 @@ export default async function SessionPage({
         timerSeconds={data.session.timer_seconds}
         startedAt={data.session.started_at}
         canAdvanceQuestion={canAdvanceQuestion}
+        canInviteTeammate={canInviteTeammate}
         initialAnswer={myAnswer?.selected_option}
         initialConfidence={
           myAnswer?.confidence as ConfidenceLevel | null | undefined
@@ -333,6 +357,7 @@ export default async function SessionPage({
           quitSession: t('quitSession'),
           quitPending: t('quitPending'),
           quitConfirm: quitConfirmLabels,
+          inviteTeammate: inviteTeammateLabels,
         }}
       />
     </main>

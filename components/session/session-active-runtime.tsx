@@ -11,6 +11,10 @@ import {
   SessionAnswerForm,
   SessionHeaderMeta,
 } from '@/components/session/session-flow-client';
+import {
+  SessionInviteTeammateButton,
+  type SessionInviteTeammateLabels,
+} from '@/components/session/session-invite-teammate-button';
 import { SessionQuitButton } from '@/components/session/session-quit-button';
 import type { SessionLeaveConfirmLabels } from '@/components/session/session-leave-confirm-dialog';
 import { Link } from '@/i18n/navigation';
@@ -28,6 +32,7 @@ type SessionActiveRuntimeProps = {
   timerSeconds: number;
   startedAt: string | null;
   canAdvanceQuestion: boolean;
+  canInviteTeammate: boolean;
   initialSubmittedCount: number;
   initialMemberCount: number;
   initialAnswerDeadlineAt: string | null;
@@ -54,6 +59,7 @@ type SessionActiveRuntimeProps = {
     quitSession: string;
     quitPending: string;
     quitConfirm: SessionLeaveConfirmLabels;
+    inviteTeammate: SessionInviteTeammateLabels;
   };
   advanceAction: ServerAction;
 };
@@ -80,6 +86,7 @@ export function SessionActiveRuntime({
   timerSeconds,
   startedAt,
   canAdvanceQuestion,
+  canInviteTeammate,
   initialSubmittedCount,
   initialMemberCount,
   initialAnswerDeadlineAt,
@@ -362,11 +369,20 @@ export function SessionActiveRuntime({
               </span>
             </div>
           </div>
-          <SessionHeaderMeta
-            submittedCount={submittedCount}
-            memberCount={memberCount}
-            answerDeadlineAt={answerDeadlineAt}
-          />
+          <div className="flex shrink-0 items-center justify-end gap-2">
+            {canInviteTeammate ? (
+              <SessionInviteTeammateButton
+                locale={locale}
+                sessionId={sessionId}
+                labels={labels.inviteTeammate}
+              />
+            ) : null}
+            <SessionHeaderMeta
+              submittedCount={submittedCount}
+              memberCount={memberCount}
+              answerDeadlineAt={answerDeadlineAt}
+            />
+          </div>
         </div>
       </header>
 
