@@ -315,6 +315,8 @@ export async function respondToInviteAction(formData: FormData) {
     redirect(withFeedback(safeRedirectTo, 'error', t('notAuthorized')));
   }
 
+  let acceptedInviteAlreadyMember: boolean | undefined;
+
   if (intent === 'accept') {
     const verification = await verifyInviteAdmission({
       admin: createSupabaseAdminClient(),
@@ -332,6 +334,8 @@ export async function respondToInviteAction(formData: FormData) {
         ),
       );
     }
+
+    acceptedInviteAlreadyMember = verification.alreadyMember;
 
     if (!verification.alreadyMember) {
       await supabase.schema('public').from('group_members').insert({
@@ -364,8 +368,32 @@ export async function respondToInviteAction(formData: FormData) {
     metadata: {
       invite_id: invite.id,
       intent,
+      invited_during_session_id: invite.invited_during_session_id,
+      source: invite.invited_during_session_id
+        ? 'session_on_the_fly_invite'
+        : 'group_invite',
     },
   });
+
+  if (invite.invited_during_session_id) {
+    await logAppEvent({
+      eventName:
+        intent === 'accept'
+          ? APP_EVENTS.onTheFlyInviteAccepted
+          : APP_EVENTS.onTheFlyInviteDeclined,
+      locale,
+      userId: user.id,
+      groupId: invite.group_id,
+      sessionId: invite.invited_during_session_id,
+      metadata: {
+        invite_id: invite.id,
+        intent,
+        already_member: acceptedInviteAlreadyMember,
+        source: 'session_on_the_fly_invite',
+        funnel_stage: intent === 'accept' ? 'accepted' : 'declined',
+      },
+    });
+  }
 
   revalidatePath(`/${locale}/dashboard`);
   revalidatePath(safeRedirectTo);
@@ -531,6 +559,7 @@ export async function completeInviteOnboardingAction(formData: FormData) {
     groupId: invite.group_id,
     metadata: {
       invite_id: invite.id,
+      invited_during_session_id: invite.invited_during_session_id,
       source: 'invite_onboarding_wizard',
       exam_session: examSession,
       locale_selected: language,
@@ -542,6 +571,26 @@ export async function completeInviteOnboardingAction(formData: FormData) {
       ),
     },
   });
+
+  if (invite.invited_during_session_id) {
+    await logAppEvent({
+      eventName: APP_EVENTS.onTheFlyInviteAccepted,
+      locale,
+      userId: user.id,
+      groupId: invite.group_id,
+      sessionId: invite.invited_during_session_id,
+      metadata: {
+        invite_id: invite.id,
+        already_member: verification.alreadyMember,
+        source: 'invite_onboarding_wizard',
+        funnel_stage: 'accepted',
+        exam_session: examSession,
+        locale_selected: language,
+        timezone,
+        question_banks: questionBanks,
+      },
+    });
+  }
 
   revalidatePath(`/${locale}/dashboard`);
   revalidatePath(`/${locale}/groups/${invite.group_id}`);

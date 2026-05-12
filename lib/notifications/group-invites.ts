@@ -178,6 +178,12 @@ export async function sendGroupInviteEmail(input: SendGroupInviteEmailInput) {
         template_variant: input.variant ?? 'group_invite',
         session_id: input.sessionId,
         session_share_code: input.sessionShareCode,
+        source:
+          input.variant === 'mid_session_check_in'
+            ? 'session_on_the_fly_invite'
+            : 'group_invite',
+        funnel_stage:
+          input.variant === 'mid_session_check_in' ? 'email_sent' : undefined,
         provider: 'mailersend',
         provider_message_id: response.id,
       },
@@ -203,6 +209,12 @@ export async function sendGroupInviteEmail(input: SendGroupInviteEmailInput) {
         template_variant: input.variant ?? 'group_invite',
         session_id: input.sessionId,
         session_share_code: input.sessionShareCode,
+        source:
+          input.variant === 'mid_session_check_in'
+            ? 'session_on_the_fly_invite'
+            : 'group_invite',
+        funnel_stage:
+          input.variant === 'mid_session_check_in' ? 'email_failed' : undefined,
         error_message: errorMessage,
       },
       useAdmin: true,
