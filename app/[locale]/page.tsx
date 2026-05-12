@@ -20,7 +20,7 @@ function ActiveBoardLandingLogo() {
       height={76}
       priority
       unoptimized
-      className="-ml-14 mt-4 h-auto w-[236px] object-contain sm:-ml-16 sm:w-[240px]"
+      className="ml-0 mt-4 h-auto w-[236px] object-contain sm:ml-0 sm:w-[240px]"
     />
   );
 }
