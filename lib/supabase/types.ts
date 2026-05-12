@@ -117,6 +117,33 @@ type FeatureFlagsUpdate = {
   updated_at?: string;
 };
 
+type PasswordSetupTokensRow = {
+  created_at: string;
+  email: string;
+  expires_at: string;
+  token_hash: string;
+  used_at: string | null;
+  user_id: string;
+};
+
+type PasswordSetupTokensInsert = {
+  created_at?: string;
+  email: string;
+  expires_at: string;
+  token_hash: string;
+  used_at?: string | null;
+  user_id: string;
+};
+
+type PasswordSetupTokensUpdate = {
+  created_at?: string;
+  email?: string;
+  expires_at?: string;
+  token_hash?: string;
+  used_at?: string | null;
+  user_id?: string;
+};
+
 type GroupMembersRow = {
   group_id: string;
   is_founder: boolean;
@@ -141,6 +168,7 @@ type GroupMembersUpdate = {
 type GroupsRow = {
   created_at: string;
   created_by: string | null;
+  difficulty_level: 'low' | 'medium' | 'high';
   id: string;
   invite_code: string;
   max_members: number;
@@ -151,6 +179,7 @@ type GroupsRow = {
 type GroupsInsert = {
   created_at?: string;
   created_by?: string | null;
+  difficulty_level?: 'low' | 'medium' | 'high';
   id?: string;
   invite_code: string;
   max_members?: number;
@@ -161,6 +190,7 @@ type GroupsInsert = {
 type GroupsUpdate = {
   created_at?: string;
   created_by?: string | null;
+  difficulty_level?: 'low' | 'medium' | 'high';
   id?: string;
   invite_code?: string;
   max_members?: number;
@@ -685,6 +715,12 @@ export type Database = {
         Row: FeatureFlagsRow;
         Insert: FeatureFlagsInsert;
         Update: FeatureFlagsUpdate;
+        Relationships: [];
+      };
+      password_setup_tokens: {
+        Row: PasswordSetupTokensRow;
+        Insert: PasswordSetupTokensInsert;
+        Update: PasswordSetupTokensUpdate;
         Relationships: [];
       };
       group_members: {
