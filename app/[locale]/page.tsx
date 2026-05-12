@@ -35,12 +35,12 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
   }
 
   return (
-    <main className="-mx-2 -mb-24 -mt-4 min-h-screen overflow-hidden bg-[#01070d] px-5 pb-10 pt-5 sm:-mx-6 sm:px-9 sm:pt-6 lg:px-9">
-      <section className="mx-auto grid min-h-[690px] max-w-[1280px] grid-cols-1 items-center gap-6 lg:grid-cols-[minmax(420px,480px)_minmax(0,1fr)]">
+    <main className="-mx-2 -mb-24 -mt-4 min-h-screen overflow-hidden bg-[#01070d] px-5 pb-10 pt-2 sm:-mx-6 sm:px-9 sm:pt-2 lg:px-9">
+      <section className="mx-auto grid min-h-[650px] max-w-[1280px] grid-cols-1 items-center gap-6 lg:grid-cols-[minmax(420px,480px)_minmax(0,1fr)]">
         <div className="relative z-10 w-full max-w-[454px]">
           <ActiveBoardLandingLogo />
 
-          <p className="mt-10 inline-flex max-w-full items-center gap-3 rounded-full border border-white/[0.11] bg-[#050d15]/80 px-4 py-2.5 text-[14px] font-medium text-[#d6dce5] shadow-[0_0_0_1px_rgba(22,210,144,0.02)]">
+          <p className="mt-8 inline-flex max-w-full items-center gap-3 rounded-full border border-white/[0.11] bg-[#050d15]/80 px-4 py-2.5 text-[14px] font-medium text-[#d6dce5] shadow-[0_0_0_1px_rgba(22,210,144,0.02)]">
             <Users
               className="h-[18px] w-[18px] text-brand"
               aria-hidden="true"
@@ -96,7 +96,7 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
           </div>
         </div>
 
-        <div className="relative hidden min-h-[610px] min-w-0 items-center justify-end overflow-hidden lg:flex">
+        <div className="relative hidden min-h-[560px] min-w-0 items-center justify-end overflow-hidden lg:flex">
           <div className="relative flex w-full min-w-0 justify-end">
             <Image
               src="/landing/direct-signup-devices.png"
