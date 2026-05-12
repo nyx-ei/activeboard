@@ -17,18 +17,18 @@ function ActiveBoardLandingLogo() {
       <Image
         src="/landing/activeboard-mark.png"
         alt=""
-        width={56}
-        height={105}
+        width={40}
+        height={80}
         priority
         unoptimized
-        className="h-[42px] w-auto object-contain"
+        className="h-[38px] w-auto object-contain"
         aria-hidden="true"
       />
       <div className="min-w-0">
-        <p className="text-[28px] font-bold leading-none tracking-[-0.035em] text-white">
+        <p className="text-[26px] font-bold leading-none tracking-[-0.035em] text-white">
           ActiveBoard
         </p>
-        <p className="mt-1 text-[9px] font-bold uppercase leading-none tracking-[0.2em] text-brand">
+        <p className="mt-1 text-[8px] font-bold uppercase leading-none tracking-[0.2em] text-brand">
           Study. Simulate. Succeed.
         </p>
       </div>
@@ -107,17 +107,17 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
           </div>
         </div>
 
-        <div className="relative hidden min-h-[610px] min-w-0 items-center justify-end overflow-visible lg:flex">
+        <div className="relative hidden min-h-[610px] min-w-0 items-center justify-end overflow-hidden lg:flex">
           <div className="relative flex w-full min-w-0 justify-end">
             <Image
               src="/landing/direct-signup-devices.png"
               alt="ActiveBoard live question phone and review laptop"
-              width={772}
-              height={535}
+              width={527}
+              height={474}
               priority
               unoptimized
-              className="relative z-10 mt-9 h-auto w-full max-w-[772px] object-contain"
-              sizes="(min-width: 1280px) 772px, calc(100vw - 560px)"
+              className="relative z-10 mt-9 h-auto w-full max-w-[728px] object-contain"
+              sizes="(min-width: 1280px) 728px, calc(100vw - 560px)"
             />
           </div>
         </div>
@@ -125,8 +125,8 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
           <Image
             src="/landing/direct-signup-devices.png"
             alt="ActiveBoard live question phone and review laptop"
-            width={772}
-            height={535}
+            width={527}
+            height={474}
             priority
             unoptimized
             className="mx-auto w-full max-w-[620px] object-contain"
