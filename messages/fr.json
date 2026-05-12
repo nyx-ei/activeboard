@@ -1017,6 +1017,7 @@
                      "sessionInactive":  "Cette session n\u0027est plus active.",
                      "inviteExists":  "Une invitation en attente existe déjà pour cet email.",
                      "cannotInviteSelf":  "Tu ne peux pas t\u0027inviter toi-même.",
+                     "sessionInvitePhaseGate":  "Cette invitation live pourra être acceptée dès que la question en cours passera en révision.",
                      "missingFields":  "Merci de renseigner tous les champs requis.",
                      "upgradeRequiredToCreateGroup":  "Ton essai gratuit est terminé. Active la facturation pour créer de nouveaux groupes.",
                      "upgradeRequiredToJoinSession":  "Ton essai gratuit est terminé. Active la facturation pour rejoindre ou démarrer de nouvelles sessions.",
