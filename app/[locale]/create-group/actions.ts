@@ -13,6 +13,7 @@ import { sendAccountWelcomeEmail } from '@/lib/notifications/account';
 import { sendGroupInviteEmail } from '@/lib/notifications/group-invites';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import type { Json } from '@/lib/supabase/types';
 import { generateInviteCode, normalizeEmail } from '@/lib/utils';
 
 type FounderExamType = 'mccqe1' | 'usmle' | 'plab' | 'other';
@@ -72,6 +73,17 @@ type FounderOnboardingResult =
         | 'not_authenticated'
         | 'action_failed'
         | 'invite_exists';
+    };
+
+type LandingOnboardingStartResult =
+  | {
+      ok: true;
+      email: string;
+      token: string;
+    }
+  | {
+      ok: false;
+      reason: 'missing_fields' | 'account_exists' | 'action_failed';
     };
 
 const VALID_EXAM_TYPES = new Set<FounderExamType>([
@@ -188,6 +200,70 @@ function createPasswordSetupToken() {
 
 function hashPasswordSetupToken(token: string) {
   return createHash('sha256').update(token).digest('hex');
+}
+
+export async function startLandingOnboardingAction(
+  formData: FormData,
+): Promise<LandingOnboardingStartResult> {
+  const rawDraft = ((formData.get('draft') as string | null) ?? '').trim();
+  const draft = parseDraft(rawDraft);
+
+  if (!draft) {
+    return { ok: false, reason: 'missing_fields' };
+  }
+
+  const founderEmail = draft.email;
+  const inviteEmails = draft.memberEmails
+    .filter((email) => email !== founderEmail)
+    .slice(0, 5);
+
+  if (
+    !draft.displayName ||
+    !founderEmail ||
+    !draft.groupName ||
+    draft.questionBanks.length === 0 ||
+    inviteEmails.length < 1
+  ) {
+    return { ok: false, reason: 'missing_fields' };
+  }
+
+  const adminClient = createSupabaseAdminClient();
+  const { data: existingUser, error: existingUserError } = await adminClient
+    .schema('public')
+    .from('users')
+    .select('id')
+    .eq('email', founderEmail)
+    .maybeSingle();
+
+  if (existingUserError) {
+    return { ok: false, reason: 'action_failed' };
+  }
+
+  if (existingUser) {
+    return { ok: false, reason: 'account_exists' };
+  }
+
+  const token = createPasswordSetupToken();
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+  const { error: tokenError } = await adminClient
+    .schema('public')
+    .from('landing_onboarding_tokens')
+    .insert({
+      token_hash: hashPasswordSetupToken(token),
+      email: founderEmail,
+      draft: draft as unknown as Json,
+      expires_at: expiresAt,
+    });
+
+  if (tokenError) {
+    return { ok: false, reason: 'action_failed' };
+  }
+
+  return {
+    ok: true,
+    email: founderEmail,
+    token,
+  };
 }
 
 export async function completeFounderOnboardingAction(

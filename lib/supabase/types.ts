@@ -144,6 +144,33 @@ type PasswordSetupTokensUpdate = {
   user_id?: string;
 };
 
+type LandingOnboardingTokensRow = {
+  created_at: string;
+  draft: Json;
+  email: string;
+  expires_at: string;
+  token_hash: string;
+  used_at: string | null;
+};
+
+type LandingOnboardingTokensInsert = {
+  created_at?: string;
+  draft: Json;
+  email: string;
+  expires_at: string;
+  token_hash: string;
+  used_at?: string | null;
+};
+
+type LandingOnboardingTokensUpdate = {
+  created_at?: string;
+  draft?: Json;
+  email?: string;
+  expires_at?: string;
+  token_hash?: string;
+  used_at?: string | null;
+};
+
 type GroupMembersRow = {
   group_id: string;
   is_founder: boolean;
@@ -727,6 +754,12 @@ export type Database = {
         Row: PasswordSetupTokensRow;
         Insert: PasswordSetupTokensInsert;
         Update: PasswordSetupTokensUpdate;
+        Relationships: [];
+      };
+      landing_onboarding_tokens: {
+        Row: LandingOnboardingTokensRow;
+        Insert: LandingOnboardingTokensInsert;
+        Update: LandingOnboardingTokensUpdate;
         Relationships: [];
       };
       group_members: {
