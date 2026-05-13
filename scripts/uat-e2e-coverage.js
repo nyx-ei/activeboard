@@ -36,7 +36,7 @@ function parseArgs(argv) {
   return args;
 }
 
-function walkFiles(directory) {
+function walkFiles(directory, options = {}) {
   if (!fs.existsSync(directory)) {
     return [];
   }
@@ -45,8 +45,11 @@ function walkFiles(directory) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const fullPath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
-      files.push(...walkFiles(fullPath));
-    } else if (/\.(spec|test)\.(ts|tsx|js|mjs)$/.test(entry.name)) {
+      files.push(...walkFiles(fullPath, options));
+    } else if (
+      /\.(spec|test)\.(ts|tsx|js|mjs)$/.test(entry.name) &&
+      !options.exclude?.some((pattern) => pattern.test(fullPath))
+    ) {
       files.push(fullPath);
     }
   }
@@ -54,11 +57,11 @@ function walkFiles(directory) {
   return files;
 }
 
-function scanAutomatedIds(specDir) {
+function scanAutomatedIds(specDir, options = {}) {
   const idsByFile = {};
   const allIds = new Set();
 
-  for (const filePath of walkFiles(specDir)) {
+  for (const filePath of walkFiles(specDir, options)) {
     const content = fs.readFileSync(filePath, 'utf8');
     const ids = [...new Set(content.match(UAT_ID_PATTERN) ?? [])].sort();
     if (ids.length === 0) {
@@ -76,22 +79,27 @@ function scanAutomatedIds(specDir) {
   };
 }
 
-function buildCoverageReport({ cases, automatedIds, idsByFile }) {
+function buildCoverageReport({
+  cases,
+  representedIds,
+  runnableIds,
+  idsByFile,
+}) {
   const casesById = new Map(cases.map((testCase) => [testCase.id, testCase]));
   const coveredCases = cases.filter((testCase) =>
-    automatedIds.has(testCase.id),
+    representedIds.has(testCase.id),
   );
   const missingPlaywrightCandidates = cases.filter(
     (testCase) =>
       testCase.automationType === 'playwright-candidate' &&
-      !automatedIds.has(testCase.id),
+      !representedIds.has(testCase.id),
   );
   const missingApiOrUnitCandidates = cases.filter(
     (testCase) =>
       testCase.automationType === 'api-or-unit' &&
-      !automatedIds.has(testCase.id),
+      !representedIds.has(testCase.id),
   );
-  const orphanAutomatedIds = [...automatedIds]
+  const orphanAutomatedIds = [...representedIds]
     .filter((id) => !casesById.has(id))
     .sort();
 
@@ -99,7 +107,9 @@ function buildCoverageReport({ cases, automatedIds, idsByFile }) {
     generatedAt: new Date().toISOString(),
     summary: {
       ...summarize(cases),
-      automatedUatIds: coveredCases.length,
+      representedUatIds: coveredCases.length,
+      runnableUatIds: cases.filter((testCase) => runnableIds.has(testCase.id))
+        .length,
       missingPlaywrightCandidates: missingPlaywrightCandidates.length,
       missingApiOrUnitCandidates: missingApiOrUnitCandidates.length,
       orphanAutomatedIds: orphanAutomatedIds.length,
@@ -117,7 +127,10 @@ function printTextReport(report) {
   console.log('================');
   console.log(`Total UAT cases: ${report.summary.total}`);
   console.log(
-    `Automated UAT IDs in Playwright specs: ${report.summary.automatedUatIds}`,
+    `Represented UAT IDs in Playwright specs: ${report.summary.representedUatIds}`,
+  );
+  console.log(
+    `Runnable UAT IDs in executable specs: ${report.summary.runnableUatIds}`,
   );
   console.log(
     `Missing Playwright candidates: ${report.summary.missingPlaywrightCandidates}`,
@@ -157,9 +170,13 @@ function main() {
 
   const cases = extractCases(inputPath);
   const { allIds, idsByFile } = scanAutomatedIds(specDir);
+  const { allIds: runnableIds } = scanAutomatedIds(specDir, {
+    exclude: [/uat-excel-manifest\.generated\.spec\./],
+  });
   const report = buildCoverageReport({
     cases,
-    automatedIds: allIds,
+    representedIds: allIds,
+    runnableIds,
     idsByFile,
   });
 
@@ -180,4 +197,11 @@ function main() {
   }
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  buildCoverageReport,
+  scanAutomatedIds,
+};

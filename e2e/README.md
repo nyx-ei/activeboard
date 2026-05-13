@@ -35,6 +35,13 @@ Compare the Excel cases with Playwright spec titles:
 npm run uat:e2e:coverage
 ```
 
+Generate the manifest spec that represents every Excel row not yet covered by
+an executable Playwright journey:
+
+```bash
+npm run uat:e2e:manifest
+```
+
 Run the E2E suite against local development:
 
 ```bash
@@ -56,16 +63,21 @@ $env:E2E_BASE_URL='https://activeboard.vercel.app'; npm run test:e2e
 ## Scope
 
 The current tests are the foundation layer: landing signup, authentication, and
-dashboard tab reachability. The generated matrix identifies which Excel cases
-can be automated next with Playwright, API tests, or must remain blocked/manual
-because the product feature or external dependency is missing.
+dashboard tab reachability. The generated manifest makes the whole workbook
+visible to Playwright without pretending that blocked, external-service, or
+manual-device cases have passed. Those rows are represented as skipped tests
+with their automation reason, while executable journeys live in hand-written
+spec files.
 
 When the UAT workbook is replaced with a newer version, rerun:
 
 ```bash
+npm run uat:e2e:manifest
 npm run uat:e2e:matrix
 npm run uat:e2e:coverage
 ```
 
 The coverage script scans UAT IDs directly from test names, so each new E2E test
-should include the matching Excel ID, for example `REV-4.13`.
+should include the matching Excel ID, for example `REV-4.13`. Once a real
+journey is implemented for an ID, regenerate the manifest so that ID disappears
+from `uat-excel-manifest.generated.spec.ts` and is counted as runnable coverage.
