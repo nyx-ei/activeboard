@@ -5,6 +5,7 @@ const path = require('path');
 const zlib = require('zlib');
 
 const DEFAULT_INPUT = 'UAT ActiveBoard v1.xlsx';
+const TEST_ID_PATTERN = /^(?:[A-Z]{2,5}-\d+(?:\.\d+)*|INT-B\.\d+\.\d+)$/;
 
 function parseArgs(argv) {
   const args = {
@@ -136,6 +137,8 @@ function readSheetRows(entries, sheetPath, sharedStrings) {
 
         if (attributes.includes('t="s"')) {
           value = sharedStrings[Number(rawValue)] ?? '';
+        } else if (/^\d+$/.test(rawValue) && sharedStrings[Number(rawValue)]) {
+          value = sharedStrings[Number(rawValue)] ?? '';
         }
 
         row[columnName(ref)] = decodeXml(value);
@@ -168,6 +171,10 @@ function pickByHeader(row, headers) {
   }
 
   return '';
+}
+
+function isTestId(value) {
+  return TEST_ID_PATTERN.test(value);
 }
 
 function classifyCase(testCase) {
@@ -263,7 +270,7 @@ function extractCases(filePath) {
       }
 
       const id = byHeader['Test ID'];
-      if (!id) {
+      if (!id || !isTestId(id)) {
         continue;
       }
 
@@ -382,4 +389,11 @@ function main() {
   }
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  extractCases,
+  summarize,
+};

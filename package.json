@@ -22,6 +22,8 @@
     "test:e2e:ui": "playwright test --ui",
     "uat:e2e:matrix": "node scripts/uat-e2e-matrix.js",
     "uat:e2e:matrix:json": "node scripts/uat-e2e-matrix.js --json --out e2e/reports/uat-e2e-matrix.json",
+    "uat:e2e:coverage": "node scripts/uat-e2e-coverage.js",
+    "uat:e2e:coverage:json": "node scripts/uat-e2e-coverage.js --json --out e2e/reports/uat-e2e-coverage.json",
     "test:load:smoke": "cd e2e-load-tests && bash run-tests.sh smoke session-lifecycle",
     "test:load:load": "cd e2e-load-tests && bash run-tests.sh load session-lifecycle",
     "test:load:stress": "cd e2e-load-tests && bash run-tests.sh stress session-lifecycle",

@@ -29,6 +29,12 @@ Generate a UAT coverage matrix from the local Excel file:
 npm run uat:e2e:matrix
 ```
 
+Compare the Excel cases with Playwright spec titles:
+
+```bash
+npm run uat:e2e:coverage
+```
+
 Run the E2E suite against local development:
 
 ```bash
@@ -53,3 +59,13 @@ The current tests are the foundation layer: landing signup, authentication, and
 dashboard tab reachability. The generated matrix identifies which Excel cases
 can be automated next with Playwright, API tests, or must remain blocked/manual
 because the product feature or external dependency is missing.
+
+When the UAT workbook is replaced with a newer version, rerun:
+
+```bash
+npm run uat:e2e:matrix
+npm run uat:e2e:coverage
+```
+
+The coverage script scans UAT IDs directly from test names, so each new E2E test
+should include the matching Excel ID, for example `REV-4.13`.
