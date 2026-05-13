@@ -13,15 +13,14 @@ type LocaleHomePageProps = {
 
 function ActiveBoardLandingLogo() {
   return (
-    <Image
-      src="/landing/activeboard-logo.png"
-      alt="ActiveBoard"
-      width={254}
-      height={76}
-      priority
-      unoptimized
-      className="ml-0 mt-8 h-auto w-[236px] object-contain sm:ml-0 sm:w-[240px]"
-    />
+    <div data-landing-logo className="mt-4 flex items-center gap-3 lg:mt-2">
+      <div className="flex h-10 w-10 items-center justify-center rounded-[8px] bg-brand text-base font-extrabold text-white shadow-[0_10px_26px_rgba(31,230,166,0.24)]">
+        AB
+      </div>
+      <span className="text-[27px] font-extrabold leading-none tracking-[-0.04em] text-white">
+        ActiveBoard
+      </span>
+    </div>
   );
 }
 
@@ -35,12 +34,15 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
   }
 
   return (
-    <main className="-mx-2 -mb-24 -mt-6 min-h-screen overflow-hidden bg-[#01070d] px-5 pb-10 pt-0 sm:-mx-6 sm:px-9 sm:pt-0 lg:px-9">
-      <section className="mx-auto grid min-h-[610px] max-w-[1280px] grid-cols-1 items-center gap-6 lg:grid-cols-[minmax(420px,480px)_minmax(0,1fr)]">
+    <main className="-mx-2 -mb-24 -mt-6 min-h-screen overflow-hidden bg-[#01070d] px-5 pb-9 pt-0 sm:-mx-6 sm:px-9 sm:pt-0 lg:px-9">
+      <section className="mx-auto grid min-h-[calc(100vh-72px)] max-w-[1280px] grid-cols-1 items-center gap-5 lg:grid-cols-[minmax(400px,454px)_minmax(0,1fr)] lg:gap-8">
         <div className="relative z-10 w-full max-w-[454px]">
           <ActiveBoardLandingLogo />
 
-          <p className="mt-7 inline-flex max-w-full items-center gap-3 rounded-full border border-white/[0.11] bg-[#050d15]/80 px-4 py-2.5 text-[14px] font-medium text-[#d6dce5] shadow-[0_0_0_1px_rgba(22,210,144,0.02)]">
+          <p
+            data-landing-badge
+            className="mt-5 inline-flex max-w-full items-center gap-3 rounded-full border border-white/[0.11] bg-[#050d15]/80 px-3.5 py-2 text-[13px] font-medium text-[#d6dce5] shadow-[0_0_0_1px_rgba(22,210,144,0.02)] lg:mt-4"
+          >
             <Users
               className="h-[18px] w-[18px] text-brand"
               aria-hidden="true"
@@ -48,25 +50,37 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
             {t('landingBadge')}
           </p>
 
-          <h1 className="mt-6 text-[39px] font-bold leading-[1.02] tracking-[-0.04em] text-white sm:text-[46px]">
+          <div data-landing-mobile-image className="relative my-4 lg:hidden">
+            <Image
+              src="/landing/direct-signup-devices.png"
+              alt="ActiveBoard live question phone and review laptop"
+              width={527}
+              height={474}
+              priority
+              unoptimized
+              className="mx-auto w-full max-w-[480px] object-contain"
+              sizes="100vw"
+            />
+          </div>
+
+          <h1
+            data-landing-hero
+            className="mt-5 text-[38px] font-bold leading-[1.02] tracking-[-0.035em] text-white sm:text-[44px] lg:mt-5"
+          >
             {t('landingTitle')}
             <span className="block text-brand">{t('landingTitleAccent')}</span>
           </h1>
-          <p className="mt-5 max-w-[430px] text-[19px] font-normal leading-[1.32] tracking-[-0.015em] text-[#c5c9d0]">
+          <p className="mt-4 max-w-[430px] text-[18px] font-normal leading-[1.32] tracking-[-0.01em] text-[#c5c9d0]">
             {t('landingSubtitle')}
           </p>
 
-          <div className="mt-5">
+          <div className="mt-4">
             <LandingDirectSignupForm
               locale={locale}
               labels={{
                 email: t('directEmail'),
                 partnerEmail: t('directPartnerEmail'),
                 addPartner: t('directAddPartner'),
-                difficultyTitle: t('directDifficultyTitle'),
-                difficultyLow: t('directDifficultyLow'),
-                difficultyMedium: t('directDifficultyMedium'),
-                difficultyHigh: t('directDifficultyHigh'),
                 submit: t('directSubmit'),
                 pending: t('directPending'),
                 missingFields: t('directMissingFields'),
@@ -96,7 +110,10 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
           </div>
         </div>
 
-        <div className="relative hidden min-h-[520px] min-w-0 items-center justify-end overflow-hidden lg:flex">
+        <div
+          data-landing-desktop-image
+          className="relative hidden min-h-[500px] min-w-0 items-center justify-end overflow-hidden lg:flex"
+        >
           <div className="relative flex w-full min-w-0 justify-end">
             <Image
               src="/landing/direct-signup-devices.png"
@@ -105,22 +122,10 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
               height={474}
               priority
               unoptimized
-              className="relative z-10 mt-0 h-auto w-full max-w-[728px] object-contain"
-              sizes="(min-width: 1280px) 728px, calc(100vw - 560px)"
+              className="relative z-10 mt-0 h-auto w-full max-w-[700px] object-contain"
+              sizes="(min-width: 1280px) 700px, calc(100vw - 540px)"
             />
           </div>
-        </div>
-        <div className="relative lg:hidden">
-          <Image
-            src="/landing/direct-signup-devices.png"
-            alt="ActiveBoard live question phone and review laptop"
-            width={527}
-            height={474}
-            priority
-            unoptimized
-            className="mx-auto w-full max-w-[620px] object-contain"
-            sizes="100vw"
-          />
         </div>
       </section>
     </main>

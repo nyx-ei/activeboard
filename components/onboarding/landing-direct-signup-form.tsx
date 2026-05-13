@@ -4,18 +4,12 @@ import { useMemo, useState, useTransition } from 'react';
 import { Check, Mail, Plus, Trash2, UserRound } from 'lucide-react';
 
 import { completeFounderOnboardingAction } from '@/app/[locale]/create-group/actions';
-import { cn, normalizeEmail } from '@/lib/utils';
-
-type DifficultyLevel = 'low' | 'medium' | 'high';
+import { normalizeEmail } from '@/lib/utils';
 
 type LandingDirectSignupLabels = {
   email: string;
   partnerEmail: string;
   addPartner: string;
-  difficultyTitle: string;
-  difficultyLow: string;
-  difficultyMedium: string;
-  difficultyHigh: string;
   submit: string;
   pending: string;
   missingFields: string;
@@ -84,7 +78,6 @@ export function LandingDirectSignupForm({
 }: LandingDirectSignupFormProps) {
   const [email, setEmail] = useState('');
   const [partnerEmails, setPartnerEmails] = useState(['']);
-  const [difficulty, setDifficulty] = useState<DifficultyLevel>('medium');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [createdGroupId, setCreatedGroupId] = useState<string | null>(null);
   const [inviteCode, setInviteCode] = useState('');
@@ -138,7 +131,7 @@ export function LandingDirectSignupForm({
       locale: locale === 'fr' ? 'fr' : 'en',
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
       plan: 'starter',
-      difficultyLevel: difficulty,
+      difficultyLevel: 'medium',
       questionBanks: DEFAULT_QUESTION_BANKS,
       schedule: [],
       groupName: `${displayName}'s Reliability Sprint`,
@@ -212,7 +205,7 @@ export function LandingDirectSignupForm({
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="h-[45px] w-full rounded-[5px] border border-[#1c2d40] bg-[#020910]/70 pl-[54px] pr-4 text-[14px] font-medium text-white outline-none transition placeholder:text-[#c1c7cf] focus:border-brand focus:ring-2 focus:ring-emerald-400/20"
+            className="h-[43px] w-full rounded-[5px] border border-[#1c2d40] bg-[#020910]/70 pl-[54px] pr-4 text-[14px] font-medium text-white outline-none transition placeholder:text-[#c1c7cf] focus:border-brand focus:ring-2 focus:ring-emerald-400/20"
             placeholder={labels.email}
             autoComplete="email"
           />
@@ -232,7 +225,7 @@ export function LandingDirectSignupForm({
                   onChange={(event) =>
                     updatePartnerEmail(index, event.target.value)
                   }
-                  className="h-[45px] w-full rounded-[5px] border border-[#1c2d40] bg-[#020910]/70 pl-[54px] pr-4 text-[14px] font-medium text-white outline-none transition placeholder:text-[#c1c7cf] focus:border-brand focus:ring-2 focus:ring-emerald-400/20"
+                  className="h-[43px] w-full rounded-[5px] border border-[#1c2d40] bg-[#020910]/70 pl-[54px] pr-4 text-[14px] font-medium text-white outline-none transition placeholder:text-[#c1c7cf] focus:border-brand focus:ring-2 focus:ring-emerald-400/20"
                   placeholder={labels.partnerEmail}
                   autoComplete="email"
                 />
@@ -241,7 +234,7 @@ export function LandingDirectSignupForm({
                 <button
                   type="button"
                   onClick={() => removePartnerEmail(index)}
-                  className="flex h-[45px] w-10 shrink-0 items-center justify-center rounded-[5px] border border-[#1c2d40] text-slate-500 transition hover:border-rose-400/40 hover:text-rose-300"
+                  className="flex h-[43px] w-10 shrink-0 items-center justify-center rounded-[5px] border border-[#1c2d40] text-slate-500 transition hover:border-rose-400/40 hover:text-rose-300"
                   aria-label="Remove partner"
                 >
                   <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -255,39 +248,12 @@ export function LandingDirectSignupForm({
           <button
             type="button"
             onClick={() => setPartnerEmails((current) => [...current, ''])}
-            className="hover:border-brand/50 flex h-[45px] w-full items-center gap-[18px] rounded-[5px] border border-[#1c2d40] bg-[#020910]/70 px-[18px] text-left text-[14px] font-medium text-[#c1c7cf] transition hover:text-white"
+            className="hover:border-brand/50 flex h-[43px] w-full items-center gap-[18px] rounded-[5px] border border-[#1c2d40] bg-[#020910]/70 px-[18px] text-left text-[14px] font-medium text-[#c1c7cf] transition hover:text-white"
           >
             <Plus className="h-5 w-5 text-brand" aria-hidden="true" />
             {labels.addPartner}
           </button>
         ) : null}
-      </div>
-
-      <div className="mt-[9px]">
-        <p className="sr-only">{labels.difficultyTitle}</p>
-        <div className="grid grid-cols-3 gap-[7px]">
-          {(
-            [
-              ['low', labels.difficultyLow],
-              ['medium', labels.difficultyMedium],
-              ['high', labels.difficultyHigh],
-            ] as Array<[DifficultyLevel, string]>
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setDifficulty(value)}
-              className={cn(
-                'h-8 rounded-[5px] border text-[12px] font-extrabold transition',
-                difficulty === value
-                  ? 'border-brand bg-brand text-[#04110d]'
-                  : 'hover:border-brand/50 border-white/[0.08] bg-white/[0.04] text-slate-300',
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
       </div>
 
       {errorMessage ? (
@@ -298,9 +264,10 @@ export function LandingDirectSignupForm({
 
       <button
         type="button"
+        data-landing-submit
         disabled={!isValid || isPending}
         onClick={submitSignup}
-        className="mt-[10px] flex h-[49px] w-full items-center justify-center rounded-[5px] bg-brand text-[20px] font-bold tracking-[-0.02em] text-[#05110d] transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-[10px] flex h-[47px] w-full items-center justify-center rounded-[5px] bg-brand text-[19px] font-bold tracking-[-0.02em] text-[#05110d] transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isPending ? labels.pending : labels.submit}
       </button>
