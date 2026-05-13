@@ -87,10 +87,6 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
                 accountExists: t('directAccountExists'),
                 inviteExists: t('directInviteExists'),
                 genericError: t('directGenericError'),
-                createdTitle: t('directCreatedTitle'),
-                createdDescription: t('directCreatedDescription'),
-                inviteCode: t('directInviteCode'),
-                signInToContinue: t('directSignInToContinue'),
               }}
             />
           </div>

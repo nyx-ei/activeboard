@@ -1,7 +1,9 @@
+import { createHash } from 'node:crypto';
 import { getTranslations } from 'next-intl/server';
 
 import { LandingSetPasswordForm } from '@/components/auth/landing-set-password-form';
 import type { AppLocale } from '@/i18n/routing';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 type SetPasswordPageProps = {
   params: { locale: string };
@@ -10,6 +12,46 @@ type SetPasswordPageProps = {
     next?: string;
   };
 };
+
+function hashPasswordSetupToken(token: string) {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+async function getPasswordSetupEmail(token: string) {
+  const admin = createSupabaseAdminClient();
+  const tokenHash = hashPasswordSetupToken(token);
+  const { data: landingToken } = await admin
+    .schema('public')
+    .from('landing_onboarding_tokens')
+    .select('email, expires_at, used_at')
+    .eq('token_hash', tokenHash)
+    .maybeSingle();
+
+  if (
+    landingToken &&
+    !landingToken.used_at &&
+    new Date(landingToken.expires_at).getTime() >= Date.now()
+  ) {
+    return landingToken.email;
+  }
+
+  const { data: setupToken } = await admin
+    .schema('public')
+    .from('password_setup_tokens')
+    .select('email, expires_at, used_at')
+    .eq('token_hash', tokenHash)
+    .maybeSingle();
+
+  if (
+    setupToken &&
+    !setupToken.used_at &&
+    new Date(setupToken.expires_at).getTime() >= Date.now()
+  ) {
+    return setupToken.email;
+  }
+
+  return null;
+}
 
 export default async function SetPasswordPage({
   params,
@@ -23,11 +65,17 @@ export default async function SetPasswordPage({
     searchParams.next.startsWith(`/${locale}/`)
       ? searchParams.next
       : `/${locale}/dashboard`;
+  const setupEmail = token ? await getPasswordSetupEmail(token) : null;
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 items-center justify-center px-4 py-10">
-      {token ? (
-        <LandingSetPasswordForm token={token} nextPath={nextPath} />
+      {token && setupEmail ? (
+        <LandingSetPasswordForm
+          email={setupEmail}
+          homeHref={`/${locale}`}
+          token={token}
+          nextPath={nextPath}
+        />
       ) : (
         <div className="w-full max-w-[410px] rounded-[18px] border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
           {t('setPasswordInvalidLink')}

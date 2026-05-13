@@ -1,9 +1,9 @@
 'use client';
 
 import { useMemo, useState, useTransition } from 'react';
-import { Check, Mail, Plus, Trash2, UserRound } from 'lucide-react';
+import { Mail, Plus, Trash2, UserRound } from 'lucide-react';
 
-import { completeFounderOnboardingAction } from '@/app/[locale]/create-group/actions';
+import { startLandingOnboardingAction } from '@/app/[locale]/create-group/actions';
 import { normalizeEmail } from '@/lib/utils';
 
 type LandingDirectSignupLabels = {
@@ -16,10 +16,6 @@ type LandingDirectSignupLabels = {
   accountExists: string;
   inviteExists: string;
   genericError: string;
-  createdTitle: string;
-  createdDescription: string;
-  inviteCode: string;
-  signInToContinue: string;
 };
 
 type LandingDirectSignupFormProps = {
@@ -79,9 +75,6 @@ export function LandingDirectSignupForm({
   const [email, setEmail] = useState('');
   const [partnerEmails, setPartnerEmails] = useState(['']);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [createdGroupId, setCreatedGroupId] = useState<string | null>(null);
-  const [inviteCode, setInviteCode] = useState('');
-  const [passwordSetupToken, setPasswordSetupToken] = useState('');
   const [isPending, startTransition] = useTransition();
 
   const normalizedFounderEmail = normalizeEmail(email);
@@ -144,53 +137,18 @@ export function LandingDirectSignupForm({
       formData.set('locale', locale);
       formData.set('draft', JSON.stringify(draft));
 
-      const result = await completeFounderOnboardingAction(formData);
+      const result = await startLandingOnboardingAction(formData);
       if (!result.ok) {
         setErrorMessage(resolveError(result.reason, labels));
         return;
       }
 
-      setCreatedGroupId(result.groupId);
-      setInviteCode(result.inviteCode);
-      setPasswordSetupToken(result.passwordSetupToken ?? '');
+      window.location.assign(
+        `/${locale}/auth/set-password?token=${encodeURIComponent(
+          result.token,
+        )}&next=${encodeURIComponent(`/${locale}/dashboard`)}`,
+      );
     });
-  }
-
-  if (createdGroupId) {
-    const nextPath = `/${locale}/groups/${createdGroupId}`;
-    const continuePath = passwordSetupToken
-      ? `/${locale}/auth/set-password?token=${encodeURIComponent(
-          passwordSetupToken,
-        )}&next=${encodeURIComponent(nextPath)}`
-      : `/${locale}/auth/login?next=${encodeURIComponent(nextPath)}`;
-    return (
-      <div className="border-brand/20 bg-brand/[0.08] rounded-[12px] border p-4 sm:p-5">
-        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-brand text-[#04110d]">
-          <Check className="h-5 w-5" aria-hidden="true" />
-        </div>
-        <h2 className="mt-4 text-xl font-extrabold text-white">
-          {labels.createdTitle}
-        </h2>
-        <p className="mt-2 text-sm font-medium leading-6 text-slate-300">
-          {labels.createdDescription}
-        </p>
-        <div className="mt-4 rounded-[8px] border border-white/[0.08] bg-black/20 p-3">
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
-            {labels.inviteCode}
-          </p>
-          <p className="mt-1 break-all text-2xl font-extrabold tracking-[0.18em] text-brand">
-            {inviteCode}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => window.location.assign(continuePath)}
-          className="button-primary mt-4 h-12 w-full rounded-[7px] text-base"
-        >
-          {labels.signInToContinue}
-        </button>
-      </div>
-    );
   }
 
   return (
