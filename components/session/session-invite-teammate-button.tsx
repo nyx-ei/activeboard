@@ -102,6 +102,7 @@ export function SessionInviteTeammateButton({
       const payload = (await response.json().catch(() => null)) as {
         ok?: boolean;
         reason?: string;
+        alreadyMember?: boolean;
         emailDeliveryFailed?: boolean;
       } | null;
 
@@ -114,9 +115,11 @@ export function SessionInviteTeammateButton({
       setStatus('success');
       setEmail('');
       setMessage(
-        payload?.emailDeliveryFailed
-          ? labels.successEmailWarning
-          : labels.success,
+        payload?.alreadyMember
+          ? labels.alreadyMember
+          : payload?.emailDeliveryFailed
+            ? labels.successEmailWarning
+            : labels.success,
       );
     } catch {
       setStatus('error');

@@ -116,7 +116,7 @@ export default async function SessionPage({
       searchParams.stage !== 'review');
   const isReview = searchParams.stage === 'review';
   const canAdvanceQuestion = data.session.leader_id === user.id;
-  const canInviteTeammate = canAdvanceQuestion || data.membership.is_founder;
+  const canInviteTeammate = Boolean(data.membership);
 
   if (data.session.status === 'scheduled') {
     const timerLabel =
