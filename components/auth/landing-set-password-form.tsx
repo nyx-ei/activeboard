@@ -8,6 +8,8 @@ import type { AppLocale } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
 
 type LandingSetPasswordFormProps = {
+  email: string;
+  homeHref: string;
   token: string;
   nextPath: string;
 };
@@ -45,6 +47,8 @@ function PendingInlineLabel({
 }
 
 export function LandingSetPasswordForm({
+  email,
+  homeHref,
   token,
   nextPath,
 }: LandingSetPasswordFormProps) {
@@ -73,6 +77,14 @@ export function LandingSetPasswordForm({
       return t('setPasswordInvalidLink');
     }
 
+    if (reason === 'invalid_onboarding_draft') {
+      return t('setPasswordInvalidDraft');
+    }
+
+    if (reason === 'account_exists') {
+      return t('accountExists');
+    }
+
     return t('unexpectedError');
   }
 
@@ -94,8 +106,11 @@ export function LandingSetPasswordForm({
       setMessageTone('success');
       setMessage(t('setPasswordSuccess'));
       window.setTimeout(() => {
+        const resolvedNextPath = result.groupId
+          ? `/${locale}/groups/${result.groupId}`
+          : nextPath;
         window.location.assign(
-          `/${locale}/auth/login?next=${encodeURIComponent(nextPath)}`,
+          `/${locale}/auth/login?next=${encodeURIComponent(resolvedNextPath)}`,
         );
       }, 700);
     });
@@ -111,8 +126,16 @@ export function LandingSetPasswordForm({
           {t('setPasswordTitle')}
         </h1>
         <p className="mt-2 text-sm font-medium text-slate-400">
-          {t('setPasswordSubtitle')}
+          {t('setPasswordLandingSubtitle')}
         </p>
+        <div className="mt-4 rounded-[10px] border border-white/[0.08] bg-white/[0.04] px-3 py-2">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">
+            {t('setPasswordEmailLabel')}
+          </p>
+          <p className="mt-1 break-all text-sm font-bold text-white">
+            {email}
+          </p>
+        </div>
       </div>
 
       <div className="mt-8 space-y-4">
@@ -170,6 +193,12 @@ export function LandingSetPasswordForm({
           pendingLabel={t('setPasswordPending')}
         />
       </button>
+      <a
+        href={homeHref}
+        className="mt-4 inline-flex w-full items-center justify-center rounded-[6px] border border-white/10 px-4 py-3 text-sm font-bold text-slate-300 transition hover:border-brand/40 hover:text-white"
+      >
+        {t('setPasswordBackHome')}
+      </a>
     </div>
   );
 }
