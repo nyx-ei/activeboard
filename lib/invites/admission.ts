@@ -16,7 +16,6 @@ export type InviteAdmissionFailureReason =
   | 'upgrade_required'
   | 'group_not_found'
   | 'group_full'
-  | 'phase_3_required'
   | 'action_failed';
 
 export type InviteAdmissionSuccess = {
@@ -29,8 +28,13 @@ export type InviteAdmissionSuccess = {
   alreadyMember: boolean;
   sessionAdmission: {
     sessionId: string | null;
-    allowed: true;
+    allowed: boolean;
     currentQuestionPhase: string | null;
+    reason:
+      | 'joining_current_question'
+      | 'joining_next_question'
+      | 'session_ended'
+      | null;
   };
 };
 
@@ -57,8 +61,6 @@ export function getInviteAdmissionFeedbackKey(
       return 'upgradeRequiredToJoinGroups' as const;
     case 'group_full':
       return 'groupFull' as const;
-    case 'phase_3_required':
-      return 'sessionInvitePhaseGate' as const;
     default:
       return 'notAuthorized' as const;
   }
@@ -174,23 +176,7 @@ export async function verifyInviteAdmission({
       }
 
       const currentQuestionPhase = latestQuestion?.phase ?? null;
-      const isPhase3AdmissionOpen =
-        !currentQuestionPhase ||
-        currentQuestionPhase === 'review' ||
-        currentQuestionPhase === 'closed';
-
-      if (!isPhase3AdmissionOpen) {
-        return {
-          ok: false,
-          reason: 'phase_3_required',
-          status: 409,
-          sessionAdmission: {
-            sessionId: session.id,
-            allowed: false,
-            currentQuestionPhase,
-          },
-        };
-      }
+      const shouldWaitForNextQuestion = currentQuestionPhase === 'review';
 
       return {
         ok: true,
@@ -202,8 +188,29 @@ export async function verifyInviteAdmission({
         alreadyMember: Boolean(existingMembership),
         sessionAdmission: {
           sessionId: session.id,
-          allowed: true,
+          allowed: !shouldWaitForNextQuestion,
           currentQuestionPhase,
+          reason: shouldWaitForNextQuestion
+            ? 'joining_next_question'
+            : 'joining_current_question',
+        },
+      };
+    }
+
+    if (session?.status === 'scheduled') {
+      return {
+        ok: true,
+        invite: {
+          id: invite.id,
+          groupId: invite.group_id,
+          invitedDuringSessionId: invite.invited_during_session_id,
+        },
+        alreadyMember: Boolean(existingMembership),
+        sessionAdmission: {
+          sessionId: session.id,
+          allowed: true,
+          currentQuestionPhase: null,
+          reason: 'joining_current_question',
         },
       };
     }
@@ -219,8 +226,9 @@ export async function verifyInviteAdmission({
     alreadyMember: Boolean(existingMembership),
     sessionAdmission: {
       sessionId: invite.invited_during_session_id,
-      allowed: true,
+      allowed: false,
       currentQuestionPhase: null,
+      reason: invite.invited_during_session_id ? 'session_ended' : null,
     },
   };
 }

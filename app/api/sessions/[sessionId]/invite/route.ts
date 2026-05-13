@@ -89,7 +89,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     );
   }
 
-  if (session.status !== 'active') {
+  if (session.status !== 'active' && session.status !== 'scheduled') {
     return NextResponse.json(
       { ok: false, reason: 'session_not_active' },
       { status: 409 },
@@ -120,10 +120,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     ]);
   perf.step('authorization_context_loaded');
 
-  const isSessionLeader = session.leader_id === user.id;
-  const isFounder = inviterMembership?.is_founder === true;
-
-  if (!group || !inviterMembership || (!isSessionLeader && !isFounder)) {
+  if (!group || !inviterMembership) {
     return NextResponse.json(
       { ok: false, reason: 'not_authorized' },
       { status: 403 },
@@ -161,10 +158,17 @@ export async function POST(request: Request, { params }: RouteContext) {
     existingUser?.id &&
     (currentMembers ?? []).some((member) => member.user_id === existingUser.id)
   ) {
-    return NextResponse.json(
-      { ok: false, reason: 'already_member' },
-      { status: 409 },
-    );
+    perf.done({
+      alreadyMember: true,
+      invitedDuringSessionId: session.id,
+    });
+    return NextResponse.json({
+      ok: true,
+      alreadyMember: true,
+      inviteId: null,
+      emailDeliveryFailed: false,
+      invitedDuringSessionId: session.id,
+    });
   }
 
   if ((currentMembers?.length ?? 0) >= group.max_members) {
@@ -196,6 +200,26 @@ export async function POST(request: Request, { params }: RouteContext) {
   perf.step('invite_inserted');
 
   if (inviteError || !insertedInvite?.id) {
+    if (inviteError?.code === '23505') {
+      const { data: pendingInvite } = await admin
+        .schema('public')
+        .from('group_invites')
+        .select('id')
+        .eq('group_id', session.group_id)
+        .eq('invitee_email', inviteeEmail)
+        .eq('status', 'pending')
+        .maybeSingle();
+
+      return NextResponse.json(
+        {
+          ok: false,
+          reason: 'invite_exists',
+          inviteId: pendingInvite?.id ?? null,
+        },
+        { status: 409 },
+      );
+    }
+
     return NextResponse.json(
       { ok: false, reason: 'action_failed' },
       { status: 500 },
@@ -252,6 +276,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   return NextResponse.json({
     ok: true,
+    alreadyMember: false,
     inviteId: insertedInvite.id,
     emailDeliveryFailed,
     invitedDuringSessionId: session.id,

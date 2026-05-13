@@ -9,6 +9,7 @@ import { requireUserTierCapability } from '@/lib/billing/gating';
 import { hasEmailEnv } from '@/lib/env';
 import {
   getInviteAdmissionFeedbackKey,
+  type InviteAdmissionSuccess,
   verifyInviteAdmission,
 } from '@/lib/invites/admission';
 import { APP_EVENTS } from '@/lib/logging/events';
@@ -38,6 +39,89 @@ function withSessionJoinFeedback(
   const url = new URL(withFeedback(path, tone, message), 'http://localhost');
   url.searchParams.set('sessionJoinFeedback', '1');
   return `${url.pathname}?${url.searchParams.toString()}`;
+}
+
+function getInviteAcceptedRedirect(
+  locale: AppLocale,
+  verification: InviteAdmissionSuccess,
+) {
+  const sessionId = verification.sessionAdmission.sessionId;
+
+  if (sessionId && verification.sessionAdmission.allowed) {
+    return `/${locale}/sessions/${sessionId}`;
+  }
+
+  if (
+    sessionId &&
+    verification.sessionAdmission.reason === 'joining_next_question'
+  ) {
+    return `/${locale}/groups/${verification.invite.groupId}?context=joining-next-question&sessionId=${sessionId}`;
+  }
+
+  if (verification.sessionAdmission.reason === 'session_ended') {
+    return `/${locale}/groups/${verification.invite.groupId}?context=joined-session-ended`;
+  }
+
+  return `/${locale}/groups/${verification.invite.groupId}`;
+}
+
+async function recordSkippedAnswersForSessionInvite({
+  admin,
+  userId,
+  verification,
+}: {
+  admin: ReturnType<typeof createSupabaseAdminClient>;
+  userId: string;
+  verification: InviteAdmissionSuccess;
+}) {
+  const sessionId = verification.sessionAdmission.sessionId;
+
+  if (!sessionId || verification.alreadyMember) {
+    return;
+  }
+
+  const { data: questions } = await admin
+    .schema('public')
+    .from('questions')
+    .select('id, order_index, phase')
+    .eq('session_id', sessionId)
+    .order('order_index', { ascending: true });
+
+  if (!questions?.length) {
+    return;
+  }
+
+  const latestQuestion = questions[questions.length - 1];
+  if (!latestQuestion) {
+    return;
+  }
+
+  const includeCurrentQuestion =
+    verification.sessionAdmission.reason === 'joining_next_question';
+  const skippedQuestions = questions.filter((question) =>
+    includeCurrentQuestion
+      ? question.order_index <= latestQuestion.order_index
+      : question.order_index < latestQuestion.order_index,
+  );
+
+  if (skippedQuestions.length === 0) {
+    return;
+  }
+
+  await admin
+    .schema('public')
+    .from('answers')
+    .upsert(
+      skippedQuestions.map((question) => ({
+        question_id: question.id,
+        user_id: userId,
+        selected_option: null,
+        confidence: null,
+        answer_state: 'skipped' as const,
+        answered_at: new Date().toISOString(),
+      })),
+      { onConflict: 'question_id,user_id', ignoreDuplicates: true },
+    );
 }
 
 type JoinableGroupLookup = {
@@ -316,10 +400,12 @@ export async function respondToInviteAction(formData: FormData) {
   }
 
   let acceptedInviteAlreadyMember: boolean | undefined;
+  let acceptedInviteRedirectTo = safeRedirectTo;
 
   if (intent === 'accept') {
+    const admin = createSupabaseAdminClient();
     const verification = await verifyInviteAdmission({
-      admin: createSupabaseAdminClient(),
+      admin,
       inviteId,
       userId: user.id,
       userEmail: user.email,
@@ -336,6 +422,7 @@ export async function respondToInviteAction(formData: FormData) {
     }
 
     acceptedInviteAlreadyMember = verification.alreadyMember;
+    acceptedInviteRedirectTo = getInviteAcceptedRedirect(locale, verification);
 
     if (!verification.alreadyMember) {
       await supabase.schema('public').from('group_members').insert({
@@ -345,6 +432,12 @@ export async function respondToInviteAction(formData: FormData) {
         user_id: user.id,
       });
     }
+
+    await recordSkippedAnswersForSessionInvite({
+      admin,
+      userId: user.id,
+      verification,
+    });
   }
 
   await supabase
@@ -397,9 +490,12 @@ export async function respondToInviteAction(formData: FormData) {
 
   revalidatePath(`/${locale}/dashboard`);
   revalidatePath(safeRedirectTo);
+  if (intent === 'accept') {
+    revalidatePath(acceptedInviteRedirectTo);
+  }
   redirect(
     withFeedback(
-      safeRedirectTo,
+      intent === 'accept' ? acceptedInviteRedirectTo : safeRedirectTo,
       'success',
       intent === 'accept' ? t('inviteAccepted') : t('inviteDeclined'),
     ),
@@ -459,8 +555,9 @@ export async function completeInviteOnboardingAction(formData: FormData) {
     redirect(withFeedback(safeRedirectTo, 'error', t('notAuthorized')));
   }
 
+  const admin = createSupabaseAdminClient();
   const verification = await verifyInviteAdmission({
-    admin: createSupabaseAdminClient(),
+    admin,
     inviteId,
     userId: user.id,
     userEmail: user.email,
@@ -538,6 +635,12 @@ export async function completeInviteOnboardingAction(formData: FormData) {
     }
   }
 
+  await recordSkippedAnswersForSessionInvite({
+    admin,
+    userId: user.id,
+    verification,
+  });
+
   const { error: inviteUpdateError } = await supabase
     .schema('public')
     .from('group_invites')
@@ -595,7 +698,9 @@ export async function completeInviteOnboardingAction(formData: FormData) {
   revalidatePath(`/${locale}/dashboard`);
   revalidatePath(`/${locale}/groups/${invite.group_id}`);
   revalidatePath(safeRedirectTo);
-  redirect(withFeedback(safeRedirectTo, 'success', t('inviteAccepted')));
+  const acceptedRedirectTo = getInviteAcceptedRedirect(locale, verification);
+  revalidatePath(acceptedRedirectTo);
+  redirect(withFeedback(acceptedRedirectTo, 'success', t('inviteAccepted')));
 }
 
 export async function createDashboardSessionAction(formData: FormData) {

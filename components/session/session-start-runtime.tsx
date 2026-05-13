@@ -6,7 +6,10 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { SessionDashboardBackButton } from '@/components/session/session-dashboard-back-button';
-import type { SessionInviteTeammateLabels } from '@/components/session/session-invite-teammate-button';
+import {
+  SessionInviteTeammateButton,
+  type SessionInviteTeammateLabels,
+} from '@/components/session/session-invite-teammate-button';
 import type { SessionLeaveConfirmLabels } from '@/components/session/session-leave-confirm-dialog';
 import { SessionStageRefresh } from '@/components/session/session-stage-refresh';
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
@@ -24,6 +27,8 @@ type SessionStartRuntimeProps = {
   timerSeconds: number;
   questionGoal: number;
   memberCount: number;
+  canInviteTeammate: boolean;
+  inviteTeammateDisabledReason?: string | null;
   advanceAction: ServerAction;
   labels: {
     questionsUnit: string;
@@ -80,6 +85,8 @@ export function SessionStartRuntime({
   timerSeconds,
   questionGoal,
   memberCount,
+  canInviteTeammate,
+  inviteTeammateDisabledReason = null,
   advanceAction,
   labels,
 }: SessionStartRuntimeProps) {
@@ -106,7 +113,8 @@ export function SessionStartRuntime({
         timerSeconds={timerSeconds}
         startedAt={activeQuestion.startedAt}
         canAdvanceQuestion={true}
-        canInviteTeammate={true}
+        canInviteTeammate={canInviteTeammate}
+        inviteTeammateDisabledReason={inviteTeammateDisabledReason}
         initialAnswer={null}
         initialConfidence={null as ConfidenceLevel | null}
         initialSubmittedCount={0}
@@ -155,7 +163,7 @@ export function SessionStartRuntime({
           <p className="mt-4 text-sm font-bold text-slate-500">
             {sessionShareLabel}
           </p>
-          <div className="mt-7">
+          <div className="mt-7 flex items-center justify-center gap-3">
             <button
               type="button"
               disabled={isStarting}
@@ -247,6 +255,14 @@ export function SessionStartRuntime({
               </span>
               {isStarting ? labels.startSessionPending : labels.startSession}
             </button>
+            {canInviteTeammate ? (
+              <SessionInviteTeammateButton
+                locale={locale}
+                sessionId={sessionId}
+                labels={labels.inviteTeammate}
+                disabledReason={inviteTeammateDisabledReason}
+              />
+            ) : null}
           </div>
           {errorMessage ? (
             <p className="mt-3 text-sm font-semibold text-rose-300">

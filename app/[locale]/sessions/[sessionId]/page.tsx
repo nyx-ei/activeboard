@@ -83,6 +83,7 @@ export default async function SessionPage({
     cannotInviteSelf: t('inviteTeammateCannotInviteSelf'),
     alreadyMember: t('inviteTeammateAlreadyMember'),
     groupFull: t('inviteTeammateGroupFull'),
+    reviewInProgress: t('inviteTeammateReviewInProgress'),
     inviteExists: t('inviteTeammateInviteExists'),
     sessionNotActive: t('inviteTeammateSessionNotActive'),
     notAuthorized: t('inviteTeammateNotAuthorized'),
@@ -116,7 +117,17 @@ export default async function SessionPage({
       searchParams.stage !== 'review');
   const isReview = searchParams.stage === 'review';
   const canAdvanceQuestion = data.session.leader_id === user.id;
-  const canInviteTeammate = canAdvanceQuestion || data.membership.is_founder;
+  const canInviteTeammate = Boolean(data.membership);
+  const groupMaxMembers =
+    typeof (data.group as { max_members?: unknown }).max_members === 'number'
+      ? ((data.group as { max_members: number }).max_members ?? 5)
+      : 5;
+  const inviteTeammateDisabledReason =
+    data.members.length >= groupMaxMembers
+      ? inviteTeammateLabels.groupFull
+      : question?.phase === 'review'
+        ? inviteTeammateLabels.reviewInProgress
+        : null;
 
   if (data.session.status === 'scheduled') {
     const timerLabel =
@@ -145,6 +156,8 @@ export default async function SessionPage({
           timerSeconds={data.session.timer_seconds}
           questionGoal={questionGoal}
           memberCount={memberCount}
+          canInviteTeammate={canInviteTeammate}
+          inviteTeammateDisabledReason={inviteTeammateDisabledReason}
           labels={{
             questionsUnit: t('questionsUnit'),
             startSession: t('startSession'),
@@ -327,6 +340,7 @@ export default async function SessionPage({
         startedAt={data.session.started_at}
         canAdvanceQuestion={canAdvanceQuestion}
         canInviteTeammate={canInviteTeammate}
+        inviteTeammateDisabledReason={inviteTeammateDisabledReason}
         initialAnswer={myAnswer?.selected_option}
         initialConfidence={
           myAnswer?.confidence as ConfidenceLevel | null | undefined

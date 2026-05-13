@@ -1392,6 +1392,7 @@ async function getSessionShellData(sessionId: string) {
           question_goal: number | null;
           group_name: string | null;
           group_invite_code: string | null;
+          group_max_members?: number | null;
           is_founder: boolean | null;
           member_count: number | null;
         }> | null;
@@ -1420,7 +1421,7 @@ async function getSessionShellData(sessionId: string) {
         supabase
           .schema('public')
           .from('groups')
-          .select('id, name, invite_code')
+          .select('id, name, invite_code, max_members')
           .eq('id', session.group_id)
           .maybeSingle(),
         supabase
@@ -1469,6 +1470,12 @@ async function getSessionShellData(sessionId: string) {
   }
 
   const memberCount = Math.max(Number(shell.member_count ?? 0), 0);
+  const { data: groupLimits } = await supabase
+    .schema('public')
+    .from('groups')
+    .select('max_members')
+    .eq('id', shell.group_id)
+    .maybeSingle();
 
   return {
     supabase,
@@ -1491,6 +1498,7 @@ async function getSessionShellData(sessionId: string) {
       id: shell.group_id,
       name: shell.group_name,
       invite_code: shell.group_invite_code,
+      max_members: shell.group_max_members ?? groupLimits?.max_members ?? 5,
     },
     membership: {
       group_id: shell.group_id,
