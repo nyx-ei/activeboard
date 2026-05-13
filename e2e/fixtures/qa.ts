@@ -87,6 +87,12 @@ export async function openDashboardView(
   view: 'sessions' | 'performance' | 'groups',
   locale = QA_USERS.captain.locale,
 ) {
+  if (view === 'groups') {
+    await page.goto(`/${locale}/groups`);
+    await expect(page).toHaveURL(new RegExp(`/${locale}/groups`));
+    return;
+  }
+
   await page.goto(`/${locale}/dashboard?view=${view}`);
   await expect(page).toHaveURL(
     new RegExp(`/${locale}/dashboard.*view=${view}`),
