@@ -20,6 +20,12 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+UAT ActiveBoard v1.xlsx
+playwright-report/
+test-results/
+e2e/.auth/
+e2e/reports/*.json
+
 .DS_Store
 Thumbs.db
 
