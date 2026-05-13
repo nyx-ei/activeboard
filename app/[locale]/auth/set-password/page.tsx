@@ -13,11 +13,28 @@ type SetPasswordPageProps = {
   };
 };
 
+type PasswordSetupState =
+  | { status: 'ready'; email: string }
+  | { status: 'completed' }
+  | { status: 'invalid' };
+
+const RECENTLY_USED_TOKEN_GRACE_MS = 2 * 60 * 1000;
+
 function hashPasswordSetupToken(token: string) {
   return createHash('sha256').update(token).digest('hex');
 }
 
-async function getPasswordSetupEmail(token: string) {
+function isRecentlyUsed(usedAt: string | null) {
+  return (
+    Boolean(usedAt) &&
+    Date.now() - new Date(usedAt as string).getTime() <
+      RECENTLY_USED_TOKEN_GRACE_MS
+  );
+}
+
+async function getPasswordSetupState(
+  token: string,
+): Promise<PasswordSetupState> {
   const admin = createSupabaseAdminClient();
   const tokenHash = hashPasswordSetupToken(token);
   const { data: landingToken } = await admin
@@ -32,7 +49,11 @@ async function getPasswordSetupEmail(token: string) {
     !landingToken.used_at &&
     new Date(landingToken.expires_at).getTime() >= Date.now()
   ) {
-    return landingToken.email;
+    return { status: 'ready', email: landingToken.email };
+  }
+
+  if (isRecentlyUsed(landingToken?.used_at ?? null)) {
+    return { status: 'completed' };
   }
 
   const { data: setupToken } = await admin
@@ -47,10 +68,14 @@ async function getPasswordSetupEmail(token: string) {
     !setupToken.used_at &&
     new Date(setupToken.expires_at).getTime() >= Date.now()
   ) {
-    return setupToken.email;
+    return { status: 'ready', email: setupToken.email };
   }
 
-  return null;
+  if (isRecentlyUsed(setupToken?.used_at ?? null)) {
+    return { status: 'completed' };
+  }
+
+  return { status: 'invalid' };
 }
 
 export default async function SetPasswordPage({
@@ -65,17 +90,23 @@ export default async function SetPasswordPage({
     searchParams.next.startsWith(`/${locale}/`)
       ? searchParams.next
       : `/${locale}/dashboard`;
-  const setupEmail = token ? await getPasswordSetupEmail(token) : null;
+  const setupState = token
+    ? await getPasswordSetupState(token)
+    : ({ status: 'invalid' } as const);
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 items-center justify-center px-4 py-10">
-      {token && setupEmail ? (
+      {token && setupState.status === 'ready' ? (
         <LandingSetPasswordForm
-          email={setupEmail}
+          email={setupState.email}
           homeHref={`/${locale}`}
           token={token}
           nextPath={nextPath}
         />
+      ) : setupState.status === 'completed' ? (
+        <div className="border-brand/25 bg-brand/10 w-full max-w-[410px] rounded-[18px] border px-4 py-3 text-sm font-semibold text-brand">
+          {t('setPasswordCompleted')}
+        </div>
       ) : (
         <div className="w-full max-w-[410px] rounded-[18px] border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
           {t('setPasswordInvalidLink')}

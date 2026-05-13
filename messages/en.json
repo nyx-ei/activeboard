@@ -296,6 +296,7 @@
     "setPasswordAction": "Save password",
     "setPasswordPending": "Saving password...",
     "setPasswordSuccess": "Password saved. Redirecting to sign in...",
+    "setPasswordCompleted": "Password saved. Redirecting to sign in...",
     "setPasswordInvalidLink": "This password setup link is invalid or has expired.",
     "setPasswordInvalidDraft": "This onboarding link could not be completed. Please return home and start again.",
     "magicLink": "Send magic link",
