@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { Mail, Plus, Trash2, UserRound } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
-import { startLandingOnboardingAction } from '@/app/[locale]/create-group/actions';
+import { startLandingOnboardingAction } from '@/app/[locale]/landing-onboarding/actions';
 import { normalizeEmail } from '@/lib/utils';
 
 type LandingDirectSignupLabels = {
@@ -72,9 +73,11 @@ export function LandingDirectSignupForm({
   locale,
   labels,
 }: LandingDirectSignupFormProps) {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [partnerEmails, setPartnerEmails] = useState(['']);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const normalizedFounderEmail = normalizeEmail(email);
@@ -92,6 +95,11 @@ export function LandingDirectSignupForm({
   const canAddPartner = partnerEmails.length < MAX_PARTNERS;
   const isValid =
     normalizedFounderEmail.includes('@') && normalizedPartnerEmails.length >= 1;
+  const isSubmitting = isPending || isNavigating;
+
+  useEffect(() => {
+    router.prefetch(`/${locale}/auth/set-password`);
+  }, [locale, router]);
 
   function updatePartnerEmail(index: number, value: string) {
     setPartnerEmails((current) =>
@@ -132,6 +140,7 @@ export function LandingDirectSignupForm({
     };
 
     setErrorMessage(null);
+    setIsNavigating(true);
     startTransition(async () => {
       const formData = new FormData();
       formData.set('locale', locale);
@@ -139,11 +148,12 @@ export function LandingDirectSignupForm({
 
       const result = await startLandingOnboardingAction(formData);
       if (!result.ok) {
+        setIsNavigating(false);
         setErrorMessage(resolveError(result.reason, labels));
         return;
       }
 
-      window.location.assign(
+      router.push(
         `/${locale}/auth/set-password?token=${encodeURIComponent(
           result.token,
         )}&next=${encodeURIComponent(`/${locale}/dashboard`)}`,
@@ -223,11 +233,11 @@ export function LandingDirectSignupForm({
       <button
         type="button"
         data-landing-submit
-        disabled={!isValid || isPending}
+        disabled={!isValid || isSubmitting}
         onClick={submitSignup}
         className="mt-[10px] flex h-[47px] w-full items-center justify-center rounded-[5px] bg-brand text-[19px] font-bold tracking-[-0.02em] text-[#05110d] transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {isPending ? labels.pending : labels.submit}
+        {isSubmitting ? labels.pending : labels.submit}
       </button>
     </div>
   );
