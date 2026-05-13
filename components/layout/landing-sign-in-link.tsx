@@ -15,7 +15,7 @@ export function LandingSignInLink() {
   return (
     <Link
       href="/auth/login"
-      className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm font-bold text-slate-200 transition hover:border-brand/40 hover:text-white"
+      className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-xs font-bold text-slate-200 transition hover:border-brand/40 hover:text-white sm:px-3 sm:py-2 sm:text-sm"
     >
       {t('signIn')}
     </Link>

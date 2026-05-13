@@ -33,11 +33,11 @@ export function LanguageSwitcher() {
           );
         });
       }}
-      className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/[0.04] hover:text-white"
+      className="inline-flex items-center gap-1.5 rounded-full px-2 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-white/[0.04] hover:text-white sm:gap-2 sm:px-3 sm:py-2 sm:text-sm"
       aria-label={isPending ? t('switchingLanguage') : t('language')}
       disabled={isPending}
     >
-      <Globe aria-hidden="true" className="h-4 w-4 text-slate-400" />
+      <Globe aria-hidden="true" className="h-3.5 w-3.5 text-slate-400 sm:h-4 sm:w-4" />
       <span>{displayedLocale === 'en' ? t('english') : t('french')}</span>
     </button>
   );

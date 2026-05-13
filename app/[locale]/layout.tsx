@@ -149,7 +149,7 @@ export default async function LocaleLayout({
                   />
                 </>
               ) : (
-                <div className="flex shrink-0 items-center gap-3">
+                <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
                   <LandingSignInLink />
                   <Suspense
                     fallback={
