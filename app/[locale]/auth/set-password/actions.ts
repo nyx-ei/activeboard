@@ -65,6 +65,7 @@ type SetupPasswordResult =
         | 'weak_password'
         | 'password_mismatch'
         | 'invalid_token'
+        | 'invalid_onboarding_draft'
         | 'account_exists'
         | 'invite_exists'
         | 'unexpected_error';
@@ -454,13 +455,21 @@ async function completeLandingOnboarding({
     };
   } catch {
     if (groupId) {
-      await admin.schema('public').from('group_invites').delete().eq('group_id', groupId);
+      await admin
+        .schema('public')
+        .from('group_invites')
+        .delete()
+        .eq('group_id', groupId);
       await admin
         .schema('public')
         .from('group_weekly_schedules')
         .delete()
         .eq('group_id', groupId);
-      await admin.schema('public').from('group_members').delete().eq('group_id', groupId);
+      await admin
+        .schema('public')
+        .from('group_members')
+        .delete()
+        .eq('group_id', groupId);
       await admin.schema('public').from('groups').delete().eq('id', groupId);
     } else if (cleanupInviteIds.length > 0) {
       await admin
@@ -476,7 +485,11 @@ async function completeLandingOnboarding({
         .from('user_schedules')
         .delete()
         .eq('user_id', createdAuthUserId);
-      await admin.schema('public').from('users').delete().eq('id', createdAuthUserId);
+      await admin
+        .schema('public')
+        .from('users')
+        .delete()
+        .eq('id', createdAuthUserId);
       await admin.auth.admin.deleteUser(createdAuthUserId);
     }
 
@@ -528,7 +541,7 @@ export async function setupLandingPasswordAction(
 
     const draft = parseLandingDraft(landingToken.draft);
     if (!draft || draft.email !== normalizeEmail(landingToken.email)) {
-      return { ok: false, reason: 'invalid_token' };
+      return { ok: false, reason: 'invalid_onboarding_draft' };
     }
 
     return completeLandingOnboarding({

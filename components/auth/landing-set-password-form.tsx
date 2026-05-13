@@ -77,6 +77,10 @@ export function LandingSetPasswordForm({
       return t('setPasswordInvalidLink');
     }
 
+    if (reason === 'invalid_onboarding_draft') {
+      return t('setPasswordInvalidDraft');
+    }
+
     if (reason === 'account_exists') {
       return t('accountExists');
     }

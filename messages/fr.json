@@ -297,6 +297,7 @@
                  "setPasswordPending":  "Enregistrement du mot de passe...",
                  "setPasswordSuccess":  "Mot de passe enregistré. Redirection vers la connexion...",
                  "setPasswordInvalidLink":  "Ce lien de création de mot de passe est invalide ou expiré.",
+                 "setPasswordInvalidDraft":  "Ce lien d'onboarding n'a pas pu être finalisé. Retourne à l'accueil et recommence.",
                  "magicLink":  "Envoyer un magic link",
                  "magicLinkPending":  "Envoi du magic link...",
                  "google":  "Continuer avec Google",

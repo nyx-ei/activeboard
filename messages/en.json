@@ -297,6 +297,7 @@
     "setPasswordPending": "Saving password...",
     "setPasswordSuccess": "Password saved. Redirecting to sign in...",
     "setPasswordInvalidLink": "This password setup link is invalid or has expired.",
+    "setPasswordInvalidDraft": "This onboarding link could not be completed. Please return home and start again.",
     "magicLink": "Send magic link",
     "magicLinkPending": "Sending magic link...",
     "google": "Continue with Google",
