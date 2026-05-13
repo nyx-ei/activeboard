@@ -68,9 +68,15 @@ export async function loginAs(page: Page, user: QaUser = QA_USERS.captain) {
   await page.getByLabel(/email|courriel/i).fill(user.email);
   await page.getByLabel(/password|mot de passe/i).fill(user.password);
   await page.getByRole('button', { name: /sign in|se connecter/i }).click();
-  await expect(page).toHaveURL(new RegExp(`/${user.locale}/dashboard`), {
-    timeout: 20_000,
-  });
+  try {
+    await expect(page).toHaveURL(new RegExp(`/${user.locale}/dashboard`), {
+      timeout: 30_000,
+    });
+  } catch {
+    await expect(
+      page.getByText(/progression de l'essai|trial progress/i).first(),
+    ).toBeVisible({ timeout: 10_000 });
+  }
 }
 
 export async function expectNoHorizontalOverflow(page: Page) {

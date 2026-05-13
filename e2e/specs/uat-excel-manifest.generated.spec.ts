@@ -4,8 +4,8 @@ import { test } from '@playwright/test';
 // Do not edit manually. Run `npm run uat:e2e:manifest` after replacing the Excel file.
 // Source: UAT ActiveBoard v1.xlsx
 // Total UAT cases: 138
-// Runnable IDs already implemented elsewhere: 15
-// Manifest-only IDs represented here: 123
+// Runnable IDs already implemented elsewhere: 18
+// Manifest-only IDs represented here: 120
 
 test.describe('UAT workbook manifest coverage', () => {
   test.describe.configure({ mode: 'serial' });
@@ -55,22 +55,6 @@ test.describe('UAT workbook manifest coverage', () => {
     test.skip(
       true,
       'The current UAT status is Blocked; implement product support before browser automation.',
-    );
-  });
-
-  test('GRP-1.6 [playwright-candidate] 1.4 Setup  Concurrent Session Rules', async ({}, testInfo) => {
-    testInfo.annotations.push({ type: 'uat-status', description: 'Not Run' });
-    testInfo.annotations.push({
-      type: 'uat-sheet',
-      description: '1. Onboarding & Group Lifecycle',
-    });
-    testInfo.annotations.push({
-      type: 'automation-type',
-      description: 'playwright-candidate',
-    });
-    test.skip(
-      true,
-      'UAT workbook manifest: browser path identified but not yet implemented as an executable Playwright journey.',
     );
   });
 
@@ -1354,22 +1338,6 @@ test.describe('UAT workbook manifest coverage', () => {
     );
   });
 
-  test('MOB-14.5 [playwright-candidate] Member rotates phone landscape mid-question', async ({}, testInfo) => {
-    testInfo.annotations.push({ type: 'uat-status', description: 'Pass' });
-    testInfo.annotations.push({
-      type: 'uat-sheet',
-      description: '14. Mobile & PWA',
-    });
-    testInfo.annotations.push({
-      type: 'automation-type',
-      description: 'playwright-candidate',
-    });
-    test.skip(
-      true,
-      'UAT workbook manifest: browser path identified but not yet implemented as an executable Playwright journey.',
-    );
-  });
-
   test('MOB-14.6 [playwright-candidate] Member uses laptop (BYOM screen-share device) AND phone (ActiveBoard) simultaneously, both logged in', async ({}, testInfo) => {
     testInfo.annotations.push({ type: 'uat-status', description: 'Pass' });
     testInfo.annotations.push({
@@ -1431,22 +1399,6 @@ test.describe('UAT workbook manifest coverage', () => {
     test.skip(
       true,
       'The current UAT status is Blocked; implement product support before browser automation.',
-    );
-  });
-
-  test('ERR-16.3 [external-service] Member opens session URL while not authenticated', async ({}, testInfo) => {
-    testInfo.annotations.push({ type: 'uat-status', description: 'Pass' });
-    testInfo.annotations.push({
-      type: 'uat-sheet',
-      description: '16. Error & Network Handling',
-    });
-    testInfo.annotations.push({
-      type: 'automation-type',
-      description: 'external-service',
-    });
-    test.skip(
-      true,
-      'UAT workbook manifest: external service behavior must be mocked or contract-tested before a reliable browser run.',
     );
   });
 
