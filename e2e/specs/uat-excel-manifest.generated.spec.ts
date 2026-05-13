@@ -4,8 +4,8 @@ import { test } from '@playwright/test';
 // Do not edit manually. Run `npm run uat:e2e:manifest` after replacing the Excel file.
 // Source: UAT ActiveBoard v1.xlsx
 // Total UAT cases: 138
-// Runnable IDs already implemented elsewhere: 18
-// Manifest-only IDs represented here: 120
+// Runnable IDs already implemented elsewhere: 20
+// Manifest-only IDs represented here: 118
 
 test.describe('UAT workbook manifest coverage', () => {
   test.describe.configure({ mode: 'serial' });
@@ -123,22 +123,6 @@ test.describe('UAT workbook manifest coverage', () => {
   });
 
   test('SPR-2.3 [playwright-candidate] All members submit before timer ends', async ({}, testInfo) => {
-    testInfo.annotations.push({ type: 'uat-status', description: 'Pass' });
-    testInfo.annotations.push({
-      type: 'uat-sheet',
-      description: '2. Session — Phase 1 (Sprint)',
-    });
-    testInfo.annotations.push({
-      type: 'automation-type',
-      description: 'playwright-candidate',
-    });
-    test.skip(
-      true,
-      'UAT workbook manifest: browser path identified but not yet implemented as an executable Playwright journey.',
-    );
-  });
-
-  test('SPR-2.4 [playwright-candidate] A member tries to discuss in chat or interrupt Phase 1', async ({}, testInfo) => {
     testInfo.annotations.push({ type: 'uat-status', description: 'Pass' });
     testInfo.annotations.push({
       type: 'uat-sheet',
@@ -715,22 +699,6 @@ test.describe('UAT workbook manifest coverage', () => {
   });
 
   test('KEY-8.4 [playwright-candidate] Desktop user presses A, then clicks Medium with mouse, then presses 1', async ({}, testInfo) => {
-    testInfo.annotations.push({ type: 'uat-status', description: 'Pass' });
-    testInfo.annotations.push({
-      type: 'uat-sheet',
-      description: '8. Keyboard & Input Methods',
-    });
-    testInfo.annotations.push({
-      type: 'automation-type',
-      description: 'playwright-candidate',
-    });
-    test.skip(
-      true,
-      'UAT workbook manifest: browser path identified but not yet implemented as an executable Playwright journey.',
-    );
-  });
-
-  test('KEY-8.5 [playwright-candidate] Mobile user (primary device)  no keyboard input expected', async ({}, testInfo) => {
     testInfo.annotations.push({ type: 'uat-status', description: 'Pass' });
     testInfo.annotations.push({
       type: 'uat-sheet',
