@@ -13,11 +13,11 @@ type LocaleHomePageProps = {
 
 function ActiveBoardLandingLogo() {
   return (
-    <div data-landing-logo className="mt-4 flex items-center gap-3 lg:mt-2">
-      <div className="flex h-10 w-10 items-center justify-center rounded-[8px] bg-brand text-base font-extrabold text-white shadow-[0_10px_26px_rgba(31,230,166,0.24)]">
+    <div data-landing-logo className="mt-3 flex max-w-[150px] items-center gap-2 lg:mt-2 lg:max-w-none lg:gap-3">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] bg-brand text-sm font-extrabold text-white shadow-[0_10px_26px_rgba(31,230,166,0.24)] lg:h-10 lg:w-10 lg:rounded-[8px] lg:text-base">
         AB
       </div>
-      <span className="text-[27px] font-extrabold leading-none tracking-[-0.04em] text-white">
+      <span className="min-w-0 text-[20px] font-extrabold leading-none tracking-[-0.04em] text-white lg:text-[27px]">
         ActiveBoard
       </span>
     </div>
