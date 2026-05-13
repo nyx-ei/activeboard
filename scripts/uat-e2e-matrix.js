@@ -5,11 +5,14 @@ const path = require('path');
 const zlib = require('zlib');
 
 const DEFAULT_INPUT = 'UAT ActiveBoard v1.xlsx';
+const DEFAULT_SPEC_DIR = 'e2e/specs';
 const TEST_ID_PATTERN = /^(?:[A-Z]{2,5}-\d+(?:\.\d+)*|INT-B\.\d+\.\d+)$/;
+const UAT_ID_PATTERN = /\b(?:[A-Z]{2,5}-\d+(?:\.\d+)*|INT-B\.\d+\.\d+)\b/g;
 
 function parseArgs(argv) {
   const args = {
     input: DEFAULT_INPUT,
+    specDir: DEFAULT_SPEC_DIR,
     json: false,
     out: null,
   };
@@ -21,6 +24,9 @@ function parseArgs(argv) {
     } else if (arg === '--input') {
       args.input = argv[index + 1] ?? args.input;
       index += 1;
+    } else if (arg === '--spec-dir') {
+      args.specDir = argv[index + 1] ?? args.specDir;
+      index += 1;
     } else if (arg === '--out') {
       args.out = argv[index + 1] ?? null;
       index += 1;
@@ -28,6 +34,39 @@ function parseArgs(argv) {
   }
 
   return args;
+}
+
+function walkSpecFiles(directory) {
+  if (!fs.existsSync(directory)) {
+    return [];
+  }
+
+  const files = [];
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const fullPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...walkSpecFiles(fullPath));
+    } else if (
+      /\.(spec|test)\.(ts|tsx|js|mjs)$/.test(entry.name) &&
+      !/uat-excel-manifest\.generated\.spec\./.test(fullPath)
+    ) {
+      files.push(fullPath);
+    }
+  }
+
+  return files;
+}
+
+function scanRunnableUatIds(specDir) {
+  const ids = new Set();
+  for (const filePath of walkSpecFiles(specDir)) {
+    const content = fs.readFileSync(filePath, 'utf8');
+    for (const id of content.match(UAT_ID_PATTERN) ?? []) {
+      ids.add(id);
+    }
+  }
+
+  return ids;
 }
 
 function readUInt32LE(buffer, offset) {
@@ -333,11 +372,12 @@ function summarize(cases) {
   return summary;
 }
 
-function printTextReport(cases) {
+function printTextReport(cases, runnableIds = new Set()) {
   const summary = summarize(cases);
   console.log('UAT E2E automation matrix');
   console.log('=========================');
   console.log(`Total cases: ${summary.total}`);
+  console.log(`Runnable Playwright cases: ${runnableIds.size}`);
   console.log('\nBy automation type');
   for (const [type, count] of Object.entries(summary.byAutomationType)) {
     console.log(`- ${type}: ${count}`);
@@ -346,9 +386,13 @@ function printTextReport(cases) {
   for (const [status, count] of Object.entries(summary.byStatus)) {
     console.log(`- ${status}: ${count}`);
   }
-  console.log('\nNext Playwright candidates');
+  console.log('\nNext Playwright candidates not yet runnable');
   for (const testCase of cases
-    .filter((item) => item.automationType === 'playwright-candidate')
+    .filter(
+      (item) =>
+        item.automationType === 'playwright-candidate' &&
+        !runnableIds.has(item.id),
+    )
     .slice(0, 25)) {
     console.log(
       `- ${testCase.id}: ${testCase.title || testCase.module || testCase.section}`,
@@ -359,16 +403,19 @@ function printTextReport(cases) {
 function main() {
   const args = parseArgs(process.argv);
   const filePath = path.resolve(process.cwd(), args.input);
+  const specDir = path.resolve(process.cwd(), args.specDir);
 
   if (!fs.existsSync(filePath)) {
     throw new Error(`UAT Excel file not found: ${filePath}`);
   }
 
   const cases = extractCases(filePath);
+  const runnableIds = scanRunnableUatIds(specDir);
   const payload = {
     generatedAt: new Date().toISOString(),
     source: path.basename(filePath),
     summary: summarize(cases),
+    runnableIds: [...runnableIds].sort(),
     cases,
   };
 
@@ -385,7 +432,7 @@ function main() {
   if (args.json) {
     console.log(JSON.stringify(payload, null, 2));
   } else {
-    printTextReport(cases);
+    printTextReport(cases, runnableIds);
   }
 }
 
@@ -395,5 +442,6 @@ if (require.main === module) {
 
 module.exports = {
   extractCases,
+  scanRunnableUatIds,
   summarize,
 };
