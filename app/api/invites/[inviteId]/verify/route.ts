@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import type { AppLocale } from '@/i18n/routing';
 import {
   getInviteAdmissionFeedbackKey,
+  type InviteAdmissionSuccess,
   verifyInviteAdmission,
 } from '@/lib/invites/admission';
 import { APP_EVENTS } from '@/lib/logging/events';
@@ -21,6 +22,30 @@ type VerifyPayload = {
 
 function parseLocale(value: string | null | undefined): AppLocale {
   return value === 'fr' ? 'fr' : 'en';
+}
+
+function getInviteRedirectTo(
+  locale: AppLocale,
+  verification: InviteAdmissionSuccess,
+) {
+  const sessionId = verification.sessionAdmission.sessionId;
+
+  if (sessionId && verification.sessionAdmission.allowed) {
+    return `/${locale}/sessions/${sessionId}`;
+  }
+
+  if (
+    sessionId &&
+    verification.sessionAdmission.reason === 'joining_next_question'
+  ) {
+    return `/${locale}/groups/${verification.invite.groupId}?context=joining-next-question&sessionId=${sessionId}`;
+  }
+
+  if (verification.sessionAdmission.reason === 'session_ended') {
+    return `/${locale}/groups/${verification.invite.groupId}?context=joined-session-ended`;
+  }
+
+  return `/${locale}/groups/${verification.invite.groupId}`;
 }
 
 async function handleVerify(
@@ -68,7 +93,7 @@ async function handleVerify(
     if (verification.sessionAdmission?.sessionId) {
       await logAppEvent({
         eventName: APP_EVENTS.onTheFlyInviteVerificationBlocked,
-        level: verification.reason === 'phase_3_required' ? 'warn' : 'info',
+        level: 'info',
         locale,
         userId: user.id,
         sessionId: verification.sessionAdmission.sessionId,
@@ -126,7 +151,7 @@ async function handleVerify(
     invite: verification.invite,
     alreadyMember: verification.alreadyMember,
     sessionAdmission: verification.sessionAdmission,
-    redirectTo: `/${locale}/groups/${verification.invite.groupId}`,
+    redirectTo: getInviteRedirectTo(locale, verification),
   });
 }
 

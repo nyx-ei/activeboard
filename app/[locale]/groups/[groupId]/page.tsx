@@ -2,6 +2,7 @@ import { getTranslations } from 'next-intl/server';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
 import { GroupPageView } from '@/components/groups/group-page-view';
+import { JoiningNextQuestionRedirect } from '@/components/groups/joining-next-question-redirect';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
 import {
@@ -42,6 +43,8 @@ export default async function GroupRoutePage({
     feedbackTone?: string;
     feedbackId?: string;
     live?: string;
+    context?: string;
+    sessionId?: string;
   };
 }) {
   const locale = params.locale as AppLocale;
@@ -86,6 +89,14 @@ export default async function GroupRoutePage({
   const groupInfoSummary = primaryGroup
     ? [primaryGroup.invite_code, examSessionLabel].join(' | ')
     : t('noData');
+  const contextFeedbackMessage =
+    searchParams.context === 'joining-next-question'
+      ? t('joiningNextQuestionBanner')
+      : searchParams.context === 'joined-session-ended'
+        ? t('joinedSessionEndedBanner', {
+            groupName: primaryGroup?.name ?? t('unknownGroup'),
+          })
+        : undefined;
 
   const weekdayLabels = {
     monday: t('weekdayMonday'),
@@ -99,10 +110,17 @@ export default async function GroupRoutePage({
   return (
     <main className="flex flex-1 flex-col gap-5">
       <FeedbackBanner
-        message={searchParams.feedbackMessage}
-        tone={searchParams.feedbackTone}
+        message={contextFeedbackMessage ?? searchParams.feedbackMessage}
+        tone={contextFeedbackMessage ? 'success' : searchParams.feedbackTone}
         feedbackId={searchParams.feedbackId}
       />
+      {searchParams.context === 'joining-next-question' &&
+      searchParams.sessionId ? (
+        <JoiningNextQuestionRedirect
+          locale={locale}
+          sessionId={searchParams.sessionId}
+        />
+      ) : null}
 
       <section className="mx-auto w-full max-w-[620px] space-y-4">
         <GroupPageView

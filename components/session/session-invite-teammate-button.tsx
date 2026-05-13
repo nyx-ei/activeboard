@@ -23,6 +23,7 @@ export type SessionInviteTeammateLabels = {
   cannotInviteSelf: string;
   alreadyMember: string;
   groupFull: string;
+  reviewInProgress: string;
   inviteExists: string;
   sessionNotActive: string;
   notAuthorized: string;
@@ -33,6 +34,7 @@ type SessionInviteTeammateButtonProps = {
   locale: string;
   sessionId: string;
   labels: SessionInviteTeammateLabels;
+  disabledReason?: string | null;
 };
 
 function getErrorMessage(
@@ -64,6 +66,7 @@ export function SessionInviteTeammateButton({
   locale,
   sessionId,
   labels,
+  disabledReason = null,
 }: SessionInviteTeammateButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState('');
@@ -132,13 +135,22 @@ export function SessionInviteTeammateButton({
       <button
         type="button"
         onClick={() => {
+          if (disabledReason) {
+            return;
+          }
+
           setIsOpen(true);
           setStatus('idle');
           setMessage(null);
         }}
-        className="hover:border-brand/40 focus:ring-brand/50 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] border border-white/[0.08] bg-white/[0.04] text-slate-300 transition hover:text-brand focus:outline-none focus:ring-2"
-        aria-label={labels.button}
-        title={labels.button}
+        disabled={Boolean(disabledReason)}
+        className={
+          disabledReason
+            ? 'inline-flex h-9 w-9 shrink-0 cursor-not-allowed items-center justify-center rounded-[8px] border border-white/[0.08] bg-white/[0.025] text-slate-600 opacity-70'
+            : 'hover:border-brand/40 focus:ring-brand/50 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] border border-white/[0.08] bg-white/[0.04] text-slate-300 transition hover:text-brand focus:outline-none focus:ring-2'
+        }
+        aria-label={disabledReason ?? labels.button}
+        title={disabledReason ?? labels.button}
       >
         <UserPlus className="h-4 w-4" aria-hidden="true" strokeWidth={1.8} />
       </button>

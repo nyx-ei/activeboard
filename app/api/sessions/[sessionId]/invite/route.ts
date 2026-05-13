@@ -89,7 +89,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     );
   }
 
-  if (session.status !== 'active') {
+  if (session.status !== 'active' && session.status !== 'scheduled') {
     return NextResponse.json(
       { ok: false, reason: 'session_not_active' },
       { status: 409 },

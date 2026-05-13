@@ -33,6 +33,7 @@ type SessionActiveRuntimeProps = {
   startedAt: string | null;
   canAdvanceQuestion: boolean;
   canInviteTeammate: boolean;
+  inviteTeammateDisabledReason?: string | null;
   initialSubmittedCount: number;
   initialMemberCount: number;
   initialAnswerDeadlineAt: string | null;
@@ -87,6 +88,7 @@ export function SessionActiveRuntime({
   startedAt,
   canAdvanceQuestion,
   canInviteTeammate,
+  inviteTeammateDisabledReason = null,
   initialSubmittedCount,
   initialMemberCount,
   initialAnswerDeadlineAt,
@@ -375,6 +377,7 @@ export function SessionActiveRuntime({
                 locale={locale}
                 sessionId={sessionId}
                 labels={labels.inviteTeammate}
+                disabledReason={inviteTeammateDisabledReason}
               />
             ) : null}
             <SessionHeaderMeta
