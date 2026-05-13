@@ -4,8 +4,8 @@ import { test } from '@playwright/test';
 // Do not edit manually. Run `npm run uat:e2e:manifest` after replacing the Excel file.
 // Source: UAT ActiveBoard v1.xlsx
 // Total UAT cases: 138
-// Runnable IDs already implemented elsewhere: 20
-// Manifest-only IDs represented here: 118
+// Runnable IDs already implemented elsewhere: 24
+// Manifest-only IDs represented here: 114
 
 test.describe('UAT workbook manifest coverage', () => {
   test.describe.configure({ mode: 'serial' });
@@ -1466,38 +1466,6 @@ test.describe('UAT workbook manifest coverage', () => {
     );
   });
 
-  test('OTF-1.1 [external-service] 17.1 Invite Affordance', async ({}, testInfo) => {
-    testInfo.annotations.push({ type: 'uat-status', description: 'Not Run' });
-    testInfo.annotations.push({
-      type: 'uat-sheet',
-      description: '17. On-the-Fly Invites (D14)',
-    });
-    testInfo.annotations.push({
-      type: 'automation-type',
-      description: 'external-service',
-    });
-    test.skip(
-      true,
-      'UAT workbook manifest: external service behavior must be mocked or contract-tested before a reliable browser run.',
-    );
-  });
-
-  test('OTF-1.2 [playwright-candidate] 17.1 Invite Affordance', async ({}, testInfo) => {
-    testInfo.annotations.push({ type: 'uat-status', description: 'Not Run' });
-    testInfo.annotations.push({
-      type: 'uat-sheet',
-      description: '17. On-the-Fly Invites (D14)',
-    });
-    testInfo.annotations.push({
-      type: 'automation-type',
-      description: 'playwright-candidate',
-    });
-    test.skip(
-      true,
-      'UAT workbook manifest: browser path identified but not yet implemented as an executable Playwright journey.',
-    );
-  });
-
   test('OTF-1.3 [playwright-candidate] 17.1 Invite Affordance', async ({}, testInfo) => {
     testInfo.annotations.push({ type: 'uat-status', description: 'Not Run' });
     testInfo.annotations.push({
@@ -1511,38 +1479,6 @@ test.describe('UAT workbook manifest coverage', () => {
     test.skip(
       true,
       'UAT workbook manifest: browser path identified but not yet implemented as an executable Playwright journey.',
-    );
-  });
-
-  test('OTF-1.4 [external-service] 17.2 Send Endpoint', async ({}, testInfo) => {
-    testInfo.annotations.push({ type: 'uat-status', description: 'Not Run' });
-    testInfo.annotations.push({
-      type: 'uat-sheet',
-      description: '17. On-the-Fly Invites (D14)',
-    });
-    testInfo.annotations.push({
-      type: 'automation-type',
-      description: 'external-service',
-    });
-    test.skip(
-      true,
-      'UAT workbook manifest: external service behavior must be mocked or contract-tested before a reliable browser run.',
-    );
-  });
-
-  test('OTF-1.5 [external-service] 17.2 Send Endpoint', async ({}, testInfo) => {
-    testInfo.annotations.push({ type: 'uat-status', description: 'Not Run' });
-    testInfo.annotations.push({
-      type: 'uat-sheet',
-      description: '17. On-the-Fly Invites (D14)',
-    });
-    testInfo.annotations.push({
-      type: 'automation-type',
-      description: 'external-service',
-    });
-    test.skip(
-      true,
-      'UAT workbook manifest: external service behavior must be mocked or contract-tested before a reliable browser run.',
     );
   });
 
