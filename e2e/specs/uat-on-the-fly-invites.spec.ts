@@ -20,11 +20,11 @@ type InviteResponse = {
   } | null;
 };
 
-async function openActiveSession(page: Page) {
+async function openSessionByName(page: Page, sessionName: string) {
   await openDashboardView(page, 'sessions');
 
   const sessionCard = page
-    .getByRole('button', { name: new RegExp(QA_SESSIONS.activeMain.name, 'i') })
+    .getByRole('button', { name: new RegExp(sessionName, 'i') })
     .first();
 
   await expect(sessionCard).toBeVisible({ timeout: 20_000 });
@@ -33,6 +33,10 @@ async function openActiveSession(page: Page) {
   await expect(page).toHaveURL(/\/sessions\/[0-9a-f-]+/, {
     timeout: 20_000,
   });
+}
+
+async function openActiveSession(page: Page) {
+  await openSessionByName(page, QA_SESSIONS.activeMain.name);
 }
 
 async function postSessionInvite(page: Page, email: string) {
@@ -94,6 +98,24 @@ test.describe('UAT on-the-fly invites D14', () => {
     ).resolves.toBe(true);
 
     await expectNoHorizontalOverflow(page);
+  });
+
+  test('OTF-1.3 full group keeps invite affordance disabled without opening dialog', async ({
+    page,
+  }) => {
+    await loginAs(page, QA_USERS.captain);
+    await openSessionByName(page, QA_SESSIONS.scheduledFull.name);
+
+    const inviteButton = page.getByRole('button', {
+      name: /groupe est déjà complet|group is already full/i,
+    });
+    await expect(inviteButton).toBeVisible();
+    await expect(inviteButton).toBeDisabled();
+
+    await inviteButton.click({ force: true });
+    await expect(
+      page.getByRole('heading', { name: /inviter un co|invite a teammate/i }),
+    ).toHaveCount(0);
   });
 
   test('OTF-1.4 already-present group member invite is a clean idempotent no-op', async ({

@@ -40,6 +40,10 @@ export const QA_GROUPS = {
     name: 'QA Test - Side Group',
     inviteCode: 'QAG002',
   },
+  full: {
+    name: 'QA Test - Full Group',
+    inviteCode: 'QAG003',
+  },
 } as const;
 
 export const QA_SESSIONS = {
@@ -58,6 +62,10 @@ export const QA_SESSIONS = {
   scheduledSide: {
     name: 'QA Side Session',
     shareCode: 'QAS004',
+  },
+  scheduledFull: {
+    name: 'QA Full Group Session',
+    shareCode: 'QAF005',
   },
 } as const;
 

@@ -187,6 +187,21 @@ const TEST_GROUPS = [
       },
     ],
   },
+  {
+    key: 'full',
+    name: 'QA Test - Full Group',
+    inviteCode: 'QAG003',
+    createdBy: 'captain',
+    maxMembers: 5,
+    memberships: [
+      { userKey: 'captain', isFounder: true },
+      { userKey: 'member2', isFounder: false },
+      { userKey: 'member3', isFounder: false },
+      { userKey: 'member4', isFounder: false },
+      { userKey: 'observer', isFounder: false },
+    ],
+    schedules: [],
+  },
 ];
 
 const TEST_SESSIONS = [
@@ -244,6 +259,19 @@ const TEST_SESSIONS = [
     timerSeconds: 900,
     questionGoal: 10,
     scheduledAtOffsetHours: 36,
+  },
+  {
+    key: 'scheduled_full',
+    name: 'QA Full Group Session',
+    groupKey: 'full',
+    shareCode: 'QAF005',
+    leaderKey: 'captain',
+    createdBy: 'captain',
+    status: 'scheduled',
+    timerMode: 'per_question',
+    timerSeconds: 75,
+    questionGoal: 5,
+    scheduledAtOffsetHours: 48,
   },
 ];
 
@@ -468,6 +496,7 @@ async function createGroups(userMap) {
         name: group.name,
         invite_code: group.inviteCode,
         created_by: creator.id,
+        max_members: group.maxMembers ?? 6,
         meeting_link: 'https://meet.google.com/qa-activeboard-room',
       })
       .select('id, name, invite_code')
