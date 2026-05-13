@@ -10,6 +10,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "seed:qa-test-data": "node scripts/qa-test-data.js",
+    "reset:qa-sessions": "node scripts/qa-test-data.js reset-sessions",
     "cleanup:qa-test-data": "node scripts/qa-test-data.js cleanup",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

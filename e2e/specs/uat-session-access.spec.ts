@@ -10,9 +10,11 @@ import {
 async function joinSessionFromDashboard(page: Page) {
   await openDashboardView(page, 'sessions');
   await page
-    .getByPlaceholder(/code|session code/i)
-    .fill(QA_SESSIONS.scheduledMain.shareCode);
-  await page.getByRole('button', { name: /^go$|^ouvrir$|^aller$/i }).click();
+    .getByRole('button', {
+      name: new RegExp(QA_SESSIONS.scheduledMain.name, 'i'),
+    })
+    .first()
+    .click();
   await expect(page).toHaveURL(/\/sessions\/[0-9a-f-]+/, {
     timeout: 20_000,
   });

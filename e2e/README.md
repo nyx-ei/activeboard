@@ -12,6 +12,25 @@ Seed or refresh the shared QA dataset only when needed:
 npm run seed:qa-test-data
 ```
 
+Reset only the QA sessions, questions, answers, and review data before running
+destructive flow specs:
+
+```bash
+npm run reset:qa-sessions
+```
+
+You can also make Playwright reset those sessions before a run:
+
+```bash
+E2E_RESET_QA_SESSIONS=1 npm run test:e2e
+```
+
+On Windows PowerShell:
+
+```powershell
+$env:E2E_RESET_QA_SESSIONS='1'; npm run test:e2e
+```
+
 The E2E tests do not create duplicate users or groups by default. They assume
 the seeded accounts and groups already exist.
 
