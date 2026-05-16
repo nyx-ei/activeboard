@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { getEmailServerEnv, hasEmailEnv } from '@/lib/env';
 import { dispatchDueSessionReminders } from '@/lib/notifications/session-reminders';
+import { dispatchDueTrialWarningEmails } from '@/lib/notifications/trial-progress';
 
 export const runtime = 'nodejs';
 
@@ -30,8 +31,15 @@ async function runDispatch(request: Request) {
   }
 
   try {
-    const result = await dispatchDueSessionReminders();
-    return NextResponse.json(result);
+    const [sessionReminders, trialWarnings] = await Promise.all([
+      dispatchDueSessionReminders(),
+      dispatchDueTrialWarningEmails(),
+    ]);
+
+    return NextResponse.json({
+      ...sessionReminders,
+      trialWarnings,
+    });
   } catch (error) {
     return NextResponse.json(
       {

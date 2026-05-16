@@ -742,7 +742,7 @@ export async function createDashboardSessionAction(formData: FormData) {
     );
   }
 
-  void Promise.allSettled([
+  await Promise.allSettled([
     logAppEvent({
       eventName: APP_EVENTS.sessionScheduled,
       locale,
