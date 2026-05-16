@@ -70,7 +70,13 @@ export function renderTransactionalEmail({
             }
             ${
               action
-                ? `<p style="margin:24px 0"><a href="${escapeHtml(action.url)}" style="display:inline-block;border-radius:10px;background:#10b981;color:#ffffff;text-decoration:none;font-weight:800;padding:12px 18px">${escapeHtml(action.label)}</a></p>`
+                ? `<table role="presentation" cellspacing="0" cellpadding="0" style="margin:24px 0">
+                    <tr>
+                      <td bgcolor="#10b981" style="border:1px solid #059669;border-radius:10px;background:#10b981">
+                        <a href="${escapeHtml(action.url)}" style="display:inline-block;border-radius:10px;background:#10b981;color:#04110b!important;text-decoration:none;font-size:15px;font-weight:800;line-height:1.2;padding:13px 20px">${escapeHtml(action.label)}</a>
+                      </td>
+                    </tr>
+                  </table>`
                 : ''
             }
             ${secondaryNote ? `<p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:#64748b">${escapeHtml(secondaryNote)}</p>` : ''}

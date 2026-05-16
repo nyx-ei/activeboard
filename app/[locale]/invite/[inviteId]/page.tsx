@@ -273,7 +273,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
           scheduleStepDescription: t('scheduleStepDescription'),
           setScheduleNow: t('setScheduleNow'),
           continueWithoutSchedule: t('continueWithoutSchedule'),
-          slotsCount: t('slotsCount'),
+          slotsCount: t('slotsCount', { count: '{count}' }),
           empty: t('empty'),
           weekdays: {
             monday: dashboardT('weekdayMonday'),
