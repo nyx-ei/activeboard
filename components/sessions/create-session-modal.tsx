@@ -136,12 +136,23 @@ export function CreateSessionModal({
                 ok?: boolean;
                 message?: string;
                 redirectTo?: string;
+                calendarInvitesDispatchUrl?: string;
               } | null;
 
               if (payload?.redirectTo) {
                 console.info(
                   `[perf] createSession:api ${Math.round(performance.now() - startedAt)}ms`,
                 );
+                if (payload.calendarInvitesDispatchUrl) {
+                  void fetch(payload.calendarInvitesDispatchUrl, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                    keepalive: true,
+                  }).catch((error) => {
+                    console.warn('calendar invite dispatch failed', error);
+                  });
+                }
                 markDashboardPayloadStale('sessions');
                 router.push(payload.redirectTo as never);
                 return;

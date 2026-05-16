@@ -847,7 +847,7 @@ export async function createDashboardSessionAction(formData: FormData) {
     );
   }
 
-  void Promise.allSettled([
+  await Promise.allSettled([
     logAppEvent({
       eventName: APP_EVENTS.sessionScheduled,
       locale,
@@ -1286,6 +1286,7 @@ export async function addDashboardExistingMemberAction(formData: FormData) {
     groupId,
     locale,
   );
+  const admin = createSupabaseAdminClient();
   const groupPath = groupDashboardPath(locale, groupId);
 
   if (!groupId || !email) {
@@ -1305,7 +1306,7 @@ export async function addDashboardExistingMemberAction(formData: FormData) {
 
   const [{ data: existingUser }, { data: members }, { data: existingInvite }] =
     await Promise.all([
-      supabase
+      admin
         .schema('public')
         .from('users')
         .select('id, email, display_name')
@@ -1326,11 +1327,10 @@ export async function addDashboardExistingMemberAction(formData: FormData) {
         .maybeSingle(),
     ]);
 
-  if (!existingUser) {
-    redirect(withFeedback(groupPath, 'error', t('userNotFound')));
-  }
-
-  if ((members ?? []).some((member) => member.user_id === existingUser.id)) {
+  if (
+    existingUser?.id &&
+    (members ?? []).some((member) => member.user_id === existingUser.id)
+  ) {
     redirect(withFeedback(groupPath, 'success', t('memberAlreadyInGroup')));
   }
 
@@ -1348,8 +1348,8 @@ export async function addDashboardExistingMemberAction(formData: FormData) {
     .insert({
       group_id: groupId,
       invited_by: user.id,
-      invitee_email: existingUser.email,
-      invitee_user_id: existingUser.id,
+      invitee_email: existingUser?.email ?? email,
+      invitee_user_id: existingUser?.id ?? null,
     })
     .select('id')
     .single();
@@ -1364,8 +1364,8 @@ export async function addDashboardExistingMemberAction(formData: FormData) {
     userId: user.id,
     groupId,
     metadata: {
-      invitee_email: existingUser.email,
-      invitee_user_id: existingUser.id,
+      invitee_email: existingUser?.email ?? email,
+      invitee_user_id: existingUser?.id ?? null,
       source: 'dashboard_group_tab_existing_user_invite',
     },
   });
@@ -1384,7 +1384,7 @@ export async function addDashboardExistingMemberAction(formData: FormData) {
       groupId,
       groupName: group.name,
       inviteCode: group.invite_code ?? '',
-      inviteeEmail: existingUser.email,
+      inviteeEmail: existingUser?.email ?? email,
       inviterUserId: user.id,
       inviterName:
         inviter?.display_name ?? inviter?.email ?? user.email ?? 'ActiveBoard',
