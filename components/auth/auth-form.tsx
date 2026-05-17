@@ -12,12 +12,14 @@ type Mode = 'sign-in' | 'sign-up' | 'recover';
 
 type AuthFormProps = {
   initialMode?: Mode;
+  initialEmail?: string;
   redirectToOverride?: string;
   signUpRedirectToOverride?: string;
   requireExamSessionOnSignUp?: boolean;
   deferSignUpToRedirect?: boolean;
   inviteIdForSignUp?: string;
   lockedEmail?: string;
+  founderOnboardingComplete?: boolean;
   variant?: 'page' | 'modal';
 };
 
@@ -39,12 +41,14 @@ function PendingInlineLabel({ pending, label, pendingLabel }: { pending: boolean
 
 export function AuthForm({
   initialMode,
+  initialEmail,
   redirectToOverride,
   signUpRedirectToOverride,
   requireExamSessionOnSignUp = true,
   deferSignUpToRedirect = false,
   inviteIdForSignUp,
   lockedEmail,
+  founderOnboardingComplete = false,
   variant = 'page',
 }: AuthFormProps = {}) {
   const t = useTranslations('Auth');
@@ -70,7 +74,7 @@ export function AuthForm({
 
     return 'sign-in';
   });
-  const [email, setEmail] = useState(lockedEmail ?? '');
+  const [email, setEmail] = useState(lockedEmail ?? initialEmail ?? '');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [examSession, setExamSession] = useState('');
@@ -339,7 +343,9 @@ export function AuthForm({
       <div className={cn(variant === 'page' ? 'mt-5 text-center' : 'mt-4 text-left')}>
         <h1 className={cn('font-extrabold tracking-tight text-white', variant === 'page' ? 'text-2xl' : 'text-xl')}>
           {mode === 'sign-in'
-            ? t('welcomeBack')
+            ? founderOnboardingComplete
+              ? t('founderSignInTitle')
+              : t('welcomeBack')
             : mode === 'recover'
               ? t('recoverPasswordTitle')
               : requireExamSessionOnSignUp || !deferSignUpToRedirect
@@ -348,7 +354,9 @@ export function AuthForm({
         </h1>
         <p className="mt-2 text-sm font-medium text-slate-400">
           {mode === 'sign-in'
-            ? t('welcomeBackSubtitle')
+            ? founderOnboardingComplete
+              ? t('founderSignInSubtitle')
+              : t('welcomeBackSubtitle')
             : mode === 'recover'
               ? t('recoverPasswordSubtitle')
               : requireExamSessionOnSignUp || !deferSignUpToRedirect

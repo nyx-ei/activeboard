@@ -246,6 +246,8 @@
                  "title":  "Connecte-toi pour lancer des sessions de revue concentrées.",
                  "welcomeBack":  "Bon retour",
                  "welcomeBackSubtitle":  "Connectez-vous pour continuer",
+                 "founderSignInTitle":  "Connecte-toi pour ouvrir ton groupe",
+                 "founderSignInSubtitle":  "Utilise l'email et le mot de passe que tu viens de créer pour terminer l'onboarding.",
                  "createAccountTitle":  "Créer un compte",
                  "createAccountSubtitle":  "Rejoignez ActiveBoard",
                  "createGroupTitle":  "Crée ton groupe",
