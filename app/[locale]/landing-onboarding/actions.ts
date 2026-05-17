@@ -54,8 +54,10 @@ type LandingOnboardingStartResult =
     }
   | {
       ok: false;
-      reason: 'missing_fields' | 'action_failed';
+      reason: 'missing_fields' | 'account_exists' | 'action_failed';
     };
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const VALID_EXAM_TYPES = new Set<FounderExamType>([
   'mccqe1',
@@ -180,22 +182,34 @@ export async function startLandingOnboardingAction(
   }
 
   const founderEmail = draft.email;
-  const inviteEmails = draft.memberEmails
-    .filter((email) => email !== founderEmail)
-    .slice(0, 5);
 
   if (
     !draft.displayName ||
     !founderEmail ||
+    !EMAIL_PATTERN.test(founderEmail) ||
     !draft.groupName ||
-    draft.questionBanks.length === 0 ||
-    inviteEmails.length < 1
+    draft.questionBanks.length === 0
   ) {
     return { ok: false, reason: 'missing_fields' };
   }
 
   const token = createPasswordSetupToken();
   const adminClient = createSupabaseAdminClient();
+  const { data: existingUser, error: existingUserError } = await adminClient
+    .schema('public')
+    .from('users')
+    .select('id')
+    .eq('email', founderEmail)
+    .maybeSingle();
+
+  if (existingUserError) {
+    return { ok: false, reason: 'action_failed' };
+  }
+
+  if (existingUser) {
+    return { ok: false, reason: 'account_exists' };
+  }
+
   const { error: tokenError } = await adminClient
     .schema('public')
     .from('landing_onboarding_tokens')

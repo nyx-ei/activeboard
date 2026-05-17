@@ -13,7 +13,10 @@ type LocaleHomePageProps = {
 
 function ActiveBoardLandingLogo() {
   return (
-    <div data-landing-logo className="mt-3 flex max-w-[150px] translate-y-3 items-center gap-2 lg:mt-2 lg:max-w-none lg:translate-y-0 lg:gap-3">
+    <div
+      data-landing-logo
+      className="mt-3 flex max-w-[150px] translate-y-3 items-center gap-2 lg:mt-2 lg:max-w-none lg:translate-y-0 lg:gap-3"
+    >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] bg-brand text-sm font-extrabold text-white shadow-[0_10px_26px_rgba(31,230,166,0.24)] lg:h-10 lg:w-10 lg:rounded-[8px] lg:text-base">
         AB
       </div>
@@ -78,9 +81,8 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
             <LandingDirectSignupForm
               locale={locale}
               labels={{
+                firstName: t('directFirstName'),
                 email: t('directEmail'),
-                partnerEmail: t('directPartnerEmail'),
-                addPartner: t('directAddPartner'),
                 submit: t('directSubmit'),
                 pending: t('directPending'),
                 missingFields: t('directMissingFields'),

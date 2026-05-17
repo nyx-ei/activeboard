@@ -1,16 +1,15 @@
 'use client';
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
-import { Mail, Plus, Trash2, UserRound } from 'lucide-react';
+import { Mail, UserRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 import { startLandingOnboardingAction } from '@/app/[locale]/landing-onboarding/actions';
 import { normalizeEmail } from '@/lib/utils';
 
 type LandingDirectSignupLabels = {
+  firstName: string;
   email: string;
-  partnerEmail: string;
-  addPartner: string;
   submit: string;
   pending: string;
   missingFields: string;
@@ -24,7 +23,6 @@ type LandingDirectSignupFormProps = {
   labels: LandingDirectSignupLabels;
 };
 
-const MAX_PARTNERS = 5;
 const DEFAULT_QUESTION_BANKS = [
   'cmc_prep',
   'aceqbank',
@@ -33,22 +31,6 @@ const DEFAULT_QUESTION_BANKS = [
   'amboss',
   'other',
 ];
-
-function deriveDisplayName(email: string) {
-  const localPart = email
-    .split('@')[0]
-    ?.replace(/[._-]+/g, ' ')
-    .trim();
-  if (!localPart) {
-    return 'ActiveBoard Captain';
-  }
-
-  return localPart
-    .split(' ')
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-}
 
 function resolveError(
   reason: string | undefined,
@@ -74,48 +56,25 @@ export function LandingDirectSignupForm({
   labels,
 }: LandingDirectSignupFormProps) {
   const router = useRouter();
+  const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
-  const [partnerEmails, setPartnerEmails] = useState(['']);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const normalizedFounderEmail = normalizeEmail(email);
-  const normalizedPartnerEmails = useMemo(
-    () =>
-      [
-        ...new Set(
-          partnerEmails
-            .map((partnerEmail) => normalizeEmail(partnerEmail))
-            .filter(Boolean),
-        ),
-      ].filter((partnerEmail) => partnerEmail !== normalizedFounderEmail),
-    [normalizedFounderEmail, partnerEmails],
+  const normalizedFirstName = useMemo(
+    () => firstName.trim().replace(/\s+/g, ' '),
+    [firstName],
   );
-  const canAddPartner = partnerEmails.length < MAX_PARTNERS;
   const isValid =
-    normalizedFounderEmail.includes('@') && normalizedPartnerEmails.length >= 1;
+    normalizedFirstName.length >= 2 &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedFounderEmail);
   const isSubmitting = isPending || isNavigating;
 
   useEffect(() => {
     router.prefetch(`/${locale}/auth/set-password`);
   }, [locale, router]);
-
-  function updatePartnerEmail(index: number, value: string) {
-    setPartnerEmails((current) =>
-      current.map((partnerEmail, currentIndex) =>
-        currentIndex === index ? value : partnerEmail,
-      ),
-    );
-  }
-
-  function removePartnerEmail(index: number) {
-    setPartnerEmails((current) =>
-      current.length > 1
-        ? current.filter((_, currentIndex) => currentIndex !== index)
-        : current,
-    );
-  }
 
   function submitSignup() {
     if (!isValid) {
@@ -123,9 +82,8 @@ export function LandingDirectSignupForm({
       return;
     }
 
-    const displayName = deriveDisplayName(normalizedFounderEmail);
     const draft = {
-      displayName,
+      displayName: normalizedFirstName,
       email: normalizedFounderEmail,
       examType: 'mccqe1',
       examSession: 'planning_ahead',
@@ -135,8 +93,8 @@ export function LandingDirectSignupForm({
       difficultyLevel: 'medium',
       questionBanks: DEFAULT_QUESTION_BANKS,
       schedule: [],
-      groupName: `${displayName}'s Reliability Sprint`,
-      memberEmails: normalizedPartnerEmails,
+      groupName: `${normalizedFirstName}'s Reliability Sprint`,
+      memberEmails: [],
     };
 
     setErrorMessage(null);
@@ -170,6 +128,21 @@ export function LandingDirectSignupForm({
             aria-hidden="true"
           />
           <input
+            type="text"
+            value={firstName}
+            onChange={(event) => setFirstName(event.target.value)}
+            className="h-[43px] w-full rounded-[5px] border border-[#1c2d40] bg-[#020910]/70 pl-[54px] pr-4 text-[14px] font-medium text-white outline-none transition placeholder:text-[#c1c7cf] focus:border-brand focus:ring-2 focus:ring-emerald-400/20"
+            placeholder={labels.firstName}
+            autoComplete="given-name"
+          />
+        </label>
+
+        <label className="relative block">
+          <Mail
+            className="pointer-events-none absolute left-[18px] top-1/2 h-5 w-5 -translate-y-1/2 text-brand"
+            aria-hidden="true"
+          />
+          <input
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
@@ -178,50 +151,6 @@ export function LandingDirectSignupForm({
             autoComplete="email"
           />
         </label>
-
-        <div className="space-y-[7px]">
-          {partnerEmails.map((partnerEmail, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <label className="relative block min-w-0 flex-1">
-                <Mail
-                  className="pointer-events-none absolute left-[18px] top-1/2 h-5 w-5 -translate-y-1/2 text-brand"
-                  aria-hidden="true"
-                />
-                <input
-                  type="email"
-                  value={partnerEmail}
-                  onChange={(event) =>
-                    updatePartnerEmail(index, event.target.value)
-                  }
-                  className="h-[43px] w-full rounded-[5px] border border-[#1c2d40] bg-[#020910]/70 pl-[54px] pr-4 text-[14px] font-medium text-white outline-none transition placeholder:text-[#c1c7cf] focus:border-brand focus:ring-2 focus:ring-emerald-400/20"
-                  placeholder={labels.partnerEmail}
-                  autoComplete="email"
-                />
-              </label>
-              {partnerEmails.length > 1 ? (
-                <button
-                  type="button"
-                  onClick={() => removePartnerEmail(index)}
-                  className="flex h-[43px] w-10 shrink-0 items-center justify-center rounded-[5px] border border-[#1c2d40] text-slate-500 transition hover:border-rose-400/40 hover:text-rose-300"
-                  aria-label="Remove partner"
-                >
-                  <Trash2 className="h-4 w-4" aria-hidden="true" />
-                </button>
-              ) : null}
-            </div>
-          ))}
-        </div>
-
-        {canAddPartner ? (
-          <button
-            type="button"
-            onClick={() => setPartnerEmails((current) => [...current, ''])}
-            className="hover:border-brand/50 flex h-[43px] w-full items-center gap-[18px] rounded-[5px] border border-[#1c2d40] bg-[#020910]/70 px-[18px] text-left text-[14px] font-medium text-[#c1c7cf] transition hover:text-white"
-          >
-            <Plus className="h-5 w-5 text-brand" aria-hidden="true" />
-            {labels.addPartner}
-          </button>
-        ) : null}
       </div>
 
       {errorMessage ? (
