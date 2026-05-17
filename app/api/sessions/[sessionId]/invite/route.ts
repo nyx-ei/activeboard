@@ -21,6 +21,7 @@ type InvitePayload = {
 };
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const INVITATION_EXPIRES_IN_DAYS = 7;
 
 function isAppLocale(value: string | undefined): value is AppLocale {
   return value === 'fr' || value === 'en';
@@ -73,6 +74,17 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   const admin = createSupabaseAdminClient();
+
+  async function getPublicInvitationId(groupInviteId: string) {
+    const { data: invitation } = await admin
+      .schema('public')
+      .from('invitations')
+      .select('id')
+      .eq('group_invite_id', groupInviteId)
+      .maybeSingle();
+
+    return invitation?.id ?? groupInviteId;
+  }
 
   const { data: session } = await admin
     .schema('public')
@@ -179,8 +191,15 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   if (existingInvite) {
+    const publicInviteId = await getPublicInvitationId(existingInvite.id);
+
     return NextResponse.json(
-      { ok: false, reason: 'invite_exists', inviteId: existingInvite.id },
+      {
+        ok: false,
+        reason: 'invite_exists',
+        inviteId: publicInviteId,
+        groupInviteId: existingInvite.id,
+      },
       { status: 409 },
     );
   }
@@ -209,17 +228,52 @@ export async function POST(request: Request, { params }: RouteContext) {
         .eq('invitee_email', inviteeEmail)
         .eq('status', 'pending')
         .maybeSingle();
+      const publicInviteId = pendingInvite?.id
+        ? await getPublicInvitationId(pendingInvite.id)
+        : null;
 
       return NextResponse.json(
         {
           ok: false,
           reason: 'invite_exists',
-          inviteId: pendingInvite?.id ?? null,
+          inviteId: publicInviteId,
+          groupInviteId: pendingInvite?.id ?? null,
         },
         { status: 409 },
       );
     }
 
+    return NextResponse.json(
+      { ok: false, reason: 'action_failed' },
+      { status: 500 },
+    );
+  }
+
+  const expiresAt = new Date(
+    Date.now() + INVITATION_EXPIRES_IN_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
+  const { data: invitation, error: invitationError } = await admin
+    .schema('public')
+    .from('invitations')
+    .upsert(
+      {
+        group_invite_id: insertedInvite.id,
+        group_id: session.group_id,
+        invited_by: user.id,
+        invited_email: inviteeEmail,
+        invited_user_id: existingUser?.id ?? null,
+        source: 'on_the_fly',
+        session_id: session.id,
+        status: 'pending',
+        expires_at: expiresAt,
+      },
+      { onConflict: 'group_invite_id' },
+    )
+    .select('id')
+    .single();
+  perf.step('unified_invitation_ready');
+
+  if (invitationError || !invitation?.id) {
     return NextResponse.json(
       { ok: false, reason: 'action_failed' },
       { status: 500 },
@@ -233,10 +287,11 @@ export async function POST(request: Request, { params }: RouteContext) {
     groupId: session.group_id,
     sessionId: session.id,
     metadata: {
-      invite_id: insertedInvite.id,
+      invite_id: invitation.id,
+      group_invite_id: insertedInvite.id,
       invitee_email: inviteeEmail,
       invitee_user_id: existingUser?.id ?? null,
-      source: 'session_on_the_fly_invite',
+      source: 'on_the_fly',
       funnel_stage: 'created',
     },
     useAdmin: true,
@@ -247,7 +302,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (hasEmailEnv()) {
     const inviteEmailResult = await sendGroupInviteEmail({
       locale,
-      inviteId: insertedInvite.id,
+      inviteId: invitation.id,
       groupId: session.group_id,
       groupName: group.name,
       inviteCode: group.invite_code ?? '',
@@ -270,14 +325,16 @@ export async function POST(request: Request, { params }: RouteContext) {
   revalidatePath(`/${locale}/dashboard`);
   revalidatePath(`/${locale}/groups/${session.group_id}`);
   perf.done({
-    inviteId: insertedInvite.id,
+    inviteId: invitation.id,
+    groupInviteId: insertedInvite.id,
     emailDeliveryFailed,
   });
 
   return NextResponse.json({
     ok: true,
     alreadyMember: false,
-    inviteId: insertedInvite.id,
+    inviteId: invitation.id,
+    groupInviteId: insertedInvite.id,
     emailDeliveryFailed,
     invitedDuringSessionId: session.id,
   });
