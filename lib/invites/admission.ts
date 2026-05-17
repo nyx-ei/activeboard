@@ -113,21 +113,15 @@ export async function verifyInviteAdmission({
   }
 
   const [
-    { data: group, error: groupError },
-    { data: members, error: membersError },
+    { data: seatAvailability, error: seatAvailabilityError },
     { data: existingMembership, error: membershipError },
   ] = await Promise.all([
     admin
       .schema('public')
-      .from('groups')
-      .select('id, max_members')
-      .eq('id', invite.group_id)
+      .from('group_seat_availability')
+      .select('group_id, seats_available')
+      .eq('group_id', invite.group_id)
       .maybeSingle(),
-    admin
-      .schema('public')
-      .from('group_members')
-      .select('user_id')
-      .eq('group_id', invite.group_id),
     admin
       .schema('public')
       .from('group_members')
@@ -137,15 +131,15 @@ export async function verifyInviteAdmission({
       .maybeSingle(),
   ]);
 
-  if (groupError || membersError || membershipError) {
+  if (seatAvailabilityError || membershipError) {
     return { ok: false, reason: 'action_failed', status: 500 };
   }
 
-  if (!group) {
+  if (!seatAvailability) {
     return { ok: false, reason: 'group_not_found', status: 404 };
   }
 
-  if (!existingMembership && (members?.length ?? 0) >= group.max_members) {
+  if (!existingMembership && seatAvailability.seats_available <= 0) {
     return { ok: false, reason: 'group_full', status: 422 };
   }
 
