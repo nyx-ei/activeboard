@@ -14,7 +14,7 @@ type SetPasswordPageProps = {
 };
 
 type PasswordSetupState =
-  | { status: 'ready'; email: string }
+  | { status: 'ready' }
   | { status: 'completed' }
   | { status: 'invalid' };
 
@@ -40,7 +40,7 @@ async function getPasswordSetupState(
   const { data: landingToken } = await admin
     .schema('public')
     .from('landing_onboarding_tokens')
-    .select('email, expires_at, used_at')
+    .select('expires_at, used_at')
     .eq('token_hash', tokenHash)
     .maybeSingle();
 
@@ -49,7 +49,7 @@ async function getPasswordSetupState(
     !landingToken.used_at &&
     new Date(landingToken.expires_at).getTime() >= Date.now()
   ) {
-    return { status: 'ready', email: landingToken.email };
+    return { status: 'ready' };
   }
 
   if (isRecentlyUsed(landingToken?.used_at ?? null)) {
@@ -59,7 +59,7 @@ async function getPasswordSetupState(
   const { data: setupToken } = await admin
     .schema('public')
     .from('password_setup_tokens')
-    .select('email, expires_at, used_at')
+    .select('expires_at, used_at')
     .eq('token_hash', tokenHash)
     .maybeSingle();
 
@@ -68,7 +68,7 @@ async function getPasswordSetupState(
     !setupToken.used_at &&
     new Date(setupToken.expires_at).getTime() >= Date.now()
   ) {
-    return { status: 'ready', email: setupToken.email };
+    return { status: 'ready' };
   }
 
   if (isRecentlyUsed(setupToken?.used_at ?? null)) {
@@ -98,7 +98,6 @@ export default async function SetPasswordPage({
     <main className="mx-auto flex w-full max-w-6xl flex-1 items-center justify-center px-4 py-10">
       {token && setupState.status === 'ready' ? (
         <LandingSetPasswordForm
-          email={setupState.email}
           homeHref={`/${locale}`}
           token={token}
           nextPath={nextPath}

@@ -8,11 +8,42 @@ import type { AppLocale } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
 
 type LandingSetPasswordFormProps = {
-  email: string;
   homeHref: string;
   token: string;
   nextPath: string;
 };
+
+type PasswordStrength = {
+  labelKey:
+    | 'passwordStrengthWeak'
+    | 'passwordStrengthFair'
+    | 'passwordStrengthGood'
+    | 'passwordStrengthStrong';
+  score: 1 | 2 | 3 | 4;
+};
+
+function getPasswordStrength(password: string): PasswordStrength {
+  let score = 0;
+
+  if (password.length >= 8) score += 1;
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score += 1;
+  if (/\d/.test(password)) score += 1;
+  if (/[^A-Za-z0-9]/.test(password)) score += 1;
+
+  if (score <= 1) {
+    return { labelKey: 'passwordStrengthWeak', score: 1 };
+  }
+
+  if (score === 2) {
+    return { labelKey: 'passwordStrengthFair', score: 2 };
+  }
+
+  if (score === 3) {
+    return { labelKey: 'passwordStrengthGood', score: 3 };
+  }
+
+  return { labelKey: 'passwordStrengthStrong', score: 4 };
+}
 
 function PendingInlineLabel({
   pending,
@@ -47,7 +78,6 @@ function PendingInlineLabel({
 }
 
 export function LandingSetPasswordForm({
-  email,
   homeHref,
   token,
   nextPath,
@@ -59,6 +89,7 @@ export function LandingSetPasswordForm({
   const [message, setMessage] = useState<string | null>(null);
   const [messageTone, setMessageTone] = useState<'error' | 'success'>('error');
   const [isPending, startTransition] = useTransition();
+  const strength = getPasswordStrength(password);
 
   function resolveError(reason: string | undefined) {
     if (reason === 'missing_fields') {
@@ -90,6 +121,23 @@ export function LandingSetPasswordForm({
 
   function submitPassword() {
     setMessage(null);
+    setMessageTone('error');
+
+    if (!password || !confirmPassword) {
+      setMessage(t('missingFields'));
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setMessage(t('passwordMismatch'));
+      return;
+    }
+
+    if (password.length < 8) {
+      setMessage(t('weakPassword'));
+      return;
+    }
+
     const formData = new FormData();
     formData.set('token', token);
     formData.set('password', password);
@@ -128,17 +176,9 @@ export function LandingSetPasswordForm({
         <p className="mt-2 text-sm font-medium text-slate-400">
           {t('setPasswordLandingSubtitle')}
         </p>
-        <div className="mt-4 rounded-[10px] border border-white/[0.08] bg-white/[0.04] px-3 py-2">
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">
-            {t('setPasswordEmailLabel')}
-          </p>
-          <p className="mt-1 break-all text-sm font-bold text-white">
-            {email}
-          </p>
-        </div>
       </div>
 
-      <div className="mt-8 space-y-4">
+      <div className="mt-7 space-y-4">
         <label className="block">
           <span className="mb-2 block text-sm font-bold text-slate-300">
             {t('newPassword')}
@@ -149,9 +189,36 @@ export function LandingSetPasswordForm({
             onChange={(event) => setPassword(event.target.value)}
             className="field h-10 rounded-[6px] px-3 text-sm"
           />
-          <span className="mt-1 block text-xs text-slate-500">
-            {t('passwordHint')}
-          </span>
+          <div className="mt-3" aria-live="polite">
+            <div className="grid grid-cols-4 gap-1.5" aria-hidden="true">
+              {[1, 2, 3, 4].map((step) => (
+                <span
+                  key={step}
+                  className={cn(
+                    'h-1.5 rounded-full bg-white/10 transition-colors',
+                    step <= strength.score &&
+                      strength.score === 1 &&
+                      'bg-rose-400',
+                    step <= strength.score &&
+                      strength.score === 2 &&
+                      'bg-amber-300',
+                    step <= strength.score &&
+                      strength.score === 3 &&
+                      'bg-sky-300',
+                    step <= strength.score &&
+                      strength.score === 4 &&
+                      'bg-brand',
+                  )}
+                />
+              ))}
+            </div>
+            <div className="mt-1.5 flex items-center justify-between gap-3 text-xs">
+              <span className="text-slate-500">{t('passwordHint')}</span>
+              <span className="font-bold text-slate-300">
+                {t(strength.labelKey)}
+              </span>
+            </div>
+          </div>
         </label>
 
         <label className="block">
@@ -195,7 +262,7 @@ export function LandingSetPasswordForm({
       </button>
       <a
         href={homeHref}
-        className="mt-4 inline-flex w-full items-center justify-center rounded-[6px] border border-white/10 px-4 py-3 text-sm font-bold text-slate-300 transition hover:border-brand/40 hover:text-white"
+        className="hover:border-brand/40 mt-4 inline-flex w-full items-center justify-center rounded-[6px] border border-white/10 px-4 py-3 text-sm font-bold text-slate-300 transition hover:text-white"
       >
         {t('setPasswordBackHome')}
       </a>
