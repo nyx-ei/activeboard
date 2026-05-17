@@ -776,6 +776,13 @@ type DashboardUserProfileAnalyticsViewRow = {
   weekly_trend: Json | null;
 };
 
+type GroupSeatAvailabilityViewRow = {
+  confirmed_member_count: number;
+  group_id: string | null;
+  max_members: number;
+  seats_available: number;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -913,6 +920,10 @@ export type Database = {
       };
       dashboard_user_session_answer_counts: {
         Row: DashboardUserSessionAnswerCountsViewRow;
+        Relationships: [];
+      };
+      group_seat_availability: {
+        Row: GroupSeatAvailabilityViewRow;
         Relationships: [];
       };
     };
