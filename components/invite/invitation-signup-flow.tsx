@@ -1,39 +1,46 @@
 'use client';
 
+import { KeyRound, Lock, User } from 'lucide-react';
 import { useMemo, useState, useTransition } from 'react';
 
-import { AuthForm } from '@/components/auth/auth-form';
 import type { AppLocale } from '@/i18n/routing';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 type InvitationSignupFlowProps = {
+  invitationId: string;
   groupInviteId: string;
-  invitationPath: string;
   lockedEmail: string;
   locale: AppLocale;
-  groupName: string;
   labels: {
     title: string;
     description: string;
+    socialTitle: string;
+    socialSubtitle: string;
     lockedEmail: string;
     displayName: string;
     displayNamePlaceholder: string;
     password: string;
-    confirmPassword: string;
     passwordHint: string;
-    createAccount: string;
+    createAccountAndJoin: string;
     creatingAccount: string;
-    signInTitle: string;
-    signInDescription: string;
     missingFields: string;
-    passwordMismatch: string;
     accountExists: string;
     genericError: string;
+    acceptError: string;
   };
 };
 
 type SignupResponse = {
   ok?: boolean;
   reason?: string;
+};
+
+type AcceptResponse = {
+  accepted?: boolean;
+  reason?: string;
+  group?: {
+    id?: string;
+  };
 };
 
 function PendingLabel({
@@ -62,19 +69,17 @@ function PendingLabel({
 }
 
 export function InvitationSignupFlow({
+  invitationId,
   groupInviteId,
-  invitationPath,
   lockedEmail,
   locale,
-  groupName,
   labels,
 }: InvitationSignupFlowProps) {
   const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState<string | null>(null);
-  const [step, setStep] = useState<'create' | 'sign-in'>('create');
   const [isPending, startTransition] = useTransition();
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const passwordStrength = useMemo(() => {
     let score = 0;
     if (password.length >= 8) score += 1;
@@ -89,11 +94,6 @@ export function InvitationSignupFlow({
 
     if (!name || password.length < 8) {
       setMessage(labels.missingFields);
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setMessage(labels.passwordMismatch);
       return;
     }
 
@@ -121,36 +121,51 @@ export function InvitationSignupFlow({
       return;
     }
 
-    setStep('sign-in');
-  }
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: lockedEmail,
+      password,
+    });
 
-  if (step === 'sign-in') {
-    return (
-      <section className="surface-mockup p-6">
-        <div className="border-brand/20 bg-brand/10 mb-5 rounded-[14px] border p-4">
-          <h2 className="text-lg font-semibold text-white">
-            {labels.signInTitle}
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-slate-400">
-            {labels.signInDescription}
-          </p>
-        </div>
-        <AuthForm
-          initialMode="sign-in"
-          initialEmail={lockedEmail}
-          redirectToOverride={invitationPath}
-          lockedEmail={lockedEmail}
-          variant="modal"
-        />
-      </section>
+    if (signInError) {
+      setMessage(labels.genericError);
+      return;
+    }
+
+    const acceptResponse = await fetch(
+      `/api/invitations/${invitationId}/accept`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locale }),
+      },
     );
+    const acceptPayload = (await acceptResponse
+      .json()
+      .catch(() => null)) as AcceptResponse | null;
+
+    if (
+      !acceptResponse.ok ||
+      !acceptPayload?.accepted ||
+      !acceptPayload.group?.id
+    ) {
+      setMessage(acceptPayload?.reason ?? labels.acceptError);
+      return;
+    }
+
+    window.location.assign(`/${locale}/groups/${acceptPayload.group.id}`);
   }
 
   return (
     <section className="surface-mockup p-6">
-      <span className="border-brand/25 bg-brand/10 inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand">
-        {groupName}
-      </span>
+      <div className="border-brand/25 bg-brand/10 rounded-[16px] border p-4">
+        <p className="text-sm font-bold leading-6 text-white">
+          {labels.socialTitle}
+        </p>
+        <p className="mt-1 flex items-center gap-2 text-sm leading-6 text-slate-300">
+          <Lock className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
+          <span>{labels.socialSubtitle}</span>
+        </p>
+      </div>
       <h1 className="mt-4 text-2xl font-semibold text-white">{labels.title}</h1>
       <p className="mt-3 text-sm leading-6 text-slate-400">
         {labels.description}
@@ -161,36 +176,55 @@ export function InvitationSignupFlow({
           <span className="mb-2 block text-sm font-bold text-slate-300">
             {labels.lockedEmail}
           </span>
-          <input
-            type="email"
-            value={lockedEmail}
-            disabled
-            className="field h-11 rounded-[6px] px-3 text-sm"
-          />
+          <span className="flex h-11 items-center gap-3 rounded-[6px] border border-white/10 bg-slate-800/70 px-3 text-sm font-semibold text-slate-300">
+            <Lock
+              className="h-4 w-4 shrink-0 text-slate-500"
+              aria-hidden="true"
+            />
+            <input
+              type="email"
+              value={lockedEmail}
+              disabled
+              aria-label={labels.lockedEmail}
+              className="w-full cursor-not-allowed bg-transparent text-slate-300 outline-none disabled:opacity-100"
+            />
+          </span>
         </label>
 
         <label className="block">
           <span className="mb-2 block text-sm font-bold text-slate-300">
             {labels.displayName}
           </span>
-          <input
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
-            placeholder={labels.displayNamePlaceholder}
-            className="field h-11 rounded-[6px] px-3 text-sm"
-          />
+          <span className="relative block">
+            <User
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand"
+              aria-hidden="true"
+            />
+            <input
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              placeholder={labels.displayNamePlaceholder}
+              className="field h-11 rounded-[6px] px-3 pl-10 text-sm"
+            />
+          </span>
         </label>
 
         <label className="block">
           <span className="mb-2 block text-sm font-bold text-slate-300">
             {labels.password}
           </span>
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="field h-11 rounded-[6px] px-3 text-sm"
-          />
+          <span className="relative block">
+            <KeyRound
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand"
+              aria-hidden="true"
+            />
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="field h-11 rounded-[6px] px-3 pl-10 text-sm"
+            />
+          </span>
           <div className="mt-2 grid grid-cols-3 gap-2" aria-hidden="true">
             {[1, 2, 3].map((level) => (
               <span
@@ -204,18 +238,6 @@ export function InvitationSignupFlow({
           <span className="mt-1 block text-xs text-slate-500">
             {labels.passwordHint}
           </span>
-        </label>
-
-        <label className="block">
-          <span className="mb-2 block text-sm font-bold text-slate-300">
-            {labels.confirmPassword}
-          </span>
-          <input
-            type="password"
-            value={confirmPassword}
-            onChange={(event) => setConfirmPassword(event.target.value)}
-            className="field h-11 rounded-[6px] px-3 text-sm"
-          />
         </label>
       </div>
 
@@ -233,7 +255,7 @@ export function InvitationSignupFlow({
       >
         <PendingLabel
           pending={isPending}
-          label={labels.createAccount}
+          label={labels.createAccountAndJoin}
           pendingLabel={labels.creatingAccount}
         />
       </button>
