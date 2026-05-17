@@ -262,28 +262,31 @@ export async function InvitationLinkLanding({
           </section>
         ) : (
           <InvitationSignupFlow
+            invitationId={invitation.id}
             groupInviteId={invitation.groupInviteId}
-            invitationPath={invitationPath}
             lockedEmail={invitation.invitedEmail}
             locale={locale}
-            groupName={group.name}
             labels={{
               title: t('newInviteeTitle'),
               description: t('newInviteeDescription'),
+              socialTitle: t('socialContextTitle', {
+                inviterName,
+                groupName: group.name,
+              }),
+              socialSubtitle: t('socialContextSubtitle', {
+                email: invitation.invitedEmail,
+              }),
               lockedEmail: t('lockedEmail'),
               displayName: t('displayName'),
               displayNamePlaceholder: t('displayNamePlaceholder'),
               password: t('password'),
-              confirmPassword: t('confirmPassword'),
               passwordHint: t('passwordHint'),
-              createAccount: t('createAccount'),
+              createAccountAndJoin: t('createAccountAndJoin'),
               creatingAccount: t('creatingAccount'),
-              signInTitle: t('newInviteeSignInTitle'),
-              signInDescription: t('newInviteeSignInDescription'),
               missingFields: t('signupMissingFields'),
-              passwordMismatch: t('passwordMismatch'),
               accountExists: t('signupAccountExists'),
               genericError: t('signupGenericError'),
+              acceptError: t('autoAcceptError'),
             }}
           />
         )}
