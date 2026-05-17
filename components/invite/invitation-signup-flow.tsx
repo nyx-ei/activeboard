@@ -38,6 +38,7 @@ type SignupResponse = {
 type AcceptResponse = {
   accepted?: boolean;
   reason?: string;
+  redirectTo?: string;
   group?: {
     id?: string;
   };
@@ -152,7 +153,9 @@ export function InvitationSignupFlow({
       return;
     }
 
-    window.location.assign(`/${locale}/groups/${acceptPayload.group.id}`);
+    window.location.assign(
+      acceptPayload.redirectTo ?? `/${locale}/groups/${acceptPayload.group.id}`,
+    );
   }
 
   return (
