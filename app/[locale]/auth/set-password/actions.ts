@@ -41,6 +41,8 @@ type FounderScheduleSlot = {
 type FounderOnboardingDraft = {
   displayName: string;
   email: string;
+  onboardingUserId?: string;
+  passwordSetAt?: string;
   examType: FounderExamType;
   examSession: FounderExamSession;
   locale: AppLocale;
@@ -57,6 +59,7 @@ type SetupPasswordResult =
   | {
       ok: true;
       groupId?: string;
+      requiresGroupSetup?: boolean;
     }
   | {
       ok: false;
@@ -160,6 +163,14 @@ function parseLandingDraft(value: Json): FounderOnboardingDraft | null {
     return {
       displayName: draft.displayName.trim(),
       email: normalizeEmail(draft.email),
+      onboardingUserId:
+        typeof draft.onboardingUserId === 'string'
+          ? draft.onboardingUserId
+          : undefined,
+      passwordSetAt:
+        typeof draft.passwordSetAt === 'string'
+          ? draft.passwordSetAt
+          : undefined,
       examType: draft.examType as FounderExamType,
       examSession: draft.examSession as FounderExamSession,
       locale: draft.locale,
@@ -180,6 +191,131 @@ function parseLandingDraft(value: Json): FounderOnboardingDraft | null {
   }
 }
 
+async function setupLandingAccount({
+  tokenHash,
+  draft,
+  password,
+}: {
+  tokenHash: string;
+  draft: FounderOnboardingDraft;
+  password: string;
+}): Promise<SetupPasswordResult> {
+  const admin = createSupabaseAdminClient();
+  const founderEmail = draft.email;
+
+  if (!draft.displayName || !founderEmail) {
+    return { ok: false, reason: 'invalid_token' };
+  }
+
+  if (draft.onboardingUserId) {
+    const { data: existingDraftUser, error: existingDraftUserError } =
+      await admin
+        .schema('public')
+        .from('users')
+        .select('id')
+        .eq('id', draft.onboardingUserId)
+        .eq('email', founderEmail)
+        .maybeSingle();
+
+    if (existingDraftUserError) {
+      return { ok: false, reason: 'unexpected_error' };
+    }
+
+    if (existingDraftUser) {
+      return { ok: true, requiresGroupSetup: true };
+    }
+  }
+
+  const { data: existingUser, error: existingUserError } = await admin
+    .schema('public')
+    .from('users')
+    .select('id')
+    .eq('email', founderEmail)
+    .maybeSingle();
+
+  if (existingUserError) {
+    return { ok: false, reason: 'unexpected_error' };
+  }
+
+  if (existingUser) {
+    return { ok: false, reason: 'account_exists' };
+  }
+
+  const { data: createdAuthUser, error: authError } =
+    await admin.auth.admin.createUser({
+      email: founderEmail,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        full_name: draft.displayName,
+        locale: draft.locale,
+      },
+    });
+
+  if (authError || !createdAuthUser.user?.id) {
+    return { ok: false, reason: 'unexpected_error' };
+  }
+
+  const createdAuthUserId = createdAuthUser.user.id;
+
+  try {
+    await admin.schema('public').from('users').upsert(
+      {
+        id: createdAuthUserId,
+        email: founderEmail,
+        display_name: draft.displayName,
+        locale: draft.locale,
+        question_banks: draft.questionBanks,
+      },
+      { onConflict: 'id' },
+    );
+
+    await admin.schema('public').from('user_schedules').upsert({
+      user_id: createdAuthUserId,
+      timezone: draft.timezone,
+      availability_grid: DEFAULT_AVAILABILITY_GRID,
+    });
+
+    const nextDraft: FounderOnboardingDraft = {
+      ...draft,
+      onboardingUserId: createdAuthUserId,
+      passwordSetAt: new Date().toISOString(),
+    };
+
+    const { error: tokenUpdateError } = await admin
+      .schema('public')
+      .from('landing_onboarding_tokens')
+      .update({ draft: nextDraft as unknown as Json })
+      .eq('token_hash', tokenHash)
+      .is('used_at', null);
+
+    if (tokenUpdateError) {
+      return { ok: false, reason: 'unexpected_error' };
+    }
+
+    if (hasEmailEnv()) {
+      await sendAccountWelcomeEmail({
+        locale: draft.locale,
+        email: founderEmail,
+        userId: createdAuthUserId,
+        displayName: draft.displayName,
+      });
+    }
+
+    return { ok: true, requiresGroupSetup: true };
+  } catch {
+    await admin
+      .schema('public')
+      .from('users')
+      .delete()
+      .eq('id', createdAuthUserId);
+    await admin.auth.admin.deleteUser(createdAuthUserId);
+    return { ok: false, reason: 'unexpected_error' };
+  }
+}
+
+// Kept temporarily as a rollback path for the previous password-first onboarding flow.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function completeLandingOnboarding({
   tokenHash,
   draft,
@@ -561,7 +697,7 @@ export async function setupLandingPasswordAction(
       return { ok: false, reason: 'invalid_onboarding_draft' };
     }
 
-    return completeLandingOnboarding({
+    return setupLandingAccount({
       tokenHash,
       draft,
       password,
