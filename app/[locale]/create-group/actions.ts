@@ -58,11 +58,11 @@ type FounderOnboardingDraft = {
 type FounderOnboardingResult =
   | {
       ok: true;
-    groupId: string;
-    inviteCode: string;
-    passwordSetupToken?: string;
-    requiresLogin: boolean;
-    emailDeliveryFailed: boolean;
+      groupId: string;
+      inviteCode: string;
+      passwordSetupToken?: string;
+      requiresLogin: boolean;
+      emailDeliveryFailed: boolean;
     }
   | {
       ok: false;
@@ -411,6 +411,23 @@ export async function completeFounderOnboardingAction(
       cleanupInviteIds.push(
         ...(insertedInvites ?? []).map((entry) => entry.id),
       );
+
+      if ((insertedInvites ?? []).length > 0) {
+        const { error: invitationSourceError } = await adminClient
+          .schema('public')
+          .from('invitations')
+          .update({ source: 'onboarding' })
+          .in(
+            'group_invite_id',
+            (insertedInvites ?? []).map((entry) => entry.id),
+          );
+
+        if (invitationSourceError) {
+          console.error('Failed to tag onboarding invitations', {
+            error: invitationSourceError.message,
+          });
+        }
+      }
     }
 
     await logAppEvent({

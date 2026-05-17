@@ -379,6 +379,23 @@ async function completeLandingOnboarding({
       cleanupInviteIds.push(
         ...(insertedInvites ?? []).map((entry) => entry.id),
       );
+
+      if ((insertedInvites ?? []).length > 0) {
+        const { error: invitationSourceError } = await admin
+          .schema('public')
+          .from('invitations')
+          .update({ source: 'onboarding' })
+          .in(
+            'group_invite_id',
+            (insertedInvites ?? []).map((entry) => entry.id),
+          );
+
+        if (invitationSourceError) {
+          console.error('Failed to tag onboarding invitations', {
+            error: invitationSourceError.message,
+          });
+        }
+      }
     }
 
     await logAppEvent({

@@ -264,6 +264,53 @@ type GroupInvitesUpdate = {
   status?: 'pending' | 'accepted' | 'declined' | 'cancelled';
 };
 
+type InvitationSource = 'onboarding' | 'dashboard' | 'on_the_fly';
+
+type InvitationsRow = {
+  created_at: string;
+  expires_at: string;
+  group_id: string;
+  group_invite_id: string;
+  id: string;
+  invited_by: string;
+  invited_email: string;
+  invited_user_id: string | null;
+  responded_at: string | null;
+  session_id: string | null;
+  source: InvitationSource;
+  status: 'pending' | 'accepted' | 'declined' | 'cancelled';
+};
+
+type InvitationsInsert = {
+  created_at?: string;
+  expires_at?: string;
+  group_id: string;
+  group_invite_id: string;
+  id?: string;
+  invited_by: string;
+  invited_email: string;
+  invited_user_id?: string | null;
+  responded_at?: string | null;
+  session_id?: string | null;
+  source?: InvitationSource;
+  status?: 'pending' | 'accepted' | 'declined' | 'cancelled';
+};
+
+type InvitationsUpdate = {
+  created_at?: string;
+  expires_at?: string;
+  group_id?: string;
+  group_invite_id?: string;
+  id?: string;
+  invited_by?: string;
+  invited_email?: string;
+  invited_user_id?: string | null;
+  responded_at?: string | null;
+  session_id?: string | null;
+  source?: InvitationSource;
+  status?: 'pending' | 'accepted' | 'declined' | 'cancelled';
+};
+
 type GroupWeeklySchedulesRow = {
   created_at: string;
   end_time: string;
@@ -778,6 +825,12 @@ export type Database = {
         Row: GroupInvitesRow;
         Insert: GroupInvitesInsert;
         Update: GroupInvitesUpdate;
+        Relationships: [];
+      };
+      invitations: {
+        Row: InvitationsRow;
+        Insert: InvitationsInsert;
+        Update: InvitationsUpdate;
         Relationships: [];
       };
       group_weekly_schedules: {
