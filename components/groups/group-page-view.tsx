@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 import { CreateSessionModal } from '@/components/sessions/create-session-modal';
@@ -17,6 +17,7 @@ import {
   GroupInviteCard,
   type PendingDashboardInvitation,
 } from '@/components/groups/group-invite-card';
+import { GroupInvitationsSettingsCard } from '@/components/groups/group-invitations-settings-card';
 import { GroupSwitcherMenu } from '@/components/layout/group-switcher-menu';
 import { CalendarIcon, UsersIcon } from '@/components/ui/dashboard-icons';
 import type { AppLocale } from '@/i18n/routing';
@@ -209,6 +210,17 @@ type GroupPageViewProps = {
     statusCancelled: string;
     memberRequirementPrompt: string;
     memberRequirementCta: string;
+    invitationsSettingsTitle: string;
+    invitationsSettingsDescription: string;
+    invitationsSettingsEmpty: string;
+    invitationSourceOnboarding: string;
+    invitationSourceDashboard: string;
+    invitationSourceOnTheFly: string;
+    invitationExpiresIn: string;
+    invitationExpired: string;
+    revokeInvitation: string;
+    revokeInvitationPending: string;
+    revokeInvitationSuccess: string;
     memberAverageWeekly: string;
     memberCompletion: string;
     memberTotal: string;
@@ -261,6 +273,8 @@ export function GroupPageView({
   const [isCreateSessionOpen, setIsCreateSessionOpen] = useState(false);
   const [inviteModalOpenRequestKey, setInviteModalOpenRequestKey] = useState(0);
   const [cancelledSessionIds, setCancelledSessionIds] = useState<string[]>([]);
+  const [managedPendingInvitations, setManagedPendingInvitations] =
+    useState(pendingInvitations);
   const [resolvedShellGroups, setResolvedShellGroups] = useState(shellGroups);
   const [resolvedMemberPerformance, setResolvedMemberPerformance] =
     useState(memberPerformance);
@@ -307,10 +321,21 @@ export function GroupPageView({
     Boolean(primaryGroup) &&
     isPrimaryGroupFounder &&
     (primaryGroup?.memberCount ?? 0) < 2;
+  const dashboardPendingInvitations = useMemo(
+    () =>
+      managedPendingInvitations.filter(
+        (invitation) => invitation.source === 'dashboard',
+      ),
+    [managedPendingInvitations],
+  );
 
   useEffect(() => {
     setCancelledSessionIds(readCancelledSessionIds());
   }, []);
+
+  useEffect(() => {
+    setManagedPendingInvitations(pendingInvitations);
+  }, [pendingInvitations]);
 
   useEffect(() => {
     if (resolvedShellGroups.length > 0) {
@@ -588,8 +613,14 @@ export function GroupPageView({
         <GroupInviteCard
           locale={locale}
           groupId={primaryGroup.id}
-          initialPendingInvitations={pendingInvitations}
+          initialPendingInvitations={dashboardPendingInvitations}
           openRequestKey={inviteModalOpenRequestKey}
+          onInvitationCreated={(invitation) =>
+            setManagedPendingInvitations((current) => [
+              invitation,
+              ...current.filter((item) => item.id !== invitation.id),
+            ])
+          }
           labels={{
             title: labels.inviteTeammateTitle,
             description: labels.inviteTeammateDescription,
@@ -612,6 +643,36 @@ export function GroupPageView({
             cannotInviteSelf: labels.inviteCannotInviteSelf,
             emailUnavailable: labels.inviteEmailUnavailable,
             actionFailed: labels.inviteActionFailed,
+          }}
+        />
+      ) : null}
+
+      {isPrimaryGroupFounder && primaryGroup ? (
+        <GroupInvitationsSettingsCard
+          locale={locale}
+          invitations={managedPendingInvitations}
+          onInvitationRevoked={(invitationId) =>
+            setManagedPendingInvitations((current) =>
+              current.filter((item) => item.id !== invitationId),
+            )
+          }
+          labels={{
+            title: labels.invitationsSettingsTitle,
+            description: labels.invitationsSettingsDescription,
+            empty: labels.invitationsSettingsEmpty,
+            sourceOnboarding: labels.invitationSourceOnboarding,
+            sourceDashboard: labels.invitationSourceDashboard,
+            sourceOnTheFly: labels.invitationSourceOnTheFly,
+            expiresIn: labels.invitationExpiresIn,
+            expired: labels.invitationExpired,
+            resend: labels.resendInvitation,
+            resending: labels.resendInvitationPending,
+            revoke: labels.revokeInvitation,
+            revoking: labels.revokeInvitationPending,
+            resendSuccess: labels.inviteTeammateResendSuccess,
+            revokeSuccess: labels.revokeInvitationSuccess,
+            actionFailed: labels.inviteActionFailed,
+            emailUnavailable: labels.inviteEmailUnavailable,
           }}
         />
       ) : null}

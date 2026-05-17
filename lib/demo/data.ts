@@ -1077,7 +1077,6 @@ export const getGroupCoreData = cache(async (groupId: string, user: User) => {
       .select('id, invited_email, source, expires_at, created_at')
       .eq('group_id', groupId)
       .eq('status', 'pending')
-      .eq('source', 'dashboard')
       .order('created_at', { ascending: false }),
   ]);
 
