@@ -307,6 +307,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       groupName: group.name,
       inviteCode: group.invite_code ?? '',
       inviteeEmail,
+      inviteeExists: Boolean(existingUser?.id),
       inviterUserId: user.id,
       inviterName:
         inviter?.display_name ?? inviter?.email ?? user.email ?? 'ActiveBoard',
