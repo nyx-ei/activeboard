@@ -9,6 +9,7 @@ import type { AppLocale } from '@/i18n/routing';
 export type PendingDashboardInvitation = {
   id: string;
   invitedEmail: string;
+  source?: 'onboarding' | 'dashboard' | 'on_the_fly';
   expiresAt: string;
   createdAt: string;
 };
@@ -43,6 +44,7 @@ type GroupInviteCardProps = {
   initialPendingInvitations: PendingDashboardInvitation[];
   labels: GroupInviteCardLabels;
   openRequestKey?: number;
+  onInvitationCreated?: (invitation: PendingDashboardInvitation) => void;
 };
 
 type InviteApiResponse = {
@@ -107,6 +109,7 @@ export function GroupInviteCard({
   initialPendingInvitations,
   labels,
   openRequestKey = 0,
+  onInvitationCreated,
 }: GroupInviteCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState('');
@@ -133,6 +136,10 @@ export function GroupInviteCard({
     }
   }, [openRequestKey]);
 
+  useEffect(() => {
+    setPendingInvitations(initialPendingInvitations);
+  }, [initialPendingInvitations]);
+
   async function sendInvite() {
     if (!canSubmit) {
       setInlineError(labels.invalidEmail);
@@ -155,15 +162,16 @@ export function GroupInviteCard({
       const created = payload?.created?.[0];
 
       if (created) {
-        setPendingInvitations((current) => [
-          {
-            id: created.id,
-            invitedEmail: created.invited_email,
-            expiresAt: created.expires_at,
-            createdAt: created.created_at,
-          },
-          ...current,
-        ]);
+        const nextInvitation = {
+          id: created.id,
+          invitedEmail: created.invited_email,
+          source: 'dashboard' as const,
+          expiresAt: created.expires_at,
+          createdAt: created.created_at,
+        };
+
+        setPendingInvitations((current) => [nextInvitation, ...current]);
+        onInvitationCreated?.(nextInvitation);
       }
 
       if (!response.ok || firstError) {
