@@ -18,6 +18,7 @@ type InvitationAutoAcceptProps = {
 type AcceptResponse = {
   accepted?: boolean;
   reason?: string;
+  redirectTo?: string;
   group?: {
     id?: string;
   };
@@ -61,7 +62,9 @@ export function InvitationAutoAccept({
           return;
         }
 
-        window.location.assign(`/${locale}/groups/${payload.group.id}`);
+        window.location.assign(
+          payload.redirectTo ?? `/${locale}/groups/${payload.group.id}`,
+        );
       } catch (acceptError) {
         if ((acceptError as Error).name === 'AbortError') {
           return;
