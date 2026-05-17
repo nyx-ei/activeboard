@@ -539,6 +539,8 @@
                       "statusCompleted":  "Terminée",
                       "statusIncomplete":  "Incomplète",
                       "statusCancelled":  "Annulée",
+                      "memberRequirementPrompt":  "{count} / 2 membres — invite un coéquipier pour lancer des sessions",
+                      "memberRequirementCta":  "Inviter un coéquipier",
                       "groupSettings":  "Paramètres du groupe",
                       "groupsMenuHint":  "Choisis le bon groupe depuis la liste du tableau de bord.",
                       "membershipsCount":  "{count, plural, one {# groupe} other {# groupes}}",

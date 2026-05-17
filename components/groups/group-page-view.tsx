@@ -207,6 +207,8 @@ type GroupPageViewProps = {
     statusCompleted: string;
     statusIncomplete: string;
     statusCancelled: string;
+    memberRequirementPrompt: string;
+    memberRequirementCta: string;
     memberAverageWeekly: string;
     memberCompletion: string;
     memberTotal: string;
@@ -257,6 +259,7 @@ export function GroupPageView({
   actions,
 }: GroupPageViewProps) {
   const [isCreateSessionOpen, setIsCreateSessionOpen] = useState(false);
+  const [inviteModalOpenRequestKey, setInviteModalOpenRequestKey] = useState(0);
   const [cancelledSessionIds, setCancelledSessionIds] = useState<string[]>([]);
   const [resolvedShellGroups, setResolvedShellGroups] = useState(shellGroups);
   const [resolvedMemberPerformance, setResolvedMemberPerformance] =
@@ -300,6 +303,10 @@ export function GroupPageView({
             },
           ]
         : [];
+  const shouldShowMemberRequirementPrompt =
+    Boolean(primaryGroup) &&
+    isPrimaryGroupFounder &&
+    (primaryGroup?.memberCount ?? 0) < 2;
 
   useEffect(() => {
     setCancelledSessionIds(readCancelledSessionIds());
@@ -555,11 +562,34 @@ export function GroupPageView({
         </div>
       </section>
 
+      {shouldShowMemberRequirementPrompt && primaryGroup ? (
+        <section className="rounded-[12px] border border-amber-300/20 bg-amber-300/[0.08] p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-bold leading-5 text-amber-100">
+              {labels.memberRequirementPrompt.replace(
+                '{count}',
+                String(primaryGroup.memberCount),
+              )}
+            </p>
+            <button
+              type="button"
+              onClick={() =>
+                setInviteModalOpenRequestKey((current) => current + 1)
+              }
+              className="inline-flex h-10 items-center justify-center rounded-[8px] bg-amber-300 px-4 text-sm font-extrabold text-[#1d1603] transition hover:bg-amber-200"
+            >
+              {labels.memberRequirementCta}
+            </button>
+          </div>
+        </section>
+      ) : null}
+
       {isPrimaryGroupFounder && primaryGroup ? (
         <GroupInviteCard
           locale={locale}
           groupId={primaryGroup.id}
           initialPendingInvitations={pendingInvitations}
+          openRequestKey={inviteModalOpenRequestKey}
           labels={{
             title: labels.inviteTeammateTitle,
             description: labels.inviteTeammateDescription,

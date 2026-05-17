@@ -235,6 +235,10 @@ export default async function GroupRoutePage({
             statusCompleted: t('statusCompleted'),
             statusIncomplete: t('statusIncomplete'),
             statusCancelled: t('statusCancelled'),
+            memberRequirementPrompt: t('memberRequirementPrompt', {
+              count: '{count}',
+            }),
+            memberRequirementCta: t('memberRequirementCta'),
             memberAverageWeekly: t('memberAverageWeekly', { value: '{value}' }),
             memberCompletion: t('memberCompletion', { value: '{value}' }),
             memberTotal: t('memberTotal', { value: '{value}' }),
