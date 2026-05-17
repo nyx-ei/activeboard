@@ -132,6 +132,7 @@ export default async function GroupRoutePage({
           primaryGroup={primaryGroup}
           isPrimaryGroupFounder={Boolean(data.membership.is_founder)}
           currentCaptainId={currentCaptainId}
+          pendingInvitations={data.pendingInvitations}
           schedules={data.weeklySchedules}
           initialWeeklyProgress={null}
           memberPerformance={[]}
@@ -199,6 +200,26 @@ export default async function GroupRoutePage({
             groupScheduleEmpty: t('groupScheduleEmpty'),
             weeklyTotal: t('weeklyTotal'),
             membersTitle: t('membersTitle'),
+            inviteTeammateTitle: t('inviteTeammateTitle'),
+            inviteTeammateDescription: t('inviteTeammateDescription'),
+            inviteTeammateOpen: t('inviteTeammateOpen'),
+            inviteTeammateModalTitle: t('inviteTeammateModalTitle'),
+            inviteTeammateModalDescription: t('inviteTeammateModalDescription'),
+            inviteTeammateEmailPlaceholder: t('inviteTeammateEmailPlaceholder'),
+            inviteTeammateSend: t('inviteTeammateSend'),
+            inviteTeammateSending: t('inviteTeammateSending'),
+            pendingInvitationsTitle: t('pendingInvitationsTitle'),
+            pendingInvitationsEmpty: t('pendingInvitationsEmpty'),
+            resendInvitation: t('resendInvitation'),
+            resendInvitationPending: t('resendInvitationPending'),
+            inviteTeammateSuccess: t('inviteTeammateSuccess'),
+            inviteTeammateResendSuccess: t('inviteTeammateResendSuccess'),
+            inviteInvalidEmail: t('inviteInvalidEmail'),
+            inviteAlreadyPending: t('inviteAlreadyPending'),
+            inviteAlreadyMember: t('inviteAlreadyMember'),
+            inviteCannotInviteSelf: t('inviteCannotInviteSelf'),
+            inviteEmailUnavailable: t('inviteEmailUnavailable'),
+            inviteActionFailed: t('inviteActionFailed'),
             addExistingMember: t('addExistingMember'),
             email: t('email'),
             existingMemberEmailPlaceholder: t('existingMemberEmailPlaceholder'),

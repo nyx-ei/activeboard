@@ -93,6 +93,14 @@ type PendingInvite = {
   invitedByName: string | null;
 };
 
+type DashboardPendingInvitation = {
+  id: string;
+  invitedEmail: string;
+  source: 'onboarding' | 'dashboard' | 'on_the_fly';
+  expiresAt: string;
+  createdAt: string;
+};
+
 type TrialProgressData = {
   current: number;
   total: number;
@@ -1036,6 +1044,7 @@ export const getGroupCoreData = cache(async (groupId: string, user: User) => {
     { data: memberStats },
     { data: sessions },
     { data: weeklySchedules },
+    { data: pendingInvitations },
   ] = await Promise.all([
     supabase
       .schema('public')
@@ -1062,6 +1071,14 @@ export const getGroupCoreData = cache(async (groupId: string, user: User) => {
       .eq('group_id', groupId)
       .order('weekday', { ascending: true })
       .order('start_time', { ascending: true }),
+    supabase
+      .schema('public')
+      .from('invitations')
+      .select('id, invited_email, source, expires_at, created_at')
+      .eq('group_id', groupId)
+      .eq('status', 'pending')
+      .eq('source', 'dashboard')
+      .order('created_at', { ascending: false }),
   ]);
 
   const safeSessions = (sessions ?? []).filter(
@@ -1093,6 +1110,21 @@ export const getGroupCoreData = cache(async (groupId: string, user: User) => {
     sessions: safeSessions,
     weeklySchedules: safeWeeklySchedules,
     currentCaptainId: founderCaptainId ?? sessionLeaderId ?? null,
+    pendingInvitations: (
+      (pendingInvitations ?? []) satisfies Array<{
+        id: string;
+        invited_email: string;
+        source: DashboardPendingInvitation['source'];
+        expires_at: string;
+        created_at: string;
+      }>
+    ).map((invitation) => ({
+      id: invitation.id,
+      invitedEmail: invitation.invited_email,
+      source: invitation.source,
+      expiresAt: invitation.expires_at,
+      createdAt: invitation.created_at,
+    })),
   };
 });
 

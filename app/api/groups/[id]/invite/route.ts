@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 
 import type { AppLocale } from '@/i18n/routing';
+import { hasEmailEnv } from '@/lib/env';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
+import { sendGroupInviteEmail } from '@/lib/notifications/group-invites';
 import { createPerfTracker } from '@/lib/observability/perf';
 import { getCurrentAuthUser } from '@/lib/session/flow';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
@@ -16,6 +18,7 @@ type RouteContext = {
 type InvitePayload = {
   emails?: unknown;
   locale?: string;
+  resendInvitationId?: unknown;
 };
 
 type Invitation = Database['public']['Tables']['invitations']['Row'];
@@ -41,6 +44,12 @@ function parseEmails(value: unknown) {
     .filter(Boolean);
 
   return Array.from(new Set(normalized));
+}
+
+function parseResendInvitationId(value: unknown) {
+  return typeof value === 'string' && value.trim().length > 0
+    ? value.trim()
+    : null;
 }
 
 function invitationResponse({
@@ -74,6 +83,9 @@ export async function POST(request: Request, { params }: RouteContext) {
     .catch(() => null)) as InvitePayload | null;
   const locale = parseLocale(payload?.locale);
   const emails = parseEmails(payload?.emails);
+  const resendInvitationId = parseResendInvitationId(
+    payload?.resendInvitationId,
+  );
   const perf = createPerfTracker(`dashboardGroupInviteRoute:${groupId}`, {
     minDurationMs: 250,
     metadata: {
@@ -95,7 +107,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     );
   }
 
-  if (!groupId || emails.length === 0) {
+  if (!groupId || (emails.length === 0 && !resendInvitationId)) {
     return NextResponse.json(
       {
         created: [],
@@ -131,6 +143,78 @@ export async function POST(request: Request, { params }: RouteContext) {
       },
       { status: 403 },
     );
+  }
+
+  const { data: inviter } = await admin
+    .schema('public')
+    .from('users')
+    .select('display_name, email')
+    .eq('id', user.id)
+    .maybeSingle();
+  const inviterName =
+    inviter?.display_name ?? inviter?.email ?? user.email ?? 'ActiveBoard';
+
+  if (resendInvitationId) {
+    const { data: invitation } = await admin
+      .schema('public')
+      .from('invitations')
+      .select('*')
+      .eq('id', resendInvitationId)
+      .eq('group_id', groupId)
+      .eq('status', 'pending')
+      .eq('source', 'dashboard')
+      .maybeSingle();
+
+    if (!invitation) {
+      return NextResponse.json(
+        {
+          created: [],
+          errors: [{ email: '', reason: 'invite_not_found' }],
+        },
+        { status: 404 },
+      );
+    }
+
+    if (!hasEmailEnv()) {
+      return NextResponse.json(
+        {
+          created: [],
+          errors: [
+            { email: invitation.invited_email, reason: 'email_unavailable' },
+          ],
+        },
+        { status: 503 },
+      );
+    }
+
+    const emailResult = await sendGroupInviteEmail({
+      locale,
+      inviteId: invitation.id,
+      groupId,
+      groupName: group.name,
+      inviteCode: group.invite_code ?? '',
+      inviteeEmail: invitation.invited_email,
+      inviteeExists: Boolean(invitation.invited_user_id),
+      inviterUserId: user.id,
+      inviterName,
+    });
+
+    if (!emailResult.ok) {
+      return NextResponse.json(
+        {
+          created: [],
+          errors: [{ email: invitation.invited_email, reason: 'email_failed' }],
+        },
+        { status: 502 },
+      );
+    }
+
+    perf.done({ resent: 1 });
+
+    return invitationResponse({
+      created: [invitation],
+      errors: [],
+    });
   }
 
   const [
@@ -257,6 +341,26 @@ export async function POST(request: Request, { params }: RouteContext) {
       },
       useAdmin: true,
     });
+
+    if (hasEmailEnv()) {
+      const emailResult = await sendGroupInviteEmail({
+        locale,
+        inviteId: invitation.id,
+        groupId,
+        groupName: group.name,
+        inviteCode: group.invite_code ?? '',
+        inviteeEmail: email,
+        inviteeExists: Boolean(existingUser?.id),
+        inviterUserId: user.id,
+        inviterName,
+      });
+
+      if (!emailResult.ok) {
+        errors.push({ email, reason: 'email_failed' });
+      }
+    } else {
+      errors.push({ email, reason: 'email_unavailable' });
+    }
   }
   perf.step('invites_processed');
 
