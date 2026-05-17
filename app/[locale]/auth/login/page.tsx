@@ -9,14 +9,25 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 type LoginPageProps = {
   params: { locale: string };
-  searchParams?: { next?: string };
+  searchParams?: { email?: string; next?: string; onboarding?: string };
 };
 
-export default async function LoginPage({ params, searchParams }: LoginPageProps) {
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export default async function LoginPage({
+  params,
+  searchParams,
+}: LoginPageProps) {
   const locale = params.locale as AppLocale;
   const user = await getCurrentUser();
   const t = await getTranslations('Auth');
   const next = searchParams?.next;
+  const initialEmail =
+    typeof searchParams?.email === 'string' &&
+    EMAIL_PATTERN.test(searchParams.email.trim().toLowerCase())
+      ? searchParams.email.trim().toLowerCase()
+      : undefined;
+  const isFounderOnboardingComplete = searchParams?.onboarding === 'founder';
 
   if (user) {
     const supabase = createSupabaseServerClient();
@@ -46,19 +57,27 @@ export default async function LoginPage({ params, searchParams }: LoginPageProps
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 items-center justify-center px-4 py-10">
       <div className="flex w-full items-center justify-center">
-          <Suspense
-            fallback={
-              <div className="w-full max-w-[410px] text-center">
-                <h1 className="mt-1 text-3xl font-extrabold text-white">{t('title')}</h1>
-              </div>
+        <Suspense
+          fallback={
+            <div className="w-full max-w-[410px] text-center">
+              <h1 className="mt-1 text-3xl font-extrabold text-white">
+                {t('title')}
+              </h1>
+            </div>
+          }
+        >
+          <AuthForm
+            initialEmail={initialEmail}
+            requireExamSessionOnSignUp={false}
+            deferSignUpToRedirect={false}
+            founderOnboardingComplete={isFounderOnboardingComplete}
+            signUpRedirectToOverride={
+              typeof next === 'string' && next.startsWith(`/${locale}/`)
+                ? next
+                : `/${locale}/dashboard`
             }
-          >
-            <AuthForm
-              requireExamSessionOnSignUp={false}
-              deferSignUpToRedirect={false}
-              signUpRedirectToOverride={typeof next === 'string' && next.startsWith(`/${locale}/`) ? next : `/${locale}/dashboard`}
-            />
-          </Suspense>
+          />
+        </Suspense>
       </div>
     </main>
   );

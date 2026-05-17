@@ -142,9 +142,9 @@ export function LandingGroupSetupForm({
       }
 
       window.location.assign(
-        `/${locale}/auth/login?next=${encodeURIComponent(
-          `/${locale}/groups/${result.groupId}`,
-        )}`,
+        `/${locale}/auth/login?onboarding=founder&email=${encodeURIComponent(
+          founderEmail,
+        )}&next=${encodeURIComponent(`/${locale}/groups/${result.groupId}`)}`,
       );
     });
   }

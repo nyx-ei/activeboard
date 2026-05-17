@@ -248,6 +248,8 @@
     "title": "Sign in to run focused review sessions.",
     "welcomeBack": "Welcome back",
     "welcomeBackSubtitle": "Sign in to continue",
+    "founderSignInTitle": "Sign in to open your group",
+    "founderSignInSubtitle": "Use the email and password you just created to finish onboarding.",
     "createAccountTitle": "Create an account",
     "createAccountSubtitle": "Join ActiveBoard",
     "createGroupTitle": "Create your group",
