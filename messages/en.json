@@ -539,6 +539,8 @@
     "statusCompleted": "Completed",
     "statusIncomplete": "Incomplete",
     "statusCancelled": "Canceled",
+    "memberRequirementPrompt": "{count} / 2 members — invite a teammate to run sessions",
+    "memberRequirementCta": "Invite a teammate",
     "groupSettings": "Group settings",
     "groupsMenuHint": "Choose the right group from the dashboard list.",
     "membershipsCount": "{count, plural, one {# group} other {# groups}}",

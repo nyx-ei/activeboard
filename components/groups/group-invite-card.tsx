@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Mail, RefreshCw, Send, UserPlus, X } from 'lucide-react';
 
 import { Modal, ModalTitle } from '@/components/ui/modal';
@@ -42,6 +42,7 @@ type GroupInviteCardProps = {
   groupId: string;
   initialPendingInvitations: PendingDashboardInvitation[];
   labels: GroupInviteCardLabels;
+  openRequestKey?: number;
 };
 
 type InviteApiResponse = {
@@ -105,6 +106,7 @@ export function GroupInviteCard({
   groupId,
   initialPendingInvitations,
   labels,
+  openRequestKey = 0,
 }: GroupInviteCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState('');
@@ -124,6 +126,12 @@ export function GroupInviteCard({
       ),
     [pendingInvitations],
   );
+
+  useEffect(() => {
+    if (openRequestKey > 0) {
+      setIsOpen(true);
+    }
+  }, [openRequestKey]);
 
   async function sendInvite() {
     if (!canSubmit) {
