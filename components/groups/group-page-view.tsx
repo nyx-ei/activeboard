@@ -13,6 +13,10 @@ import { GroupScheduleModal } from '@/components/dashboard/group-schedule-modal'
 import { InviteMemberForm } from '@/components/dashboard/group-settings-forms';
 import { LiveGroupsModal } from '@/components/dashboard/live-groups-modal';
 import { fetchCachedGroupData } from '@/components/groups/group-data-cache';
+import {
+  GroupInviteCard,
+  type PendingDashboardInvitation,
+} from '@/components/groups/group-invite-card';
 import { GroupSwitcherMenu } from '@/components/layout/group-switcher-menu';
 import { CalendarIcon, UsersIcon } from '@/components/ui/dashboard-icons';
 import type { AppLocale } from '@/i18n/routing';
@@ -101,6 +105,7 @@ type GroupPageViewProps = {
   } | null;
   isPrimaryGroupFounder: boolean;
   currentCaptainId: string | null;
+  pendingInvitations: PendingDashboardInvitation[];
   schedules: Schedule[];
   initialWeeklyProgress: {
     weeklyCompletedQuestions: number;
@@ -167,6 +172,26 @@ type GroupPageViewProps = {
     groupScheduleEmpty: string;
     weeklyTotal: string;
     membersTitle: string;
+    inviteTeammateTitle: string;
+    inviteTeammateDescription: string;
+    inviteTeammateOpen: string;
+    inviteTeammateModalTitle: string;
+    inviteTeammateModalDescription: string;
+    inviteTeammateEmailPlaceholder: string;
+    inviteTeammateSend: string;
+    inviteTeammateSending: string;
+    pendingInvitationsTitle: string;
+    pendingInvitationsEmpty: string;
+    resendInvitation: string;
+    resendInvitationPending: string;
+    inviteTeammateSuccess: string;
+    inviteTeammateResendSuccess: string;
+    inviteInvalidEmail: string;
+    inviteAlreadyPending: string;
+    inviteAlreadyMember: string;
+    inviteCannotInviteSelf: string;
+    inviteEmailUnavailable: string;
+    inviteActionFailed: string;
     addExistingMember: string;
     email: string;
     existingMemberEmailPlaceholder: string;
@@ -220,6 +245,7 @@ export function GroupPageView({
   primaryGroup,
   isPrimaryGroupFounder,
   currentCaptainId,
+  pendingInvitations,
   schedules,
   initialWeeklyProgress,
   memberPerformance,
@@ -255,7 +281,8 @@ export function GroupPageView({
     : `/${locale}/groups`;
   const visibleSessions = sessions.filter(
     (session) =>
-      session.status !== 'cancelled' && !cancelledSessionIds.includes(session.id),
+      session.status !== 'cancelled' &&
+      !cancelledSessionIds.includes(session.id),
   );
   const sessionGroupChoices =
     resolvedShellGroups.length > 0
@@ -527,6 +554,37 @@ export function GroupPageView({
           )}
         </div>
       </section>
+
+      {isPrimaryGroupFounder && primaryGroup ? (
+        <GroupInviteCard
+          locale={locale}
+          groupId={primaryGroup.id}
+          initialPendingInvitations={pendingInvitations}
+          labels={{
+            title: labels.inviteTeammateTitle,
+            description: labels.inviteTeammateDescription,
+            open: labels.inviteTeammateOpen,
+            modalTitle: labels.inviteTeammateModalTitle,
+            modalDescription: labels.inviteTeammateModalDescription,
+            emailLabel: labels.email,
+            emailPlaceholder: labels.inviteTeammateEmailPlaceholder,
+            send: labels.inviteTeammateSend,
+            sending: labels.inviteTeammateSending,
+            pendingTitle: labels.pendingInvitationsTitle,
+            pendingEmpty: labels.pendingInvitationsEmpty,
+            resend: labels.resendInvitation,
+            resending: labels.resendInvitationPending,
+            success: labels.inviteTeammateSuccess,
+            resendSuccess: labels.inviteTeammateResendSuccess,
+            invalidEmail: labels.inviteInvalidEmail,
+            inviteExists: labels.inviteAlreadyPending,
+            alreadyMember: labels.inviteAlreadyMember,
+            cannotInviteSelf: labels.inviteCannotInviteSelf,
+            emailUnavailable: labels.inviteEmailUnavailable,
+            actionFailed: labels.inviteActionFailed,
+          }}
+        />
+      ) : null}
 
       <section className="surface-mockup p-5">
         <div className="flex items-center justify-between gap-3">
