@@ -9,6 +9,8 @@ export const APP_EVENTS = {
   groupInviteSent: 'group_invite_sent',
   groupInviteEmailSent: 'group_invite_email_sent',
   groupInviteEmailFailed: 'group_invite_email_failed',
+  groupInviteFullNotificationSent: 'group_invite_full_notification_sent',
+  groupInviteFullNotificationFailed: 'group_invite_full_notification_failed',
   groupMemberAddedEmailSent: 'group_member_added_email_sent',
   groupMemberAddedEmailFailed: 'group_member_added_email_failed',
   groupInviteAccepted: 'group_invite_accepted',
