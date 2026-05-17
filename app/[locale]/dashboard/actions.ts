@@ -1262,6 +1262,7 @@ export async function inviteDashboardGroupMemberAction(formData: FormData) {
       groupName: group?.name ?? 'ActiveBoard',
       inviteCode: group?.invite_code ?? '',
       inviteeEmail: email,
+      inviteeExists: Boolean(existingUser?.id),
       inviterUserId: user.id,
       inviterName:
         inviter?.display_name ?? inviter?.email ?? user.email ?? 'ActiveBoard',
@@ -1385,6 +1386,7 @@ export async function addDashboardExistingMemberAction(formData: FormData) {
       groupName: group.name,
       inviteCode: group.invite_code ?? '',
       inviteeEmail: existingUser?.email ?? email,
+      inviteeExists: Boolean(existingUser?.id),
       inviterUserId: user.id,
       inviterName:
         inviter?.display_name ?? inviter?.email ?? user.email ?? 'ActiveBoard',

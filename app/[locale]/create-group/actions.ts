@@ -483,6 +483,7 @@ export async function completeFounderOnboardingAction(
             groupName: draft.groupName,
             inviteCode,
             inviteeEmail: entry.email,
+            inviteeExists: Boolean(entry.userId),
             inviterUserId: founderId!,
             inviterName: draft.displayName,
           });

@@ -445,6 +445,7 @@ async function completeLandingOnboarding({
             groupName: draft.groupName,
             inviteCode,
             inviteeEmail: entry.email,
+            inviteeExists: Boolean(entry.userId),
             inviterUserId: createdAuthUserId!,
             inviterName: draft.displayName,
           });

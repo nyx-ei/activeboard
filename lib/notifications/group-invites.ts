@@ -15,6 +15,7 @@ type SendGroupInviteEmailInput = {
   groupName: string;
   inviteCode: string;
   inviteeEmail: string;
+  inviteeExists?: boolean;
   inviterUserId: string;
   inviterName: string;
   variant?: 'group_invite' | 'mid_session_check_in';
@@ -46,55 +47,37 @@ type SendGroupFullInviteNotificationEmailInput = {
 function buildGroupInviteCopy(input: SendGroupInviteEmailInput) {
   const authUrl = `${getAppUrl()}/${input.locale}/auth/login?next=/${input.locale}/invite/${input.inviteId}`;
   const isMidSessionInvite = input.variant === 'mid_session_check_in';
+  const inviteeExists = input.inviteeExists === true;
 
   if (input.locale === 'fr') {
-    if (isMidSessionInvite) {
-      return {
-        subject: `Check-in ActiveBoard : ${input.groupName}`,
-        content: {
-          title: 'Invitation à rejoindre le check-in de session',
-          preheader: `${input.inviterName} vous invite à rejoindre une session ActiveBoard en cours.`,
-          intro: [
-            'Bonjour,',
-            `${input.inviterName} vous invite à rejoindre le groupe "${input.groupName}" pendant une session ActiveBoard en cours.`,
-            'Acceptez l’invitation avec cette adresse email. Vous pourrez entrer dans le groupe et rejoindre le flux de session selon les règles d’admission en cours.',
-          ],
-          details: [
-            { label: 'Groupe', value: input.groupName },
-            { label: 'Invité par', value: input.inviterName },
-            ...(input.sessionName
-              ? [{ label: 'Session', value: input.sessionName }]
-              : []),
-            ...(input.sessionShareCode
-              ? [{ label: 'Code de session', value: input.sessionShareCode }]
-              : []),
-            {
-              label: "Code d'invitation",
-              value: input.inviteCode || 'Disponible dans ActiveBoard',
-            },
-          ],
-          action: { label: "Accepter l'invitation", url: authUrl },
-          secondaryNote:
-            'Si vous avez déjà un compte ActiveBoard, connectez-vous avec cette adresse email. Sinon, créez un compte puis poursuivez depuis la page d’invitation.',
-          safetyNote:
-            'Cette invitation ne modifie pas les réponses déjà soumises par les participants.',
-        },
-      };
-    }
-
     return {
-      subject: `Invitation ActiveBoard : ${input.groupName}`,
+      subject: inviteeExists
+        ? `Invitation ActiveBoard : ${input.groupName}`
+        : `Configurez votre compte et rejoignez ${input.groupName}`,
       content: {
-        title: 'Vous avez reçu une invitation de groupe',
+        title: inviteeExists
+          ? `Vous êtes invité à rejoindre ${input.groupName}`
+          : `Configurez votre compte et rejoignez ${input.groupName}`,
         preheader: `${input.inviterName} vous invite à rejoindre ${input.groupName} sur ActiveBoard.`,
         intro: [
           'Bonjour,',
-          `${input.inviterName} vous invite à rejoindre le groupe "${input.groupName}" sur ActiveBoard.`,
-          'Une fois connecté, vous pourrez accéder aux sessions du groupe, répondre aux questions et participer à la révision structurée.',
+          `${input.inviterName} vous invite à rejoindre "${input.groupName}" sur ActiveBoard${isMidSessionInvite ? ' pendant une session en cours' : ''}.`,
+          inviteeExists
+            ? 'Connectez-vous avec votre compte ActiveBoard pour accepter l’invitation et rejoindre le groupe.'
+            : 'Créez votre mot de passe avec l’adresse ci-dessous pour configurer votre compte et rejoindre le groupe.',
         ],
         details: [
           { label: 'Groupe', value: input.groupName },
           { label: 'Invité par', value: input.inviterName },
+          ...(!inviteeExists
+            ? [{ label: 'Adresse verrouillée', value: input.inviteeEmail }]
+            : []),
+          ...(input.sessionName
+            ? [{ label: 'Session', value: input.sessionName }]
+            : []),
+          ...(input.sessionShareCode
+            ? [{ label: 'Code de session', value: input.sessionShareCode }]
+            : []),
           {
             label: "Code d'invitation",
             value: input.inviteCode || 'Disponible dans ActiveBoard',
@@ -102,58 +85,42 @@ function buildGroupInviteCopy(input: SendGroupInviteEmailInput) {
         ],
         action: { label: "Accepter l'invitation", url: authUrl },
         secondaryNote:
-          'Si vous avez déjà un compte ActiveBoard, connectez-vous avec cette adresse email. Sinon, créez un compte puis poursuivez depuis la page d’invitation.',
-      },
-    };
-  }
-
-  if (isMidSessionInvite) {
-    return {
-      subject: `ActiveBoard check-in: ${input.groupName}`,
-      content: {
-        title: 'Join this session check-in',
-        preheader: `${input.inviterName} invited you to join an active ActiveBoard session.`,
-        intro: [
-          'Hi,',
-          `${input.inviterName} invited you to join "${input.groupName}" during an active ActiveBoard session.`,
-          'Accept the invitation with this email address. You can enter the group and join the session flow according to the current admission rules.',
-        ],
-        details: [
-          { label: 'Group', value: input.groupName },
-          { label: 'Invited by', value: input.inviterName },
-          ...(input.sessionName
-            ? [{ label: 'Session', value: input.sessionName }]
-            : []),
-          ...(input.sessionShareCode
-            ? [{ label: 'Session code', value: input.sessionShareCode }]
-            : []),
-          {
-            label: 'Invitation code',
-            value: input.inviteCode || 'Available in ActiveBoard',
-          },
-        ],
-        action: { label: 'Accept invitation', url: authUrl },
-        secondaryNote:
-          'If you already have an ActiveBoard account, sign in with this email address. Otherwise, create an account and continue from the invitation page.',
-        safetyNote:
-          'This invitation does not change answers that participants have already submitted.',
+          "Cette invitation expire dans 7 jours. L'invitation doit être acceptée avec l'adresse email indiquée.",
+        safetyNote: isMidSessionInvite
+          ? 'Cette invitation ne modifie pas les réponses déjà soumises par les participants.'
+          : undefined,
       },
     };
   }
 
   return {
-    subject: `ActiveBoard invite: ${input.groupName}`,
+    subject: inviteeExists
+      ? `You've been invited to join ${input.groupName}`
+      : `Set up your account and join ${input.groupName}`,
     content: {
-      title: 'You received a group invitation',
+      title: inviteeExists
+        ? `You've been invited to join ${input.groupName}`
+        : `Set up your account and join ${input.groupName}`,
       preheader: `${input.inviterName} invited you to join ${input.groupName} on ActiveBoard.`,
       intro: [
         'Hi,',
-        `${input.inviterName} invited you to join "${input.groupName}" on ActiveBoard.`,
-        'After signing in, you can access the group sessions, answer questions, and take part in the structured review.',
+        `${input.inviterName} invited you to join "${input.groupName}" on ActiveBoard${isMidSessionInvite ? ' during an active session' : ''}.`,
+        inviteeExists
+          ? 'Sign in with your ActiveBoard account to accept the invitation and join the group.'
+          : 'Create your password with the email address below to set up your account and join the group.',
       ],
       details: [
         { label: 'Group', value: input.groupName },
         { label: 'Invited by', value: input.inviterName },
+        ...(!inviteeExists
+          ? [{ label: 'Locked email', value: input.inviteeEmail }]
+          : []),
+        ...(input.sessionName
+          ? [{ label: 'Session', value: input.sessionName }]
+          : []),
+        ...(input.sessionShareCode
+          ? [{ label: 'Session code', value: input.sessionShareCode }]
+          : []),
         {
           label: 'Invitation code',
           value: input.inviteCode || 'Available in ActiveBoard',
@@ -161,7 +128,10 @@ function buildGroupInviteCopy(input: SendGroupInviteEmailInput) {
       ],
       action: { label: 'Accept invitation', url: authUrl },
       secondaryNote:
-        'If you already have an ActiveBoard account, sign in with this email address. Otherwise, create an account and continue from the invitation page.',
+        'This invitation expires in 7 days. The invitation must be accepted with the email address shown above.',
+      safetyNote: isMidSessionInvite
+        ? 'This invitation does not change answers that participants have already submitted.'
+        : undefined,
     },
   };
 }
@@ -185,6 +155,7 @@ export async function sendGroupInviteEmail(input: SendGroupInviteEmailInput) {
       metadata: {
         invite_id: input.inviteId,
         invitee_email: input.inviteeEmail,
+        invitee_exists: input.inviteeExists === true,
         template_variant: input.variant ?? 'group_invite',
         session_id: input.sessionId,
         session_share_code: input.sessionShareCode,
@@ -216,6 +187,7 @@ export async function sendGroupInviteEmail(input: SendGroupInviteEmailInput) {
       metadata: {
         invite_id: input.inviteId,
         invitee_email: input.inviteeEmail,
+        invitee_exists: input.inviteeExists === true,
         template_variant: input.variant ?? 'group_invite',
         session_id: input.sessionId,
         session_share_code: input.sessionShareCode,
@@ -241,16 +213,16 @@ export async function sendGroupFullInviteNotificationEmail(
   const isFrench = input.locale === 'fr';
   const content = isFrench
     ? {
-        title: 'Invitation bloquee : groupe complet',
+        title: 'Invitation bloquée : groupe complet',
         preheader: `Le groupe ${input.groupName} est complet.`,
         intro: [
           `Bonjour ${input.inviterName},`,
-          `L'invitation envoyee a ${input.inviteeEmail} n'a pas pu etre acceptee, car le groupe "${input.groupName}" n'a plus de place disponible.`,
-          'Vous pouvez liberer une place ou ajuster la capacite du groupe avant de renvoyer une invitation.',
+          `L'invitation envoyée à ${input.inviteeEmail} n'a pas pu être acceptée, car le groupe "${input.groupName}" n'a plus de place disponible.`,
+          'Vous pouvez libérer une place ou ajuster la capacité du groupe avant de renvoyer une invitation.',
         ],
         details: [
           { label: 'Groupe', value: input.groupName },
-          { label: 'Invite concerne', value: input.inviteeEmail },
+          { label: 'Invité concerné', value: input.inviteeEmail },
         ],
         action: { label: 'Ouvrir le groupe', url: groupUrl },
       }
