@@ -219,7 +219,6 @@ export async function completeFounderOnboardingAction(
     !draft.email ||
     !draft.groupName ||
     draft.questionBanks.length === 0 ||
-    inviteEmails.length < 1 ||
     (!authUser &&
       typeof draft.password === 'string' &&
       draft.password.length < 8)

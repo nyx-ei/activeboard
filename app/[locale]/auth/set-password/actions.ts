@@ -199,8 +199,7 @@ async function completeLandingOnboarding({
     !draft.displayName ||
     !founderEmail ||
     !draft.groupName ||
-    draft.questionBanks.length === 0 ||
-    inviteEmails.length < 1
+    draft.questionBanks.length === 0
   ) {
     return { ok: false, reason: 'invalid_token' };
   }
