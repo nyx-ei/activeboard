@@ -154,6 +154,13 @@ export function LandingSetPasswordForm({
       setMessageTone('success');
       setMessage(t('setPasswordSuccess'));
       window.setTimeout(() => {
+        if (result.requiresGroupSetup) {
+          window.location.assign(
+            `/${locale}/auth/group-setup?token=${encodeURIComponent(token)}`,
+          );
+          return;
+        }
+
         const resolvedNextPath = result.groupId
           ? `/${locale}/groups/${result.groupId}`
           : nextPath;
