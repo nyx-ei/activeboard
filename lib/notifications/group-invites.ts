@@ -45,7 +45,7 @@ type SendGroupFullInviteNotificationEmailInput = {
 };
 
 function buildGroupInviteCopy(input: SendGroupInviteEmailInput) {
-  const authUrl = `${getAppUrl()}/${input.locale}/auth/login?next=/${input.locale}/invite/${input.inviteId}`;
+  const authUrl = `${getAppUrl()}/invitations/${input.inviteId}`;
   const isMidSessionInvite = input.variant === 'mid_session_check_in';
   const inviteeExists = input.inviteeExists === true;
 

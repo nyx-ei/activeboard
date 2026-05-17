@@ -22,6 +22,19 @@ type AcceptPayload = {
 };
 
 type Group = Database['public']['Tables']['groups']['Row'];
+type Invitation = Database['public']['Tables']['invitations']['Row'];
+type AcceptInvitation = Pick<
+  Invitation,
+  | 'id'
+  | 'group_invite_id'
+  | 'group_id'
+  | 'invited_by'
+  | 'invited_email'
+  | 'source'
+  | 'session_id'
+  | 'status'
+  | 'expires_at'
+>;
 type SupabaseAdminClient = ReturnType<typeof createSupabaseAdminClient>;
 
 function parseLocale(value: string | null | undefined): AppLocale {
@@ -127,6 +140,39 @@ async function notifyInviterIfGroupFull({
   });
 }
 
+async function loadInvitationByPublicOrLegacyId({
+  admin,
+  invitationId,
+}: {
+  admin: SupabaseAdminClient;
+  invitationId: string;
+}): Promise<{
+  data: AcceptInvitation | null;
+  error: { message?: string; code?: string } | null;
+}> {
+  const selectColumns =
+    'id, group_invite_id, group_id, invited_by, invited_email, source, session_id, status, expires_at';
+  const { data: invitation, error: invitationError } = await admin
+    .schema('public')
+    .from('invitations')
+    .select(selectColumns)
+    .eq('id', invitationId)
+    .maybeSingle();
+
+  if (invitation || invitationError) {
+    return { data: invitation, error: invitationError };
+  }
+
+  const { data, error } = await admin
+    .schema('public')
+    .from('invitations')
+    .select(selectColumns)
+    .eq('group_invite_id', invitationId)
+    .maybeSingle();
+
+  return { data, error };
+}
+
 export async function POST(request: Request, { params }: RouteContext) {
   const invitationId = params.id;
   const body = (await request.json().catch(() => null)) as AcceptPayload | null;
@@ -150,14 +196,8 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   const admin = createSupabaseAdminClient();
-  const { data: invitation, error: invitationError } = await admin
-    .schema('public')
-    .from('invitations')
-    .select(
-      'id, group_invite_id, group_id, invited_by, invited_email, source, session_id, status',
-    )
-    .eq('id', invitationId)
-    .maybeSingle();
+  const { data: invitation, error: invitationError } =
+    await loadInvitationByPublicOrLegacyId({ admin, invitationId });
   perf.step('invitation_loaded');
 
   if (invitationError) {
@@ -173,6 +213,17 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json(
       { accepted: false, reason: 'invitation_not_found' },
       { status: 404 },
+    );
+  }
+
+  if (
+    Number.isFinite(Date.parse(invitation.expires_at)) &&
+    Date.parse(invitation.expires_at) < Date.now()
+  ) {
+    perf.done({ reason: 'invitation_expired' });
+    return NextResponse.json(
+      { accepted: false, reason: 'invitation_expired' },
+      { status: 410 },
     );
   }
 
