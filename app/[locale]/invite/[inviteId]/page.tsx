@@ -7,12 +7,18 @@ import { InviteOnboardingWizard } from '@/components/invite/invite-onboarding-wi
 import { SwitchAccountButton } from '@/components/invite/switch-account-button';
 import type { AppLocale } from '@/i18n/routing';
 import { getCurrentUser } from '@/lib/auth';
-import { DEFAULT_AVAILABILITY_GRID, normalizeAvailabilityGrid } from '@/lib/schedule/availability';
+import {
+  DEFAULT_AVAILABILITY_GRID,
+  normalizeAvailabilityGrid,
+} from '@/lib/schedule/availability';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { normalizeEmail } from '@/lib/utils';
 
-import { completeInviteOnboardingAction, respondToInviteAction } from '../../dashboard/actions';
+import {
+  completeInviteOnboardingAction,
+  respondToInviteAction,
+} from '../../dashboard/actions';
 
 type InvitePageProps = {
   params: { locale: string; inviteId: string };
@@ -22,6 +28,14 @@ type WeeklySchedule = {
   weekday: string;
   start_time: string;
   end_time: string;
+};
+
+type ResolvedInvite = {
+  id: string;
+  publicId: string;
+  group_id: string;
+  invitee_email: string;
+  status: string;
 };
 
 function hasTimeOverlap(left: WeeklySchedule, right: WeeklySchedule) {
@@ -44,20 +58,54 @@ export default async function InvitePage({ params }: InvitePageProps) {
   const supabase = createSupabaseServerClient();
   const admin = createSupabaseAdminClient();
 
-  const { data: invite } = await admin
+  const { data: unifiedInvite } = await admin
     .schema('public')
-    .from('group_invites')
-    .select('id, group_id, invitee_email, status')
+    .from('invitations')
+    .select('id, group_invite_id, group_id, invited_email, status')
     .eq('id', inviteId)
     .maybeSingle();
+
+  const legacyInviteResult = unifiedInvite
+    ? { data: null }
+    : await admin
+        .schema('public')
+        .from('group_invites')
+        .select('id, group_id, invitee_email, status')
+        .eq('id', inviteId)
+        .maybeSingle();
+
+  const invite: ResolvedInvite | null = unifiedInvite?.group_invite_id
+    ? {
+        id: unifiedInvite.group_invite_id,
+        publicId: unifiedInvite.id,
+        group_id: unifiedInvite.group_id,
+        invitee_email: unifiedInvite.invited_email,
+        status: unifiedInvite.status,
+      }
+    : legacyInviteResult.data
+      ? {
+          id: legacyInviteResult.data.id,
+          publicId: legacyInviteResult.data.id,
+          group_id: legacyInviteResult.data.group_id,
+          invitee_email: legacyInviteResult.data.invitee_email,
+          status: legacyInviteResult.data.status,
+        }
+      : null;
 
   if (!invite) {
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-[680px] items-center justify-center px-4 py-10">
         <section className="surface-mockup w-full max-w-[480px] p-6 text-center">
-          <h1 className="text-2xl font-semibold text-white">{t('notFoundTitle')}</h1>
-          <p className="mt-3 text-sm text-slate-400">{t('notFoundDescription')}</p>
-          <Link href={`/${locale}`} className="button-primary mt-6 inline-flex h-12 items-center justify-center rounded-[8px] px-5 text-sm">
+          <h1 className="text-2xl font-semibold text-white">
+            {t('notFoundTitle')}
+          </h1>
+          <p className="mt-3 text-sm text-slate-400">
+            {t('notFoundDescription')}
+          </p>
+          <Link
+            href={`/${locale}`}
+            className="button-primary mt-6 inline-flex h-12 items-center justify-center rounded-[8px] px-5 text-sm"
+          >
             {t('backHome')}
           </Link>
         </section>
@@ -80,7 +128,11 @@ export default async function InvitePage({ params }: InvitePageProps) {
     redirect(`/${locale}/groups/${invite.group_id}`);
   }
 
-  const [{ data: inviteSchedules }, founderProfileResult, founderScheduleResult] = await Promise.all([
+  const [
+    { data: inviteSchedules },
+    founderProfileResult,
+    founderScheduleResult,
+  ] = await Promise.all([
     admin
       .schema('public')
       .from('group_weekly_schedules')
@@ -111,25 +163,33 @@ export default async function InvitePage({ params }: InvitePageProps) {
       <main className="mx-auto flex min-h-screen w-full max-w-[1120px] items-center justify-center px-4 py-10">
         <div className="grid w-full max-w-5xl gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
           <section className="surface-mockup p-6 lg:p-8">
-            <span className="inline-flex rounded-full border border-brand/25 bg-brand/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand">
+            <span className="border-brand/25 bg-brand/10 inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand">
               {t('joinTitle')}
             </span>
-            <h1 className="mt-4 text-3xl font-semibold text-white">{group.name}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400">{t('joinDescription', { groupName: group.name })}</p>
+            <h1 className="mt-4 text-3xl font-semibold text-white">
+              {group.name}
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400">
+              {t('joinDescription', { groupName: group.name })}
+            </p>
             <div className="mt-6 rounded-[18px] border border-white/[0.06] bg-white/[0.03] p-5">
-              <p className="text-sm font-semibold text-white">{t('inviteCodeLabel', { code: group.invite_code })}</p>
-              <p className="mt-2 text-sm text-slate-400">{t('emailMismatchDescription', { email: invite.invitee_email })}</p>
+              <p className="text-sm font-semibold text-white">
+                {t('inviteCodeLabel', { code: group.invite_code })}
+              </p>
+              <p className="mt-2 text-sm text-slate-400">
+                {t('emailMismatchDescription', { email: invite.invitee_email })}
+              </p>
             </div>
           </section>
 
           <section className="surface-mockup p-6">
             <AuthForm
               initialMode="sign-in"
-              redirectToOverride={`/${locale}/invite/${inviteId}`}
-              signUpRedirectToOverride={`/${locale}/invite/${inviteId}`}
+              redirectToOverride={`/${locale}/invite/${invite.publicId}`}
+              signUpRedirectToOverride={`/${locale}/invite/${invite.publicId}`}
               requireExamSessionOnSignUp={false}
               deferSignUpToRedirect={false}
-              inviteIdForSignUp={inviteId}
+              inviteIdForSignUp={invite.id}
               lockedEmail={invite.invitee_email}
               variant="modal"
             />
@@ -146,29 +206,41 @@ export default async function InvitePage({ params }: InvitePageProps) {
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-[680px] items-center justify-center px-4 py-10">
         <section className="surface-mockup w-full max-w-[520px] p-6">
-          <h1 className="text-2xl font-semibold text-white">{t('emailMismatchTitle')}</h1>
-          <p className="mt-3 text-sm leading-6 text-slate-400">{t('emailMismatchDescription', { email: invite.invitee_email })}</p>
-          <SwitchAccountButton nextPath={`/${locale}/auth/login?next=/${locale}/invite/${inviteId}`} label={t('useMatchingAccount')} />
+          <h1 className="text-2xl font-semibold text-white">
+            {t('emailMismatchTitle')}
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-slate-400">
+            {t('emailMismatchDescription', { email: invite.invitee_email })}
+          </p>
+          <SwitchAccountButton
+            nextPath={`/${locale}/auth/login?next=/${locale}/invite/${invite.publicId}`}
+            label={t('useMatchingAccount')}
+          />
         </section>
       </main>
     );
   }
 
-  const [currentProfileResult, currentScheduleResult, membershipsResult] = await Promise.all([
-    supabase
-      .schema('public')
-      .from('users')
-      .select('display_name, exam_session, question_banks, locale')
-      .eq('id', user.id)
-      .maybeSingle(),
-    supabase
-      .schema('public')
-      .from('user_schedules')
-      .select('availability_grid, timezone')
-      .eq('user_id', user.id)
-      .maybeSingle(),
-    supabase.schema('public').from('group_members').select('group_id').eq('user_id', user.id),
-  ]);
+  const [currentProfileResult, currentScheduleResult, membershipsResult] =
+    await Promise.all([
+      supabase
+        .schema('public')
+        .from('users')
+        .select('display_name, exam_session, question_banks, locale')
+        .eq('id', user.id)
+        .maybeSingle(),
+      supabase
+        .schema('public')
+        .from('user_schedules')
+        .select('availability_grid, timezone')
+        .eq('user_id', user.id)
+        .maybeSingle(),
+      supabase
+        .schema('public')
+        .from('group_members')
+        .select('group_id')
+        .eq('user_id', user.id),
+    ]);
 
   const memberGroupIds = (membershipsResult.data ?? [])
     .map((membership) => membership.group_id)
@@ -182,23 +254,44 @@ export default async function InvitePage({ params }: InvitePageProps) {
             .from('group_weekly_schedules')
             .select('group_id, weekday, start_time, end_time')
             .in('group_id', memberGroupIds),
-          supabase.schema('public').from('groups').select('id, name').in('id', memberGroupIds),
+          supabase
+            .schema('public')
+            .from('groups')
+            .select('id, name')
+            .in('id', memberGroupIds),
         ])
       : [
-          { data: [] as Array<{ group_id: string; weekday: string; start_time: string; end_time: string }> },
+          {
+            data: [] as Array<{
+              group_id: string;
+              weekday: string;
+              start_time: string;
+              end_time: string;
+            }>,
+          },
           { data: [] as Array<{ id: string; name: string }> },
         ];
 
-  const existingGroupNames = new Map((existingGroupsResult.data ?? []).map((existingGroup) => [existingGroup.id, existingGroup.name]));
-  const scheduleConflicts = (overlappingSchedulesResult.data ?? []).flatMap((existingSchedule) =>
-    (inviteSchedules ?? [])
-      .filter((inviteSchedule) => hasTimeOverlap(existingSchedule, inviteSchedule))
-      .map((inviteSchedule) => ({
-        groupName: existingGroupNames.get(existingSchedule.group_id) ?? t('existingGroupFallback'),
-        weekday: inviteSchedule.weekday,
-        startTime: inviteSchedule.start_time,
-        endTime: inviteSchedule.end_time,
-      })),
+  const existingGroupNames = new Map(
+    (existingGroupsResult.data ?? []).map((existingGroup) => [
+      existingGroup.id,
+      existingGroup.name,
+    ]),
+  );
+  const scheduleConflicts = (overlappingSchedulesResult.data ?? []).flatMap(
+    (existingSchedule) =>
+      (inviteSchedules ?? [])
+        .filter((inviteSchedule) =>
+          hasTimeOverlap(existingSchedule, inviteSchedule),
+        )
+        .map((inviteSchedule) => ({
+          groupName:
+            existingGroupNames.get(existingSchedule.group_id) ??
+            t('existingGroupFallback'),
+          weekday: inviteSchedule.weekday,
+          startTime: inviteSchedule.start_time,
+          endTime: inviteSchedule.end_time,
+        })),
   );
 
   const founderProfile = founderProfileResult.data;
@@ -209,17 +302,20 @@ export default async function InvitePage({ params }: InvitePageProps) {
   const initialExamSession =
     currentProfile?.exam_session ??
     founderProfile?.exam_session ??
-    (typeof user.user_metadata.exam_session === 'string' ? user.user_metadata.exam_session : '') ??
+    (typeof user.user_metadata.exam_session === 'string'
+      ? user.user_metadata.exam_session
+      : '') ??
     '';
 
-  const initialQuestionBanks =
-    currentProfile?.question_banks?.length
-      ? currentProfile.question_banks
-      : founderProfile?.question_banks?.length
-        ? founderProfile.question_banks
-        : Array.isArray(user.user_metadata.question_banks)
-          ? user.user_metadata.question_banks.filter((value): value is string => typeof value === 'string')
-          : [];
+  const initialQuestionBanks = currentProfile?.question_banks?.length
+    ? currentProfile.question_banks
+    : founderProfile?.question_banks?.length
+      ? founderProfile.question_banks
+      : Array.isArray(user.user_metadata.question_banks)
+        ? user.user_metadata.question_banks.filter(
+            (value): value is string => typeof value === 'string',
+          )
+        : [];
 
   const initialLanguage =
     currentProfile?.locale === 'fr' || currentProfile?.locale === 'en'
@@ -228,16 +324,19 @@ export default async function InvitePage({ params }: InvitePageProps) {
         ? founderProfile.locale
         : locale;
 
-  const initialTimezone = currentSchedule?.timezone || founderSchedule?.timezone || 'UTC';
+  const initialTimezone =
+    currentSchedule?.timezone || founderSchedule?.timezone || 'UTC';
   const initialAvailabilityGrid = normalizeAvailabilityGrid(
-    currentSchedule?.availability_grid ?? founderSchedule?.availability_grid ?? DEFAULT_AVAILABILITY_GRID,
+    currentSchedule?.availability_grid ??
+      founderSchedule?.availability_grid ??
+      DEFAULT_AVAILABILITY_GRID,
   );
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-[760px] items-center justify-center px-4 py-10">
       <InviteOnboardingWizard
         locale={locale}
-        inviteId={inviteId}
+        inviteId={invite.id}
         redirectTo={`/${locale}/groups/${invite.group_id}`}
         groupName={group.name}
         inviteCode={group.invite_code}
