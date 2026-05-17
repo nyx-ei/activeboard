@@ -33,6 +33,16 @@ type SendGroupMemberAddedEmailInput = {
   inviterName: string;
 };
 
+type SendGroupFullInviteNotificationEmailInput = {
+  locale: AppLocale;
+  groupId: string;
+  groupName: string;
+  inviterUserId: string;
+  inviterEmail: string;
+  inviterName: string;
+  inviteeEmail: string;
+};
+
 function buildGroupInviteCopy(input: SendGroupInviteEmailInput) {
   const authUrl = `${getAppUrl()}/${input.locale}/auth/login?next=/${input.locale}/invite/${input.inviteId}`;
   const isMidSessionInvite = input.variant === 'mid_session_check_in';
@@ -221,6 +231,82 @@ export async function sendGroupInviteEmail(input: SendGroupInviteEmailInput) {
     });
 
     return { ok: false as const, errorMessage };
+  }
+}
+
+export async function sendGroupFullInviteNotificationEmail(
+  input: SendGroupFullInviteNotificationEmailInput,
+) {
+  const groupUrl = `${getAppUrl()}/${input.locale}/groups/${input.groupId}`;
+  const isFrench = input.locale === 'fr';
+  const content = isFrench
+    ? {
+        title: 'Invitation bloquee : groupe complet',
+        preheader: `Le groupe ${input.groupName} est complet.`,
+        intro: [
+          `Bonjour ${input.inviterName},`,
+          `L'invitation envoyee a ${input.inviteeEmail} n'a pas pu etre acceptee, car le groupe "${input.groupName}" n'a plus de place disponible.`,
+          'Vous pouvez liberer une place ou ajuster la capacite du groupe avant de renvoyer une invitation.',
+        ],
+        details: [
+          { label: 'Groupe', value: input.groupName },
+          { label: 'Invite concerne', value: input.inviteeEmail },
+        ],
+        action: { label: 'Ouvrir le groupe', url: groupUrl },
+      }
+    : {
+        title: 'Invitation blocked: group is full',
+        preheader: `${input.groupName} has no seats available.`,
+        intro: [
+          `Hi ${input.inviterName},`,
+          `${input.inviteeEmail} could not accept the invitation because "${input.groupName}" has no seats available.`,
+          'You can free a seat or adjust the group capacity before sending another invitation.',
+        ],
+        details: [
+          { label: 'Group', value: input.groupName },
+          { label: 'Invitee', value: input.inviteeEmail },
+        ],
+        action: { label: 'Open group', url: groupUrl },
+      };
+
+  try {
+    const response = await sendEmail({
+      to: input.inviterEmail,
+      subject: isFrench
+        ? `Groupe complet : ${input.groupName}`
+        : `Group full: ${input.groupName}`,
+      html: renderTransactionalEmail(content),
+      text: renderPlainTextEmail(content),
+    });
+
+    await logAppEvent({
+      eventName: APP_EVENTS.groupInviteFullNotificationSent,
+      locale: input.locale,
+      userId: input.inviterUserId,
+      groupId: input.groupId,
+      metadata: {
+        invitee_email: input.inviteeEmail,
+        provider: 'mailersend',
+        provider_message_id: response.id,
+      },
+      useAdmin: true,
+    });
+  } catch (error) {
+    await logAppEvent({
+      eventName: APP_EVENTS.groupInviteFullNotificationFailed,
+      level: 'error',
+      locale: input.locale,
+      userId: input.inviterUserId,
+      groupId: input.groupId,
+      metadata: {
+        invitee_email: input.inviteeEmail,
+        error_message:
+          error instanceof Error
+            ? error.message
+            : 'Unknown group full notification email error',
+      },
+      useAdmin: true,
+    });
   }
 }
 
