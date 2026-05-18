@@ -109,7 +109,7 @@
     "directDifficultyHigh": "High",
     "directSubmit": "Start the Reliability Sprint",
     "directPending": "Preparing password step...",
-    "directMissingFields": "Enter your first name and a valid email.",
+    "directMissingFields": "Enter a valid email.",
     "directAccountExists": "An account already exists for this email. Sign in to continue.",
     "directInviteExists": "One of these partners already has a pending invitation.",
     "directGenericError": "The sprint could not be created. Please try again.",
