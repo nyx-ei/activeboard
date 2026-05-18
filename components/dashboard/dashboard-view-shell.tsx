@@ -7,6 +7,10 @@ import {
   type DashboardPerformanceViewProps,
 } from '@/components/dashboard/dashboard-performance-view';
 import {
+  DashboardSprintActivityZone,
+  type DashboardSprintActivityZoneProps,
+} from '@/components/dashboard/dashboard-sprint-activity-zone';
+import {
   fetchDashboardPayload,
   consumeDashboardPayloadStale,
   invalidateDashboardPayloadCache,
@@ -22,6 +26,7 @@ type DashboardViewShellProps = {
   initialView: DashboardView;
   sessionsProps: DashboardSessionsViewProps;
   performanceProps: DashboardPerformanceViewProps;
+  sprintActivityProps: DashboardSprintActivityZoneProps;
   initialLoadedViews: Record<DashboardView, boolean>;
 };
 type DashboardSessionsPayload = {
@@ -61,6 +66,7 @@ export function DashboardViewShell({
   initialView,
   sessionsProps,
   performanceProps,
+  sprintActivityProps,
   initialLoadedViews,
 }: DashboardViewShellProps) {
   const [view, setView] = useState<DashboardView>(initialView);
@@ -68,6 +74,8 @@ export function DashboardViewShell({
     useState(sessionsProps);
   const [resolvedPerformanceProps, setResolvedPerformanceProps] =
     useState(performanceProps);
+  const [resolvedSprintActivityProps, setResolvedSprintActivityProps] =
+    useState(sprintActivityProps);
   const [loadedViews, setLoadedViews] = useState(initialLoadedViews);
   const loadingViewRef = useRef<DashboardView | null>(null);
   const loadedViewsRef = useRef(initialLoadedViews);
@@ -106,6 +114,14 @@ export function DashboardViewShell({
           sessionConfidenceBreakdown:
             performancePayload.sessionConfidenceBreakdown ?? [],
         }));
+        setResolvedSprintActivityProps((current) => ({
+          ...current,
+          answeredCount: performancePayload.metrics?.answeredCount ?? 0,
+          completedSessionsCount:
+            performancePayload.metrics?.completedSessionsCount ?? 0,
+          trueMastery: performancePayload.metrics?.successRate ?? null,
+          heatmap: performancePayload.profileAnalytics?.heatmap ?? [],
+        }));
       }
 
       setLoadedViews((current) => ({
@@ -132,6 +148,7 @@ export function DashboardViewShell({
   useEffect(() => {
     setResolvedSessionsProps(sessionsProps);
     setResolvedPerformanceProps(performanceProps);
+    setResolvedSprintActivityProps(sprintActivityProps);
     setLoadedViews(initialLoadedViews);
     if (initialLoadedViews.sessions) {
       seedDashboardPayload<DashboardPayloadByView, 'sessions'>('sessions', {
@@ -160,7 +177,12 @@ export function DashboardViewShell({
         },
       );
     }
-  }, [initialLoadedViews, performanceProps, sessionsProps]);
+  }, [
+    initialLoadedViews,
+    performanceProps,
+    sessionsProps,
+    sprintActivityProps,
+  ]);
 
   useEffect(() => {
     const staleViews = consumeDashboardPayloadStale();
@@ -318,7 +340,8 @@ export function DashboardViewShell({
   }, [applyPayload, loadedViews, view]);
 
   return (
-    <>
+    <div className="space-y-5">
+      <DashboardSprintActivityZone {...resolvedSprintActivityProps} />
       <div hidden={view !== 'sessions'}>
         {loadedViews.sessions ? (
           <DashboardSessionsView {...resolvedSessionsProps} />
@@ -333,7 +356,7 @@ export function DashboardViewShell({
           <DashboardSkeleton />
         )}
       </div>
-    </>
+    </div>
   );
 }
 

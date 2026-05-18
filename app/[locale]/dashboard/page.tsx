@@ -61,9 +61,7 @@ export default async function DashboardPage({
   const [sessionsData, performanceData, accessState, billingSnapshot] =
     await Promise.all([
       isSessionsView ? getDashboardSessionsData(user) : Promise.resolve(null),
-      !isSessionsView
-        ? getDashboardPerformanceData(user.id)
-        : Promise.resolve(null),
+      getDashboardPerformanceData(user.id),
       getUserAccessState(user.id),
       getUserBillingSnapshot(user.id),
     ]);
@@ -200,6 +198,28 @@ export default async function DashboardPage({
       confidenceCalibrationTitle: t('confidenceCalibrationTitle'),
     },
   } satisfies DashboardPerformanceViewProps;
+  const sprintActivityProps = {
+    answeredCount: performanceData.metrics.answeredCount,
+    completedSessionsCount: performanceData.metrics.completedSessionsCount,
+    trueMastery: performanceData.metrics.successRate,
+    heatmap: performanceData.profileAnalytics.heatmap,
+    labels: {
+      title: t('zoneSprintActivityTitle'),
+      counter: t('zoneSprintCounter', {
+        sprint: '{sprint}',
+        week: '{week}',
+        totalWeeks: '{totalWeeks}',
+      }),
+      sprint: t('zoneSprintLabel'),
+      week: t('zoneSprintWeekLabel'),
+      questionsAnswered: t('zoneKpiQuestionsAnswered'),
+      sessionsCompleted: t('zoneKpiSessionsCompleted'),
+      trueMastery: t('zoneKpiTrueMastery'),
+      consistencyStreak: t('zoneKpiConsistencyStreak'),
+      days: t('zoneKpiDays'),
+      noData: t('noData'),
+    },
+  };
   return (
     <main className="flex flex-1 flex-col gap-5">
       <FeedbackBanner
@@ -210,11 +230,12 @@ export default async function DashboardPage({
         feedbackId={isSessionJoinFeedback ? undefined : searchParams.feedbackId}
       />
 
-      <section className="mx-auto w-full max-w-[620px] space-y-4">
+      <section className="mx-auto w-full max-w-[1100px] space-y-4">
         <DashboardViewShell
           initialView={view}
           sessionsProps={sessionsProps}
           performanceProps={performanceProps}
+          sprintActivityProps={sprintActivityProps}
           initialLoadedViews={{
             sessions: isSessionsView,
             performance: !isSessionsView,
