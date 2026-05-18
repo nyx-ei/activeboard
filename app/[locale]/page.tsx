@@ -39,7 +39,7 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
   return (
     <main className="-mx-2 -mb-24 -mt-6 min-h-screen overflow-hidden bg-[#01070d] px-5 pb-9 pt-0 sm:-mx-6 sm:px-9 sm:pt-0 lg:px-9">
       <section className="mx-auto grid min-h-[calc(100vh-72px)] max-w-[1280px] grid-cols-1 items-center gap-5 lg:grid-cols-[minmax(400px,454px)_minmax(0,1fr)] lg:gap-8">
-        <div className="relative z-10 w-full max-w-[454px]">
+        <div className="relative z-10 w-full max-w-[454px] lg:-translate-y-6">
           <ActiveBoardLandingLogo />
 
           <p
