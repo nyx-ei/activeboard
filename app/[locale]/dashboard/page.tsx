@@ -152,10 +152,15 @@ export default async function DashboardPage({
     successRate: performanceData?.metrics.successRate ?? null,
     averageConfidence: performanceData?.metrics.averageConfidence ?? null,
     heatmap: performanceData?.profileAnalytics.heatmap ?? [],
+    blueprintGrid: performanceData?.profileAnalytics.blueprintGrid ?? [],
+    errorTypeBreakdown:
+      performanceData?.profileAnalytics.errorTypeBreakdown ?? [],
+    weeklyTrend: performanceData?.profileAnalytics.weeklyTrend ?? [],
     confidenceCalibration:
       performanceData?.profileAnalytics.confidenceCalibration ?? [],
     sessionConfidenceBreakdown:
       performanceData?.sessionConfidenceBreakdown ?? [],
+    progressQuadrantQuestions: performanceData?.progressQuadrantQuestions ?? [],
     labels: {
       sprintActivityTitle: t('sprintActivityTitle'),
       questionsAnswered: t('questionsAnswered'),
@@ -197,6 +202,19 @@ export default async function DashboardPage({
       averagePerWeek: t('averagePerWeek'),
       completion: t('completion'),
       confidenceCalibrationTitle: t('confidenceCalibrationTitle'),
+      detailsTitle: t('zoneDetailsTitle'),
+      quadrantQuestionListsTitle: t('zoneQuadrantQuestionListsTitle'),
+      blueprintHeatmapTitle: t('zoneBlueprintHeatmapTitle'),
+      errorTypeFrequenciesTitle: t('zoneErrorTypeFrequenciesTitle'),
+      trendDetailsTitle: t('zoneTrendDetailsTitle'),
+      recentQuestionsEmpty: t('zoneRecentQuestionsEmpty'),
+      selectedOption: t('zoneSelectedOption'),
+      correct: t('zoneCorrect'),
+      incorrect: t('zoneIncorrect'),
+      trueMastery: t('zoneQuadrantTrueMastery'),
+      fragileKnowledge: t('zoneQuadrantFragileKnowledge'),
+      consciousGap: t('zoneQuadrantConsciousGap'),
+      falseConfidence: t('zoneQuadrantFalseConfidence'),
     },
   } satisfies DashboardPerformanceViewProps;
   const sprintActivityProps = {
@@ -228,9 +246,11 @@ export default async function DashboardPage({
   };
   const progressStateProps = {
     quadrants: performanceData.progressQuadrants,
+    detailsHref: `/${locale}/dashboard?view=performance`,
     labels: {
       title: t('zoneProgressStateTitle'),
       subtitle: t('zoneProgressStateSubtitle'),
+      viewDetails: t('zoneViewDetails'),
       noData: t('noData'),
       answers: t('zoneProgressStateAnswers'),
       trendUp: t('zoneProgressStateTrendUp', { value: '{value}' }),

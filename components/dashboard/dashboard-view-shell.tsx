@@ -49,10 +49,14 @@ type DashboardPerformancePayload = {
   };
   profileAnalytics?: {
     heatmap?: DashboardPerformanceViewProps['heatmap'];
+    blueprintGrid?: DashboardPerformanceViewProps['blueprintGrid'];
+    errorTypeBreakdown?: DashboardPerformanceViewProps['errorTypeBreakdown'];
+    weeklyTrend?: DashboardPerformanceViewProps['weeklyTrend'];
     confidenceCalibration?: DashboardPerformanceViewProps['confidenceCalibration'];
   };
   sessionConfidenceBreakdown?: DashboardPerformanceViewProps['sessionConfidenceBreakdown'];
   progressQuadrants?: DashboardProgressStateZoneProps['quadrants'];
+  progressQuadrantQuestions?: DashboardPerformanceViewProps['progressQuadrantQuestions'];
 };
 type DashboardPayloadByView = {
   sessions: DashboardSessionsPayload;
@@ -118,10 +122,17 @@ export function DashboardViewShell({
           averageConfidence:
             performancePayload.metrics?.averageConfidence ?? null,
           heatmap: performancePayload.profileAnalytics?.heatmap ?? [],
+          blueprintGrid:
+            performancePayload.profileAnalytics?.blueprintGrid ?? [],
+          errorTypeBreakdown:
+            performancePayload.profileAnalytics?.errorTypeBreakdown ?? [],
+          weeklyTrend: performancePayload.profileAnalytics?.weeklyTrend ?? [],
           confidenceCalibration:
             performancePayload.profileAnalytics?.confidenceCalibration ?? [],
           sessionConfidenceBreakdown:
             performancePayload.sessionConfidenceBreakdown ?? [],
+          progressQuadrantQuestions:
+            performancePayload.progressQuadrantQuestions ?? [],
         }));
         setResolvedSprintActivityProps((current) => ({
           ...current,
@@ -184,11 +195,15 @@ export function DashboardViewShell({
           },
           profileAnalytics: {
             heatmap: performanceProps.heatmap,
+            blueprintGrid: performanceProps.blueprintGrid,
+            errorTypeBreakdown: performanceProps.errorTypeBreakdown,
+            weeklyTrend: performanceProps.weeklyTrend,
             confidenceCalibration: performanceProps.confidenceCalibration,
           },
           sessionConfidenceBreakdown:
             performanceProps.sessionConfidenceBreakdown,
           progressQuadrants: progressStateProps.quadrants,
+          progressQuadrantQuestions: performanceProps.progressQuadrantQuestions,
         },
       );
     }
