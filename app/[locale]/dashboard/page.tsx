@@ -289,7 +289,7 @@ export default async function DashboardPage({
   } satisfies DashboardGroupZoneProps;
 
   return (
-    <main className="flex flex-1 flex-col gap-5">
+    <main className="flex flex-1 flex-col gap-5 bg-[#00100f]">
       <FeedbackBanner
         message={
           isSessionJoinFeedback ? undefined : searchParams.feedbackMessage
@@ -298,7 +298,7 @@ export default async function DashboardPage({
         feedbackId={isSessionJoinFeedback ? undefined : searchParams.feedbackId}
       />
 
-      <section className="mx-auto w-full max-w-[1100px] space-y-4">
+      <section className="mx-auto w-full max-w-[1440px] space-y-[18px] px-0 py-0 sm:px-2">
         <DashboardViewShell
           initialView={view}
           sessionsProps={sessionsProps}

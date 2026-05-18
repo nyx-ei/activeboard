@@ -1,7 +1,15 @@
 'use client';
 
 import { memo } from 'react';
-import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
+import {
+  AlertTriangle,
+  Check,
+  HelpCircle,
+  Minus,
+  TrendingDown,
+  TrendingUp,
+  X,
+} from 'lucide-react';
 
 export type ProgressQuadrantKey =
   | 'trueMastery'
@@ -48,17 +56,17 @@ const QUADRANT_ORDER: ProgressQuadrantKey[] = [
 ];
 
 const QUADRANT_TONES: Record<ProgressQuadrantKey, string> = {
-  trueMastery: 'border-emerald-400/20 bg-emerald-400/[0.08]',
-  fragileKnowledge: 'border-sky-400/20 bg-sky-400/[0.07]',
-  consciousGap: 'border-amber-300/20 bg-amber-300/[0.08]',
-  falseConfidence: 'border-rose-400/20 bg-rose-400/[0.08]',
+  trueMastery: 'bg-[#26B872]',
+  fragileKnowledge: 'bg-[#6FCF6F]',
+  consciousGap: 'bg-[#F7941D]',
+  falseConfidence: 'bg-[#F26B6B]',
 };
 
-const QUADRANT_ACCENTS: Record<ProgressQuadrantKey, string> = {
-  trueMastery: 'bg-brand',
-  fragileKnowledge: 'bg-sky-300',
-  consciousGap: 'bg-amber-300',
-  falseConfidence: 'bg-rose-300',
+const QUADRANT_ICONS = {
+  trueMastery: Check,
+  fragileKnowledge: HelpCircle,
+  consciousGap: AlertTriangle,
+  falseConfidence: X,
 };
 
 function getQuadrantLabel(
@@ -98,7 +106,7 @@ function TrendIndicator({
 }) {
   if (trend === null) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500">
+      <span className="inline-flex items-center gap-1 text-[12px] font-medium text-[#5c7773]">
         <Minus className="h-3.5 w-3.5" aria-hidden="true" />
         {labels.trendUnavailable}
       </span>
@@ -107,7 +115,7 @@ function TrendIndicator({
 
   if (trend === 0) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400">
+      <span className="inline-flex items-center gap-1 text-[12px] font-medium text-[#8fa7a2]">
         <Minus className="h-3.5 w-3.5" aria-hidden="true" />
         {labels.trendFlat}
       </span>
@@ -120,8 +128,8 @@ function TrendIndicator({
 
   return (
     <span
-      className={`inline-flex items-center gap-1 text-xs font-semibold ${
-        isPositive ? 'text-emerald-300' : 'text-rose-300'
+      className={`inline-flex items-center gap-1 text-[12px] font-medium ${
+        isPositive ? 'text-[#7FE5BD]' : 'text-[#F0A0A0]'
       }`}
     >
       <Icon className="h-3.5 w-3.5" aria-hidden="true" />
@@ -140,25 +148,21 @@ export const DashboardProgressStateZone = memo(
     const totalAnswers = quadrants.reduce((sum, item) => sum + item.count, 0);
 
     return (
-      <section className="surface-mockup p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <section className="v11-card">
+        <div className="v11-card-head">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.16em] text-brand">
-              {labels.title}
-            </p>
-            <p className="mt-1 text-sm font-semibold text-slate-500">
-              {labels.subtitle}
-            </p>
+            <p className="v11-card-title">{labels.title}</p>
+            <p className="v11-card-sub mt-1">{labels.subtitle}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3 sm:justify-end">
-            <p className="text-xs font-semibold text-slate-500">
+            <p className="text-[12px] font-medium text-[#8fa7a2]">
               {totalAnswers > 0
                 ? `${totalAnswers} ${labels.answers}`
                 : labels.noData}
             </p>
             <a
               href={detailsHref}
-              className="border-brand/30 bg-brand/10 hover:border-brand/60 hover:bg-brand/15 inline-flex h-9 items-center rounded-full border px-3 text-xs font-extrabold text-brand transition"
+              className="v11-chip v11-chip-mint transition hover:border-[#20D9A3]/60 hover:bg-[#20D9A3]/20"
               onClick={(event) => {
                 event.preventDefault();
                 window.history.pushState({}, '', detailsHref);
@@ -179,7 +183,7 @@ export const DashboardProgressStateZone = memo(
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-[14px] sm:grid-cols-2 xl:grid-cols-4">
           {QUADRANT_ORDER.map((key) => {
             const item = quadrantsByKey.get(key) ?? {
               key,
@@ -188,37 +192,36 @@ export const DashboardProgressStateZone = memo(
               trend: null,
             };
             const quadrantLabel = getQuadrantLabel(key, labels);
+            const Icon = QUADRANT_ICONS[key];
 
             return (
               <article
                 key={key}
-                className={`rounded-[14px] border p-4 ${QUADRANT_TONES[key]}`}
+                className="v11-mini-card flex items-center gap-[14px] p-4"
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`h-2.5 w-2.5 rounded-full ${QUADRANT_ACCENTS[key]}`}
-                        aria-hidden="true"
-                      />
-                      <h2 className="text-sm font-extrabold text-white">
-                        {quadrantLabel.title}
-                      </h2>
-                    </div>
-                    <p className="mt-2 text-xs font-medium leading-5 text-slate-500">
-                      {quadrantLabel.description}
+                <span
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[#062b22] ${QUADRANT_TONES[key]}`}
+                >
+                  <Icon className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <h2 className="text-[14px] font-medium text-[#e8f4f0]">
+                      {quadrantLabel.title}
+                    </h2>
+                    <p className="text-[14px] font-medium text-[#e8f4f0]">
+                      {item.percentage}%
                     </p>
                   </div>
-                  <p className="shrink-0 text-3xl font-black leading-none text-white">
-                    {item.percentage}%
+                  <p className="mt-1 truncate text-[11.5px] font-normal text-[#5c7773]">
+                    {quadrantLabel.description}
                   </p>
-                </div>
-
-                <div className="mt-4 flex items-center justify-between gap-3">
-                  <span className="text-xs font-semibold text-slate-500">
-                    {item.count} {labels.answers}
-                  </span>
-                  <TrendIndicator trend={item.trend} labels={labels} />
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[12px] font-medium text-[#8fa7a2]">
+                      {item.count} {labels.answers}
+                    </span>
+                    <TrendIndicator trend={item.trend} labels={labels} />
+                  </div>
                 </div>
               </article>
             );
