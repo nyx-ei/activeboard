@@ -2,6 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
+import type { DashboardGroupZoneProps } from '@/components/dashboard/dashboard-group-zone';
 import { DashboardViewShell } from '@/components/dashboard/dashboard-view-shell';
 import type { DashboardPerformanceViewProps } from '@/components/dashboard/dashboard-performance-view';
 import type { DashboardProgressStateZoneProps } from '@/components/dashboard/dashboard-progress-state-zone';
@@ -61,7 +62,7 @@ export default async function DashboardPage({
 
   const [sessionsData, performanceData, accessState, billingSnapshot] =
     await Promise.all([
-      isSessionsView ? getDashboardSessionsData(user) : Promise.resolve(null),
+      getDashboardSessionsData(user),
       getDashboardPerformanceData(user.id),
       getUserAccessState(user.id),
       getUserBillingSnapshot(user.id),
@@ -76,14 +77,20 @@ export default async function DashboardPage({
     billingSnapshot?.questions_answered ?? 0,
   );
 
+  const liveGroupIds = new Set(
+    (sessionsData?.activeSessions ?? []).map((session) => session.group_id),
+  );
+  const dashboardGroups = (sessionsData?.groups ?? []).map((group) => ({
+    id: group.id,
+    name: group.name,
+    memberCount: group.memberCount,
+    hasLiveSession: liveGroupIds.has(group.id),
+  }));
+
   const sessionsProps = {
     locale,
     sessions: sessionsData?.sessions ?? [],
-    groups: (sessionsData?.groups ?? []).map((group) => ({
-      id: group.id,
-      name: group.name,
-      memberCount: group.memberCount,
-    })),
+    groups: dashboardGroups,
     trialProgress,
     canJoinSessions,
     canCreateSession,
@@ -267,8 +274,22 @@ export default async function DashboardPage({
       falseConfidenceDescription: t('zoneQuadrantFalseConfidenceDescription'),
     },
   } satisfies DashboardProgressStateZoneProps;
+  const groupZoneProps = {
+    groups: dashboardGroups,
+    createGroupHref: `/${locale}/create-group`,
+    labels: {
+      title: t('zoneGroupTitle'),
+      subtitle: t('zoneGroupSubtitle'),
+      dropdownLabel: t('zoneGroupDropdownLabel'),
+      members: t('zoneGroupMembers'),
+      live: t('zoneGroupLive'),
+      noGroups: t('zoneGroupNoGroups'),
+      createAnother: t('zoneGroupCreateAnother'),
+    },
+  } satisfies DashboardGroupZoneProps;
+
   return (
-    <main className="flex flex-1 flex-col gap-5">
+    <main className="flex flex-1 flex-col gap-5 bg-[#00100f]">
       <FeedbackBanner
         message={
           isSessionJoinFeedback ? undefined : searchParams.feedbackMessage
@@ -277,15 +298,16 @@ export default async function DashboardPage({
         feedbackId={isSessionJoinFeedback ? undefined : searchParams.feedbackId}
       />
 
-      <section className="mx-auto w-full max-w-[1100px] space-y-4">
+      <section className="mx-auto w-full max-w-[1440px] space-y-[18px] px-0 py-0 sm:px-2">
         <DashboardViewShell
           initialView={view}
           sessionsProps={sessionsProps}
           performanceProps={performanceProps}
           sprintActivityProps={sprintActivityProps}
           progressStateProps={progressStateProps}
+          groupZoneProps={groupZoneProps}
           initialLoadedViews={{
-            sessions: isSessionsView,
+            sessions: true,
             performance: !isSessionsView,
           }}
         />

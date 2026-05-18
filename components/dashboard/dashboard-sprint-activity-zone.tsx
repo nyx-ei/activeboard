@@ -1,7 +1,6 @@
 'use client';
 
 import { memo, useMemo } from 'react';
-import { Activity, BarChart3, CheckCircle2, Flame } from 'lucide-react';
 
 type HeatmapDay = {
   date: string;
@@ -111,18 +110,22 @@ function buildHeatmapWeeks(heatmap: HeatmapDay[]) {
 
 function getHeatmapCellClass(intensity: HeatmapDay['intensity']) {
   if (!intensity) {
-    return 'bg-[#12312b]';
+    return 'bg-[#13322d]';
   }
 
   if (intensity >= 4) {
-    return 'bg-brand shadow-[0_0_10px_rgba(32,217,163,0.32)]';
+    return 'bg-[#3FF0BB] shadow-[0_0_8px_rgba(32,217,163,0.4)]';
   }
 
   if (intensity >= 3) {
-    return 'bg-emerald-400/65';
+    return 'bg-[#20D9A3]';
   }
 
-  return 'bg-emerald-400/30';
+  if (intensity >= 2) {
+    return 'bg-[#20D9A3]/55';
+  }
+
+  return 'bg-[#20D9A3]/30';
 }
 
 function getSprintState(answeredCount: number) {
@@ -180,39 +183,33 @@ export const DashboardSprintActivityZone = memo(
         label: labels.questionsAnswered,
         value: answeredCount,
         accent: 'text-brand',
-        icon: Activity,
       },
       {
         key: 'sessions',
         label: labels.sessionsCompleted,
         value: completedSessionsCount,
         accent: 'text-white',
-        icon: CheckCircle2,
       },
       {
         key: 'mastery',
         label: labels.trueMastery,
         value: trueMastery === null ? labels.noData : `${trueMastery}%`,
         accent: 'text-emerald-200',
-        icon: BarChart3,
       },
       {
         key: 'streak',
         label: labels.consistencyStreak,
         value: `${consistencyStreak} ${labels.days}`,
         accent: 'text-amber-200',
-        icon: Flame,
       },
     ];
 
     return (
-      <section className="surface-mockup p-5 sm:p-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <section className="v11-card">
+        <div className="v11-card-head">
           <div>
-            <p className="text-sm font-semibold text-slate-300">
-              {labels.title}
-            </p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+            <p className="v11-card-title">{labels.title}</p>
+            <h1 className="mt-1 text-[13px] font-normal text-[#8fa7a2]">
               {formatCounter(labels.counter, {
                 sprint: sprint.sprintNumber,
                 week: sprint.currentWeek,
@@ -220,75 +217,73 @@ export const DashboardSprintActivityZone = memo(
               })}
             </h1>
           </div>
-          <div className="border-brand/30 bg-brand/10 inline-flex w-fit items-center rounded-full border px-3 py-1 text-xs font-semibold text-emerald-200">
+          <div className="v11-chip v11-chip-mint">
             {labels.sprint} {sprint.sprintNumber} {' - '} {labels.week}{' '}
             {sprint.currentWeek} / {sprint.totalWeeks}
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {cards.map((card) => {
-            const Icon = card.icon;
-            return (
-              <article
-                key={card.key}
-                className="rounded-[12px] border border-white/[0.06] bg-white/[0.03] p-4"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-semibold text-slate-500">
-                    {card.label}
-                  </span>
-                  <span className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-white/[0.06] bg-white/[0.035] text-slate-400">
-                    <Icon className="h-4 w-4" aria-hidden="true" />
-                  </span>
-                </div>
-                <p
-                  className={`mt-4 text-3xl font-semibold tracking-tight ${card.accent}`}
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          <div className="grid shrink-0 gap-4 sm:grid-cols-2 lg:flex lg:items-stretch lg:gap-0">
+            {cards.map((card, index) => {
+              return (
+                <article
+                  key={card.key}
+                  className={`flex min-w-0 flex-col gap-[14px] px-0 lg:min-w-[132px] lg:px-5 xl:min-w-[150px] ${
+                    index > 0 ? 'lg:border-l lg:border-white/[0.045]' : ''
+                  }`}
                 >
-                  {card.value}
-                </p>
-              </article>
-            );
-          })}
-        </div>
-
-        <div className="mt-5 rounded-[14px] border border-white/[0.06] bg-white/[0.025] p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-white">
-                {labels.heatmapTitle}
-              </p>
-              <p className="mt-1 text-xs font-medium text-slate-500">
-                {labels.heatmapDescription}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3 text-[11px] font-semibold text-slate-500">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-[3px] bg-emerald-400/30" />
-                {labels.heatmapLow}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-[3px] bg-emerald-400/65" />
-                {labels.heatmapMedium}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-[3px] bg-brand" />
-                {labels.heatmapHigh}
-              </span>
-            </div>
+                  <p
+                    className={`text-[42px] font-medium leading-none tracking-[-0.04em] lg:text-[48px] xl:text-[60px] ${card.accent}`}
+                  >
+                    {card.value}
+                  </p>
+                  <p className="text-[14px] font-normal leading-[1.35] text-[#8fa7a2]">
+                    {card.label}
+                  </p>
+                </article>
+              );
+            })}
           </div>
 
-          <div className="mt-4 overflow-x-auto pb-1">
-            <div className="grid w-full min-w-[560px] grid-flow-col grid-rows-7 gap-[4px]">
-              {heatmapWeeks.map((week, weekIndex) =>
-                week.map((day) => (
-                  <div
-                    key={`${weekIndex}-${day.date}`}
-                    className={`h-3 min-h-3 w-full rounded-[3px] ${getHeatmapCellClass(day.intensity)}`}
-                    title={`${day.date} - ${day.count}`}
-                  />
-                )),
-              )}
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="max-w-[240px]">
+                <p className="text-[13px] font-medium text-[#8fa7a2]">
+                  {labels.heatmapTitle}
+                </p>
+                <p className="mt-2 text-[12px] leading-5 text-[#5c7773]">
+                  {labels.heatmapDescription}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-[12px] font-medium text-[#8fa7a2]">
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-[3px] bg-[#20D9A3]/30" />
+                  {labels.heatmapLow}
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-[3px] bg-[#20D9A3]/60" />
+                  {labels.heatmapMedium}
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-[3px] bg-[#20D9A3]" />
+                  {labels.heatmapHigh}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-4 overflow-x-auto pb-1">
+              <div className="grid min-w-[560px] grid-flow-col grid-rows-7 gap-[4px]">
+                {heatmapWeeks.map((week, weekIndex) =>
+                  week.map((day) => (
+                    <div
+                      key={`${weekIndex}-${day.date}`}
+                      className={`h-3 w-3 rounded-[3px] ${getHeatmapCellClass(day.intensity)}`}
+                      title={`${day.date} - ${day.count}`}
+                    />
+                  )),
+                )}
+              </div>
             </div>
           </div>
         </div>
