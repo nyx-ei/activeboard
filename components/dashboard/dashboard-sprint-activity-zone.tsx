@@ -6,6 +6,7 @@ import { Activity, BarChart3, CheckCircle2, Flame } from 'lucide-react';
 type HeatmapDay = {
   date: string;
   count: number;
+  intensity?: 0 | 1 | 2 | 3 | 4;
 };
 
 export type DashboardSprintActivityZoneProps = {
@@ -22,6 +23,11 @@ export type DashboardSprintActivityZoneProps = {
     sessionsCompleted: string;
     trueMastery: string;
     consistencyStreak: string;
+    heatmapTitle: string;
+    heatmapDescription: string;
+    heatmapLow: string;
+    heatmapMedium: string;
+    heatmapHigh: string;
     days: string;
     noData: string;
   };
@@ -29,6 +35,7 @@ export type DashboardSprintActivityZoneProps = {
 
 const SPRINT_QUESTION_GOAL = 100;
 const SPRINT_TOTAL_WEEKS = 4;
+const HEATMAP_WEEK_COUNT = 28;
 
 function toIsoDate(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -37,6 +44,15 @@ function toIsoDate(date: Date) {
 function addUtcDays(date: Date, days: number) {
   const next = new Date(date);
   next.setUTCDate(next.getUTCDate() + days);
+  return next;
+}
+
+function startOfUtcWeek(date: Date) {
+  const next = new Date(date);
+  const weekday = next.getUTCDay();
+  const mondayOffset = weekday === 0 ? 6 : weekday - 1;
+  next.setUTCDate(next.getUTCDate() - mondayOffset);
+  next.setUTCHours(0, 0, 0, 0);
   return next;
 }
 
@@ -64,6 +80,49 @@ function getConsistencyStreak(heatmap: HeatmapDay[]) {
   }
 
   return streak;
+}
+
+function buildHeatmapWeeks(heatmap: HeatmapDay[]) {
+  const heatmapByDate = new Map(heatmap.map((day) => [day.date, day]));
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const chartEnd = addUtcDays(startOfUtcWeek(today), 6);
+  const chartStart = addUtcDays(chartEnd, -(HEATMAP_WEEK_COUNT * 7 - 1));
+  const days = Array.from({ length: HEATMAP_WEEK_COUNT * 7 }, (_, index) => {
+    const date = addUtcDays(chartStart, index);
+    const dateKey = toIsoDate(date);
+    const source = heatmapByDate.get(dateKey);
+    return {
+      date: dateKey,
+      count: source?.count ?? 0,
+      intensity: source?.intensity ?? 0,
+    };
+  });
+  const weeks: Array<
+    Array<{ date: string; count: number; intensity: 0 | 1 | 2 | 3 | 4 }>
+  > = [];
+
+  for (let index = 0; index < days.length; index += 7) {
+    weeks.push(days.slice(index, index + 7));
+  }
+
+  return weeks;
+}
+
+function getHeatmapCellClass(intensity: HeatmapDay['intensity']) {
+  if (!intensity) {
+    return 'bg-[#12312b]';
+  }
+
+  if (intensity >= 4) {
+    return 'bg-brand shadow-[0_0_10px_rgba(32,217,163,0.32)]';
+  }
+
+  if (intensity >= 3) {
+    return 'bg-emerald-400/65';
+  }
+
+  return 'bg-emerald-400/30';
 }
 
 function getSprintState(answeredCount: number) {
@@ -114,6 +173,7 @@ export const DashboardSprintActivityZone = memo(
       () => getConsistencyStreak(heatmap),
       [heatmap],
     );
+    const heatmapWeeks = useMemo(() => buildHeatmapWeeks(heatmap), [heatmap]);
     const cards = [
       {
         key: 'answered',
@@ -161,7 +221,7 @@ export const DashboardSprintActivityZone = memo(
             </h1>
           </div>
           <div className="border-brand/30 bg-brand/10 inline-flex w-fit items-center rounded-full border px-3 py-1 text-xs font-semibold text-emerald-200">
-            {labels.sprint} {sprint.sprintNumber} · {labels.week}{' '}
+            {labels.sprint} {sprint.sprintNumber} {' - '} {labels.week}{' '}
             {sprint.currentWeek} / {sprint.totalWeeks}
           </div>
         </div>
@@ -190,6 +250,47 @@ export const DashboardSprintActivityZone = memo(
               </article>
             );
           })}
+        </div>
+
+        <div className="mt-5 rounded-[14px] border border-white/[0.06] bg-white/[0.025] p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-white">
+                {labels.heatmapTitle}
+              </p>
+              <p className="mt-1 text-xs font-medium text-slate-500">
+                {labels.heatmapDescription}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-[11px] font-semibold text-slate-500">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-[3px] bg-emerald-400/30" />
+                {labels.heatmapLow}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-[3px] bg-emerald-400/65" />
+                {labels.heatmapMedium}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-[3px] bg-brand" />
+                {labels.heatmapHigh}
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-4 overflow-x-auto pb-1">
+            <div className="grid w-full min-w-[560px] grid-flow-col grid-rows-7 gap-[4px]">
+              {heatmapWeeks.map((week, weekIndex) =>
+                week.map((day) => (
+                  <div
+                    key={`${weekIndex}-${day.date}`}
+                    className={`h-3 min-h-3 w-full rounded-[3px] ${getHeatmapCellClass(day.intensity)}`}
+                    title={`${day.date} - ${day.count}`}
+                  />
+                )),
+              )}
+            </div>
+          </div>
         </div>
       </section>
     );
