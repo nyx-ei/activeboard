@@ -21,6 +21,7 @@ export async function GET() {
         confidenceCalibration: data.profileAnalytics.confidenceCalibration,
       },
       sessionConfidenceBreakdown: data.sessionConfidenceBreakdown,
+      progressQuadrants: data.progressQuadrants,
     },
     {
       headers: {

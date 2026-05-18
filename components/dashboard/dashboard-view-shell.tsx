@@ -11,6 +11,10 @@ import {
   type DashboardSprintActivityZoneProps,
 } from '@/components/dashboard/dashboard-sprint-activity-zone';
 import {
+  DashboardProgressStateZone,
+  type DashboardProgressStateZoneProps,
+} from '@/components/dashboard/dashboard-progress-state-zone';
+import {
   fetchDashboardPayload,
   consumeDashboardPayloadStale,
   invalidateDashboardPayloadCache,
@@ -27,6 +31,7 @@ type DashboardViewShellProps = {
   sessionsProps: DashboardSessionsViewProps;
   performanceProps: DashboardPerformanceViewProps;
   sprintActivityProps: DashboardSprintActivityZoneProps;
+  progressStateProps: DashboardProgressStateZoneProps;
   initialLoadedViews: Record<DashboardView, boolean>;
 };
 type DashboardSessionsPayload = {
@@ -47,6 +52,7 @@ type DashboardPerformancePayload = {
     confidenceCalibration?: DashboardPerformanceViewProps['confidenceCalibration'];
   };
   sessionConfidenceBreakdown?: DashboardPerformanceViewProps['sessionConfidenceBreakdown'];
+  progressQuadrants?: DashboardProgressStateZoneProps['quadrants'];
 };
 type DashboardPayloadByView = {
   sessions: DashboardSessionsPayload;
@@ -67,6 +73,7 @@ export function DashboardViewShell({
   sessionsProps,
   performanceProps,
   sprintActivityProps,
+  progressStateProps,
   initialLoadedViews,
 }: DashboardViewShellProps) {
   const [view, setView] = useState<DashboardView>(initialView);
@@ -76,6 +83,8 @@ export function DashboardViewShell({
     useState(performanceProps);
   const [resolvedSprintActivityProps, setResolvedSprintActivityProps] =
     useState(sprintActivityProps);
+  const [resolvedProgressStateProps, setResolvedProgressStateProps] =
+    useState(progressStateProps);
   const [loadedViews, setLoadedViews] = useState(initialLoadedViews);
   const loadingViewRef = useRef<DashboardView | null>(null);
   const loadedViewsRef = useRef(initialLoadedViews);
@@ -122,6 +131,10 @@ export function DashboardViewShell({
           trueMastery: performancePayload.metrics?.successRate ?? null,
           heatmap: performancePayload.profileAnalytics?.heatmap ?? [],
         }));
+        setResolvedProgressStateProps((current) => ({
+          ...current,
+          quadrants: performancePayload.progressQuadrants ?? [],
+        }));
       }
 
       setLoadedViews((current) => ({
@@ -149,6 +162,7 @@ export function DashboardViewShell({
     setResolvedSessionsProps(sessionsProps);
     setResolvedPerformanceProps(performanceProps);
     setResolvedSprintActivityProps(sprintActivityProps);
+    setResolvedProgressStateProps(progressStateProps);
     setLoadedViews(initialLoadedViews);
     if (initialLoadedViews.sessions) {
       seedDashboardPayload<DashboardPayloadByView, 'sessions'>('sessions', {
@@ -174,12 +188,14 @@ export function DashboardViewShell({
           },
           sessionConfidenceBreakdown:
             performanceProps.sessionConfidenceBreakdown,
+          progressQuadrants: progressStateProps.quadrants,
         },
       );
     }
   }, [
     initialLoadedViews,
     performanceProps,
+    progressStateProps,
     sessionsProps,
     sprintActivityProps,
   ]);
@@ -342,6 +358,7 @@ export function DashboardViewShell({
   return (
     <div className="space-y-5">
       <DashboardSprintActivityZone {...resolvedSprintActivityProps} />
+      <DashboardProgressStateZone {...resolvedProgressStateProps} />
       <div hidden={view !== 'sessions'}>
         {loadedViews.sessions ? (
           <DashboardSessionsView {...resolvedSessionsProps} />

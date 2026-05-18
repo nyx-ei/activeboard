@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { TRIAL_QUESTION_LIMIT } from '@/lib/billing/user-tier';
 import { computeAnswerDistribution } from '@/lib/demo/distribution';
 import {
+  ConfidenceLevelValue,
   confidenceToScore,
   scoreToConfidenceLevel,
   type ConfidenceLevel,
@@ -138,6 +139,19 @@ type ConfidenceCalibrationItem = {
   accuracy: number;
 };
 
+type ProgressQuadrantKey =
+  | 'trueMastery'
+  | 'fragileKnowledge'
+  | 'consciousGap'
+  | 'falseConfidence';
+
+type ProgressQuadrantItem = {
+  key: ProgressQuadrantKey;
+  percentage: number;
+  count: number;
+  trend: number | null;
+};
+
 type SessionConfidenceBreakdownItem = {
   sessionId: string;
   sessionName: string;
@@ -186,6 +200,12 @@ type MaterializedSessionConfidenceBreakdownRow = {
   low_count: number | null;
   medium_count: number | null;
   high_count: number | null;
+};
+
+type ProgressQuadrantAnswerRow = {
+  confidence: ConfidenceLevel | null;
+  is_correct: boolean | null;
+  answered_at: string | null;
 };
 
 type GroupMemberStatsRow = {
@@ -566,6 +586,89 @@ function parseMaterializedProfileAnalytics(
   };
 }
 
+function getProgressQuadrantKey(
+  confidence: ConfidenceLevel | null,
+  isCorrect: boolean | null,
+): ProgressQuadrantKey | null {
+  if (confidence === null || isCorrect === null) {
+    return null;
+  }
+
+  const isCertain = confidence === ConfidenceLevelValue.High;
+
+  if (isCertain && isCorrect) {
+    return 'trueMastery';
+  }
+
+  if (!isCertain && isCorrect) {
+    return 'fragileKnowledge';
+  }
+
+  if (!isCertain && !isCorrect) {
+    return 'consciousGap';
+  }
+
+  return 'falseConfidence';
+}
+
+function buildProgressQuadrants(
+  answers: ProgressQuadrantAnswerRow[],
+  answeredCount: number,
+): ProgressQuadrantItem[] {
+  const currentSprintSize =
+    answeredCount > 0 ? answeredCount % 100 || Math.min(100, answeredCount) : 0;
+  const currentSprintAnswers = answers.slice(0, currentSprintSize);
+  const priorSprintAnswers = answers.slice(
+    currentSprintSize,
+    currentSprintSize + 100,
+  );
+  const keys: ProgressQuadrantKey[] = [
+    'trueMastery',
+    'fragileKnowledge',
+    'consciousGap',
+    'falseConfidence',
+  ];
+
+  function countByQuadrant(source: ProgressQuadrantAnswerRow[]) {
+    const counts = new Map<ProgressQuadrantKey, number>(
+      keys.map((key) => [key, 0]),
+    );
+
+    for (const answer of source) {
+      const key = getProgressQuadrantKey(answer.confidence, answer.is_correct);
+      if (!key) {
+        continue;
+      }
+
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+
+    return counts;
+  }
+
+  const currentCounts = countByQuadrant(currentSprintAnswers);
+  const priorCounts = countByQuadrant(priorSprintAnswers);
+  const currentTotal = currentSprintAnswers.length;
+  const priorTotal = priorSprintAnswers.length;
+
+  return keys.map((key) => {
+    const count = currentCounts.get(key) ?? 0;
+    const percentage =
+      currentTotal > 0 ? Math.round((count / currentTotal) * 100) : 0;
+    const priorPercentage =
+      priorTotal > 0
+        ? Math.round(((priorCounts.get(key) ?? 0) / priorTotal) * 100)
+        : null;
+
+    return {
+      key,
+      percentage,
+      count,
+      trend: priorPercentage === null ? null : percentage - priorPercentage,
+    };
+  });
+}
+
 async function getUserSchedule(userId: string) {
   const { data: userSchedule } = await createSupabaseServerClient()
     .schema('public')
@@ -840,6 +943,16 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
     .eq('user_id', userId)
     .order('scheduled_at', { ascending: false })
     .limit(DASHBOARD_CONFIDENCE_SESSION_LIMIT);
+  const progressQuadrantAnswersPromise = supabase
+    .schema('public')
+    .from('answers')
+    .select('confidence, is_correct, answered_at')
+    .eq('user_id', userId)
+    .eq('answer_state', 'submitted')
+    .not('confidence', 'is', null)
+    .not('is_correct', 'is', null)
+    .order('answered_at', { ascending: false })
+    .limit(200);
   const metricsPromise = supabase
     .schema('public')
     .from('dashboard_user_answer_metrics')
@@ -858,11 +971,13 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
   const [
     completedSessionsCount,
     sessionConfidenceBreakdownResult,
+    progressQuadrantAnswersResult,
     metricsResult,
     profileAnalyticsResult,
   ] = await Promise.all([
     completedSessionsCountPromise,
     sessionConfidenceBreakdownPromise,
+    progressQuadrantAnswersPromise,
     metricsPromise,
     profileAnalyticsPromise,
   ]);
@@ -913,6 +1028,10 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
     profileAnalyticsRow,
     answeredCount,
   );
+  const progressQuadrants = buildProgressQuadrants(
+    (progressQuadrantAnswersResult.data ?? []) as ProgressQuadrantAnswerRow[],
+    answeredCount,
+  );
   perf.done({
     answeredCount,
     completedSessionsCount,
@@ -935,6 +1054,7 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
     },
     profileAnalytics,
     sessionConfidenceBreakdown,
+    progressQuadrants,
   };
 });
 
