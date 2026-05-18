@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { FeedbackBanner } from '@/components/app/feedback-banner';
 import { DashboardViewShell } from '@/components/dashboard/dashboard-view-shell';
 import type { DashboardPerformanceViewProps } from '@/components/dashboard/dashboard-performance-view';
+import type { DashboardProgressStateZoneProps } from '@/components/dashboard/dashboard-progress-state-zone';
 import type { DashboardSessionsViewProps } from '@/components/dashboard/dashboard-sessions-view';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
@@ -225,6 +226,27 @@ export default async function DashboardPage({
       noData: t('noData'),
     },
   };
+  const progressStateProps = {
+    quadrants: performanceData.progressQuadrants,
+    labels: {
+      title: t('zoneProgressStateTitle'),
+      subtitle: t('zoneProgressStateSubtitle'),
+      noData: t('noData'),
+      answers: t('zoneProgressStateAnswers'),
+      trendUp: t('zoneProgressStateTrendUp', { value: '{value}' }),
+      trendDown: t('zoneProgressStateTrendDown', { value: '{value}' }),
+      trendFlat: t('zoneProgressStateTrendFlat'),
+      trendUnavailable: t('zoneProgressStateTrendUnavailable'),
+      trueMastery: t('zoneQuadrantTrueMastery'),
+      trueMasteryDescription: t('zoneQuadrantTrueMasteryDescription'),
+      fragileKnowledge: t('zoneQuadrantFragileKnowledge'),
+      fragileKnowledgeDescription: t('zoneQuadrantFragileKnowledgeDescription'),
+      consciousGap: t('zoneQuadrantConsciousGap'),
+      consciousGapDescription: t('zoneQuadrantConsciousGapDescription'),
+      falseConfidence: t('zoneQuadrantFalseConfidence'),
+      falseConfidenceDescription: t('zoneQuadrantFalseConfidenceDescription'),
+    },
+  } satisfies DashboardProgressStateZoneProps;
   return (
     <main className="flex flex-1 flex-col gap-5">
       <FeedbackBanner
@@ -241,6 +263,7 @@ export default async function DashboardPage({
           sessionsProps={sessionsProps}
           performanceProps={performanceProps}
           sprintActivityProps={sprintActivityProps}
+          progressStateProps={progressStateProps}
           initialLoadedViews={{
             sessions: isSessionsView,
             performance: !isSessionsView,
