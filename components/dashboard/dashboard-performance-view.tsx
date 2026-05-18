@@ -21,14 +21,53 @@ type SessionConfidenceBreakdownItem = {
   high: number;
 };
 
+type BlueprintGridCell = {
+  physicianActivity: string;
+  dimensionOfCare: string;
+  total: number;
+  correct: number;
+  accuracy: number | null;
+};
+
+type ErrorTypeBreakdownItem = {
+  errorType: string;
+  count: number;
+};
+
+type TrendPoint = {
+  label: string;
+  total: number;
+  accuracy: number | null;
+};
+
+type ProgressQuadrantKey =
+  | 'trueMastery'
+  | 'fragileKnowledge'
+  | 'consciousGap'
+  | 'falseConfidence';
+
+type ProgressQuadrantQuestionItem = {
+  id: string;
+  quadrant: ProgressQuadrantKey;
+  label: string;
+  selectedOption: string | null;
+  confidence: 'low' | 'medium' | 'high' | null;
+  isCorrect: boolean;
+  answeredAt: string | null;
+};
+
 export type DashboardPerformanceViewProps = {
   answeredCount: number;
   completedSessionsCount: number;
   successRate: number | null;
   averageConfidence: 'low' | 'medium' | 'high' | null;
   heatmap: HeatmapDay[];
+  blueprintGrid: BlueprintGridCell[];
+  errorTypeBreakdown: ErrorTypeBreakdownItem[];
+  weeklyTrend: TrendPoint[];
   confidenceCalibration: ConfidenceCalibrationItem[];
   sessionConfidenceBreakdown: SessionConfidenceBreakdownItem[];
+  progressQuadrantQuestions: ProgressQuadrantQuestionItem[];
   labels: {
     sprintActivityTitle: string;
     questionsAnswered: string;
@@ -49,6 +88,19 @@ export type DashboardPerformanceViewProps = {
     averagePerWeek: string;
     completion: string;
     confidenceCalibrationTitle: string;
+    detailsTitle: string;
+    quadrantQuestionListsTitle: string;
+    blueprintHeatmapTitle: string;
+    errorTypeFrequenciesTitle: string;
+    trendDetailsTitle: string;
+    recentQuestionsEmpty: string;
+    selectedOption: string;
+    correct: string;
+    incorrect: string;
+    trueMastery: string;
+    fragileKnowledge: string;
+    consciousGap: string;
+    falseConfidence: string;
   };
 };
 
@@ -94,13 +146,53 @@ function formatCountLabel(template: string, count: number) {
   return template.replace(/\d+/, String(count));
 }
 
+function formatLabel(value: string) {
+  return value.replace(/_/g, ' ');
+}
+
+function getQuadrantTitle(
+  key: ProgressQuadrantKey,
+  labels: DashboardPerformanceViewProps['labels'],
+) {
+  switch (key) {
+    case 'trueMastery':
+      return labels.trueMastery;
+    case 'fragileKnowledge':
+      return labels.fragileKnowledge;
+    case 'consciousGap':
+      return labels.consciousGap;
+    case 'falseConfidence':
+      return labels.falseConfidence;
+  }
+}
+
+function getBlueprintCellClass(accuracy: number | null) {
+  if (accuracy === null) {
+    return 'bg-[#14221f] text-slate-600';
+  }
+
+  if (accuracy >= 75) {
+    return 'bg-brand/25 text-emerald-100';
+  }
+
+  if (accuracy >= 50) {
+    return 'bg-amber-300/20 text-amber-100';
+  }
+
+  return 'bg-rose-400/15 text-rose-100';
+}
+
 export const DashboardPerformanceView = memo(function DashboardPerformanceView({
   answeredCount,
   completedSessionsCount,
   successRate,
   heatmap,
+  blueprintGrid,
+  errorTypeBreakdown,
+  weeklyTrend,
   confidenceCalibration,
   sessionConfidenceBreakdown,
+  progressQuadrantQuestions,
   labels,
 }: DashboardPerformanceViewProps) {
   const weekCount = 28;
@@ -150,8 +242,85 @@ export const DashboardPerformanceView = memo(function DashboardPerformanceView({
       : labels.sessionsFinishedOther,
     completedSessionsCount,
   );
+  const quadrantOrder: ProgressQuadrantKey[] = [
+    'trueMastery',
+    'fragileKnowledge',
+    'consciousGap',
+    'falseConfidence',
+  ];
+  const questionsByQuadrant = new Map(
+    quadrantOrder.map((key) => [
+      key,
+      progressQuadrantQuestions.filter((item) => item.quadrant === key),
+    ]),
+  );
+  const maxErrorCount = Math.max(
+    1,
+    ...errorTypeBreakdown.map((item) => item.count),
+  );
   return (
     <div className="space-y-5">
+      <section className="surface-mockup p-5">
+        <p className="text-sm font-bold uppercase tracking-[0.16em] text-brand">
+          {labels.detailsTitle}
+        </p>
+        <p className="mt-1 text-sm font-semibold text-slate-500">
+          {labels.quadrantQuestionListsTitle}
+        </p>
+
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          {quadrantOrder.map((quadrant) => {
+            const questions = questionsByQuadrant.get(quadrant) ?? [];
+
+            return (
+              <div
+                key={quadrant}
+                className="rounded-[12px] border border-white/[0.06] bg-white/[0.025] p-4"
+              >
+                <p className="text-sm font-extrabold text-white">
+                  {getQuadrantTitle(quadrant, labels)}
+                </p>
+                {questions.length > 0 ? (
+                  <div className="mt-3 space-y-2">
+                    {questions.map((question) => (
+                      <div
+                        key={question.id}
+                        className="flex items-center justify-between gap-3 rounded-[8px] bg-white/[0.035] px-3 py-2"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-bold text-white">
+                            {question.label}
+                          </p>
+                          <p className="mt-0.5 text-xs font-semibold text-slate-500">
+                            {labels.selectedOption}:{' '}
+                            {question.selectedOption ?? labels.noData}
+                          </p>
+                        </div>
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-extrabold ${
+                            question.isCorrect
+                              ? 'bg-brand/15 text-brand'
+                              : 'bg-rose-400/15 text-rose-200'
+                          }`}
+                        >
+                          {question.isCorrect
+                            ? labels.correct
+                            : labels.incorrect}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm font-semibold text-slate-500">
+                    {labels.recentQuestionsEmpty}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
       <section className="surface-mockup p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -250,6 +419,101 @@ export const DashboardPerformanceView = memo(function DashboardPerformanceView({
           </aside>
         </div>
       </section>
+
+      <section className="surface-mockup p-5">
+        <p className="text-sm font-bold text-white">
+          {labels.blueprintHeatmapTitle}
+        </p>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {blueprintGrid.length > 0 ? (
+            blueprintGrid.map((cell) => (
+              <div
+                key={`${cell.physicianActivity}-${cell.dimensionOfCare}`}
+                className={`rounded-[10px] px-3 py-3 ${getBlueprintCellClass(cell.accuracy)}`}
+              >
+                <p className="text-xs font-extrabold uppercase tracking-[0.1em]">
+                  {formatLabel(cell.physicianActivity)}
+                </p>
+                <p className="mt-1 text-xs font-semibold opacity-80">
+                  {formatLabel(cell.dimensionOfCare)}
+                </p>
+                <p className="mt-2 text-lg font-black">
+                  {cell.accuracy === null ? labels.noData : `${cell.accuracy}%`}
+                </p>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm font-semibold text-slate-500">
+              {labels.noData}
+            </p>
+          )}
+        </div>
+      </section>
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        <section className="surface-mockup p-5">
+          <p className="text-sm font-bold text-white">
+            {labels.errorTypeFrequenciesTitle}
+          </p>
+          <div className="mt-4 space-y-3">
+            {errorTypeBreakdown.length > 0 ? (
+              errorTypeBreakdown.map((item) => (
+                <div key={item.errorType}>
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    <span className="font-semibold text-slate-300">
+                      {formatLabel(item.errorType)}
+                    </span>
+                    <span className="font-extrabold text-white">
+                      {item.count}
+                    </span>
+                  </div>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.05]">
+                    <div
+                      className="h-full rounded-full bg-brand"
+                      style={{
+                        width: `${Math.max(4, Math.round((item.count / maxErrorCount) * 100))}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm font-semibold text-slate-500">
+                {labels.noData}
+              </p>
+            )}
+          </div>
+        </section>
+
+        <section className="surface-mockup p-5">
+          <p className="text-sm font-bold text-white">
+            {labels.trendDetailsTitle}
+          </p>
+          <div className="mt-4 space-y-3">
+            {weeklyTrend.length > 0 ? (
+              weeklyTrend.map((point) => (
+                <div
+                  key={point.label}
+                  className="flex items-center justify-between gap-3 rounded-[10px] bg-white/[0.03] px-3 py-2"
+                >
+                  <span className="text-sm font-semibold text-slate-300">
+                    {point.label}
+                  </span>
+                  <span className="text-sm font-extrabold text-white">
+                    {point.accuracy === null
+                      ? labels.noData
+                      : `${point.accuracy}%`}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm font-semibold text-slate-500">
+                {labels.noData}
+              </p>
+            )}
+          </div>
+        </section>
+      </div>
 
       <section className="surface-mockup p-5">
         <p className="text-sm font-bold text-white">{labels.certaintyTitle}</p>

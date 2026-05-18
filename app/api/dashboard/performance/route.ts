@@ -18,10 +18,14 @@ export async function GET() {
       metrics: data.metrics,
       profileAnalytics: {
         heatmap: data.profileAnalytics.heatmap,
+        blueprintGrid: data.profileAnalytics.blueprintGrid,
+        errorTypeBreakdown: data.profileAnalytics.errorTypeBreakdown,
+        weeklyTrend: data.profileAnalytics.weeklyTrend,
         confidenceCalibration: data.profileAnalytics.confidenceCalibration,
       },
       sessionConfidenceBreakdown: data.sessionConfidenceBreakdown,
       progressQuadrants: data.progressQuadrants,
+      progressQuadrantQuestions: data.progressQuadrantQuestions,
     },
     {
       headers: {

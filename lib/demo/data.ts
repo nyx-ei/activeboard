@@ -152,6 +152,16 @@ type ProgressQuadrantItem = {
   trend: number | null;
 };
 
+type ProgressQuadrantQuestionItem = {
+  id: string;
+  quadrant: ProgressQuadrantKey;
+  label: string;
+  selectedOption: string | null;
+  confidence: ConfidenceLevel | null;
+  isCorrect: boolean;
+  answeredAt: string | null;
+};
+
 type SessionConfidenceBreakdownItem = {
   sessionId: string;
   sessionName: string;
@@ -203,6 +213,8 @@ type MaterializedSessionConfidenceBreakdownRow = {
 };
 
 type ProgressQuadrantAnswerRow = {
+  question_id: string | null;
+  selected_option: string | null;
   confidence: ConfidenceLevel | null;
   is_correct: boolean | null;
   answered_at: string | null;
@@ -614,7 +626,10 @@ function getProgressQuadrantKey(
 function buildProgressQuadrants(
   answers: ProgressQuadrantAnswerRow[],
   answeredCount: number,
-): ProgressQuadrantItem[] {
+): {
+  quadrants: ProgressQuadrantItem[];
+  quadrantQuestions: ProgressQuadrantQuestionItem[];
+} {
   const currentSprintSize =
     answeredCount > 0 ? answeredCount % 100 || Math.min(100, answeredCount) : 0;
   const currentSprintAnswers = answers.slice(0, currentSprintSize);
@@ -651,7 +666,7 @@ function buildProgressQuadrants(
   const currentTotal = currentSprintAnswers.length;
   const priorTotal = priorSprintAnswers.length;
 
-  return keys.map((key) => {
+  const quadrants = keys.map((key) => {
     const count = currentCounts.get(key) ?? 0;
     const percentage =
       currentTotal > 0 ? Math.round((count / currentTotal) * 100) : 0;
@@ -667,6 +682,39 @@ function buildProgressQuadrants(
       trend: priorPercentage === null ? null : percentage - priorPercentage,
     };
   });
+  const quadrantQuestionCounts = new Map<ProgressQuadrantKey, number>(
+    keys.map((key) => [key, 0]),
+  );
+  const quadrantQuestions: ProgressQuadrantQuestionItem[] = [];
+
+  for (const answer of currentSprintAnswers) {
+    const key = getProgressQuadrantKey(answer.confidence, answer.is_correct);
+    if (!key || answer.is_correct === null) {
+      continue;
+    }
+
+    const currentCount = quadrantQuestionCounts.get(key) ?? 0;
+    if (currentCount >= 5) {
+      continue;
+    }
+
+    quadrantQuestionCounts.set(key, currentCount + 1);
+    const questionId = answer.question_id ?? `${key}-${currentCount}`;
+    quadrantQuestions.push({
+      id: `${questionId}-${answer.answered_at ?? currentCount}`,
+      quadrant: key,
+      label: `Q ${questionId.slice(0, 8)}`,
+      selectedOption: answer.selected_option,
+      confidence: answer.confidence,
+      isCorrect: answer.is_correct,
+      answeredAt: answer.answered_at,
+    });
+  }
+
+  return {
+    quadrants,
+    quadrantQuestions,
+  };
 }
 
 async function getUserSchedule(userId: string) {
@@ -946,7 +994,7 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
   const progressQuadrantAnswersPromise = supabase
     .schema('public')
     .from('answers')
-    .select('confidence, is_correct, answered_at')
+    .select('question_id, selected_option, confidence, is_correct, answered_at')
     .eq('user_id', userId)
     .eq('answer_state', 'submitted')
     .not('confidence', 'is', null)
@@ -964,7 +1012,9 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
   const profileAnalyticsPromise = supabase
     .schema('public')
     .from('dashboard_user_profile_analytics')
-    .select('heatmap_data, confidence_calibration')
+    .select(
+      'heatmap_data, physician_activity_accuracy, dimension_of_care_accuracy, blueprint_grid, confidence_calibration, error_type_breakdown, weekly_trend',
+    )
     .eq('user_id', userId)
     .maybeSingle();
 
@@ -987,13 +1037,15 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
   const profileAnalyticsRow = profileAnalyticsResult.data
     ? ({
         heatmap_data: profileAnalyticsResult.data.heatmap_data,
-        physician_activity_accuracy: [],
-        dimension_of_care_accuracy: [],
-        blueprint_grid: [],
+        physician_activity_accuracy:
+          profileAnalyticsResult.data.physician_activity_accuracy,
+        dimension_of_care_accuracy:
+          profileAnalyticsResult.data.dimension_of_care_accuracy,
+        blueprint_grid: profileAnalyticsResult.data.blueprint_grid,
         confidence_calibration:
           profileAnalyticsResult.data.confidence_calibration,
-        error_type_breakdown: [],
-        weekly_trend: [],
+        error_type_breakdown: profileAnalyticsResult.data.error_type_breakdown,
+        weekly_trend: profileAnalyticsResult.data.weekly_trend,
       } satisfies MaterializedProfileAnalyticsRow)
     : null;
 
@@ -1028,7 +1080,7 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
     profileAnalyticsRow,
     answeredCount,
   );
-  const progressQuadrants = buildProgressQuadrants(
+  const progressState = buildProgressQuadrants(
     (progressQuadrantAnswersResult.data ?? []) as ProgressQuadrantAnswerRow[],
     answeredCount,
   );
@@ -1054,7 +1106,8 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
     },
     profileAnalytics,
     sessionConfidenceBreakdown,
-    progressQuadrants,
+    progressQuadrants: progressState.quadrants,
+    progressQuadrantQuestions: progressState.quadrantQuestions,
   };
 });
 

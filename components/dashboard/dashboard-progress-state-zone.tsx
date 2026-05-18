@@ -18,9 +18,11 @@ export type ProgressQuadrantItem = {
 
 export type DashboardProgressStateZoneProps = {
   quadrants: ProgressQuadrantItem[];
+  detailsHref: string;
   labels: {
     title: string;
     subtitle: string;
+    viewDetails: string;
     noData: string;
     answers: string;
     trendUp: string;
@@ -131,6 +133,7 @@ function TrendIndicator({
 export const DashboardProgressStateZone = memo(
   function DashboardProgressStateZone({
     quadrants,
+    detailsHref,
     labels,
   }: DashboardProgressStateZoneProps) {
     const quadrantsByKey = new Map(quadrants.map((item) => [item.key, item]));
@@ -138,7 +141,7 @@ export const DashboardProgressStateZone = memo(
 
     return (
       <section className="surface-mockup p-5">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-brand">
               {labels.title}
@@ -147,11 +150,33 @@ export const DashboardProgressStateZone = memo(
               {labels.subtitle}
             </p>
           </div>
-          <p className="text-xs font-semibold text-slate-500">
-            {totalAnswers > 0
-              ? `${totalAnswers} ${labels.answers}`
-              : labels.noData}
-          </p>
+          <div className="flex flex-wrap items-center gap-3 sm:justify-end">
+            <p className="text-xs font-semibold text-slate-500">
+              {totalAnswers > 0
+                ? `${totalAnswers} ${labels.answers}`
+                : labels.noData}
+            </p>
+            <a
+              href={detailsHref}
+              className="border-brand/30 bg-brand/10 hover:border-brand/60 hover:bg-brand/15 inline-flex h-9 items-center rounded-full border px-3 text-xs font-extrabold text-brand transition"
+              onClick={(event) => {
+                event.preventDefault();
+                window.history.pushState({}, '', detailsHref);
+                window.dispatchEvent(
+                  new CustomEvent('activeboard:dashboard-view', {
+                    detail: { view: 'performance' },
+                  }),
+                );
+                window.dispatchEvent(
+                  new CustomEvent('activeboard:dashboard-prefetch', {
+                    detail: { view: 'performance' },
+                  }),
+                );
+              }}
+            >
+              {labels.viewDetails}
+            </a>
+          </div>
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
