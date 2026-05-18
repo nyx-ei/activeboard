@@ -11,6 +11,9 @@ export async function GET() {
   }
 
   const data = await getDashboardSessionsData(user);
+  const liveGroupIds = new Set(
+    data.activeSessions.map((session) => session.group_id),
+  );
 
   return NextResponse.json(
     {
@@ -19,6 +22,7 @@ export async function GET() {
         id: group.id,
         name: group.name,
         memberCount: group.memberCount,
+        hasLiveSession: liveGroupIds.has(group.id),
       })),
       sessions: data.sessions,
     },

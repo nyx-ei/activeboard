@@ -105,4 +105,41 @@ select optgroup {
   .title-display {
     @apply text-balance text-4xl font-extrabold tracking-tight text-white md:text-5xl;
   }
+
+  .live-dot {
+    position: relative;
+    display: inline-flex;
+    height: 0.55rem;
+    width: 0.55rem;
+    flex-shrink: 0;
+    border-radius: 9999px;
+    background: #ef4444;
+    box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.35);
+  }
+
+  .live-dot::after {
+    content: '';
+    position: absolute;
+    inset: -0.32rem;
+    border-radius: inherit;
+    border: 1px solid rgba(248, 113, 113, 0.48);
+    animation: livePulse 1.5s ease-out infinite;
+  }
+}
+
+@keyframes livePulse {
+  0% {
+    opacity: 0.75;
+    transform: scale(0.6);
+  }
+
+  70% {
+    opacity: 0;
+    transform: scale(1.45);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.45);
+  }
 }

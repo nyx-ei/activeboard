@@ -7,6 +7,10 @@ import {
   type DashboardPerformanceViewProps,
 } from '@/components/dashboard/dashboard-performance-view';
 import {
+  DashboardGroupZone,
+  type DashboardGroupZoneProps,
+} from '@/components/dashboard/dashboard-group-zone';
+import {
   DashboardSprintActivityZone,
   type DashboardSprintActivityZoneProps,
 } from '@/components/dashboard/dashboard-sprint-activity-zone';
@@ -32,6 +36,7 @@ type DashboardViewShellProps = {
   performanceProps: DashboardPerformanceViewProps;
   sprintActivityProps: DashboardSprintActivityZoneProps;
   progressStateProps: DashboardProgressStateZoneProps;
+  groupZoneProps: DashboardGroupZoneProps;
   initialLoadedViews: Record<DashboardView, boolean>;
 };
 type DashboardSessionsPayload = {
@@ -78,6 +83,7 @@ export function DashboardViewShell({
   performanceProps,
   sprintActivityProps,
   progressStateProps,
+  groupZoneProps,
   initialLoadedViews,
 }: DashboardViewShellProps) {
   const [view, setView] = useState<DashboardView>(initialView);
@@ -89,6 +95,8 @@ export function DashboardViewShell({
     useState(sprintActivityProps);
   const [resolvedProgressStateProps, setResolvedProgressStateProps] =
     useState(progressStateProps);
+  const [resolvedGroupZoneProps, setResolvedGroupZoneProps] =
+    useState(groupZoneProps);
   const [loadedViews, setLoadedViews] = useState(initialLoadedViews);
   const loadingViewRef = useRef<DashboardView | null>(null);
   const loadedViewsRef = useRef(initialLoadedViews);
@@ -110,6 +118,10 @@ export function DashboardViewShell({
           ...current,
           groups: sessionsPayload.groups ?? [],
           sessions: sessionsPayload.sessions ?? [],
+        }));
+        setResolvedGroupZoneProps((current) => ({
+          ...current,
+          groups: sessionsPayload.groups ?? [],
         }));
       } else {
         const performancePayload = payload as DashboardPerformancePayload;
@@ -174,6 +186,7 @@ export function DashboardViewShell({
     setResolvedPerformanceProps(performanceProps);
     setResolvedSprintActivityProps(sprintActivityProps);
     setResolvedProgressStateProps(progressStateProps);
+    setResolvedGroupZoneProps(groupZoneProps);
     setLoadedViews(initialLoadedViews);
     if (initialLoadedViews.sessions) {
       seedDashboardPayload<DashboardPayloadByView, 'sessions'>('sessions', {
@@ -209,6 +222,7 @@ export function DashboardViewShell({
     }
   }, [
     initialLoadedViews,
+    groupZoneProps,
     performanceProps,
     progressStateProps,
     sessionsProps,
@@ -374,6 +388,7 @@ export function DashboardViewShell({
     <div className="space-y-5">
       <DashboardSprintActivityZone {...resolvedSprintActivityProps} />
       <DashboardProgressStateZone {...resolvedProgressStateProps} />
+      <DashboardGroupZone {...resolvedGroupZoneProps} />
       <div hidden={view !== 'sessions'}>
         {loadedViews.sessions ? (
           <DashboardSessionsView {...resolvedSessionsProps} />

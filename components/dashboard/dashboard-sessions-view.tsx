@@ -44,7 +44,12 @@ function writeCancelledSessionIds(sessionIds: string[]) {
 export type DashboardSessionsViewProps = {
   locale: string;
   sessions: SessionListItem[];
-  groups: Array<{ id: string; name: string; memberCount: number }>;
+  groups: Array<{
+    id: string;
+    name: string;
+    memberCount: number;
+    hasLiveSession?: boolean;
+  }>;
   trialProgress: {
     current: number;
     total: number;
@@ -117,7 +122,8 @@ export const DashboardSessionsView = memo(function DashboardSessionsView({
 
   const visibleSessions = sessions.filter(
     (session) =>
-      session.status !== 'cancelled' && !cancelledSessionIds.includes(session.id),
+      session.status !== 'cancelled' &&
+      !cancelledSessionIds.includes(session.id),
   );
 
   return (
