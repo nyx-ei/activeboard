@@ -81,7 +81,6 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
             <LandingDirectSignupForm
               locale={locale}
               labels={{
-                firstName: t('directFirstName'),
                 email: t('directEmail'),
                 submit: t('directSubmit'),
                 pending: t('directPending'),

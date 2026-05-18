@@ -1,14 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition } from 'react';
-import { Mail, UserRound } from 'lucide-react';
+import { useEffect, useState, useTransition } from 'react';
+import { Mail } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 import { startLandingOnboardingAction } from '@/app/[locale]/landing-onboarding/actions';
 import { normalizeEmail } from '@/lib/utils';
 
 type LandingDirectSignupLabels = {
-  firstName: string;
   email: string;
   submit: string;
   pending: string;
@@ -51,25 +50,35 @@ function resolveError(
   return labels.genericError;
 }
 
+function deriveDisplayNameFromEmail(email: string) {
+  const localPart = email.split('@')[0] ?? 'ActiveBoard';
+  const readableName = localPart
+    .replace(/[._-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!readableName) {
+    return 'ActiveBoard';
+  }
+
+  return readableName
+    .split(' ')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 export function LandingDirectSignupForm({
   locale,
   labels,
 }: LandingDirectSignupFormProps) {
   const router = useRouter();
-  const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const normalizedFounderEmail = normalizeEmail(email);
-  const normalizedFirstName = useMemo(
-    () => firstName.trim().replace(/\s+/g, ' '),
-    [firstName],
-  );
-  const isValid =
-    normalizedFirstName.length >= 2 &&
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedFounderEmail);
+  const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedFounderEmail);
   const isSubmitting = isPending || isNavigating;
 
   useEffect(() => {
@@ -82,8 +91,9 @@ export function LandingDirectSignupForm({
       return;
     }
 
+    const displayName = deriveDisplayNameFromEmail(normalizedFounderEmail);
     const draft = {
-      displayName: normalizedFirstName,
+      displayName,
       email: normalizedFounderEmail,
       examType: 'mccqe1',
       examSession: 'planning_ahead',
@@ -93,7 +103,7 @@ export function LandingDirectSignupForm({
       difficultyLevel: 'medium',
       questionBanks: DEFAULT_QUESTION_BANKS,
       schedule: [],
-      groupName: `${normalizedFirstName}'s Reliability Sprint`,
+      groupName: `${displayName}'s Reliability Sprint`,
       memberEmails: [],
     };
 
@@ -122,21 +132,6 @@ export function LandingDirectSignupForm({
   return (
     <div className="w-full max-w-[420px]">
       <div className="space-y-[7px]">
-        <label className="relative block">
-          <UserRound
-            className="pointer-events-none absolute left-[18px] top-1/2 h-5 w-5 -translate-y-1/2 text-brand"
-            aria-hidden="true"
-          />
-          <input
-            type="text"
-            value={firstName}
-            onChange={(event) => setFirstName(event.target.value)}
-            className="h-[43px] w-full rounded-[5px] border border-[#1c2d40] bg-[#020910]/70 pl-[54px] pr-4 text-[14px] font-medium text-white outline-none transition placeholder:text-[#c1c7cf] focus:border-brand focus:ring-2 focus:ring-emerald-400/20"
-            placeholder={labels.firstName}
-            autoComplete="given-name"
-          />
-        </label>
-
         <label className="relative block">
           <Mail
             className="pointer-events-none absolute left-[18px] top-1/2 h-5 w-5 -translate-y-1/2 text-brand"
