@@ -1,6 +1,7 @@
 'use client';
 
 import { memo, useMemo } from 'react';
+import { Share2 } from 'lucide-react';
 
 type HeatmapDay = {
   date: string;
@@ -55,32 +56,6 @@ function startOfUtcWeek(date: Date) {
   next.setUTCDate(next.getUTCDate() - mondayOffset);
   next.setUTCHours(0, 0, 0, 0);
   return next;
-}
-
-function getConsistencyStreak(heatmap: HeatmapDay[]) {
-  const activeDates = new Set(
-    heatmap.filter((day) => day.count > 0).map((day) => day.date),
-  );
-
-  if (activeDates.size === 0) {
-    return 0;
-  }
-
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  let cursor = today;
-
-  if (!activeDates.has(toIsoDate(cursor))) {
-    cursor = addUtcDays(cursor, -1);
-  }
-
-  let streak = 0;
-  while (activeDates.has(toIsoDate(cursor))) {
-    streak += 1;
-    cursor = addUtcDays(cursor, -1);
-  }
-
-  return streak;
 }
 
 function buildHeatmapWeeks(heatmap: HeatmapDay[]) {
@@ -186,7 +161,6 @@ export const DashboardSprintActivityZone = memo(
   function DashboardSprintActivityZone({
     answeredCount,
     completedSessionsCount,
-    trueMastery,
     heatmap,
     labels,
   }: DashboardSprintActivityZoneProps) {
@@ -194,20 +168,12 @@ export const DashboardSprintActivityZone = memo(
       () => getSprintState(answeredCount),
       [answeredCount],
     );
-    const consistencyStreak = useMemo(
-      () => getConsistencyStreak(heatmap),
-      [heatmap],
-    );
     const heatmapWeeks = useMemo(() => buildHeatmapWeeks(heatmap), [heatmap]);
     const heatmapMonthMarkers = useMemo(
       () => buildHeatmapMonthMarkers(heatmapWeeks, labels.monthLabels),
       [heatmapWeeks, labels.monthLabels],
     );
-    const displayedWeekdays = [
-      labels.weekdays[0],
-      labels.weekdays[2],
-      labels.weekdays[4],
-    ];
+    const displayedWeekdays = labels.weekdays.slice(0, 7);
     const cards = [
       {
         key: 'answered',
@@ -219,28 +185,16 @@ export const DashboardSprintActivityZone = memo(
         key: 'sessions',
         label: labels.sessionsCompleted,
         value: completedSessionsCount,
-        accent: 'text-white',
-      },
-      {
-        key: 'mastery',
-        label: labels.trueMastery,
-        value: trueMastery === null ? labels.noData : `${trueMastery}%`,
-        accent: 'text-emerald-200',
-      },
-      {
-        key: 'streak',
-        label: labels.consistencyStreak,
-        value: `${consistencyStreak} ${labels.days}`,
-        accent: 'text-amber-200',
+        accent: 'text-brand',
       },
     ];
 
     return (
-      <section className="v11-card">
-        <div className="v11-card-head">
+      <section className="v11-card px-5 py-6 sm:px-8 sm:py-8">
+        <div className="mb-9 flex items-start justify-between gap-4">
           <div>
             <p className="v11-card-title">{labels.title}</p>
-            <h1 className="mt-1 text-[13px] font-normal text-[#8fa7a2]">
+            <h1 className="sr-only">
               {formatCounter(labels.counter, {
                 sprint: sprint.sprintNumber,
                 week: sprint.currentWeek,
@@ -248,28 +202,33 @@ export const DashboardSprintActivityZone = memo(
               })}
             </h1>
           </div>
-          <div className="v11-chip v11-chip-mint">
-            {labels.sprint} {sprint.sprintNumber} {' - '} {labels.week}{' '}
-            {sprint.currentWeek} / {sprint.totalWeeks}
-          </div>
+          <button
+            type="button"
+            className="hidden h-[66px] w-[66px] items-center justify-center rounded-[18px] border border-white/[0.045] bg-white/[0.025] text-[#8fa7a2] transition hover:border-white/[0.09] hover:bg-white/[0.04] hover:text-[#e8f4f0] sm:inline-flex"
+            aria-label={labels.title}
+          >
+            <Share2 className="h-5 w-5" aria-hidden="true" />
+          </button>
         </div>
 
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-          <div className="grid shrink-0 gap-4 sm:grid-cols-2 lg:flex lg:items-stretch lg:gap-0">
+        <div className="grid gap-10 xl:grid-cols-[500px_minmax(0,1fr)] xl:items-end">
+          <div className="flex max-w-[500px] items-end">
             {cards.map((card, index) => {
               return (
                 <article
                   key={card.key}
-                  className={`flex min-w-0 flex-col gap-[14px] px-0 lg:min-w-[132px] lg:px-5 xl:min-w-[150px] ${
-                    index > 0 ? 'lg:border-l lg:border-white/[0.045]' : ''
+                  className={`flex min-w-0 flex-1 flex-col gap-[22px] ${
+                    index > 0
+                      ? 'border-l border-white/[0.045] pl-8 sm:pl-10'
+                      : 'pr-8 sm:pr-10'
                   }`}
                 >
                   <p
-                    className={`text-[42px] font-medium leading-none tracking-[-0.04em] lg:text-[48px] xl:text-[60px] ${card.accent}`}
+                    className={`text-[58px] font-semibold leading-none tracking-[-0.045em] sm:text-[72px] lg:text-[82px] ${card.accent}`}
                   >
                     {card.value}
                   </p>
-                  <p className="text-[14px] font-normal leading-[1.35] text-[#8fa7a2]">
+                  <p className="max-w-[120px] text-[18px] font-normal leading-[1.35] text-[#8fa7a2]">
                     {card.label}
                   </p>
                 </article>
@@ -278,56 +237,29 @@ export const DashboardSprintActivityZone = memo(
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="max-w-[240px]">
-                <p className="text-[13px] font-medium text-[#8fa7a2]">
-                  {labels.heatmapTitle}
-                </p>
-                <p className="mt-2 text-[12px] leading-5 text-[#5c7773]">
-                  {labels.heatmapDescription}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-3 text-[12px] font-medium text-[#8fa7a2]">
-                <span className="inline-flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-[3px] bg-[#20D9A3]/30" />
-                  {labels.heatmapLow}
-                </span>
-                <span className="inline-flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-[3px] bg-[#20D9A3]/60" />
-                  {labels.heatmapMedium}
-                </span>
-                <span className="inline-flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-[3px] bg-[#20D9A3]" />
-                  {labels.heatmapHigh}
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-4 overflow-x-auto pb-1">
-              <div className="min-w-[616px]">
-                <div className="ml-[22px] grid grid-cols-[repeat(28,12px)] gap-[4px] text-[12px] font-normal text-[#8fa7a2]">
+            <div className="overflow-x-auto pb-1 xl:overflow-visible">
+              <div className="min-w-[752px] xl:min-w-0">
+                <div className="ml-[34px] grid grid-cols-[repeat(28,18px)] gap-[8px] text-[16px] font-normal leading-5 text-[#8fa7a2]">
                   {heatmapMonthMarkers.map((label, index) => (
-                    <span key={`${label}-${index}`} className="h-4">
+                    <span key={`${label}-${index}`} className="h-6">
                       {label}
                     </span>
                   ))}
                 </div>
-                <div className="mt-2 flex items-start gap-[6px]">
-                  <div className="flex w-4 flex-col gap-[4px] pt-[16px] text-[10px] leading-3 text-[#5c7773]">
-                    <span className="h-3">{displayedWeekdays[0]}</span>
-                    <span className="h-3" />
-                    <span className="h-3">{displayedWeekdays[1]}</span>
-                    <span className="h-3" />
-                    <span className="h-3">{displayedWeekdays[2]}</span>
-                    <span className="h-3" />
-                    <span className="h-3" />
+                <div className="mt-3 flex items-start gap-[10px]">
+                  <div className="flex w-6 flex-col gap-[8px] text-[14px] leading-[18px] text-[#6f8984]">
+                    {displayedWeekdays.map((weekday, index) => (
+                      <span key={`${weekday}-${index}`} className="h-[18px]">
+                        {weekday}
+                      </span>
+                    ))}
                   </div>
-                  <div className="grid grid-flow-col grid-rows-7 gap-[4px]">
+                  <div className="grid grid-flow-col grid-rows-7 gap-[8px]">
                     {heatmapWeeks.map((week, weekIndex) =>
                       week.map((day) => (
                         <div
                           key={`${weekIndex}-${day.date}`}
-                          className={`h-3 w-3 rounded-[3px] ${getHeatmapCellClass(day.intensity)}`}
+                          className={`h-[18px] w-[18px] rounded-[5px] ${getHeatmapCellClass(day.intensity)}`}
                           title={`${day.date} - ${day.count}`}
                         />
                       )),
