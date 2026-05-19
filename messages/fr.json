@@ -543,6 +543,8 @@
                       "zoneGroupSeats":  "places",
                       "zoneGroupNextSession":  "Prochaine session",
                       "zoneGroupNoUpcomingSession":  "Aucune session à venir programmée.",
+                      "zoneGroupRecentSessions":  "Dernières sessions",
+                      "zoneGroupViewAllSessions":  "Voir toutes les sessions",
                       "zoneKpiDays":  "jours",
                       "questionsAnswered":  "questions répondues",
                       "questionsAnsweredValue":  "{count} questions répondues",

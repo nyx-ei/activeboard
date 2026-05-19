@@ -27,6 +27,7 @@ export async function GET() {
         hasLiveSession: liveGroupIds.has(group.id),
         activeSession: group.activeSession,
         nextSession: group.nextSession,
+        recentSessions: group.recentSessions,
       })),
       sessions: data.sessions,
     },

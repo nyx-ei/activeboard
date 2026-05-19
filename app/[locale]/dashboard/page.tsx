@@ -89,6 +89,7 @@ export default async function DashboardPage({
     hasLiveSession: liveGroupIds.has(group.id),
     activeSession: group.activeSession,
     nextSession: group.nextSession,
+    recentSessions: group.recentSessions,
   }));
 
   const sessionsProps = {
@@ -320,6 +321,13 @@ export default async function DashboardPage({
       openSession: t('openSession'),
       joinLiveSession: t('joinSession'),
       timerLabel: t('timerLabel', { seconds: '{seconds}' }),
+      recentSessions: t('zoneGroupRecentSessions'),
+      viewAllSessions: t('zoneGroupViewAllSessions'),
+      captain: t('captainLabel'),
+      questionsUnit: t('questionsUnit'),
+      completion: t('completion'),
+      accuracy: t('accuracy'),
+      noData: t('noData'),
     },
   } satisfies DashboardGroupZoneProps;
 

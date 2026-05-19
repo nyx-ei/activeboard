@@ -64,6 +64,9 @@ export type DashboardSessionsViewProps = {
       question_goal: number;
       answeredQuestionCount?: number;
       questionCount?: number;
+      leaderInitials?: string;
+      completionPercent?: number;
+      accuracyPercent?: number | null;
     } | null;
     nextSession?: {
       id: string;
@@ -74,7 +77,23 @@ export type DashboardSessionsViewProps = {
       question_goal: number;
       answeredQuestionCount?: number;
       questionCount?: number;
+      leaderInitials?: string;
+      completionPercent?: number;
+      accuracyPercent?: number | null;
     } | null;
+    recentSessions?: Array<{
+      id: string;
+      name: string | null;
+      scheduled_at: string;
+      share_code: string;
+      timer_seconds: number;
+      question_goal: number;
+      answeredQuestionCount?: number;
+      questionCount?: number;
+      leaderInitials?: string;
+      completionPercent?: number;
+      accuracyPercent?: number | null;
+    }>;
   }>;
   trialProgress: {
     current: number;

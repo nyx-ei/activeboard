@@ -23,6 +23,7 @@ export type DashboardGroupZoneGroup = {
   hasLiveSession?: boolean;
   activeSession?: DashboardGroupZoneSession | null;
   nextSession?: DashboardGroupZoneSession | null;
+  recentSessions?: DashboardGroupZoneSession[];
 };
 
 export type DashboardGroupZoneSession = {
@@ -34,6 +35,9 @@ export type DashboardGroupZoneSession = {
   question_goal: number;
   answeredQuestionCount?: number;
   questionCount?: number;
+  leaderInitials?: string;
+  completionPercent?: number;
+  accuracyPercent?: number | null;
 };
 
 export type DashboardGroupZoneProps = {
@@ -55,6 +59,13 @@ export type DashboardGroupZoneProps = {
     openSession: string;
     joinLiveSession: string;
     timerLabel: string;
+    recentSessions: string;
+    viewAllSessions: string;
+    captain: string;
+    questionsUnit: string;
+    completion: string;
+    accuracy: string;
+    noData: string;
   };
 };
 
@@ -83,6 +94,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   const activeProgress = selectedGroup?.activeSession
     ? getLiveSessionProgress(selectedGroup.activeSession)
     : null;
+  const recentSessions = selectedGroup?.recentSessions?.slice(0, 3) ?? [];
 
   useEffect(() => {
     if (groups.length === 0) {
@@ -324,6 +336,66 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
           )}
         </div>
       ) : null}
+
+      {selectedGroup && recentSessions.length > 0 ? (
+        <footer className="mt-[22px] border-t border-white/[0.055] pt-[18px]">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="text-[13px] font-medium uppercase tracking-[0.12em] text-[#8fa7a2]">
+              {labels.recentSessions}
+            </h3>
+          </div>
+          <div className="grid gap-2.5 lg:grid-cols-3">
+            {recentSessions.map((session) => (
+              <a
+                key={session.id}
+                href={`/${locale}/sessions/${session.id}`}
+                className="rounded-[12px] border border-white/[0.045] bg-white/[0.018] px-4 py-3 transition hover:border-white/[0.09] hover:bg-white/[0.035]"
+              >
+                <span className="flex min-w-0 items-start justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="block truncate text-[14px] font-medium tracking-[-0.01em] text-[#e8f4f0]">
+                      {session.name ?? labels.nextSession}
+                    </span>
+                    <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] text-[#8fa7a2]">
+                      <span>
+                        {labels.captain} {session.leaderInitials ?? 'AB'}
+                      </span>
+                      <span className="text-[#345049]">·</span>
+                      <span>
+                        {session.questionCount ?? 0} {labels.questionsUnit}
+                      </span>
+                    </span>
+                  </span>
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#20D9A3]/20 bg-[#20D9A3]/10 text-[11px] font-semibold text-[#9FF0CE]">
+                    {session.leaderInitials ?? 'AB'}
+                  </span>
+                </span>
+                <span className="mt-3 grid grid-cols-2 gap-2">
+                  <MetricPill
+                    label={labels.completion}
+                    value={`${session.completionPercent ?? 0}%`}
+                  />
+                  <MetricPill
+                    label={labels.accuracy}
+                    value={
+                      session.accuracyPercent === null ||
+                      session.accuracyPercent === undefined
+                        ? labels.noData
+                        : `${session.accuracyPercent}%`
+                    }
+                  />
+                </span>
+              </a>
+            ))}
+          </div>
+          <a
+            href={`/${locale}/dashboard?view=sessions`}
+            className="mt-3 inline-flex text-[13px] font-medium text-[#20D9A3] transition hover:text-[#9FF0CE]"
+          >
+            {labels.viewAllSessions}
+          </a>
+        </footer>
+      ) : null}
     </section>
   );
 });
@@ -356,6 +428,17 @@ function getLiveSessionProgress(session: DashboardGroupZoneSession) {
     total,
     percent: Math.round((current / total) * 100),
   };
+}
+
+function MetricPill({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="rounded-[9px] border border-white/[0.04] bg-[#061c19] px-3 py-2">
+      <span className="block truncate text-[11px] text-[#5f7b75]">{label}</span>
+      <span className="mt-0.5 block truncate text-[13px] font-semibold text-[#e8f4f0]">
+        {value}
+      </span>
+    </span>
+  );
 }
 
 function MemberAvatarStack({
