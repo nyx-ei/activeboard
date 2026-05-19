@@ -342,6 +342,9 @@ export default async function DashboardPage({
       emailUnavailable: t('emailUnavailable'),
       actionFailed: feedbackT('actionFailed'),
       startSession: t('zoneGroupStartSession'),
+      memberRequirementPrompt: t('memberRequirementPrompt', {
+        count: '{count}',
+      }),
     },
   } satisfies DashboardGroupZoneProps;
 
