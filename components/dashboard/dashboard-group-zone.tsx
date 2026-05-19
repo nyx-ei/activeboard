@@ -1,6 +1,13 @@
 'use client';
 
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  memo,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+} from 'react';
 import {
   CalendarClock,
   Check,
@@ -15,6 +22,7 @@ import {
 } from 'lucide-react';
 
 import { Modal, ModalTitle } from '@/components/ui/modal';
+import { openSessionInManagedTab } from '@/components/session/session-tab-channel';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -113,14 +121,16 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   const liveGroupCount = groups.filter((group) => group.hasLiveSession).length;
   const selectedMembers = selectedGroup?.membersPreview ?? [];
   const selectedMaxMembers = selectedGroup?.maxMembers ?? 5;
-  const selectedSession = selectedGroup?.hasLiveSession
-    ? selectedGroup.activeSession
-    : selectedGroup?.nextSession;
+  const selectedActiveSession = selectedGroup?.hasLiveSession
+    ? (selectedGroup.activeSession ?? null)
+    : null;
+  const selectedNextSession = selectedGroup?.nextSession ?? null;
+  const selectedSession = selectedActiveSession ?? selectedNextSession;
   const sessionHref = selectedSession
     ? `/${locale}/sessions/${selectedSession.id}`
     : null;
-  const activeProgress = selectedGroup?.activeSession
-    ? getLiveSessionProgress(selectedGroup.activeSession)
+  const activeProgress = selectedActiveSession
+    ? getLiveSessionProgress(selectedActiveSession)
     : null;
   const recentSessions = selectedGroup?.recentSessions?.slice(0, 3) ?? [];
   const selectedSeatsAvailable = selectedGroup
@@ -340,9 +350,22 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
 
       {selectedGroup ? (
         <div className="mt-[22px]">
-          {selectedGroup.hasLiveSession && selectedGroup.activeSession ? (
+          {selectedActiveSession ? (
             <a
-              href={`/${locale}/sessions/${selectedGroup.activeSession.id}`}
+              href={`/${locale}/sessions/${selectedActiveSession.id}`}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(event) => {
+                if (!isPrimaryPlainClick(event)) {
+                  return;
+                }
+
+                event.preventDefault();
+                void openSessionInManagedTab(
+                  selectedActiveSession.id,
+                  `/${locale}/sessions/${selectedActiveSession.id}`,
+                );
+              }}
               className="group flex flex-col gap-4 rounded-[14px] border border-[#20D9A3]/35 bg-[linear-gradient(135deg,rgba(32,217,163,0.12),rgba(32,217,163,0.025))] px-5 py-[18px] transition hover:border-[#20D9A3]/60 hover:bg-[#20D9A3]/[0.08] sm:flex-row sm:items-center"
             >
               <span className="flex min-w-0 flex-1 items-start gap-4">
@@ -355,7 +378,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                     {labels.live}
                   </span>
                   <span className="mt-2 block truncate text-[16px] font-medium tracking-[-0.015em] text-[#e8f4f0]">
-                    {selectedGroup.activeSession.name ?? labels.nextSession}
+                    {selectedActiveSession.name ?? labels.nextSession}
                   </span>
                   {activeProgress ? (
                     <>
@@ -382,9 +405,22 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                 {labels.joinLiveSession}
               </span>
             </a>
-          ) : selectedGroup.nextSession && sessionHref ? (
+          ) : selectedNextSession && sessionHref ? (
             <a
               href={sessionHref}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(event) => {
+                if (!isPrimaryPlainClick(event)) {
+                  return;
+                }
+
+                event.preventDefault();
+                void openSessionInManagedTab(
+                  selectedNextSession.id,
+                  sessionHref,
+                );
+              }}
               className="flex items-center gap-4 rounded-[14px] border border-white/[0.045] bg-white/[0.02] px-5 py-[18px] transition hover:border-white/[0.09] hover:bg-white/[0.035]"
             >
               <span className="bg-[#6BA8F2]/12 flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[11px] border border-[#6BA8F2]/25 text-[#A8C9F4]">
@@ -395,20 +431,17 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                   {labels.nextSession}
                 </span>
                 <span className="mt-0.5 block truncate text-[16px] font-medium tracking-[-0.015em] text-[#e8f4f0]">
-                  {selectedGroup.nextSession.name ?? labels.nextSession}
+                  {selectedNextSession.name ?? labels.nextSession}
                 </span>
                 <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[13px] text-[#8fa7a2]">
                   {labels.scheduledFor.replace(
                     '{date}',
-                    formatSessionDate(
-                      selectedGroup.nextSession.scheduled_at,
-                      locale,
-                    ),
+                    formatSessionDate(selectedNextSession.scheduled_at, locale),
                   )}
                   <span className="text-[#345049]">·</span>
                   {labels.timerLabel.replace(
                     '{seconds}',
-                    String(selectedGroup.nextSession.timer_seconds),
+                    String(selectedNextSession.timer_seconds),
                   )}
                 </span>
               </span>
@@ -644,6 +677,16 @@ function getSessionStartTime(session: DashboardGroupZoneSession) {
     session.started_at ?? session.scheduled_at,
   ).getTime();
   return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function isPrimaryPlainClick(event: MouseEvent<HTMLAnchorElement>) {
+  return (
+    event.button === 0 &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.shiftKey &&
+    !event.altKey
+  );
 }
 
 function notifyDashboardGroupAction(

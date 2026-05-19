@@ -8,6 +8,7 @@ import { SessionQuitButton } from '@/components/session/session-quit-button';
 import { SessionReviewRuntime } from '@/components/session/session-review-runtime';
 import { SessionStageRefresh } from '@/components/session/session-stage-refresh';
 import { SessionStartRuntime } from '@/components/session/session-start-runtime';
+import { SessionTabPresence } from '@/components/session/session-tab-channel';
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
@@ -137,6 +138,7 @@ export default async function SessionPage({
 
     return (
       <main className="flex flex-1 flex-col">
+        <SessionTabPresence sessionId={params.sessionId} />
         <FeedbackBanner
           message={searchParams.feedbackMessage}
           tone={searchParams.feedbackTone}
@@ -194,6 +196,7 @@ export default async function SessionPage({
   if (shouldShowCompletion) {
     return (
       <main className="flex flex-1 items-center justify-center px-4">
+        <SessionTabPresence sessionId={params.sessionId} />
         <FeedbackBanner
           message={searchParams.feedbackMessage}
           tone={searchParams.feedbackTone}
@@ -244,6 +247,7 @@ export default async function SessionPage({
 
     return (
       <>
+        <SessionTabPresence sessionId={params.sessionId} />
         <FeedbackBanner
           message={searchParams.feedbackMessage}
           tone={searchParams.feedbackTone}
@@ -294,6 +298,7 @@ export default async function SessionPage({
   if (!question) {
     return (
       <main className="flex flex-1 flex-col">
+        <SessionTabPresence sessionId={params.sessionId} />
         <SessionStageRefresh
           sessionId={params.sessionId}
           expectedStatus={data.session.status}
@@ -321,6 +326,7 @@ export default async function SessionPage({
 
   return (
     <main className="flex flex-1 flex-col">
+      <SessionTabPresence sessionId={params.sessionId} />
       <FeedbackBanner
         message={searchParams.feedbackMessage}
         tone={searchParams.feedbackTone}
