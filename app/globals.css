@@ -125,7 +125,7 @@ select optgroup {
     border: 1px solid rgba(255, 255, 255, 0.045);
     border-radius: 16px;
     background: linear-gradient(180deg, #0b2522 0%, #0e2c28 100%);
-    padding: 22px;
+    padding: 32px;
     color: #e8f4f0;
   }
 
@@ -140,8 +140,8 @@ select optgroup {
   .v11-card-title {
     margin: 0;
     color: #e8f4f0;
-    font-size: 18px;
-    font-weight: 500;
+    font-size: 26px;
+    font-weight: 600;
     letter-spacing: -0.02em;
   }
 
@@ -175,6 +175,16 @@ select optgroup {
     border: 1px solid rgba(255, 255, 255, 0.045);
     border-radius: 14px;
     background: rgba(255, 255, 255, 0.02);
+  }
+
+  @media (max-width: 640px) {
+    .v11-card {
+      padding: 20px;
+    }
+
+    .v11-card-title {
+      font-size: 22px;
+    }
   }
 }
 

@@ -8,7 +8,6 @@ import {
 } from 'next-intl/server';
 import { Search } from 'lucide-react';
 
-import { AppBottomNav } from '@/components/layout/app-bottom-nav';
 import { LandingSignInLink } from '@/components/layout/landing-sign-in-link';
 import { LanguageSwitcher } from '@/components/layout/language-switcher';
 import { LiveGroupsPill } from '@/components/layout/live-groups-pill';
@@ -119,7 +118,7 @@ export default async function LocaleLayout({
   return (
     <NextIntlClientProvider locale={locale} messages={clientMessages}>
       <RegisterServiceWorker />
-      <div className="min-h-screen overflow-x-hidden px-2 pb-24 pt-2 sm:px-6 sm:pt-4">
+      <div className="min-h-screen overflow-x-hidden px-2 pb-6 pt-2 sm:px-6 sm:pt-4">
         <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-[1240px] flex-col gap-4 sm:gap-5">
           <OfflineStatusBanner />
           <InstallPrompt locale={locale} />
@@ -229,21 +228,6 @@ export default async function LocaleLayout({
           </header>
           {children}
         </div>
-        {user ? (
-          <AppBottomNav
-            locale={locale}
-            showGroupTab={shellData.hasGroups}
-            groupsHref={
-              shellData.preferredGroupId
-                ? `/groups/${shellData.preferredGroupId}`
-                : '/groups'
-            }
-            labels={{
-              dashboard: t('navDashboard'),
-              group: t('navGroup'),
-            }}
-          />
-        ) : null}
       </div>
     </NextIntlClientProvider>
   );

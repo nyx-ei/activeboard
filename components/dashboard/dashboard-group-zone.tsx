@@ -7,12 +7,16 @@ import {
   useRef,
   useState,
   type MouseEvent,
+  type ReactNode,
 } from 'react';
 import {
+  Bell,
   CalendarClock,
   Check,
   ChevronDown,
+  LogOut,
   Mail,
+  MoreHorizontal,
   Play,
   Plus,
   Send,
@@ -65,6 +69,11 @@ export type DashboardGroupZoneProps = {
     title: string;
     subtitle: string;
     dropdownLabel: string;
+    groupsListTitle: string;
+    manageMembers: string;
+    scheduleSession: string;
+    groupNotifications: string;
+    leaveGroup: string;
     members: string;
     live: string;
     noGroups: string;
@@ -108,6 +117,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   labels,
 }: DashboardGroupZoneProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isOverflowOpen, setIsOverflowOpen] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [isInviting, setIsInviting] = useState(false);
@@ -119,7 +129,6 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
       groups.find((group) => group.id === selectedGroupId) ?? groups[0] ?? null,
     [groups, selectedGroupId],
   );
-  const liveGroupCount = groups.filter((group) => group.hasLiveSession).length;
   const selectedMembers = selectedGroup?.membersPreview ?? [];
   const selectedMaxMembers = selectedGroup?.maxMembers ?? 5;
   const selectedActiveSession = selectedGroup?.hasLiveSession
@@ -152,7 +161,6 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
     !selectedGroup.hasLiveSession &&
     !shouldShowMemberPrompt,
   );
-  const showCreateAnotherAction = !shouldShowMemberPrompt;
   const normalizedInviteEmail = inviteEmail.trim().toLowerCase();
 
   useEffect(() => {
@@ -188,17 +196,20 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   }, [groups, selectedGroupId]);
 
   return (
-    <section className="v11-card">
-      <div className="v11-card-head !mb-0 flex-col !items-stretch lg:flex-row lg:items-center">
-        <div className="flex min-w-0 flex-wrap items-center gap-[18px]">
+    <section className="v11-card px-5 py-6 sm:px-8 sm:py-8">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 flex-wrap items-center gap-[22px]">
           <div className="relative">
             <button
               type="button"
-              className={`flex items-center gap-2 rounded-[10px] px-2 py-1 text-[20px] font-medium tracking-[-0.02em] text-[#e8f4f0] transition hover:bg-white/[0.03] ${
+              className={`flex items-center gap-3 rounded-[10px] px-2 py-1 text-[28px] font-medium tracking-[-0.045em] text-[#e8f4f0] transition hover:bg-white/[0.03] sm:text-[30px] ${
                 isOpen ? 'bg-white/[0.03]' : ''
               }`}
               aria-expanded={isOpen}
-              onClick={() => setIsOpen((current) => !current)}
+              onClick={() => {
+                setIsOpen((current) => !current);
+                setIsOverflowOpen(false);
+              }}
             >
               {selectedGroup?.hasLiveSession ? (
                 <span className="live-dot" aria-hidden="true" />
@@ -207,7 +218,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                 {selectedGroup?.name ?? labels.noGroups}
               </span>
               <ChevronDown
-                className={`h-4 w-4 shrink-0 text-[#8fa7a2] transition ${
+                className={`h-5 w-5 shrink-0 text-[#8fa7a2] transition ${
                   isOpen ? 'rotate-180' : ''
                 }`}
                 aria-hidden="true"
@@ -215,7 +226,10 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
             </button>
 
             {isOpen ? (
-              <div className="absolute left-0 z-20 mt-2 w-[min(320px,calc(100vw-48px))] overflow-hidden rounded-[14px] border border-white/[0.09] bg-[#0d2924] p-1.5 shadow-[0_24px_48px_rgba(0,0,0,0.45)]">
+              <div className="absolute left-0 z-30 mt-4 w-[min(480px,calc(100vw-48px))] overflow-hidden rounded-[16px] border border-white/[0.09] bg-[#0d332d] p-2 shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
+                <p className="px-4 pb-2 pt-3 text-[12px] font-medium uppercase tracking-[0.08em] text-[#6f8984]">
+                  {labels.groupsListTitle}
+                </p>
                 {groups.length > 0 ? (
                   groups.map((group) => {
                     const isSelected = selectedGroup?.id === group.id;
@@ -224,27 +238,29 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                       <button
                         key={group.id}
                         type="button"
-                        className={`flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left transition hover:bg-white/[0.04] ${
+                        className={`flex w-full items-center gap-4 rounded-[12px] px-4 py-3 text-left transition hover:bg-white/[0.04] ${
                           isSelected ? 'bg-[#20D9A3]/10' : ''
                         }`}
                         onClick={() => {
                           setSelectedGroupId(group.id);
                           setIsOpen(false);
+                          setIsOverflowOpen(false);
                         }}
                       >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/[0.09] bg-[#22504a] text-[11px] font-medium text-[#9FF0CE]">
-                          {group.name.slice(0, 2).toUpperCase()}
+                        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[10px] border border-white/[0.09] bg-[#22504a] text-[15px] font-semibold text-white">
+                          {getGroupInitials(group.name)}
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="flex min-w-0 items-center gap-2">
                             {group.hasLiveSession ? (
                               <span className="live-dot" aria-hidden="true" />
                             ) : null}
-                            <span className="truncate text-[14px] font-medium text-[#e8f4f0]">
+                            <span className="truncate text-[18px] font-semibold text-[#e8f4f0]">
                               {group.name}
                             </span>
                           </span>
-                          <span className="mt-0.5 block text-[12px] font-normal text-[#8fa7a2]">
+                          <span className="mt-1 block text-[16px] font-normal text-[#8fa7a2]">
+                            {group.memberCount} {labels.members} ·{' '}
                             {group.memberCount}/{group.maxMembers ?? 5}{' '}
                             {labels.seats}
                             {group.hasLiveSession ? ` · ${labels.live}` : ''}
@@ -264,15 +280,13 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                     {labels.noGroups}
                   </p>
                 )}
-                {showCreateAnotherAction ? (
-                  <a
-                    href={createGroupHref}
-                    className="mt-1 flex items-center gap-2 border-t border-white/[0.045] px-3 py-2.5 text-[13px] font-medium text-[#20D9A3] transition hover:bg-[#20D9A3]/[0.06]"
-                  >
-                    <Plus className="h-4 w-4" aria-hidden="true" />
-                    {labels.createAnother}
-                  </a>
-                ) : null}
+                <a
+                  href={createGroupHref}
+                  className="mt-2 flex items-center gap-3 border-t border-white/[0.045] px-4 py-4 text-[18px] font-medium text-[#20D9A3] transition hover:bg-[#20D9A3]/[0.06]"
+                >
+                  <Plus className="h-5 w-5" aria-hidden="true" />
+                  {labels.createAnother}
+                </a>
               </div>
             ) : null}
           </div>
@@ -291,37 +305,87 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-[18px]">
-          {selectedGroup ? (
-            <div className="flex items-center gap-3">
-              <span className="flex h-[38px] w-[38px] items-center justify-center rounded-[10px] border border-white/[0.045] bg-white/[0.04] text-[#8fa7a2]">
-                <UsersRound className="h-4 w-4" aria-hidden="true" />
-              </span>
-              <span className="flex flex-col">
-                <span className="text-[13px] text-[#8fa7a2]">
-                  {labels.dropdownLabel}
-                </span>
-                <span className="text-[14px] text-[#e8f4f0]">
-                  {selectedGroup.memberCount}/{selectedMaxMembers}{' '}
-                  {labels.seats}
-                </span>
-              </span>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          {canInviteSelectedGroup ? (
+            <button
+              type="button"
+              onClick={() => {
+                setInviteError(null);
+                setIsInviteOpen(true);
+              }}
+              className="inline-flex h-[60px] items-center justify-center gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-6 text-[18px] font-semibold text-[#e8f4f0] transition hover:border-[#20D9A3]/35 hover:bg-[#20D9A3]/10"
+            >
+              <UserPlus className="h-5 w-5" aria-hidden="true" />
+              {labels.invite}
+            </button>
+          ) : null}
+
+          {selectedGroup && !shouldShowMemberPrompt ? (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOverflowOpen((current) => !current);
+                  setIsOpen(false);
+                }}
+                className="inline-flex h-[60px] w-[66px] items-center justify-center rounded-[14px] border border-white/[0.06] bg-white/[0.02] text-[#8fa7a2] transition hover:border-white/[0.1] hover:bg-white/[0.04] hover:text-white"
+                aria-expanded={isOverflowOpen}
+                aria-label={labels.dropdownLabel}
+              >
+                <MoreHorizontal className="h-6 w-6" aria-hidden="true" />
+              </button>
+              {isOverflowOpen ? (
+                <div className="absolute right-0 z-30 mt-3 w-[min(360px,calc(100vw-48px))] rounded-[16px] border border-white/[0.09] bg-[#0d332d] p-4 shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
+                  <GroupOverflowItem
+                    href={`/${locale}/groups/${selectedGroup.id}`}
+                    icon={<UsersRound className="h-5 w-5" aria-hidden="true" />}
+                    label={labels.manageMembers}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOverflowOpen(false);
+                      window.dispatchEvent(
+                        new CustomEvent('activeboard:open-create-session', {
+                          detail: { groupId: selectedGroup.id },
+                        }),
+                      );
+                    }}
+                    className="flex w-full items-center gap-4 rounded-[12px] px-3 py-3 text-left text-[18px] font-medium text-[#e8f4f0] transition hover:bg-white/[0.04]"
+                  >
+                    <CalendarClock className="h-5 w-5" aria-hidden="true" />
+                    {labels.scheduleSession}
+                  </button>
+                  <GroupOverflowItem
+                    href={`/${locale}/groups/${selectedGroup.id}`}
+                    icon={<Bell className="h-5 w-5" aria-hidden="true" />}
+                    label={labels.groupNotifications}
+                  />
+                  <GroupOverflowItem
+                    href={`/${locale}/groups/${selectedGroup.id}`}
+                    icon={<LogOut className="h-5 w-5" aria-hidden="true" />}
+                    label={labels.leaveGroup}
+                  />
+                </div>
+              ) : null}
             </div>
           ) : null}
-          {liveGroupCount > 0 ? (
-            <span className="v11-chip v11-chip-mint">
-              <span className="live-dot" aria-hidden="true" />
-              {liveGroupCount} {labels.live}
-            </span>
-          ) : null}
-          {showCreateAnotherAction ? (
-            <a
-              href={createGroupHref}
-              className="inline-flex items-center gap-2 rounded-[12px] bg-[#20D9A3] px-[18px] py-3 text-[14px] font-medium leading-none text-[#062b22] transition hover:bg-[#2fe9b1]"
+
+          {canStartSelectedGroup && selectedGroup ? (
+            <button
+              type="button"
+              onClick={() => {
+                window.dispatchEvent(
+                  new CustomEvent('activeboard:open-create-session', {
+                    detail: { groupId: selectedGroup.id },
+                  }),
+                );
+              }}
+              className="inline-flex h-[60px] items-center justify-center gap-3 rounded-[14px] bg-[#20D9A3] px-8 text-[18px] font-semibold text-[#062b22] transition hover:bg-[#2fe9b1]"
             >
-              <Plus className="h-4 w-4" aria-hidden="true" />
-              {labels.createAnother}
-            </a>
+              <CalendarClock className="h-5 w-5" aria-hidden="true" />
+              {labels.startSession}
+            </button>
           ) : null}
         </div>
       </div>
@@ -337,41 +401,6 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
               String(selectedGroup.memberCount),
             )}
           </span>
-        </div>
-      ) : null}
-
-      {selectedGroup && (canInviteSelectedGroup || canStartSelectedGroup) ? (
-        <div className="mt-[18px] flex flex-col gap-2.5 sm:flex-row">
-          {canInviteSelectedGroup ? (
-            <button
-              type="button"
-              onClick={() => {
-                setInviteError(null);
-                setIsInviteOpen(true);
-              }}
-              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-[12px] border border-[#20D9A3]/25 bg-[#20D9A3]/10 px-4 text-[14px] font-semibold text-[#9FF0CE] transition hover:border-[#20D9A3]/45 hover:bg-[#20D9A3]/15 sm:flex-none"
-            >
-              <UserPlus className="h-4 w-4" aria-hidden="true" />
-              {labels.invite}
-            </button>
-          ) : null}
-
-          {canStartSelectedGroup ? (
-            <button
-              type="button"
-              onClick={() => {
-                window.dispatchEvent(
-                  new CustomEvent('activeboard:open-create-session', {
-                    detail: { groupId: selectedGroup.id },
-                  }),
-                );
-              }}
-              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-[12px] bg-[#20D9A3] px-4 text-[14px] font-semibold text-[#062b22] transition hover:bg-[#2fe9b1] sm:flex-none"
-            >
-              <Play className="h-4 w-4 fill-current" aria-hidden="true" />
-              {labels.startSession}
-            </button>
-          ) : null}
         </div>
       ) : null}
 
@@ -448,23 +477,25 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                   sessionHref,
                 );
               }}
-              className="flex items-center gap-4 rounded-[14px] border border-white/[0.045] bg-white/[0.02] px-5 py-[18px] transition hover:border-white/[0.09] hover:bg-white/[0.035]"
+              className="flex flex-col gap-5 rounded-[14px] border border-white/[0.06] bg-white/[0.018] px-6 py-5 transition hover:border-white/[0.1] hover:bg-white/[0.03] sm:flex-row sm:items-center"
             >
-              <span className="bg-[#6BA8F2]/12 flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[11px] border border-[#6BA8F2]/25 text-[#A8C9F4]">
+              <span className="flex h-[62px] w-[62px] shrink-0 items-center justify-center rounded-[14px] border border-[#6BA8F2]/25 bg-[#6BA8F2]/15 text-[#A8C9F4]">
                 <CalendarClock className="h-5 w-5" aria-hidden="true" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="text-[11px] font-normal tracking-[0.04em] text-[#8fa7a2]">
+                <span className="text-[16px] font-normal tracking-[0.02em] text-[#8fa7a2]">
                   {labels.nextSession}
                 </span>
-                <span className="mt-0.5 block truncate text-[16px] font-medium tracking-[-0.015em] text-[#e8f4f0]">
+                <span className="mt-2 block truncate text-[22px] font-semibold tracking-[-0.025em] text-[#e8f4f0]">
                   {selectedNextSession.name ?? labels.nextSession}
                 </span>
-                <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[13px] text-[#8fa7a2]">
+                <span className="mt-2 flex flex-wrap items-center gap-3 text-[16px] text-[#8fa7a2]">
                   {labels.scheduledFor.replace(
                     '{date}',
                     formatSessionDate(selectedNextSession.scheduled_at, locale),
                   )}
+                  <span className="text-[#345049]">·</span>
+                  {selectedNextSession.question_goal} {labels.questionsUnit}
                   <span className="text-[#345049]">·</span>
                   {labels.timerLabel.replace(
                     '{seconds}',
@@ -472,7 +503,9 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                   )}
                 </span>
               </span>
-              <span className="v11-chip">{labels.openSession}</span>
+              <span className="inline-flex h-[58px] shrink-0 items-center justify-center rounded-[14px] border border-white/[0.07] bg-white/[0.025] px-7 text-[18px] font-semibold text-[#e8f4f0]">
+                {labels.openSession}
+              </span>
             </a>
           ) : (
             <div className="flex items-center gap-4 rounded-[14px] border border-dashed border-white/[0.09] bg-transparent px-5 py-[18px] text-[#8fa7a2]">
@@ -809,6 +842,38 @@ function getInviteErrorMessage(
     default:
       return labels.actionFailed;
   }
+}
+
+function getGroupInitials(name: string) {
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
+  return initials || 'AB';
+}
+
+function GroupOverflowItem({
+  href,
+  icon,
+  label,
+}: {
+  href: string;
+  icon: ReactNode;
+  label: string;
+}) {
+  return (
+    <a
+      href={href}
+      className="flex items-center gap-4 rounded-[12px] px-3 py-3 text-[18px] font-medium text-[#e8f4f0] transition hover:bg-white/[0.04]"
+    >
+      <span className="text-[#8fa7a2]">{icon}</span>
+      {label}
+    </a>
+  );
 }
 
 function MetricPill({ label, value }: { label: string; value: string }) {
