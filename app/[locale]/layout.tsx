@@ -1,7 +1,11 @@
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { NextIntlClientProvider, type AbstractIntlMessages } from 'next-intl';
-import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
+import {
+  getMessages,
+  getTranslations,
+  setRequestLocale,
+} from 'next-intl/server';
 
 import { AppBottomNav } from '@/components/layout/app-bottom-nav';
 import { LandingSignInLink } from '@/components/layout/landing-sign-in-link';
@@ -15,7 +19,10 @@ import { RegisterServiceWorker } from '@/components/pwa/register-service-worker'
 import { Link } from '@/i18n/navigation';
 import { routing, type AppLocale } from '@/i18n/routing';
 import { getCurrentUser } from '@/lib/auth';
-import { getUserAccessState, hasUserTierCapability } from '@/lib/billing/gating';
+import {
+  getUserAccessState,
+  hasUserTierCapability,
+} from '@/lib/billing/gating';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export function generateStaticParams() {
@@ -47,50 +54,61 @@ export default async function LocaleLayout({
 
   setRequestLocale(locale);
   const user = await getCurrentUser();
-  const [messages, t, dashboardT, billingT, profileT, shellData] = await Promise.all([
-    getMessages(),
-    getTranslations('Common'),
-    getTranslations('Dashboard'),
-    getTranslations('Billing'),
-    getTranslations('Profile'),
-    user
-      ? (async () => {
-          const supabase = createSupabaseServerClient();
-          const [accessState, membershipsResult] = await Promise.all([
-            getUserAccessState(user.id),
-            supabase
-              .schema('public')
-              .from('group_members')
-              .select('group_id, joined_at, is_founder')
-              .eq('user_id', user.id)
-              .order('joined_at', { ascending: false }),
-          ]);
-          const memberships = membershipsResult.data ?? [];
+  const [messages, t, dashboardT, billingT, profileT, shellData] =
+    await Promise.all([
+      getMessages(),
+      getTranslations('Common'),
+      getTranslations('Dashboard'),
+      getTranslations('Billing'),
+      getTranslations('Profile'),
+      user
+        ? (async () => {
+            const supabase = createSupabaseServerClient();
+            const [accessState, membershipsResult] = await Promise.all([
+              getUserAccessState(user.id),
+              supabase
+                .schema('public')
+                .from('group_members')
+                .select('group_id, joined_at, is_founder')
+                .eq('user_id', user.id)
+                .order('joined_at', { ascending: false }),
+            ]);
+            const memberships = membershipsResult.data ?? [];
 
-          return {
-            isCaptain: memberships.some((membership) => membership.is_founder),
-            hasGroups: memberships.length > 0,
-            canBrowseLookupLayer: hasUserTierCapability(accessState, 'canBrowseLookupLayer'),
-            preferredGroupId: memberships[0]?.group_id ?? null,
-          };
-        })()
-      : Promise.resolve({
-          isCaptain: false,
-          hasGroups: false,
-          canBrowseLookupLayer: false,
-          preferredGroupId: null as string | null,
-        }),
+            return {
+              isCaptain: memberships.some(
+                (membership) => membership.is_founder,
+              ),
+              hasGroups: memberships.length > 0,
+              canBrowseLookupLayer: hasUserTierCapability(
+                accessState,
+                'canBrowseLookupLayer',
+              ),
+              preferredGroupId: memberships[0]?.group_id ?? null,
+            };
+          })()
+        : Promise.resolve({
+            isCaptain: false,
+            hasGroups: false,
+            canBrowseLookupLayer: false,
+            preferredGroupId: null as string | null,
+          }),
+    ]);
+  const clientMessages = pickClientMessages(messages, [
+    'Auth',
+    'Common',
+    'Landing',
+    'Offline',
   ]);
-  const clientMessages = pickClientMessages(messages, ['Auth', 'Common', 'Landing', 'Offline']);
-  const displayName = user?.user_metadata.full_name ?? user?.email ?? 'ActiveBoard';
+  const displayName =
+    user?.user_metadata.full_name ?? user?.email ?? 'ActiveBoard';
   const initials =
     displayName
       ?.split(' ')
       .map((part: string) => part[0])
       .join('')
       .slice(0, 2)
-      .toUpperCase() ??
-    'AB';
+      .toUpperCase() ?? 'AB';
   return (
     <NextIntlClientProvider locale={locale} messages={clientMessages}>
       <RegisterServiceWorker />
@@ -107,62 +125,71 @@ export default async function LocaleLayout({
             }
           >
             <div className="flex min-w-0 items-start justify-between gap-3 sm:items-center sm:gap-4">
-            {user ? (
-              <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
-                <Link href="/" className="flex min-w-0 shrink-0 items-center gap-2">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-[5px] bg-brand text-xs font-extrabold text-white">
-                    AB
-                  </div>
-                  <p className="truncate text-base font-extrabold tracking-tight text-white sm:text-lg">{t('appName')}</p>
-                </Link>
-              </div>
-            ) : null}
-
-            <div className="flex min-w-0 shrink-0 items-center justify-end gap-2 sm:gap-3">
               {user ? (
-                <>
-                  <Suspense
-                    fallback={
-                      <div className="inline-flex items-center gap-2 rounded-full border border-border bg-white/[0.04] px-4 py-2 text-sm text-slate-400">
-                        {t('language')}
-                      </div>
-                    }
+                <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
+                  <Link
+                    href="/"
+                    className="flex min-w-0 shrink-0 items-center gap-2"
                   >
-                    <LanguageSwitcher />
-                  </Suspense>
-                  <LiveGroupsPill
-                    href={shellData.canBrowseLookupLayer ? `${shellData.preferredGroupId ? `/groups/${shellData.preferredGroupId}` : '/groups'}?live=1` : '/billing'}
-                    label={dashboardT('joinLiveGroups')}
-                    canBrowseLookupLayer={shellData.canBrowseLookupLayer}
-                  />
-                  <ProfileMenu
-                    initials={initials}
-                    name={displayName}
-                    email={user.email ?? ''}
-                    isCaptain={shellData.isCaptain}
-                    profileHref="/profile"
-                    profileLabel={profileT('menuLabel')}
-                    examHref="/profile?section=exam"
-                    examLabel={profileT('examSettingsMenuLabel')}
-                    billingHref="/billing"
-                    billingLabel={billingT('menuLabel')}
-                  />
-                </>
-              ) : (
-                <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
-                  <LandingSignInLink />
-                  <Suspense
-                    fallback={
-                      <div className="inline-flex items-center gap-2 rounded-full border border-border bg-white/[0.04] px-4 py-2 text-sm text-slate-400">
-                        {t('language')}
-                      </div>
-                    }
-                  >
-                    <LanguageSwitcher />
-                  </Suspense>
+                    <div className="flex h-7 w-7 items-center justify-center rounded-[5px] bg-brand text-xs font-extrabold text-white">
+                      AB
+                    </div>
+                    <p className="truncate text-base font-extrabold tracking-tight text-white sm:text-lg">
+                      {t('appName')}
+                    </p>
+                  </Link>
                 </div>
-              )}
-            </div>
+              ) : null}
+
+              <div className="flex min-w-0 shrink-0 items-center justify-end gap-2 sm:gap-3">
+                {user ? (
+                  <>
+                    <Suspense
+                      fallback={
+                        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-white/[0.04] px-4 py-2 text-sm text-slate-400">
+                          {t('language')}
+                        </div>
+                      }
+                    >
+                      <LanguageSwitcher persistUserPreference />
+                    </Suspense>
+                    <LiveGroupsPill
+                      href={
+                        shellData.canBrowseLookupLayer
+                          ? `${shellData.preferredGroupId ? `/groups/${shellData.preferredGroupId}` : '/groups'}?live=1`
+                          : '/billing'
+                      }
+                      label={dashboardT('joinLiveGroups')}
+                      canBrowseLookupLayer={shellData.canBrowseLookupLayer}
+                    />
+                    <ProfileMenu
+                      initials={initials}
+                      name={displayName}
+                      email={user.email ?? ''}
+                      isCaptain={shellData.isCaptain}
+                      profileHref="/profile"
+                      profileLabel={profileT('menuLabel')}
+                      examHref="/profile?section=exam"
+                      examLabel={profileT('examSettingsMenuLabel')}
+                      billingHref="/billing"
+                      billingLabel={billingT('menuLabel')}
+                    />
+                  </>
+                ) : (
+                  <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+                    <LandingSignInLink />
+                    <Suspense
+                      fallback={
+                        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-white/[0.04] px-4 py-2 text-sm text-slate-400">
+                          {t('language')}
+                        </div>
+                      }
+                    >
+                      <LanguageSwitcher persistUserPreference={false} />
+                    </Suspense>
+                  </div>
+                )}
+              </div>
             </div>
           </header>
           {children}
@@ -171,7 +198,11 @@ export default async function LocaleLayout({
           <AppBottomNav
             locale={locale}
             showGroupTab={shellData.hasGroups}
-            groupsHref={shellData.preferredGroupId ? `/groups/${shellData.preferredGroupId}` : '/groups'}
+            groupsHref={
+              shellData.preferredGroupId
+                ? `/groups/${shellData.preferredGroupId}`
+                : '/groups'
+            }
             labels={{
               sessions: t('navSessions'),
               performance: t('navPerformance'),
