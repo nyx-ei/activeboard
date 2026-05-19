@@ -21,7 +21,8 @@
     "navGroup": "Groups",
     "navSettings": "Settings",
     "signingOut": "Signing out...",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "questionProgressLabel": "{current} of {total} free questions answered"
   },
   "Landing": {
     "navHowItWorks": "How it works",

@@ -12,6 +12,7 @@ import { LandingSignInLink } from '@/components/layout/landing-sign-in-link';
 import { LanguageSwitcher } from '@/components/layout/language-switcher';
 import { LiveGroupsPill } from '@/components/layout/live-groups-pill';
 import { ProfileMenu } from '@/components/layout/profile-menu';
+import { QuestionProgressRing } from '@/components/layout/question-progress-ring';
 import { OfflineStatusBanner } from '@/components/pwa/offline-status-banner';
 import { InstallPrompt } from '@/components/pwa/install-prompt';
 import { PwaLaunchTracker } from '@/components/pwa/pwa-launch-tracker';
@@ -23,6 +24,7 @@ import {
   getUserAccessState,
   hasUserTierCapability,
 } from '@/lib/billing/gating';
+import { TRIAL_QUESTION_LIMIT } from '@/lib/billing/user-tier';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export function generateStaticParams() {
@@ -84,6 +86,8 @@ export default async function LocaleLayout({
                 accessState,
                 'canBrowseLookupLayer',
               ),
+              isActive: accessState.snapshot?.user_tier === 'active',
+              questionsAnswered: accessState.snapshot?.questions_answered ?? 0,
               preferredGroupId: memberships[0]?.group_id ?? null,
             };
           })()
@@ -91,6 +95,8 @@ export default async function LocaleLayout({
             isCaptain: false,
             hasGroups: false,
             canBrowseLookupLayer: false,
+            isActive: false,
+            questionsAnswered: 0,
             preferredGroupId: null as string | null,
           }),
     ]);
@@ -153,6 +159,18 @@ export default async function LocaleLayout({
                     >
                       <LanguageSwitcher persistUserPreference />
                     </Suspense>
+                    {!shellData.isActive ? (
+                      <QuestionProgressRing
+                        answeredCount={shellData.questionsAnswered}
+                        label={t('questionProgressLabel', {
+                          current: Math.min(
+                            shellData.questionsAnswered,
+                            TRIAL_QUESTION_LIMIT,
+                          ),
+                          total: TRIAL_QUESTION_LIMIT,
+                        })}
+                      />
+                    ) : null}
                     <LiveGroupsPill
                       href={
                         shellData.canBrowseLookupLayer

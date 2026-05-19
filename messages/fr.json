@@ -21,7 +21,8 @@
                    "navGroup":  "Groupes",
                    "navSettings":  "Réglages",
                    "signingOut":  "Déconnexion...",
-                   "loading":  "Chargement..."
+                   "loading":  "Chargement...",
+                   "questionProgressLabel":  "{current} sur {total} questions gratuites répondues"
                },
     "Landing":  {
                     "navHowItWorks":  "Comment ça marche",
