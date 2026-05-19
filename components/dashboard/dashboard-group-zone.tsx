@@ -5,10 +5,18 @@ import {
   CalendarClock,
   Check,
   ChevronDown,
+  Mail,
   Play,
   Plus,
+  Send,
+  UserPlus,
   UsersRound,
+  X,
 } from 'lucide-react';
+
+import { Modal, ModalTitle } from '@/components/ui/modal';
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export type DashboardGroupZoneGroup = {
   id: string;
@@ -66,6 +74,20 @@ export type DashboardGroupZoneProps = {
     completion: string;
     accuracy: string;
     noData: string;
+    invite: string;
+    inviteTitle: string;
+    inviteDescription: string;
+    inviteEmailPlaceholder: string;
+    inviteSend: string;
+    inviteSending: string;
+    inviteSuccess: string;
+    invalidEmail: string;
+    inviteExists: string;
+    alreadyMember: string;
+    cannotInviteSelf: string;
+    emailUnavailable: string;
+    actionFailed: string;
+    startSession: string;
   };
 };
 
@@ -76,6 +98,10 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   labels,
 }: DashboardGroupZoneProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [isInviting, setIsInviting] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState(groups[0]?.id ?? '');
   const selectedGroup = useMemo(
     () =>
@@ -95,6 +121,18 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
     ? getLiveSessionProgress(selectedGroup.activeSession)
     : null;
   const recentSessions = selectedGroup?.recentSessions?.slice(0, 3) ?? [];
+  const selectedSeatsAvailable = selectedGroup
+    ? Math.max(0, selectedMaxMembers - selectedGroup.memberCount)
+    : 0;
+  const canInviteSelectedGroup = Boolean(
+    selectedGroup && selectedSeatsAvailable > 0,
+  );
+  const canStartSelectedGroup = Boolean(
+    selectedGroup &&
+    selectedGroup.memberCount >= 2 &&
+    !selectedGroup.hasLiveSession,
+  );
+  const normalizedInviteEmail = inviteEmail.trim().toLowerCase();
 
   useEffect(() => {
     if (groups.length === 0) {
@@ -242,6 +280,41 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
           </a>
         </div>
       </div>
+
+      {selectedGroup && (canInviteSelectedGroup || canStartSelectedGroup) ? (
+        <div className="mt-[18px] flex flex-col gap-2.5 sm:flex-row">
+          {canInviteSelectedGroup ? (
+            <button
+              type="button"
+              onClick={() => {
+                setInviteError(null);
+                setIsInviteOpen(true);
+              }}
+              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-[12px] border border-[#20D9A3]/25 bg-[#20D9A3]/10 px-4 text-[14px] font-semibold text-[#9FF0CE] transition hover:border-[#20D9A3]/45 hover:bg-[#20D9A3]/15 sm:flex-none"
+            >
+              <UserPlus className="h-4 w-4" aria-hidden="true" />
+              {labels.invite}
+            </button>
+          ) : null}
+
+          {canStartSelectedGroup ? (
+            <button
+              type="button"
+              onClick={() => {
+                window.dispatchEvent(
+                  new CustomEvent('activeboard:open-create-session', {
+                    detail: { groupId: selectedGroup.id },
+                  }),
+                );
+              }}
+              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-[12px] bg-[#20D9A3] px-4 text-[14px] font-semibold text-[#062b22] transition hover:bg-[#2fe9b1] sm:flex-none"
+            >
+              <Play className="h-4 w-4 fill-current" aria-hidden="true" />
+              {labels.startSession}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       {selectedGroup ? (
         <div className="mt-[22px]">
@@ -396,6 +469,92 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
           </a>
         </footer>
       ) : null}
+
+      {selectedGroup && isInviteOpen ? (
+        <Modal
+          open
+          onClose={() => setIsInviteOpen(false)}
+          labelledBy="dashboard-group-invite-title"
+          contentClassName="w-full rounded-t-[18px] border border-white/[0.08] bg-[#081b18] shadow-2xl sm:max-w-[520px] sm:rounded-[18px]"
+        >
+          <div className="p-5 sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#20D9A3]/10 text-[#9FF0CE]">
+                  <Mail className="h-4 w-4" aria-hidden="true" />
+                </span>
+                <ModalTitle
+                  id="dashboard-group-invite-title"
+                  className="mt-4 text-xl font-semibold tracking-[-0.02em] text-[#e8f4f0]"
+                >
+                  {labels.inviteTitle}
+                </ModalTitle>
+                <p className="mt-2 text-sm leading-5 text-[#8fa7a2]">
+                  {labels.inviteDescription}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsInviteOpen(false)}
+                className="rounded-full p-2 text-[#8fa7a2] transition hover:bg-white/[0.06] hover:text-white"
+                aria-label={labels.inviteTitle}
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+              <input
+                type="email"
+                value={inviteEmail}
+                onChange={(event) => setInviteEmail(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    void sendDashboardGroupInvite({
+                      groupId: selectedGroup.id,
+                      locale,
+                      email: normalizedInviteEmail,
+                      labels,
+                      setInviteError,
+                      setIsInviting,
+                      setInviteEmail,
+                    });
+                  }
+                }}
+                placeholder={labels.inviteEmailPlaceholder}
+                autoComplete="email"
+                className="min-h-11 min-w-0 flex-1 rounded-[10px] border border-white/[0.08] bg-[#031411] px-3 py-2 text-sm text-[#e8f4f0] outline-none transition placeholder:text-[#5f7b75] focus:border-[#20D9A3]/55"
+              />
+              <button
+                type="button"
+                disabled={isInviting}
+                onClick={() =>
+                  void sendDashboardGroupInvite({
+                    groupId: selectedGroup.id,
+                    locale,
+                    email: normalizedInviteEmail,
+                    labels,
+                    setInviteError,
+                    setIsInviting,
+                    setInviteEmail,
+                  })
+                }
+                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-[10px] bg-[#20D9A3] px-4 text-sm font-semibold text-[#062b22] transition hover:bg-[#2fe9b1] disabled:cursor-wait disabled:bg-white/[0.08] disabled:text-[#5f7b75]"
+              >
+                <Send className="h-4 w-4" aria-hidden="true" />
+                {isInviting ? labels.inviteSending : labels.inviteSend}
+              </button>
+            </div>
+
+            {inviteError ? (
+              <p className="mt-3 rounded-[8px] border border-red-400/20 bg-red-400/10 px-3 py-2 text-sm font-semibold text-red-200">
+                {inviteError}
+              </p>
+            ) : null}
+          </div>
+        </Modal>
+      ) : null}
     </section>
   );
 });
@@ -428,6 +587,101 @@ function getLiveSessionProgress(session: DashboardGroupZoneSession) {
     total,
     percent: Math.round((current / total) * 100),
   };
+}
+
+function notifyDashboardGroupAction(
+  message: string,
+  tone: 'success' | 'error',
+) {
+  window.dispatchEvent(
+    new CustomEvent('activeboard:feedback', {
+      detail: {
+        id: `dashboard-group-action-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        message,
+        tone,
+      },
+    }),
+  );
+}
+
+async function sendDashboardGroupInvite({
+  groupId,
+  locale,
+  email,
+  labels,
+  setInviteError,
+  setIsInviting,
+  setInviteEmail,
+}: {
+  groupId: string;
+  locale: string;
+  email: string;
+  labels: DashboardGroupZoneProps['labels'];
+  setInviteError: (message: string | null) => void;
+  setIsInviting: (value: boolean) => void;
+  setInviteEmail: (value: string) => void;
+}) {
+  if (!EMAIL_PATTERN.test(email)) {
+    setInviteError(labels.invalidEmail);
+    return;
+  }
+
+  setInviteError(null);
+  setIsInviting(true);
+
+  try {
+    const response = await fetch(`/api/groups/${groupId}/invite`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      cache: 'no-store',
+      body: JSON.stringify({ emails: [email], locale }),
+    });
+    const payload = (await response.json().catch(() => null)) as {
+      created?: unknown[];
+      errors?: Array<{ reason?: string }>;
+    } | null;
+    const firstError = payload?.errors?.[0];
+
+    if (!response.ok || firstError) {
+      const message = getInviteErrorMessage(
+        firstError?.reason ?? 'action_failed',
+        labels,
+      );
+      setInviteError(message);
+      notifyDashboardGroupAction(message, 'error');
+      return;
+    }
+
+    setInviteEmail('');
+    notifyDashboardGroupAction(labels.inviteSuccess, 'success');
+  } catch {
+    setInviteError(labels.actionFailed);
+    notifyDashboardGroupAction(labels.actionFailed, 'error');
+  } finally {
+    setIsInviting(false);
+  }
+}
+
+function getInviteErrorMessage(
+  reason: string,
+  labels: DashboardGroupZoneProps['labels'],
+) {
+  switch (reason) {
+    case 'invalid_email':
+      return labels.invalidEmail;
+    case 'invite_exists':
+      return labels.inviteExists;
+    case 'already_member':
+      return labels.alreadyMember;
+    case 'cannot_invite_self':
+      return labels.cannotInviteSelf;
+    case 'email_unavailable':
+    case 'email_failed':
+      return labels.emailUnavailable;
+    default:
+      return labels.actionFailed;
+  }
 }
 
 function MetricPill({ label, value }: { label: string; value: string }) {
