@@ -29,6 +29,7 @@ type DashboardSession = {
   group_id: string;
   name: string | null;
   scheduled_at: string;
+  started_at: string | null;
   share_code: string;
   status: 'scheduled' | 'active' | 'incomplete' | 'completed' | 'cancelled';
   timer_mode: 'per_question' | 'global';
@@ -252,6 +253,7 @@ type DashboardUserSessionRow = {
   group_id: string | null;
   name: string | null;
   scheduled_at: string | null;
+  started_at: string | null;
   share_code: string | null;
   status:
     | 'scheduled'
@@ -835,7 +837,7 @@ async function getDashboardCore(userId: string) {
       .schema('public')
       .from('dashboard_user_sessions')
       .select(
-        'id, group_id, name, scheduled_at, share_code, status, timer_mode, timer_seconds, leader_id, question_goal, question_count, answered_question_count',
+        'id, group_id, name, scheduled_at, started_at, share_code, status, timer_mode, timer_seconds, leader_id, question_goal, question_count, answered_question_count',
       )
       .eq('user_id', userId)
       .neq('status', 'cancelled')
@@ -961,6 +963,7 @@ async function getDashboardCore(userId: string) {
       group_id: row.group_id,
       name: row.name,
       scheduled_at: row.scheduled_at,
+      started_at: row.started_at,
       share_code: row.share_code,
       status: row.status,
       timer_mode: row.timer_mode,
