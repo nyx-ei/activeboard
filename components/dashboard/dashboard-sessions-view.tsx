@@ -285,7 +285,7 @@ export const DashboardSessionsView = memo(function DashboardSessionsView({
                 session={session}
                 locale={locale}
                 labels={labels}
-                returnTo={`/${locale}/dashboard?view=sessions`}
+                returnTo={`/${locale}/dashboard`}
                 onCancelOptimistic={(sessionId) =>
                   setCancelledSessionIds((current) => {
                     const next = current.includes(sessionId)

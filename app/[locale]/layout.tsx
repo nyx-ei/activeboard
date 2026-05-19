@@ -239,8 +239,7 @@ export default async function LocaleLayout({
                 : '/groups'
             }
             labels={{
-              sessions: t('navSessions'),
-              performance: t('navPerformance'),
+              dashboard: t('navDashboard'),
               group: t('navGroup'),
             }}
           />

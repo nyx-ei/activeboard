@@ -544,7 +544,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
             ))}
           </div>
           <a
-            href={`/${locale}/dashboard?view=sessions`}
+            href={`/${locale}/dashboard`}
             className="mt-3 inline-flex text-[13px] font-medium text-[#20D9A3] transition hover:text-[#9FF0CE]"
           >
             {labels.viewAllSessions}

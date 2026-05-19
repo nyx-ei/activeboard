@@ -109,7 +109,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   return NextResponse.json({
     ok: true,
-    redirectTo: `/${locale}/dashboard?view=sessions`,
+    redirectTo: `/${locale}/dashboard`,
     message: await getFeedback('sessionCompleted'),
   });
 }

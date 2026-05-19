@@ -171,11 +171,6 @@ export const DashboardProgressStateZone = memo(
                     detail: { view: 'performance' },
                   }),
                 );
-                window.dispatchEvent(
-                  new CustomEvent('activeboard:dashboard-prefetch', {
-                    detail: { view: 'performance' },
-                  }),
-                );
               }}
             >
               {labels.viewDetails}

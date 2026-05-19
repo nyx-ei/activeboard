@@ -132,7 +132,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json(
       {
         ok: false,
-        redirectTo: `/${locale}/dashboard?view=sessions`,
+        redirectTo: `/${locale}/dashboard`,
         message: await getFeedback('notAuthorized'),
       },
       { status: 403 },

@@ -59,7 +59,7 @@ async function requireSessionMember(sessionId: string, locale: AppLocale) {
   if (!session) {
     redirect(
       withFeedback(
-        `/${locale}/dashboard?view=sessions`,
+        `/${locale}/dashboard`,
         'error',
         t('notAuthorized'),
       ),
@@ -100,7 +100,7 @@ async function requireSessionMemberWithPerf(
   if (!session) {
     redirect(
       withFeedback(
-        `/${locale}/dashboard?view=sessions`,
+        `/${locale}/dashboard`,
         'error',
         t('notAuthorized'),
       ),
@@ -167,7 +167,7 @@ export async function initializeSessionFlowAction(formData: FormData) {
     } catch {
       redirect(
         withFeedback(
-          `/${locale}/dashboard?view=sessions`,
+          `/${locale}/dashboard`,
           'error',
           t('actionFailed'),
         ),
@@ -179,7 +179,7 @@ export async function initializeSessionFlowAction(formData: FormData) {
     } catch {
       redirect(
         withFeedback(
-          `/${locale}/dashboard?view=sessions`,
+          `/${locale}/dashboard`,
           'error',
           t('actionFailed'),
         ),
@@ -397,7 +397,7 @@ export async function advanceSessionStepAction(formData: FormData) {
     const t = await getTranslations({ locale, namespace: 'Feedback' });
     redirect(
       withFeedback(
-        `/${locale}/dashboard?view=sessions`,
+        `/${locale}/dashboard`,
         'error',
         t('notAuthorized'),
       ),
@@ -462,7 +462,7 @@ export async function quitIncompleteSessionAction(formData: FormData) {
   const sessionId = formData.get('sessionId') as string;
   await requireSessionMember(sessionId, locale);
 
-  redirect(`/${locale}/dashboard?view=sessions`);
+  redirect(`/${locale}/dashboard`);
 }
 
 export async function saveReviewAnswerAction(formData: FormData) {

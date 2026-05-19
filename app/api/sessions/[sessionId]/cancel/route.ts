@@ -64,7 +64,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   const sessionReturnPath =
     session && returnTo === groupDashboardPath(locale, session.group_id)
       ? returnTo
-      : `/${locale}/dashboard?view=sessions`;
+      : `/${locale}/dashboard`;
 
   if (!session) {
     return NextResponse.json(
