@@ -16,6 +16,7 @@ import {
   getAvailabilitySlotCount,
   normalizeAvailabilityGrid,
 } from '@/lib/schedule/availability';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import {
   type DimensionOfCare,
   type ErrorType,
@@ -38,6 +39,12 @@ type DashboardSession = {
   questionCount?: number;
 };
 
+type DashboardGroupMemberPreview = {
+  id: string;
+  initials: string;
+  avatarUrl: string | null;
+};
+
 type GroupWeeklySchedule = {
   id: string;
   weekday:
@@ -58,6 +65,9 @@ type DashboardGroup = {
   name: string;
   is_founder: boolean;
   memberCount: number;
+  maxMembers: number;
+  membersPreview: DashboardGroupMemberPreview[];
+  activeSession: DashboardSession | null;
   nextSession: DashboardSession | null;
 };
 
@@ -258,6 +268,17 @@ const TRIAL_WARNING_THRESHOLD = 85;
 const DASHBOARD_SESSION_LIMIT = 50;
 const DASHBOARD_CONFIDENCE_SESSION_LIMIT = 8;
 const GROUP_SESSION_LIMIT = 50;
+
+function getInitials(value: string) {
+  return (
+    value
+      .split(' ')
+      .map((part) => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || 'AB'
+  );
+}
 
 async function getUsersMap(supabase: PublicClient, userIds: string[]) {
   if (userIds.length === 0) {
@@ -740,6 +761,7 @@ async function getUserSchedule(userId: string) {
 
 async function getDashboardCore(userId: string) {
   const supabase = createSupabaseServerClient();
+  const supabaseAdmin = createSupabaseAdminClient();
   const [groupsResult, sessionsResult] = await Promise.all([
     (
       supabase as unknown as {
@@ -797,6 +819,67 @@ async function getDashboardCore(userId: string) {
       .order('scheduled_at', { ascending: false })
       .limit(DASHBOARD_SESSION_LIMIT),
   ]);
+  const groupIds = [
+    ...new Set(
+      (groupsResult.data ?? [])
+        .map((group) => group.group_id)
+        .filter((groupId): groupId is string => Boolean(groupId)),
+    ),
+  ];
+  const [groupLimitsResult, groupMembersResult] =
+    groupIds.length > 0
+      ? await Promise.all([
+          supabaseAdmin
+            .schema('public')
+            .from('groups')
+            .select('id, max_members')
+            .in('id', groupIds),
+          supabaseAdmin
+            .schema('public')
+            .from('group_members')
+            .select('group_id, user_id')
+            .in('group_id', groupIds),
+        ])
+      : [{ data: [] }, { data: [] }];
+  const memberIds = [
+    ...new Set(
+      (groupMembersResult.data ?? [])
+        .map((member) => member.user_id)
+        .filter((memberId): memberId is string => Boolean(memberId)),
+    ),
+  ];
+  const memberProfilesResult =
+    memberIds.length > 0
+      ? await supabaseAdmin
+          .schema('public')
+          .from('users')
+          .select('id, display_name, email, avatar_url')
+          .in('id', memberIds)
+      : { data: [] };
+  const groupLimitsById = new Map(
+    (groupLimitsResult.data ?? []).map((group) => [
+      group.id,
+      group.max_members ?? 5,
+    ]),
+  );
+  const memberProfileById = new Map(
+    (memberProfilesResult.data ?? []).map((profile) => [profile.id, profile]),
+  );
+  const membersByGroup = new Map<
+    string,
+    Array<{ user_id: string | null; group_id: string | null }>
+  >();
+
+  for (const member of groupMembersResult.data ?? []) {
+    if (!member.group_id) {
+      continue;
+    }
+
+    const current = membersByGroup.get(member.group_id) ?? [];
+    current.push(member);
+    membersByGroup.set(member.group_id, current);
+  }
+
   const groupsById = new Map<string, { name: string }>();
   const groups: DashboardGroup[] = [];
 
@@ -806,11 +889,26 @@ async function getDashboardCore(userId: string) {
     }
 
     groupsById.set(group.group_id, { name: group.name });
+    const groupMembers = membersByGroup.get(group.group_id) ?? [];
     groups.push({
       id: group.group_id,
       name: group.name,
       is_founder: Boolean(group.is_founder),
       memberCount: group.member_count ?? 0,
+      maxMembers: groupLimitsById.get(group.group_id) ?? 5,
+      membersPreview: groupMembers.slice(0, 5).map((member) => {
+        const profile = member.user_id
+          ? memberProfileById.get(member.user_id)
+          : null;
+        const displayLabel = profile?.display_name ?? profile?.email ?? 'AB';
+
+        return {
+          id: member.user_id ?? `${group.group_id}-member`,
+          initials: getInitials(displayLabel),
+          avatarUrl: profile?.avatar_url ?? null,
+        };
+      }),
+      activeSession: null,
       nextSession: null,
     });
   }
@@ -850,14 +948,32 @@ async function getDashboardCore(userId: string) {
     });
   }
 
-  const upcomingByGroup = new Map(
+  const activeByGroup = new Map(
     sessions
-      .filter((session) => session.status !== 'completed')
+      .filter((session) => session.status === 'active')
       .map((session) => [session.group_id, session]),
   );
+  const now = Date.now();
+  const scheduledByGroup = new Map<string, DashboardSession>();
+  for (const session of [...sessions]
+    .filter(
+      (candidate) =>
+        candidate.status === 'scheduled' &&
+        new Date(candidate.scheduled_at).getTime() >= now,
+    )
+    .sort(
+      (left, right) =>
+        new Date(left.scheduled_at).getTime() -
+        new Date(right.scheduled_at).getTime(),
+    )) {
+    if (!scheduledByGroup.has(session.group_id)) {
+      scheduledByGroup.set(session.group_id, session);
+    }
+  }
 
   for (const group of groups) {
-    group.nextSession = upcomingByGroup.get(group.id) ?? null;
+    group.activeSession = activeByGroup.get(group.id) ?? null;
+    group.nextSession = scheduledByGroup.get(group.id) ?? null;
   }
 
   return {

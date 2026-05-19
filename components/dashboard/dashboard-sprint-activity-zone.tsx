@@ -29,6 +29,8 @@ export type DashboardSprintActivityZoneProps = {
     heatmapHigh: string;
     days: string;
     noData: string;
+    weekdays: string[];
+    monthLabels: string[];
   };
 };
 
@@ -108,6 +110,26 @@ function buildHeatmapWeeks(heatmap: HeatmapDay[]) {
   return weeks;
 }
 
+function buildHeatmapMonthMarkers(
+  weeks: Array<
+    Array<{ date: string; count: number; intensity: 0 | 1 | 2 | 3 | 4 }>
+  >,
+  monthLabels: string[],
+) {
+  let previousMonth = -1;
+
+  return weeks.map((week, index) => {
+    const firstDay = week[0];
+    const monthIndex = firstDay ? new Date(firstDay.date).getUTCMonth() : -1;
+    const shouldLabel = index === 0 || monthIndex !== previousMonth;
+    previousMonth = monthIndex;
+
+    return shouldLabel && monthIndex >= 0
+      ? (monthLabels[monthIndex] ?? '')
+      : '';
+  });
+}
+
 function getHeatmapCellClass(intensity: HeatmapDay['intensity']) {
   if (!intensity) {
     return 'bg-[#13322d]';
@@ -177,6 +199,15 @@ export const DashboardSprintActivityZone = memo(
       [heatmap],
     );
     const heatmapWeeks = useMemo(() => buildHeatmapWeeks(heatmap), [heatmap]);
+    const heatmapMonthMarkers = useMemo(
+      () => buildHeatmapMonthMarkers(heatmapWeeks, labels.monthLabels),
+      [heatmapWeeks, labels.monthLabels],
+    );
+    const displayedWeekdays = [
+      labels.weekdays[0],
+      labels.weekdays[2],
+      labels.weekdays[4],
+    ];
     const cards = [
       {
         key: 'answered',
@@ -273,16 +304,36 @@ export const DashboardSprintActivityZone = memo(
             </div>
 
             <div className="mt-4 overflow-x-auto pb-1">
-              <div className="grid min-w-[560px] grid-flow-col grid-rows-7 gap-[4px]">
-                {heatmapWeeks.map((week, weekIndex) =>
-                  week.map((day) => (
-                    <div
-                      key={`${weekIndex}-${day.date}`}
-                      className={`h-3 w-3 rounded-[3px] ${getHeatmapCellClass(day.intensity)}`}
-                      title={`${day.date} - ${day.count}`}
-                    />
-                  )),
-                )}
+              <div className="min-w-[616px]">
+                <div className="ml-[22px] grid grid-cols-[repeat(28,12px)] gap-[4px] text-[12px] font-normal text-[#8fa7a2]">
+                  {heatmapMonthMarkers.map((label, index) => (
+                    <span key={`${label}-${index}`} className="h-4">
+                      {label}
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-2 flex items-start gap-[6px]">
+                  <div className="flex w-4 flex-col gap-[4px] pt-[16px] text-[10px] leading-3 text-[#5c7773]">
+                    <span className="h-3">{displayedWeekdays[0]}</span>
+                    <span className="h-3" />
+                    <span className="h-3">{displayedWeekdays[1]}</span>
+                    <span className="h-3" />
+                    <span className="h-3">{displayedWeekdays[2]}</span>
+                    <span className="h-3" />
+                    <span className="h-3" />
+                  </div>
+                  <div className="grid grid-flow-col grid-rows-7 gap-[4px]">
+                    {heatmapWeeks.map((week, weekIndex) =>
+                      week.map((day) => (
+                        <div
+                          key={`${weekIndex}-${day.date}`}
+                          className={`h-3 w-3 rounded-[3px] ${getHeatmapCellClass(day.intensity)}`}
+                          title={`${day.date} - ${day.count}`}
+                        />
+                      )),
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
