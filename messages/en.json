@@ -545,6 +545,8 @@
     "zoneGroupSeats": "seats",
     "zoneGroupNextSession": "Next session",
     "zoneGroupNoUpcomingSession": "No upcoming session scheduled.",
+    "zoneGroupRecentSessions": "Last sessions",
+    "zoneGroupViewAllSessions": "View all sessions",
     "zoneKpiDays": "days",
     "questionsAnswered": "questions answered",
     "questionsAnsweredValue": "{count} questions answered",

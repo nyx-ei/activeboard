@@ -37,6 +37,9 @@ type DashboardSession = {
   question_goal: number;
   answeredQuestionCount?: number;
   questionCount?: number;
+  leaderInitials?: string;
+  completionPercent?: number;
+  accuracyPercent?: number | null;
 };
 
 type DashboardGroupMemberPreview = {
@@ -69,6 +72,7 @@ type DashboardGroup = {
   membersPreview: DashboardGroupMemberPreview[];
   activeSession: DashboardSession | null;
   nextSession: DashboardSession | null;
+  recentSessions: DashboardSession[];
 };
 
 type GroupMemberPerformance = {
@@ -264,6 +268,17 @@ type DashboardUserSessionRow = {
   answered_question_count: number | null;
 };
 
+type DashboardRecentAnswerRow = {
+  question_id: string | null;
+  is_correct: boolean | null;
+  answer_state: string | null;
+};
+
+type DashboardRecentQuestionRow = {
+  id: string | null;
+  session_id: string | null;
+};
+
 const TRIAL_WARNING_THRESHOLD = 85;
 const DASHBOARD_SESSION_LIMIT = 50;
 const DASHBOARD_CONFIDENCE_SESSION_LIMIT = 8;
@@ -278,6 +293,14 @@ function getInitials(value: string) {
       .slice(0, 2)
       .toUpperCase() || 'AB'
   );
+}
+
+function chunkArray<TValue>(values: TValue[], size: number) {
+  const chunks: TValue[][] = [];
+  for (let index = 0; index < values.length; index += size) {
+    chunks.push(values.slice(index, index + size));
+  }
+  return chunks;
 }
 
 async function getUsersMap(supabase: PublicClient, userIds: string[]) {
@@ -910,6 +933,7 @@ async function getDashboardCore(userId: string) {
       }),
       activeSession: null,
       nextSession: null,
+      recentSessions: [],
     });
   }
 
@@ -945,7 +969,110 @@ async function getDashboardCore(userId: string) {
       question_goal: row.question_goal,
       questionCount: row.question_count ?? 0,
       answeredQuestionCount: row.answered_question_count ?? 0,
+      leaderInitials: row.leader_id
+        ? getInitials(
+            memberProfileById.get(row.leader_id)?.display_name ??
+              memberProfileById.get(row.leader_id)?.email ??
+              'AB',
+          )
+        : 'AB',
     });
+  }
+
+  const now = Date.now();
+  const recentByGroup = new Map<string, DashboardSession[]>();
+  for (const session of sessions) {
+    if (
+      session.status === 'scheduled' &&
+      new Date(session.scheduled_at).getTime() > now
+    ) {
+      continue;
+    }
+
+    const current = recentByGroup.get(session.group_id) ?? [];
+    if (current.length < 3) {
+      current.push(session);
+      recentByGroup.set(session.group_id, current);
+    }
+  }
+
+  const recentSessionIds = [
+    ...new Set([...recentByGroup.values()].flat().map((session) => session.id)),
+  ];
+  const recentQuestionsResult =
+    recentSessionIds.length > 0
+      ? await supabaseAdmin
+          .schema('public')
+          .from('questions')
+          .select('id, session_id')
+          .in('session_id', recentSessionIds)
+      : { data: [] };
+  const questionSessionById = new Map<string, string>();
+  for (const question of (recentQuestionsResult.data ??
+    []) as DashboardRecentQuestionRow[]) {
+    if (question.id && question.session_id) {
+      questionSessionById.set(question.id, question.session_id);
+    }
+  }
+
+  const recentAnswerRows =
+    questionSessionById.size > 0
+      ? (
+          await Promise.all(
+            chunkArray([...questionSessionById.keys()], 200).map(
+              (questionIds) =>
+                supabaseAdmin
+                  .schema('public')
+                  .from('answers')
+                  .select('question_id, is_correct, answer_state')
+                  .eq('user_id', userId)
+                  .in('question_id', questionIds),
+            ),
+          )
+        ).flatMap((result) => result.data ?? [])
+      : [];
+  const accuracyStatsBySession = new Map<
+    string,
+    { submitted: number; correct: number }
+  >();
+  for (const answer of recentAnswerRows as DashboardRecentAnswerRow[]) {
+    if (!answer.question_id || answer.answer_state !== 'submitted') {
+      continue;
+    }
+
+    const sessionId = questionSessionById.get(answer.question_id);
+    if (!sessionId) {
+      continue;
+    }
+
+    const current = accuracyStatsBySession.get(sessionId) ?? {
+      submitted: 0,
+      correct: 0,
+    };
+    current.submitted += 1;
+    if (answer.is_correct === true) {
+      current.correct += 1;
+    }
+    accuracyStatsBySession.set(sessionId, current);
+  }
+
+  for (const session of sessions) {
+    const targetCount = Math.max(
+      1,
+      session.question_goal || session.questionCount || 1,
+    );
+    const completedCount = Math.min(
+      targetCount,
+      session.answeredQuestionCount ?? session.questionCount ?? 0,
+    );
+    const accuracyStats = accuracyStatsBySession.get(session.id);
+    session.completionPercent = Math.round(
+      (completedCount / targetCount) * 100,
+    );
+    session.accuracyPercent =
+      accuracyStats && accuracyStats.submitted > 0
+        ? Math.round((accuracyStats.correct / accuracyStats.submitted) * 100)
+        : null;
   }
 
   const activeByGroup = new Map(
@@ -953,7 +1080,6 @@ async function getDashboardCore(userId: string) {
       .filter((session) => session.status === 'active')
       .map((session) => [session.group_id, session]),
   );
-  const now = Date.now();
   const scheduledByGroup = new Map<string, DashboardSession>();
   for (const session of [...sessions]
     .filter(
@@ -974,6 +1100,7 @@ async function getDashboardCore(userId: string) {
   for (const group of groups) {
     group.activeSession = activeByGroup.get(group.id) ?? null;
     group.nextSession = scheduledByGroup.get(group.id) ?? null;
+    group.recentSessions = recentByGroup.get(group.id) ?? [];
   }
 
   return {
