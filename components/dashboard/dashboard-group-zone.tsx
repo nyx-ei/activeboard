@@ -24,6 +24,7 @@ import {
   X,
 } from 'lucide-react';
 
+import { useRouter } from '@/i18n/navigation';
 import { Modal, ModalTitle } from '@/components/ui/modal';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -104,6 +105,9 @@ export type DashboardGroupZoneProps = {
     emailUnavailable: string;
     actionFailed: string;
     startSession: string;
+    editSession: string;
+    cancelSession: string;
+    cancelSessionSuccess: string;
     memberRequirementPrompt: string;
   };
 };
@@ -120,7 +124,11 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   const [inviteEmail, setInviteEmail] = useState('');
   const [isInviting, setIsInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [cancellingSessionId, setCancellingSessionId] = useState<
+    string | null
+  >(null);
   const [selectedGroupId, setSelectedGroupId] = useState(groups[0]?.id ?? '');
+  const router = useRouter();
   const groupMenuRef = useRef<HTMLDivElement | null>(null);
   const overflowMenuRef = useRef<HTMLDivElement | null>(null);
   const liveSignatureRef = useRef('');
@@ -163,6 +171,12 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   );
   const normalizedInviteEmail = inviteEmail.trim().toLowerCase();
 
+  function prefetchSession(href: string | null) {
+    if (href) {
+      router.prefetch(href as never);
+    }
+  }
+
   useEffect(() => {
     if (groups.length === 0) {
       setSelectedGroupId('');
@@ -194,6 +208,12 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
 
     liveSignatureRef.current = liveSignature;
   }, [groups, selectedGroupId]);
+
+  useEffect(() => {
+    if (sessionHref) {
+      router.prefetch(sessionHref as never);
+    }
+  }, [router, sessionHref]);
 
   useEffect(() => {
     if (!isOpen && !isOverflowOpen) {
@@ -448,6 +468,12 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
           {selectedActiveSession ? (
             <a
               href={`/${locale}/sessions/${selectedActiveSession.id}`}
+              onFocus={() =>
+                prefetchSession(`/${locale}/sessions/${selectedActiveSession.id}`)
+              }
+              onPointerEnter={() =>
+                prefetchSession(`/${locale}/sessions/${selectedActiveSession.id}`)
+              }
               className="group flex flex-col gap-4 rounded-[14px] border border-[#20D9A3]/35 bg-[linear-gradient(135deg,rgba(32,217,163,0.12),rgba(32,217,163,0.025))] px-5 py-4 transition hover:border-[#20D9A3]/60 hover:bg-[#20D9A3]/[0.08] sm:flex-row sm:items-center"
             >
               <span className="flex min-w-0 flex-1 items-start gap-4">
@@ -488,38 +514,79 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
               </span>
             </a>
           ) : selectedNextSession && sessionHref ? (
-            <a
-              href={sessionHref}
+            <div
               className="flex flex-col gap-4 rounded-[14px] border border-white/[0.06] bg-white/[0.018] px-5 py-4 transition hover:border-white/[0.1] hover:bg-white/[0.03] sm:flex-row sm:items-center"
             >
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[11px] border border-[#6BA8F2]/25 bg-[#6BA8F2]/15 text-[#A8C9F4]">
-                <CalendarClock className="h-5 w-5" aria-hidden="true" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="text-[13px] font-normal tracking-[0.02em] text-[#8fa7a2]">
-                  {labels.nextSession}
+              <a
+                href={sessionHref}
+                onFocus={() => prefetchSession(sessionHref)}
+                onPointerEnter={() => prefetchSession(sessionHref)}
+                className="flex min-w-0 flex-1 items-start gap-4"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[11px] border border-[#6BA8F2]/25 bg-[#6BA8F2]/15 text-[#A8C9F4]">
+                  <CalendarClock className="h-5 w-5" aria-hidden="true" />
                 </span>
-                <span className="mt-1.5 block truncate text-[17px] font-semibold tracking-[-0.02em] text-[#e8f4f0]">
-                  {selectedNextSession.name ?? labels.nextSession}
+                <span className="min-w-0 flex-1">
+                  <span className="text-[13px] font-normal tracking-[0.02em] text-[#8fa7a2]">
+                    {labels.nextSession}
+                  </span>
+                  <span className="mt-1.5 block truncate text-[17px] font-semibold tracking-[-0.02em] text-[#e8f4f0]">
+                    {selectedNextSession.name ?? labels.nextSession}
+                  </span>
+                  <span className="mt-2 flex flex-wrap items-center gap-2 text-[13px] text-[#8fa7a2]">
+                    {labels.scheduledFor.replace(
+                      '{date}',
+                      formatSessionDate(
+                        selectedNextSession.scheduled_at,
+                        locale,
+                      ),
+                    )}
+                    <span className="text-[#345049]">·</span>
+                    {selectedNextSession.question_goal} {labels.questionsUnit}
+                    <span className="text-[#345049]">·</span>
+                    {labels.timerLabel.replace(
+                      '{seconds}',
+                      String(selectedNextSession.timer_seconds),
+                    )}
+                  </span>
                 </span>
-                <span className="mt-2 flex flex-wrap items-center gap-2 text-[13px] text-[#8fa7a2]">
-                  {labels.scheduledFor.replace(
-                    '{date}',
-                    formatSessionDate(selectedNextSession.scheduled_at, locale),
-                  )}
-                  <span className="text-[#345049]">·</span>
-                  {selectedNextSession.question_goal} {labels.questionsUnit}
-                  <span className="text-[#345049]">·</span>
-                  {labels.timerLabel.replace(
-                    '{seconds}',
-                    String(selectedNextSession.timer_seconds),
-                  )}
-                </span>
+              </a>
+              <span className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!selectedGroup) {
+                      return;
+                    }
+
+                    window.dispatchEvent(
+                      new CustomEvent('activeboard:open-create-session', {
+                        detail: { groupId: selectedGroup.id },
+                      }),
+                    );
+                  }}
+                  className="inline-flex h-10 items-center justify-center rounded-[10px] border border-white/[0.07] bg-white/[0.025] px-5 text-[13px] font-semibold text-[#e8f4f0] transition hover:border-white/[0.12] hover:bg-white/[0.045]"
+                >
+                  {labels.editSession}
+                </button>
+                <button
+                  type="button"
+                  disabled={cancellingSessionId === selectedNextSession.id}
+                  onClick={() =>
+                    void cancelDashboardScheduledSession({
+                      sessionId: selectedNextSession.id,
+                      locale,
+                      labels,
+                      setCancellingSessionId,
+                    })
+                  }
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-[10px] border border-white/[0.07] bg-white/[0.025] text-[#8fa7a2] transition hover:border-red-300/30 hover:bg-red-400/10 hover:text-red-100 disabled:cursor-wait disabled:opacity-60"
+                  aria-label={labels.cancelSession}
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
               </span>
-              <span className="inline-flex h-10 shrink-0 items-center justify-center rounded-[10px] border border-white/[0.07] bg-white/[0.025] px-5 text-[13px] font-semibold text-[#e8f4f0]">
-                {labels.openSession}
-              </span>
-            </a>
+            </div>
           ) : (
             <div className="flex items-center gap-4 rounded-[14px] border border-dashed border-white/[0.09] bg-transparent px-5 py-[18px] text-[#8fa7a2]">
               <span className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[11px] border border-white/[0.045] bg-white/[0.03] text-[#5c7773]">
@@ -550,6 +617,12 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
               <a
                 key={session.id}
                 href={`/${locale}/sessions/${session.id}`}
+                onFocus={() =>
+                  prefetchSession(`/${locale}/sessions/${session.id}`)
+                }
+                onPointerEnter={() =>
+                  prefetchSession(`/${locale}/sessions/${session.id}`)
+                }
                 className="rounded-[12px] border border-white/[0.045] bg-white/[0.018] px-4 py-3 transition hover:border-white/[0.09] hover:bg-white/[0.035]"
               >
                 <span className="flex min-w-0 items-start justify-between gap-3">
@@ -823,6 +896,49 @@ async function sendDashboardGroupInvite({
     notifyDashboardGroupAction(labels.actionFailed, 'error');
   } finally {
     setIsInviting(false);
+  }
+}
+
+async function cancelDashboardScheduledSession({
+  sessionId,
+  locale,
+  labels,
+  setCancellingSessionId,
+}: {
+  sessionId: string;
+  locale: string;
+  labels: DashboardGroupZoneProps['labels'];
+  setCancellingSessionId: (value: string | null) => void;
+}) {
+  setCancellingSessionId(sessionId);
+
+  try {
+    const response = await fetch(`/api/sessions/${sessionId}/cancel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      cache: 'no-store',
+      body: JSON.stringify({
+        locale,
+        returnTo: `/${locale}/dashboard`,
+      }),
+    });
+
+    if (!response.ok) {
+      notifyDashboardGroupAction(labels.actionFailed, 'error');
+      return;
+    }
+
+    window.dispatchEvent(
+      new CustomEvent('activeboard:dashboard-invalidate', {
+        detail: { view: 'sessions' },
+      }),
+    );
+    notifyDashboardGroupAction(labels.cancelSessionSuccess, 'success');
+  } catch {
+    notifyDashboardGroupAction(labels.actionFailed, 'error');
+  } finally {
+    setCancellingSessionId(null);
   }
 }
 
