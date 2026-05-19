@@ -1,9 +1,10 @@
 'use client';
 
-import { BookOpen, CreditCard, User } from 'lucide-react';
+import { BookOpen, CreditCard, Languages, User } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { LogoutButton } from '@/components/auth/logout-button';
+import { LanguageSwitcher } from '@/components/layout/language-switcher';
 import { Link } from '@/i18n/navigation';
 import { cn } from '@/lib/utils';
 
@@ -16,6 +17,7 @@ type ProfileMenuProps = {
   profileLabel?: string | null;
   examHref?: string | null;
   examLabel?: string | null;
+  languageLabel?: string | null;
   billingHref?: string | null;
   billingLabel?: string | null;
 };
@@ -29,6 +31,7 @@ export function ProfileMenu({
   profileLabel,
   examHref,
   examLabel,
+  languageLabel,
   billingHref,
   billingLabel,
 }: ProfileMenuProps) {
@@ -63,9 +66,10 @@ export function ProfileMenu({
         type="button"
         onClick={() => setOpen((value) => !value)}
         className={cn(
-          'relative flex h-10 w-10 items-center justify-center rounded-full border border-[#176b55] bg-[#053b32] text-[11px] font-extrabold text-[#22e39c] shadow-[inset_0_0_0_1px_rgba(34,227,156,0.14)] transition hover:bg-[#07483d]',
+          'relative flex h-10 w-10 items-center justify-center rounded-full border border-[#176b55] bg-[#053b32] text-[11px] font-extrabold uppercase text-[#22e39c] shadow-[inset_0_0_0_1px_rgba(34,227,156,0.14)] transition hover:bg-[#07483d]',
           open && 'ring-2 ring-white/70',
         )}
+        aria-label={name}
         aria-expanded={open}
         aria-haspopup="menu"
       >
@@ -79,19 +83,36 @@ export function ProfileMenu({
       </button>
 
       {open ? (
-        <div className="absolute right-0 top-[calc(100%+10px)] z-50 w-[min(280px,calc(100vw-1rem))] overflow-hidden rounded-[12px] border border-white/[0.08] bg-[#11192c] shadow-[0_20px_70px_rgba(0,0,0,0.5)]">
-          <div className="px-4 py-4">
-            <p className="truncate text-base font-extrabold text-white">{name}</p>
-            <p className="mt-1 truncate text-sm font-semibold text-slate-500">{email}</p>
+        <div
+          role="menu"
+          className="absolute right-0 top-[calc(100%+10px)] z-50 w-[min(300px,calc(100vw-1rem))] overflow-hidden rounded-[12px] border border-white/[0.08] bg-[#11192c] shadow-[0_20px_70px_rgba(0,0,0,0.5)]"
+        >
+          <div className="flex items-center gap-3 px-4 py-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#176b55] bg-[#053b32] text-xs font-extrabold uppercase text-[#22e39c]">
+              {initials}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-base font-extrabold text-white">
+                {name}
+              </p>
+              <p className="mt-0.5 truncate text-sm font-semibold text-slate-500">
+                {email}
+              </p>
+            </div>
           </div>
           <div className="border-t border-white/[0.06] py-1">
             {profileHref && profileLabel ? (
               <Link
                 href={profileHref}
+                role="menuitem"
                 className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-300 transition hover:bg-white/[0.05] hover:text-white"
                 onClick={() => setOpen(false)}
               >
-                <User className="h-4 w-4 text-slate-500" aria-hidden="true" strokeWidth={1.7} />
+                <User
+                  className="h-4 w-4 text-slate-500"
+                  aria-hidden="true"
+                  strokeWidth={1.7}
+                />
                 <span>{profileLabel}</span>
               </Link>
             ) : null}
@@ -99,21 +120,45 @@ export function ProfileMenu({
             {examHref && examLabel ? (
               <Link
                 href={examHref}
+                role="menuitem"
                 className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-300 transition hover:bg-white/[0.05] hover:text-white"
                 onClick={() => setOpen(false)}
               >
-                <BookOpen className="h-4 w-4 text-slate-500" aria-hidden="true" strokeWidth={1.7} />
+                <BookOpen
+                  className="h-4 w-4 text-slate-500"
+                  aria-hidden="true"
+                  strokeWidth={1.7}
+                />
                 <span>{examLabel}</span>
               </Link>
             ) : null}
 
+            <div className="flex items-center justify-between gap-3 px-4 py-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <Languages
+                  className="h-4 w-4 shrink-0 text-slate-500"
+                  aria-hidden="true"
+                  strokeWidth={1.7}
+                />
+                <span className="truncate text-sm font-bold text-slate-300">
+                  {languageLabel}
+                </span>
+              </div>
+              <LanguageSwitcher />
+            </div>
+
             {billingHref && billingLabel ? (
               <Link
                 href={billingHref}
+                role="menuitem"
                 className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-300 transition hover:bg-white/[0.05] hover:text-white"
                 onClick={() => setOpen(false)}
               >
-                <CreditCard className="h-4 w-4 text-slate-500" aria-hidden="true" strokeWidth={1.7} />
+                <CreditCard
+                  className="h-4 w-4 text-slate-500"
+                  aria-hidden="true"
+                  strokeWidth={1.7}
+                />
                 <span>{billingLabel}</span>
               </Link>
             ) : null}

@@ -1105,6 +1105,7 @@
     "Profile":  {
                     "menuLabel":  "Profil",
                     "examSettingsMenuLabel":  "Paramètres d'examen",
+                    "languagePreferenceMenuLabel":  "Préférence de langue",
                     "close":  "Fermer le profil",
                     "backToDashboard":  "Retour au tableau de bord",
                     "title":  "Profil",
