@@ -29,6 +29,7 @@ import {
   DashboardSessionsView,
   type DashboardSessionsViewProps,
 } from '@/components/dashboard/dashboard-sessions-view';
+import { subscribeSessionTabRecovery } from '@/components/session/session-tab-channel';
 
 type DashboardViewShellProps = {
   initialView: DashboardView;
@@ -354,6 +355,17 @@ export function DashboardViewShell({
       window.removeEventListener('focus', revalidateVisibleView);
       document.removeEventListener('visibilitychange', revalidateVisibleView);
     };
+  }, [applyPayload]);
+
+  useEffect(() => {
+    return subscribeSessionTabRecovery(() => {
+      invalidateDashboardPayloadCache('sessions');
+      void fetchDashboardPayload<DashboardPayloadByView, 'sessions'>(
+        'sessions',
+      ).then((payload) => {
+        applyPayload('sessions', payload);
+      });
+    });
   }, [applyPayload]);
 
   useEffect(() => {
