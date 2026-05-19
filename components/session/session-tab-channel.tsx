@@ -15,6 +15,10 @@ type SessionTabMessage =
       type: 'session-present';
       requestId: string;
       sessionId: string;
+    }
+  | {
+      type: 'session-tab-closed';
+      sessionId: string;
     };
 
 export function SessionTabPresence({ sessionId }: { sessionId: string }) {
@@ -24,6 +28,15 @@ export function SessionTabPresence({ sessionId }: { sessionId: string }) {
     }
 
     const channel = new BroadcastChannel(SESSION_TAB_CHANNEL);
+
+    const announceClosed = () => {
+      channel.postMessage({
+        type: 'session-tab-closed',
+        sessionId,
+      } satisfies SessionTabMessage);
+    };
+
+    window.addEventListener('pagehide', announceClosed);
 
     channel.onmessage = (event: MessageEvent<SessionTabMessage>) => {
       const message = event.data;
@@ -43,11 +56,33 @@ export function SessionTabPresence({ sessionId }: { sessionId: string }) {
     };
 
     return () => {
+      window.removeEventListener('pagehide', announceClosed);
       channel.close();
     };
   }, [sessionId]);
 
   return null;
+}
+
+export function subscribeSessionTabRecovery(
+  onSessionTabClosed: (sessionId: string) => void,
+) {
+  if (!('BroadcastChannel' in window)) {
+    return () => {};
+  }
+
+  const channel = new BroadcastChannel(SESSION_TAB_CHANNEL);
+
+  channel.onmessage = (event: MessageEvent<SessionTabMessage>) => {
+    const message = event.data;
+    if (message?.type === 'session-tab-closed') {
+      onSessionTabClosed(message.sessionId);
+    }
+  };
+
+  return () => {
+    channel.close();
+  };
 }
 
 export async function openSessionInManagedTab(sessionId: string, href: string) {
