@@ -68,6 +68,8 @@ type DashboardPayloadByView = {
   performance: DashboardPerformancePayload;
 };
 
+const LIVE_SESSION_REVALIDATION_INTERVAL_MS = 15_000;
+
 function getViewFromLocation(): DashboardView {
   if (typeof window === 'undefined') {
     return 'sessions';
@@ -351,6 +353,29 @@ export function DashboardViewShell({
     return () => {
       window.removeEventListener('focus', revalidateVisibleView);
       document.removeEventListener('visibilitychange', revalidateVisibleView);
+    };
+  }, [applyPayload]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const intervalId = window.setInterval(() => {
+      if (cancelled || document.visibilityState === 'hidden') {
+        return;
+      }
+
+      void fetchDashboardPayload<DashboardPayloadByView, 'sessions'>(
+        'sessions',
+      ).then((payload) => {
+        if (!cancelled) {
+          applyPayload('sessions', payload);
+        }
+      });
+    }, LIVE_SESSION_REVALIDATION_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
     };
   }, [applyPayload]);
 

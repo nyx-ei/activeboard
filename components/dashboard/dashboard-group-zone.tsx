@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   CalendarClock,
   Check,
@@ -38,6 +38,7 @@ export type DashboardGroupZoneSession = {
   id: string;
   name: string | null;
   scheduled_at: string;
+  started_at?: string | null;
   share_code: string;
   timer_seconds: number;
   question_goal: number;
@@ -103,6 +104,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   const [isInviting, setIsInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState(groups[0]?.id ?? '');
+  const liveSignatureRef = useRef('');
   const selectedGroup = useMemo(
     () =>
       groups.find((group) => group.id === selectedGroupId) ?? groups[0] ?? null,
@@ -137,6 +139,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   useEffect(() => {
     if (groups.length === 0) {
       setSelectedGroupId('');
+      liveSignatureRef.current = '';
       return;
     }
 
@@ -144,6 +147,25 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
     if (firstGroup && !groups.some((group) => group.id === selectedGroupId)) {
       setSelectedGroupId(firstGroup.id);
     }
+  }, [groups, selectedGroupId]);
+
+  useEffect(() => {
+    const liveSignature = getLiveGroupsSignature(groups);
+    const mostRecentLiveGroupId = getMostRecentLiveGroupId(groups);
+
+    if (!mostRecentLiveGroupId) {
+      liveSignatureRef.current = liveSignature;
+      return;
+    }
+
+    if (
+      liveSignatureRef.current !== liveSignature ||
+      !groups.some((group) => group.id === selectedGroupId)
+    ) {
+      setSelectedGroupId(mostRecentLiveGroupId);
+    }
+
+    liveSignatureRef.current = liveSignature;
   }, [groups, selectedGroupId]);
 
   return (
@@ -587,6 +609,41 @@ function getLiveSessionProgress(session: DashboardGroupZoneSession) {
     total,
     percent: Math.round((current / total) * 100),
   };
+}
+
+function getLiveGroupsSignature(groups: DashboardGroupZoneGroup[]) {
+  return groups
+    .filter((group) => group.hasLiveSession && group.activeSession)
+    .map((group) => {
+      const session = group.activeSession;
+      return `${group.id}:${session?.id ?? ''}:${session?.started_at ?? session?.scheduled_at ?? ''}`;
+    })
+    .sort()
+    .join('|');
+}
+
+function getMostRecentLiveGroupId(groups: DashboardGroupZoneGroup[]) {
+  let selected: { groupId: string; startedAt: number } | null = null;
+
+  for (const group of groups) {
+    if (!group.hasLiveSession || !group.activeSession) {
+      continue;
+    }
+
+    const startedAt = getSessionStartTime(group.activeSession);
+    if (!selected || startedAt > selected.startedAt) {
+      selected = { groupId: group.id, startedAt };
+    }
+  }
+
+  return selected?.groupId ?? null;
+}
+
+function getSessionStartTime(session: DashboardGroupZoneSession) {
+  const timestamp = new Date(
+    session.started_at ?? session.scheduled_at,
+  ).getTime();
+  return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
 function notifyDashboardGroupAction(
