@@ -344,6 +344,9 @@ export default async function DashboardPage({
       emailUnavailable: t('emailUnavailable'),
       actionFailed: feedbackT('actionFailed'),
       startSession: t('zoneGroupStartSession'),
+      editSession: t('editSession'),
+      cancelSession: t('cancelSession'),
+      cancelSessionSuccess: t('cancelSessionSuccess'),
       memberRequirementPrompt: t('memberRequirementPrompt', {
         count: '{count}',
       }),

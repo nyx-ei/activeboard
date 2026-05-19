@@ -189,6 +189,26 @@ export const DashboardSprintActivityZone = memo(
       },
     ];
 
+    async function shareSprintActivity() {
+      const shareUrl = window.location.href;
+      const text = `${labels.title}: ${answeredCount} ${labels.questionsAnswered}, ${completedSessionsCount} ${labels.sessionsCompleted}`;
+
+      try {
+        if (navigator.share) {
+          await navigator.share({
+            title: 'ActiveBoard',
+            text,
+            url: shareUrl,
+          });
+          return;
+        }
+
+        await navigator.clipboard.writeText(`${text} ${shareUrl}`);
+      } catch {
+        // Sharing is optional; keep the dashboard interaction non-blocking.
+      }
+    }
+
     return (
       <section className="v11-card px-5 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-5">
         <div className="mb-4 flex items-start justify-between gap-4">
@@ -206,6 +226,7 @@ export const DashboardSprintActivityZone = memo(
             type="button"
             className="hidden h-10 w-10 items-center justify-center rounded-[12px] border border-white/[0.045] bg-white/[0.025] text-[#8fa7a2] transition hover:border-white/[0.09] hover:bg-white/[0.04] hover:text-[#e8f4f0] sm:inline-flex"
             aria-label={labels.title}
+            onClick={() => void shareSprintActivity()}
           >
             <Share2 className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -238,10 +259,13 @@ export const DashboardSprintActivityZone = memo(
 
           <div className="min-w-0 flex-1">
             <div className="overflow-x-auto pb-1 xl:overflow-visible">
-              <div className="min-w-[672px] xl:min-w-0">
-                <div className="ml-[29px] grid grid-cols-[repeat(28,14px)] gap-[8px] text-[12px] font-normal leading-[14px] text-[#8fa7a2]">
+              <div className="w-full min-w-[672px] xl:min-w-0">
+                <div className="ml-[29px] grid grid-cols-[repeat(28,minmax(14px,1fr))] gap-y-0 text-[12px] font-normal leading-[14px] text-[#8fa7a2] [column-gap:8px]">
                   {heatmapMonthMarkers.map((label, index) => (
-                    <span key={`${label}-${index}`} className="h-5">
+                    <span
+                      key={`${label}-${index}`}
+                      className="h-5 justify-self-start"
+                    >
                       {label}
                     </span>
                   ))}
@@ -254,12 +278,12 @@ export const DashboardSprintActivityZone = memo(
                       </span>
                     ))}
                   </div>
-                  <div className="grid grid-flow-col grid-rows-7 gap-[8px]">
+                  <div className="grid w-full grid-flow-col grid-rows-7 gap-y-[8px] [column-gap:8px] [grid-auto-columns:minmax(14px,1fr)]">
                     {heatmapWeeks.map((week, weekIndex) =>
                       week.map((day) => (
                         <div
                           key={`${weekIndex}-${day.date}`}
-                          className={`h-[14px] w-[14px] rounded-[4px] ${getHeatmapCellClass(day.intensity)}`}
+                          className={`h-[14px] w-[14px] justify-self-start rounded-[4px] ${getHeatmapCellClass(day.intensity)}`}
                           title={`${day.date} - ${day.count}`}
                         />
                       )),
