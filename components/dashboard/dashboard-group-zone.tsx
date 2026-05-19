@@ -32,6 +32,8 @@ export type DashboardGroupZoneSession = {
   share_code: string;
   timer_seconds: number;
   question_goal: number;
+  answeredQuestionCount?: number;
+  questionCount?: number;
 };
 
 export type DashboardGroupZoneProps = {
@@ -77,6 +79,9 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
     : selectedGroup?.nextSession;
   const sessionHref = selectedSession
     ? `/${locale}/sessions/${selectedSession.id}`
+    : null;
+  const activeProgress = selectedGroup?.activeSession
+    ? getLiveSessionProgress(selectedGroup.activeSession)
     : null;
 
   useEffect(() => {
@@ -231,21 +236,42 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
           {selectedGroup.hasLiveSession && selectedGroup.activeSession ? (
             <a
               href={`/${locale}/sessions/${selectedGroup.activeSession.id}`}
-              className="flex items-center gap-4 rounded-[14px] border border-[#20D9A3]/35 bg-[linear-gradient(135deg,rgba(32,217,163,0.10),rgba(32,217,163,0.02))] px-5 py-[18px] transition hover:border-[#20D9A3]/60 hover:bg-[#20D9A3]/[0.08]"
+              className="group flex flex-col gap-4 rounded-[14px] border border-[#20D9A3]/35 bg-[linear-gradient(135deg,rgba(32,217,163,0.12),rgba(32,217,163,0.025))] px-5 py-[18px] transition hover:border-[#20D9A3]/60 hover:bg-[#20D9A3]/[0.08] sm:flex-row sm:items-center"
             >
-              <span className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[11px] border border-[#20D9A3]/25 bg-[#20D9A3]/15 text-[#9FF0CE]">
-                <Play className="h-4 w-4 fill-current" aria-hidden="true" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="inline-flex items-center gap-2 rounded-[6px] bg-[#20D9A3]/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[#9FF0CE]">
-                  <span className="live-dot" aria-hidden="true" />
-                  {labels.live}
+              <span className="flex min-w-0 flex-1 items-start gap-4">
+                <span className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[11px] border border-[#20D9A3]/25 bg-[#20D9A3]/15 text-[#9FF0CE]">
+                  <Play className="h-4 w-4 fill-current" aria-hidden="true" />
                 </span>
-                <span className="mt-2 block truncate text-[16px] font-medium tracking-[-0.015em] text-[#e8f4f0]">
-                  {selectedGroup.activeSession.name ?? labels.nextSession}
+                <span className="min-w-0 flex-1">
+                  <span className="inline-flex items-center gap-2 rounded-[6px] bg-[#20D9A3]/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[#9FF0CE]">
+                    <span className="live-dot" aria-hidden="true" />
+                    {labels.live}
+                  </span>
+                  <span className="mt-2 block truncate text-[16px] font-medium tracking-[-0.015em] text-[#e8f4f0]">
+                    {selectedGroup.activeSession.name ?? labels.nextSession}
+                  </span>
+                  {activeProgress ? (
+                    <>
+                      <span className="mt-2 flex flex-wrap items-center gap-2 text-[13px] text-[#8fa7a2]">
+                        <span className="font-semibold text-[#e8f4f0]">
+                          Q{activeProgress.current}/{activeProgress.total}
+                        </span>
+                        <span className="text-[#345049]">·</span>
+                        <span>
+                          {selectedGroup.memberCount} {labels.members}
+                        </span>
+                      </span>
+                      <span className="mt-3 block h-2 overflow-hidden rounded-full bg-[#102b27]">
+                        <span
+                          className="block h-full rounded-full bg-[#20D9A3] shadow-[0_0_18px_rgba(32,217,163,0.42)]"
+                          style={{ width: `${activeProgress.percent}%` }}
+                        />
+                      </span>
+                    </>
+                  ) : null}
                 </span>
               </span>
-              <span className="v11-chip v11-chip-mint">
+              <span className="inline-flex w-full shrink-0 items-center justify-center rounded-[10px] bg-[#20D9A3] px-4 py-2.5 text-[13px] font-semibold text-[#062b22] transition group-hover:bg-[#2fe9b1] sm:w-auto">
                 {labels.joinLiveSession}
               </span>
             </a>
@@ -310,6 +336,26 @@ function formatSessionDate(value: string, locale: string) {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(value));
+}
+
+function getLiveSessionProgress(session: DashboardGroupZoneSession) {
+  const total = Math.max(
+    1,
+    session.question_goal ||
+      session.questionCount ||
+      session.answeredQuestionCount ||
+      1,
+  );
+  const current = Math.min(
+    total,
+    Math.max(1, session.questionCount ?? session.answeredQuestionCount ?? 1),
+  );
+
+  return {
+    current,
+    total,
+    percent: Math.round((current / total) * 100),
+  };
 }
 
 function MemberAvatarStack({

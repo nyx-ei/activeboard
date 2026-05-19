@@ -62,6 +62,8 @@ export type DashboardSessionsViewProps = {
       share_code: string;
       timer_seconds: number;
       question_goal: number;
+      answeredQuestionCount?: number;
+      questionCount?: number;
     } | null;
     nextSession?: {
       id: string;
@@ -70,6 +72,8 @@ export type DashboardSessionsViewProps = {
       share_code: string;
       timer_seconds: number;
       question_goal: number;
+      answeredQuestionCount?: number;
+      questionCount?: number;
     } | null;
   }>;
   trialProgress: {
