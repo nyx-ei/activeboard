@@ -69,7 +69,7 @@ export function LanguageSwitcher({
         className="h-4 w-4 text-[#8fa7a2] sm:h-5 sm:w-5"
       />
       <span className="text-[#cde3de]">
-        {locale === 'en' ? t('english') : t('french')}
+        {nextLocale === 'en' ? t('english') : t('french')}
       </span>
     </button>
   );

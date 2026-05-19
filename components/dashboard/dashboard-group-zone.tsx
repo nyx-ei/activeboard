@@ -6,7 +6,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type MouseEvent,
   type ReactNode,
 } from 'react';
 import {
@@ -26,7 +25,6 @@ import {
 } from 'lucide-react';
 
 import { Modal, ModalTitle } from '@/components/ui/modal';
-import { openSessionInManagedTab } from '@/components/session/session-tab-channel';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -450,20 +448,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
           {selectedActiveSession ? (
             <a
               href={`/${locale}/sessions/${selectedActiveSession.id}`}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(event) => {
-                if (!isPrimaryPlainClick(event)) {
-                  return;
-                }
-
-                event.preventDefault();
-                void openSessionInManagedTab(
-                  selectedActiveSession.id,
-                  `/${locale}/sessions/${selectedActiveSession.id}`,
-                );
-              }}
-                  className="group flex flex-col gap-4 rounded-[14px] border border-[#20D9A3]/35 bg-[linear-gradient(135deg,rgba(32,217,163,0.12),rgba(32,217,163,0.025))] px-5 py-4 transition hover:border-[#20D9A3]/60 hover:bg-[#20D9A3]/[0.08] sm:flex-row sm:items-center"
+              className="group flex flex-col gap-4 rounded-[14px] border border-[#20D9A3]/35 bg-[linear-gradient(135deg,rgba(32,217,163,0.12),rgba(32,217,163,0.025))] px-5 py-4 transition hover:border-[#20D9A3]/60 hover:bg-[#20D9A3]/[0.08] sm:flex-row sm:items-center"
             >
               <span className="flex min-w-0 flex-1 items-start gap-4">
                 <span className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[11px] border border-[#20D9A3]/25 bg-[#20D9A3]/15 text-[#9FF0CE]">
@@ -505,19 +490,6 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
           ) : selectedNextSession && sessionHref ? (
             <a
               href={sessionHref}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(event) => {
-                if (!isPrimaryPlainClick(event)) {
-                  return;
-                }
-
-                event.preventDefault();
-                void openSessionInManagedTab(
-                  selectedNextSession.id,
-                  sessionHref,
-                );
-              }}
               className="flex flex-col gap-4 rounded-[14px] border border-white/[0.06] bg-white/[0.018] px-5 py-4 transition hover:border-white/[0.1] hover:bg-white/[0.03] sm:flex-row sm:items-center"
             >
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[11px] border border-[#6BA8F2]/25 bg-[#6BA8F2]/15 text-[#A8C9F4]">
@@ -778,16 +750,6 @@ function getSessionStartTime(session: DashboardGroupZoneSession) {
     session.started_at ?? session.scheduled_at,
   ).getTime();
   return Number.isFinite(timestamp) ? timestamp : 0;
-}
-
-function isPrimaryPlainClick(event: MouseEvent<HTMLAnchorElement>) {
-  return (
-    event.button === 0 &&
-    !event.metaKey &&
-    !event.ctrlKey &&
-    !event.shiftKey &&
-    !event.altKey
-  );
 }
 
 function notifyDashboardGroupAction(

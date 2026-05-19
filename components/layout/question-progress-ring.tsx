@@ -55,17 +55,17 @@ export function QuestionProgressRing({
       href="/billing"
       aria-label={label}
       title={label}
-      className={`relative inline-grid h-[58px] w-[58px] shrink-0 place-items-center rounded-full transition hover:scale-[1.02] sm:h-[66px] sm:w-[66px] ${tone.glow}`}
+      className={`relative inline-grid h-10 w-10 shrink-0 place-items-center rounded-full transition hover:scale-[1.02] sm:h-12 sm:w-12 ${tone.glow}`}
       style={{
         background: `conic-gradient(${tone.ring} ${progress}%, rgba(143, 167, 162, 0.18) 0)`,
       }}
     >
       <span
         aria-hidden="true"
-        className="absolute inset-[4px] rounded-full bg-[#00100f]"
+        className="absolute inset-[3px] rounded-full bg-[#00100f]"
       />
       <span
-        className={`relative z-10 text-[18px] font-semibold leading-none tabular-nums sm:text-[20px] ${tone.text}`}
+        className={`relative z-10 text-[14px] font-semibold leading-none tabular-nums sm:text-[16px] ${tone.text}`}
       >
         {visibleCount}
       </span>
