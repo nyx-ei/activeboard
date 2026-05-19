@@ -54,21 +54,20 @@ export function QuestionProgressRing({
     <Link
       href="/billing"
       aria-label={label}
-      className="inline-flex h-10 items-center gap-1.5 rounded-[8px] bg-white/[0.035] px-2 text-xs font-extrabold text-slate-200 ring-1 ring-white/[0.07] transition hover:bg-white/[0.055] sm:gap-2 sm:px-3"
+      title={label}
+      className={`relative inline-grid h-[58px] w-[58px] shrink-0 place-items-center rounded-full transition hover:scale-[1.02] sm:h-[66px] sm:w-[66px] ${tone.glow}`}
+      style={{
+        background: `conic-gradient(${tone.ring} ${progress}%, rgba(143, 167, 162, 0.18) 0)`,
+      }}
     >
       <span
         aria-hidden="true"
-        className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${tone.glow}`}
-        style={{
-          background: `conic-gradient(${tone.ring} ${progress}%, rgba(148, 163, 184, 0.18) 0)`,
-        }}
+        className="absolute inset-[4px] rounded-full bg-[#00100f]"
+      />
+      <span
+        className={`relative z-10 text-[18px] font-semibold leading-none tabular-nums sm:text-[20px] ${tone.text}`}
       >
-        <span className="grid h-[18px] w-[18px] place-items-center rounded-full bg-[#020814]">
-          <span className={`text-[11px] leading-none ${tone.text}`}>◷</span>
-        </span>
-      </span>
-      <span className={`${tone.text} tabular-nums max-[420px]:sr-only`}>
-        {visibleCount}/{TRIAL_QUESTION_LIMIT}
+        {visibleCount}
       </span>
     </Link>
   );

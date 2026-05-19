@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 
 import { usePathname, useRouter } from '@/i18n/navigation';
-import { routing, type AppLocale } from '@/i18n/routing';
+import { type AppLocale } from '@/i18n/routing';
 
 type LanguageSwitcherProps = {
   persistUserPreference?: boolean;
@@ -60,27 +60,16 @@ export function LanguageSwitcher({
           );
         });
       }}
-      className="inline-flex items-center gap-1.5 rounded-full px-2 py-1.5 text-xs font-semibold text-slate-300 transition hover:bg-white/[0.04] hover:text-white sm:gap-2 sm:px-3 sm:py-2 sm:text-sm"
+      className="inline-flex items-center gap-2 rounded-full px-1.5 py-1 text-sm font-semibold text-[#8fa7a2] transition hover:text-white sm:px-2 sm:text-base"
       aria-label={isPending ? t('switchingLanguage') : t('language')}
       disabled={isPending}
     >
       <Globe
         aria-hidden="true"
-        className="h-3.5 w-3.5 text-slate-400 sm:h-4 sm:w-4"
+        className="h-4 w-4 text-[#8fa7a2] sm:h-5 sm:w-5"
       />
-      <span className="inline-flex items-center gap-1">
-        {routing.locales.map((option, index) => (
-          <span key={option} className="inline-flex items-center gap-1">
-            <span
-              className={option === locale ? 'text-white' : 'text-slate-500'}
-            >
-              {option === 'en' ? t('english') : t('french')}
-            </span>
-            {index < routing.locales.length - 1 ? (
-              <span className="text-slate-600">/</span>
-            ) : null}
-          </span>
-        ))}
+      <span className="text-[#cde3de]">
+        {locale === 'en' ? t('english') : t('french')}
       </span>
     </button>
   );

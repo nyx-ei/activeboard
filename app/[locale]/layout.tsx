@@ -118,15 +118,19 @@ export default async function LocaleLayout({
   return (
     <NextIntlClientProvider locale={locale} messages={clientMessages}>
       <RegisterServiceWorker />
-      <div className="min-h-screen overflow-x-hidden px-2 pb-6 pt-2 sm:px-6 sm:pt-4">
-        <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-[1240px] flex-col gap-4 sm:gap-5">
+      <div
+        className={`min-h-screen overflow-x-hidden px-2 pb-6 pt-2 sm:px-6 sm:pt-4 ${
+          user ? 'bg-[#00100f]' : ''
+        }`}
+      >
+        <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-[1440px] flex-col gap-4 sm:gap-5">
           <OfflineStatusBanner />
           <InstallPrompt locale={locale} />
           {user ? <PwaLaunchTracker locale={locale} /> : null}
           <header
             className={
               user
-                ? 'border-b border-[#1f2937]/80 pb-2 pt-1'
+                ? 'border-b border-white/[0.07] pb-2 pt-1'
                 : 'absolute right-3 top-3 z-50 border-0 p-0 sm:right-6 sm:top-4'
             }
           >
