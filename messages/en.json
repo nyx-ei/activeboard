@@ -1107,6 +1107,7 @@
   "Profile": {
     "menuLabel": "Profile",
     "examSettingsMenuLabel": "Exam settings",
+    "languagePreferenceMenuLabel": "Language preference",
     "close": "Close profile",
     "backToDashboard": "Back to dashboard",
     "title": "Profile",

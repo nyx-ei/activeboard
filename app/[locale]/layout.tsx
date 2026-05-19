@@ -189,6 +189,7 @@ export default async function LocaleLayout({
                       profileLabel={profileT('menuLabel')}
                       examHref="/profile?section=exam"
                       examLabel={profileT('examSettingsMenuLabel')}
+                      languageLabel={profileT('languagePreferenceMenuLabel')}
                       billingHref="/billing"
                       billingLabel={billingT('menuLabel')}
                     />
