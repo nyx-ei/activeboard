@@ -3,9 +3,9 @@
 import { memo } from 'react';
 import {
   AlertTriangle,
+  ArrowRight,
   Check,
-  HelpCircle,
-  Minus,
+  Sprout,
   TrendingDown,
   TrendingUp,
   X,
@@ -64,7 +64,7 @@ const QUADRANT_TONES: Record<ProgressQuadrantKey, string> = {
 
 const QUADRANT_ICONS = {
   trueMastery: Check,
-  fragileKnowledge: HelpCircle,
+  fragileKnowledge: Sprout,
   consciousGap: AlertTriangle,
   falseConfidence: X,
 };
@@ -97,44 +97,24 @@ function getQuadrantLabel(
   }
 }
 
-function TrendIndicator({
+function TrendGlyph({
   trend,
-  labels,
+  fallbackDirection,
 }: {
   trend: number | null;
-  labels: DashboardProgressStateZoneProps['labels'];
+  fallbackDirection: 'up' | 'down';
 }) {
-  if (trend === null) {
-    return (
-      <span className="inline-flex items-center gap-1 text-[12px] font-medium text-[#5c7773]">
-        <Minus className="h-3.5 w-3.5" aria-hidden="true" />
-        {labels.trendUnavailable}
-      </span>
-    );
-  }
-
-  if (trend === 0) {
-    return (
-      <span className="inline-flex items-center gap-1 text-[12px] font-medium text-[#8fa7a2]">
-        <Minus className="h-3.5 w-3.5" aria-hidden="true" />
-        {labels.trendFlat}
-      </span>
-    );
-  }
-
-  const isPositive = trend > 0;
+  const isPositive =
+    trend === null ? fallbackDirection === 'up' : trend >= 0;
   const Icon = isPositive ? TrendingUp : TrendingDown;
-  const labelTemplate = isPositive ? labels.trendUp : labels.trendDown;
 
   return (
-    <span
-      className={`inline-flex items-center gap-1 text-[12px] font-medium ${
+    <Icon
+      className={`h-3.5 w-3.5 ${
         isPositive ? 'text-[#7FE5BD]' : 'text-[#F0A0A0]'
       }`}
-    >
-      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-      {labelTemplate.replace('{value}', String(Math.abs(trend)))}
-    </span>
+      aria-hidden="true"
+    />
   );
 }
 
@@ -162,7 +142,7 @@ export const DashboardProgressStateZone = memo(
             </p>
             <a
               href={detailsHref}
-              className="v11-chip v11-chip-mint transition hover:border-[#20D9A3]/60 hover:bg-[#20D9A3]/20"
+              className="inline-flex items-center gap-1 text-[15px] font-medium text-[#20D9A3] transition hover:text-[#9FF0CE]"
               onClick={(event) => {
                 event.preventDefault();
                 window.history.pushState({}, '', detailsHref);
@@ -174,6 +154,7 @@ export const DashboardProgressStateZone = memo(
               }}
             >
               {labels.viewDetails}
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </a>
           </div>
         </div>
@@ -188,6 +169,8 @@ export const DashboardProgressStateZone = memo(
             };
             const quadrantLabel = getQuadrantLabel(key, labels);
             const Icon = QUADRANT_ICONS[key];
+            const fallbackDirection: 'up' | 'down' =
+              key === 'trueMastery' ? 'up' : 'down';
 
             return (
               <article
@@ -204,19 +187,17 @@ export const DashboardProgressStateZone = memo(
                     <h2 className="text-[14px] font-medium text-[#e8f4f0]">
                       {quadrantLabel.title}
                     </h2>
-                    <p className="text-[14px] font-medium text-[#e8f4f0]">
+                    <p className="inline-flex items-center gap-1 text-[14px] font-medium text-[#e8f4f0]">
                       {item.percentage}%
+                      <TrendGlyph
+                        trend={item.trend}
+                        fallbackDirection={fallbackDirection}
+                      />
                     </p>
                   </div>
                   <p className="mt-1 truncate text-[11.5px] font-normal text-[#5c7773]">
                     {quadrantLabel.description}
                   </p>
-                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-[12px] font-medium text-[#8fa7a2]">
-                      {item.count} {labels.answers}
-                    </span>
-                    <TrendIndicator trend={item.trend} labels={labels} />
-                  </div>
                 </div>
               </article>
             );

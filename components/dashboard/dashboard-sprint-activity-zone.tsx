@@ -211,8 +211,8 @@ export const DashboardSprintActivityZone = memo(
           </button>
         </div>
 
-        <div className="grid gap-8 xl:grid-cols-[420px_minmax(0,1fr)] xl:items-end 2xl:grid-cols-[500px_minmax(0,1fr)]">
-          <div className="flex max-w-[420px] items-end 2xl:max-w-[500px]">
+        <div className="grid gap-8 xl:grid-cols-[380px_minmax(0,1fr)] xl:items-center 2xl:grid-cols-[440px_minmax(0,1fr)]">
+          <div className="flex max-w-[380px] items-center 2xl:max-w-[440px]">
             {cards.map((card, index) => {
               return (
                 <article
@@ -224,7 +224,7 @@ export const DashboardSprintActivityZone = memo(
                   }`}
                 >
                   <p
-                    className={`text-[46px] font-semibold leading-none tracking-[-0.035em] sm:text-[58px] xl:text-[64px] 2xl:text-[72px] ${card.accent}`}
+                    className={`text-[42px] font-semibold leading-none tracking-[-0.03em] sm:text-[54px] xl:text-[58px] 2xl:text-[64px] ${card.accent}`}
                   >
                     {card.value}
                   </p>
@@ -238,28 +238,28 @@ export const DashboardSprintActivityZone = memo(
 
           <div className="min-w-0 flex-1">
             <div className="overflow-x-auto pb-1 xl:overflow-visible">
-              <div className="min-w-[610px] xl:min-w-0">
-                <div className="ml-[28px] grid grid-cols-[repeat(28,14px)] gap-[6px] text-[13px] font-normal leading-4 text-[#8fa7a2]">
+              <div className="min-w-[730px] xl:min-w-0">
+                <div className="ml-[31px] grid grid-cols-[repeat(28,16px)] gap-[9px] text-[13px] font-normal leading-4 text-[#8fa7a2]">
                   {heatmapMonthMarkers.map((label, index) => (
                     <span key={`${label}-${index}`} className="h-5">
                       {label}
                     </span>
                   ))}
                 </div>
-                <div className="mt-2 flex items-start gap-[8px]">
-                  <div className="flex w-5 flex-col gap-[6px] text-[12px] leading-[14px] text-[#6f8984]">
+                <div className="mt-2 flex items-start gap-[9px]">
+                  <div className="flex w-[22px] flex-col gap-[9px] text-[12px] leading-4 text-[#6f8984]">
                     {displayedWeekdays.map((weekday, index) => (
-                      <span key={`${weekday}-${index}`} className="h-[14px]">
+                      <span key={`${weekday}-${index}`} className="h-4">
                         {weekday}
                       </span>
                     ))}
                   </div>
-                  <div className="grid grid-flow-col grid-rows-7 gap-[6px]">
+                  <div className="grid grid-flow-col grid-rows-7 gap-[9px]">
                     {heatmapWeeks.map((week, weekIndex) =>
                       week.map((day) => (
                         <div
                           key={`${weekIndex}-${day.date}`}
-                          className={`h-[14px] w-[14px] rounded-[4px] ${getHeatmapCellClass(day.intensity)}`}
+                          className={`h-4 w-4 rounded-[4px] ${getHeatmapCellClass(day.intensity)}`}
                           title={`${day.date} - ${day.count}`}
                         />
                       )),

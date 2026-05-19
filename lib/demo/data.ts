@@ -270,6 +270,26 @@ type DashboardUserSessionRow = {
   answered_question_count: number | null;
 };
 
+type DashboardGroupSessionRow = {
+  id: string | null;
+  group_id: string | null;
+  name: string | null;
+  scheduled_at: string | null;
+  started_at: string | null;
+  share_code: string | null;
+  status:
+    | 'scheduled'
+    | 'active'
+    | 'incomplete'
+    | 'completed'
+    | 'cancelled'
+    | null;
+  timer_mode: 'per_question' | 'global' | null;
+  timer_seconds: number | null;
+  leader_id: string | null;
+  question_goal: number | null;
+};
+
 type DashboardRecentAnswerRow = {
   question_id: string | null;
   is_correct: boolean | null;
@@ -851,7 +871,7 @@ async function getDashboardCore(userId: string) {
         .filter((groupId): groupId is string => Boolean(groupId)),
     ),
   ];
-  const [groupLimitsResult, groupMembersResult] =
+  const [groupLimitsResult, groupMembersResult, groupSessionsResult] =
     groupIds.length > 0
       ? await Promise.all([
           supabaseAdmin
@@ -864,8 +884,18 @@ async function getDashboardCore(userId: string) {
             .from('group_members')
             .select('group_id, user_id')
             .in('group_id', groupIds),
+          supabaseAdmin
+            .schema('public')
+            .from('sessions')
+            .select(
+              'id, group_id, name, scheduled_at, started_at, share_code, status, timer_mode, timer_seconds, leader_id, question_goal',
+            )
+            .in('group_id', groupIds)
+            .in('status', ['scheduled', 'active'])
+            .order('scheduled_at', { ascending: false })
+            .limit(GROUP_SESSION_LIMIT),
         ])
-      : [{ data: [] }, { data: [] }];
+      : [{ data: [] }, { data: [] }, { data: [] }];
   const memberIds = [
     ...new Set(
       (groupMembersResult.data ?? [])
@@ -940,6 +970,7 @@ async function getDashboardCore(userId: string) {
   }
 
   const sessions: DashboardSession[] = [];
+  const sessionIds = new Set<string>();
   for (const row of sessionsResult.data ?? []) {
     if (
       !row.id ||
@@ -958,6 +989,7 @@ async function getDashboardCore(userId: string) {
       continue;
     }
 
+    sessionIds.add(row.id);
     sessions.push({
       id: row.id,
       group_id: row.group_id,
@@ -981,6 +1013,54 @@ async function getDashboardCore(userId: string) {
         : 'AB',
     });
   }
+
+  for (const row of (groupSessionsResult.data ??
+    []) as DashboardGroupSessionRow[]) {
+    if (
+      !row.id ||
+      sessionIds.has(row.id) ||
+      !row.group_id ||
+      !groupsById.has(row.group_id) ||
+      !row.scheduled_at ||
+      !row.share_code ||
+      !row.status ||
+      !row.timer_mode ||
+      typeof row.timer_seconds !== 'number' ||
+      typeof row.question_goal !== 'number'
+    ) {
+      continue;
+    }
+
+    sessionIds.add(row.id);
+    sessions.push({
+      id: row.id,
+      group_id: row.group_id,
+      name: row.name,
+      scheduled_at: row.scheduled_at,
+      started_at: row.started_at,
+      share_code: row.share_code,
+      status: row.status,
+      timer_mode: row.timer_mode,
+      timer_seconds: row.timer_seconds,
+      leader_id: row.leader_id,
+      question_goal: row.question_goal,
+      questionCount: 0,
+      answeredQuestionCount: 0,
+      leaderInitials: row.leader_id
+        ? getInitials(
+            memberProfileById.get(row.leader_id)?.display_name ??
+              memberProfileById.get(row.leader_id)?.email ??
+              'AB',
+          )
+        : 'AB',
+    });
+  }
+
+  sessions.sort(
+    (left, right) =>
+      new Date(right.scheduled_at).getTime() -
+      new Date(left.scheduled_at).getTime(),
+  );
 
   const now = Date.now();
   const recentByGroup = new Map<string, DashboardSession[]>();
@@ -1085,16 +1165,19 @@ async function getDashboardCore(userId: string) {
   );
   const scheduledByGroup = new Map<string, DashboardSession>();
   for (const session of [...sessions]
-    .filter(
-      (candidate) =>
-        candidate.status === 'scheduled' &&
-        new Date(candidate.scheduled_at).getTime() >= now,
-    )
-    .sort(
-      (left, right) =>
-        new Date(left.scheduled_at).getTime() -
-        new Date(right.scheduled_at).getTime(),
-    )) {
+    .filter((candidate) => candidate.status === 'scheduled')
+    .sort((left, right) => {
+      const leftTime = new Date(left.scheduled_at).getTime();
+      const rightTime = new Date(right.scheduled_at).getTime();
+      const leftIsFuture = leftTime >= now;
+      const rightIsFuture = rightTime >= now;
+
+      if (leftIsFuture !== rightIsFuture) {
+        return leftIsFuture ? -1 : 1;
+      }
+
+      return leftIsFuture ? leftTime - rightTime : rightTime - leftTime;
+    })) {
     if (!scheduledByGroup.has(session.group_id)) {
       scheduledByGroup.set(session.group_id, session);
     }
