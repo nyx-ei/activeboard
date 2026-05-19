@@ -6,7 +6,6 @@ import { Clock } from 'lucide-react';
 import { Modal, ModalTitle } from '@/components/ui/modal';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { markDashboardPayloadStale } from '@/components/dashboard/dashboard-data-cache';
-import { openSessionInManagedPreparedTab } from '@/components/session/session-tab-channel';
 
 export type CreateSessionModalLabels = {
   newSession: string;
@@ -111,7 +110,6 @@ export function CreateSessionModal({
           window.dispatchEvent(
             new CustomEvent('activeboard:session-flow-started'),
           );
-          const preparedSessionTab = window.open('about:blank', '_blank');
           const startedAt = performance.now();
           const formData = new FormData(event.currentTarget);
           void fetch('/api/sessions', {
@@ -158,17 +156,12 @@ export function CreateSessionModal({
                 window.sessionStorage.removeItem(
                   'activeboard:session-flow-active',
                 );
-                void openSessionInManagedPreparedTab(
-                  payload.sessionId ?? payload.redirectTo,
-                  payload.redirectTo,
-                  preparedSessionTab,
-                );
+                window.location.assign(payload.redirectTo);
                 onClose();
                 return;
               }
 
               if (payload?.redirectTo) {
-                preparedSessionTab?.close();
                 window.sessionStorage.removeItem(
                   'activeboard:session-flow-active',
                 );
@@ -177,7 +170,6 @@ export function CreateSessionModal({
               }
 
               if (!response.ok || payload?.ok === false) {
-                preparedSessionTab?.close();
                 window.sessionStorage.removeItem(
                   'activeboard:session-flow-active',
                 );
@@ -191,7 +183,6 @@ export function CreateSessionModal({
               setIsCreating(false);
             })
             .catch(() => {
-              preparedSessionTab?.close();
               window.sessionStorage.removeItem(
                 'activeboard:session-flow-active',
               );

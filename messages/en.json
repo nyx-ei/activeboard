@@ -558,6 +558,8 @@
     "zoneGroupRecentSessions": "Last sessions",
     "zoneGroupViewAllSessions": "View all sessions",
     "zoneGroupStartSession": "Start session",
+    "questionsUnit": "questions",
+    "accuracy": "Accuracy",
     "zoneKpiDays": "days",
     "questionsAnswered": "questions answered",
     "questionsAnsweredValue": "{count} questions answered",

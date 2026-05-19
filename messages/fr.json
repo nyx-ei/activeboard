@@ -556,6 +556,8 @@
                       "zoneGroupRecentSessions":  "Dernières sessions",
                       "zoneGroupViewAllSessions":  "Voir toutes les sessions",
                       "zoneGroupStartSession":  "Démarrer une session",
+                      "questionsUnit":  "questions",
+                      "accuracy":  "Précision",
                       "zoneKpiDays":  "jours",
                       "questionsAnswered":  "questions répondues",
                       "questionsAnsweredValue":  "{count} questions répondues",
