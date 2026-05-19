@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { Clock } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 
 import { Modal, ModalTitle } from '@/components/ui/modal';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { markDashboardPayloadStale } from '@/components/dashboard/dashboard-data-cache';
+import { openSessionInManagedPreparedTab } from '@/components/session/session-tab-channel';
 
 export type CreateSessionModalLabels = {
   newSession: string;
@@ -43,7 +43,6 @@ export function CreateSessionModal({
   labels: CreateSessionModalLabels;
   onClose: () => void;
 }) {
-  const router = useRouter();
   const [name, setName] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState(initialGroupId);
   const [questionGoal, setQuestionGoal] = useState('10');
@@ -112,6 +111,7 @@ export function CreateSessionModal({
           window.dispatchEvent(
             new CustomEvent('activeboard:session-flow-started'),
           );
+          const preparedSessionTab = window.open('about:blank', '_blank');
           const startedAt = performance.now();
           const formData = new FormData(event.currentTarget);
           void fetch('/api/sessions', {
@@ -135,11 +135,12 @@ export function CreateSessionModal({
               const payload = (await response.json().catch(() => null)) as {
                 ok?: boolean;
                 message?: string;
+                sessionId?: string;
                 redirectTo?: string;
                 calendarInvitesDispatchUrl?: string;
               } | null;
 
-              if (payload?.redirectTo) {
+              if (payload?.redirectTo && response.ok) {
                 console.info(
                   `[perf] createSession:api ${Math.round(performance.now() - startedAt)}ms`,
                 );
@@ -154,11 +155,29 @@ export function CreateSessionModal({
                   });
                 }
                 markDashboardPayloadStale('sessions');
-                router.push(payload.redirectTo as never);
+                window.sessionStorage.removeItem(
+                  'activeboard:session-flow-active',
+                );
+                void openSessionInManagedPreparedTab(
+                  payload.sessionId ?? payload.redirectTo,
+                  payload.redirectTo,
+                  preparedSessionTab,
+                );
+                onClose();
+                return;
+              }
+
+              if (payload?.redirectTo) {
+                preparedSessionTab?.close();
+                window.sessionStorage.removeItem(
+                  'activeboard:session-flow-active',
+                );
+                window.location.assign(payload.redirectTo);
                 return;
               }
 
               if (!response.ok || payload?.ok === false) {
+                preparedSessionTab?.close();
                 window.sessionStorage.removeItem(
                   'activeboard:session-flow-active',
                 );
@@ -172,7 +191,10 @@ export function CreateSessionModal({
               setIsCreating(false);
             })
             .catch(() => {
-              window.sessionStorage.removeItem('activeboard:session-flow-active');
+              preparedSessionTab?.close();
+              window.sessionStorage.removeItem(
+                'activeboard:session-flow-active',
+              );
               setErrorMessage(labels.createSessionPending);
               setIsCreating(false);
             });
