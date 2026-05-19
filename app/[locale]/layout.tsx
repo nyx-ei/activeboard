@@ -6,6 +6,7 @@ import {
   getTranslations,
   setRequestLocale,
 } from 'next-intl/server';
+import { Search } from 'lucide-react';
 
 import { AppBottomNav } from '@/components/layout/app-bottom-nav';
 import { LandingSignInLink } from '@/components/layout/landing-sign-in-link';
@@ -150,6 +151,21 @@ export default async function LocaleLayout({
               <div className="flex min-w-0 shrink-0 items-center justify-end gap-2 sm:gap-3">
                 {user ? (
                   <>
+                    {shellData.canBrowseLookupLayer ? (
+                      <Link
+                        href="/lookup"
+                        className="hover:border-brand/30 inline-flex h-10 items-center gap-1.5 rounded-[8px] border border-white/[0.07] bg-white/[0.035] px-2.5 text-xs font-extrabold text-slate-200 transition hover:bg-white/[0.055] hover:text-white sm:px-3"
+                      >
+                        <Search
+                          className="h-3.5 w-3.5 text-brand"
+                          aria-hidden="true"
+                          strokeWidth={2}
+                        />
+                        <span className="max-[520px]:sr-only">
+                          {t('findPartners')}
+                        </span>
+                      </Link>
+                    ) : null}
                     <Suspense
                       fallback={
                         <div className="inline-flex items-center gap-2 rounded-full border border-border bg-white/[0.04] px-4 py-2 text-sm text-slate-400">

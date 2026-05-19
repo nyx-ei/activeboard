@@ -20,6 +20,7 @@
                    "navPerformance":  "Performance",
                    "navGroup":  "Groupes",
                    "navSettings":  "Réglages",
+                   "findPartners":  "Trouver des partenaires",
                    "signingOut":  "Déconnexion...",
                    "loading":  "Chargement...",
                    "questionProgressLabel":  "{current} sur {total} questions gratuites répondues"
@@ -991,6 +992,17 @@
                                              "careless_mistake":  "Erreur d\u0027inattention"
                                          }
                        },
+    "Lookup":  {
+                   "eyebrow":  "Lookup Layer",
+                   "title":  "Trouver des partenaires fiables",
+                   "description":  "Parcours les groupes incomplets qui peuvent accepter de nouveaux membres. Cette surface est séparée du tableau de bord pour garder la recherche ciblée.",
+                   "availableGroups":  "{count} groupes disponibles",
+                   "spotsRemaining":  "{count} places",
+                   "weeklyQuestions":  "{count} questions/semaine",
+                   "join":  "Rejoindre le groupe",
+                   "emptyTitle":  "Aucun partenaire disponible pour le moment",
+                   "emptyDescription":  "Les groupes éligibles apparaîtront ici lorsqu'ils auront des places libres."
+               },
     "Billing":  {
                     "menuLabel":  "Facturation",
                     "close":  "Fermer la facturation",
