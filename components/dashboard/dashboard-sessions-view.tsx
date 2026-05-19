@@ -156,14 +156,48 @@ export const DashboardSessionsView = memo(function DashboardSessionsView({
 }: DashboardSessionsViewProps) {
   const router = useRouter();
   const [isCreateSessionOpen, setIsCreateSessionOpen] = useState(false);
+  const [createSessionGroupId, setCreateSessionGroupId] = useState<
+    string | null
+  >(null);
   const [cancelledSessionIds, setCancelledSessionIds] = useState<string[]>([]);
   const [sessionCode, setSessionCode] = useState('');
   const [joinPending, setJoinPending] = useState(false);
   const [joinFeedback, setJoinFeedback] = useState(sessionJoinFeedback);
-  const initialGroupId = groups[0]?.id ?? '';
+  const initialGroupId = createSessionGroupId ?? groups[0]?.id ?? '';
   useEffect(() => {
     setCancelledSessionIds(readCancelledSessionIds());
   }, []);
+
+  useEffect(() => {
+    function handleOpenCreateSession(event: Event) {
+      const detail = (event as CustomEvent<{ groupId?: string }>).detail;
+      const requestedGroupId = detail?.groupId;
+      const resolvedGroupId =
+        requestedGroupId &&
+        groups.some((group) => group.id === requestedGroupId)
+          ? requestedGroupId
+          : groups[0]?.id;
+
+      if (!resolvedGroupId) {
+        return;
+      }
+
+      setCreateSessionGroupId(resolvedGroupId);
+      setIsCreateSessionOpen(true);
+    }
+
+    window.addEventListener(
+      'activeboard:open-create-session',
+      handleOpenCreateSession,
+    );
+
+    return () => {
+      window.removeEventListener(
+        'activeboard:open-create-session',
+        handleOpenCreateSession,
+      );
+    };
+  }, [groups]);
 
   const visibleSessions = sessions.filter(
     (session) =>
@@ -217,7 +251,10 @@ export const DashboardSessionsView = memo(function DashboardSessionsView({
           <div className="w-full">
             <button
               type="button"
-              onClick={() => setIsCreateSessionOpen(true)}
+              onClick={() => {
+                setCreateSessionGroupId(groups[0]?.id ?? null);
+                setIsCreateSessionOpen(true);
+              }}
               className="button-primary h-10 w-full rounded-[7px] px-4 text-sm"
               disabled={!canCreateSession}
             >
@@ -376,6 +413,7 @@ export const DashboardSessionsView = memo(function DashboardSessionsView({
 
       {isCreateSessionOpen && groups.length > 0 ? (
         <CreateSessionModal
+          key={initialGroupId}
           locale={locale}
           groups={groups}
           initialGroupId={initialGroupId}
