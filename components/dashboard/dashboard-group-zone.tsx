@@ -97,6 +97,7 @@ export type DashboardGroupZoneProps = {
     emailUnavailable: string;
     actionFailed: string;
     startSession: string;
+    memberRequirementPrompt: string;
   };
 };
 
@@ -139,11 +140,19 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   const canInviteSelectedGroup = Boolean(
     selectedGroup && selectedSeatsAvailable > 0,
   );
+  const shouldShowMemberPrompt = Boolean(
+    selectedGroup &&
+    selectedGroup.memberCount < 2 &&
+    selectedSeatsAvailable > 0 &&
+    !selectedGroup.hasLiveSession,
+  );
   const canStartSelectedGroup = Boolean(
     selectedGroup &&
     selectedGroup.memberCount >= 2 &&
-    !selectedGroup.hasLiveSession,
+    !selectedGroup.hasLiveSession &&
+    !shouldShowMemberPrompt,
   );
+  const showCreateAnotherAction = !shouldShowMemberPrompt;
   const normalizedInviteEmail = inviteEmail.trim().toLowerCase();
 
   useEffect(() => {
@@ -255,13 +264,15 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                     {labels.noGroups}
                   </p>
                 )}
-                <a
-                  href={createGroupHref}
-                  className="mt-1 flex items-center gap-2 border-t border-white/[0.045] px-3 py-2.5 text-[13px] font-medium text-[#20D9A3] transition hover:bg-[#20D9A3]/[0.06]"
-                >
-                  <Plus className="h-4 w-4" aria-hidden="true" />
-                  {labels.createAnother}
-                </a>
+                {showCreateAnotherAction ? (
+                  <a
+                    href={createGroupHref}
+                    className="mt-1 flex items-center gap-2 border-t border-white/[0.045] px-3 py-2.5 text-[13px] font-medium text-[#20D9A3] transition hover:bg-[#20D9A3]/[0.06]"
+                  >
+                    <Plus className="h-4 w-4" aria-hidden="true" />
+                    {labels.createAnother}
+                  </a>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -303,15 +314,31 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
               {liveGroupCount} {labels.live}
             </span>
           ) : null}
-          <a
-            href={createGroupHref}
-            className="inline-flex items-center gap-2 rounded-[12px] bg-[#20D9A3] px-[18px] py-3 text-[14px] font-medium leading-none text-[#062b22] transition hover:bg-[#2fe9b1]"
-          >
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            {labels.createAnother}
-          </a>
+          {showCreateAnotherAction ? (
+            <a
+              href={createGroupHref}
+              className="inline-flex items-center gap-2 rounded-[12px] bg-[#20D9A3] px-[18px] py-3 text-[14px] font-medium leading-none text-[#062b22] transition hover:bg-[#2fe9b1]"
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              {labels.createAnother}
+            </a>
+          ) : null}
         </div>
       </div>
+
+      {shouldShowMemberPrompt && selectedGroup ? (
+        <div className="mt-[18px] flex items-center gap-3 rounded-[14px] border border-[#20D9A3]/20 bg-[#20D9A3]/[0.07] px-4 py-3 text-[#e8f4f0]">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[11px] border border-[#20D9A3]/20 bg-[#20D9A3]/10 text-[#9FF0CE]">
+            <UserPlus className="h-4 w-4" aria-hidden="true" />
+          </span>
+          <span className="text-[14px] font-semibold leading-snug">
+            {labels.memberRequirementPrompt.replace(
+              '{count}',
+              String(selectedGroup.memberCount),
+            )}
+          </span>
+        </div>
+      ) : null}
 
       {selectedGroup && (canInviteSelectedGroup || canStartSelectedGroup) ? (
         <div className="mt-[18px] flex flex-col gap-2.5 sm:flex-row">
