@@ -20,6 +20,7 @@
     "navPerformance": "Performance",
     "navGroup": "Groups",
     "navSettings": "Settings",
+    "findPartners": "Find partners",
     "signingOut": "Signing out...",
     "loading": "Loading...",
     "questionProgressLabel": "{current} of {total} free questions answered"
@@ -992,6 +993,17 @@
       "time_pressure": "Time pressure",
       "careless_mistake": "Careless mistake"
     }
+  },
+  "Lookup": {
+    "eyebrow": "Lookup Layer",
+    "title": "Find reliable partners",
+    "description": "Browse incomplete groups that can accept new members. This surface is separate from the dashboard so partner discovery stays focused.",
+    "availableGroups": "{count} groups available",
+    "spotsRemaining": "{count} spots",
+    "weeklyQuestions": "{count} questions/week",
+    "join": "Join group",
+    "emptyTitle": "No partners available right now",
+    "emptyDescription": "Eligible groups will appear here when they have open seats."
   },
   "Billing": {
     "menuLabel": "Billing",
