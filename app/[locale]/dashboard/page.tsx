@@ -84,7 +84,11 @@ export default async function DashboardPage({
     id: group.id,
     name: group.name,
     memberCount: group.memberCount,
+    maxMembers: group.maxMembers,
+    membersPreview: group.membersPreview,
     hasLiveSession: liveGroupIds.has(group.id),
+    activeSession: group.activeSession,
+    nextSession: group.nextSession,
   }));
 
   const sessionsProps = {
@@ -249,6 +253,29 @@ export default async function DashboardPage({
       heatmapHigh: t('zoneHeatmapHigh'),
       days: t('zoneKpiDays'),
       noData: t('noData'),
+      weekdays: [
+        t('weekdayShortMonday'),
+        t('weekdayShortTuesday'),
+        t('weekdayShortWednesday'),
+        t('weekdayShortThursday'),
+        t('weekdayShortFriday'),
+        t('weekdayShortSaturday'),
+        t('weekdayShortSunday'),
+      ],
+      monthLabels: [
+        t('monthJanuary'),
+        t('monthFebruary'),
+        t('monthMarch'),
+        t('monthApril'),
+        t('monthMay'),
+        t('monthJune'),
+        t('monthJuly'),
+        t('monthAugust'),
+        t('monthSeptember'),
+        t('monthOctober'),
+        t('monthNovember'),
+        t('monthDecember'),
+      ],
     },
   };
   const progressStateProps = {
@@ -275,6 +302,7 @@ export default async function DashboardPage({
     },
   } satisfies DashboardProgressStateZoneProps;
   const groupZoneProps = {
+    locale,
     groups: dashboardGroups,
     createGroupHref: `/${locale}/create-group`,
     labels: {
@@ -285,6 +313,13 @@ export default async function DashboardPage({
       live: t('zoneGroupLive'),
       noGroups: t('zoneGroupNoGroups'),
       createAnother: t('zoneGroupCreateAnother'),
+      seats: t('zoneGroupSeats'),
+      nextSession: t('zoneGroupNextSession'),
+      scheduledFor: t('scheduledFor', { date: '{date}' }),
+      noUpcomingSession: t('zoneGroupNoUpcomingSession'),
+      openSession: t('openSession'),
+      joinLiveSession: t('joinSession'),
+      timerLabel: t('timerLabel', { seconds: '{seconds}' }),
     },
   } satisfies DashboardGroupZoneProps;
 

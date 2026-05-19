@@ -48,7 +48,29 @@ export type DashboardSessionsViewProps = {
     id: string;
     name: string;
     memberCount: number;
+    maxMembers?: number;
+    membersPreview?: Array<{
+      id: string;
+      initials: string;
+      avatarUrl: string | null;
+    }>;
     hasLiveSession?: boolean;
+    activeSession?: {
+      id: string;
+      name: string | null;
+      scheduled_at: string;
+      share_code: string;
+      timer_seconds: number;
+      question_goal: number;
+    } | null;
+    nextSession?: {
+      id: string;
+      name: string | null;
+      scheduled_at: string;
+      share_code: string;
+      timer_seconds: number;
+      question_goal: number;
+    } | null;
   }>;
   trialProgress: {
     current: number;
