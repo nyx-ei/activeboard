@@ -26,7 +26,7 @@ export function SessionDashboardBackButton({
   const router = useRouter();
   const [isNavigating, setIsNavigating] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
-  const href = `/${locale}/dashboard?view=sessions`;
+  const href = `/${locale}/dashboard`;
 
   useEffect(() => {
     const id = window.setTimeout(() => {

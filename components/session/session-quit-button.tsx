@@ -33,7 +33,7 @@ export function SessionQuitButton({
 
     setIsLeaving(true);
     setIsConfirming(false);
-    const redirectTo = `/${locale}/dashboard?view=sessions`;
+    const redirectTo = `/${locale}/dashboard`;
     window.sessionStorage.removeItem('activeboard:session-flow-active');
     markDashboardPayloadStale('sessions');
     router.prefetch(redirectTo as never);

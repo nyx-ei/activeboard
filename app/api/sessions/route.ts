@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   const sessionsPath =
     groupId && returnTo === groupDashboardPath(locale, groupId)
       ? returnTo
-      : `/${locale}/dashboard?view=sessions`;
+      : `/${locale}/dashboard`;
   const perf = createPerfTracker(`createSessionRoute:${groupId}`, {
     minDurationMs: 250,
     metadata: {

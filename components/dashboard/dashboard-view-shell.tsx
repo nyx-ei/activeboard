@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   DashboardPerformanceView,
@@ -25,20 +25,16 @@ import {
   seedDashboardPayload,
   type DashboardView,
 } from '@/components/dashboard/dashboard-data-cache';
-import {
-  DashboardSessionsView,
-  type DashboardSessionsViewProps,
-} from '@/components/dashboard/dashboard-sessions-view';
+import type { DashboardSessionsViewProps } from '@/components/dashboard/dashboard-sessions-view';
 import { subscribeSessionTabRecovery } from '@/components/session/session-tab-channel';
+import { CreateSessionModal } from '@/components/sessions/create-session-modal';
 
 type DashboardViewShellProps = {
-  initialView: DashboardView;
   sessionsProps: DashboardSessionsViewProps;
   performanceProps: DashboardPerformanceViewProps;
   sprintActivityProps: DashboardSprintActivityZoneProps;
   progressStateProps: DashboardProgressStateZoneProps;
   groupZoneProps: DashboardGroupZoneProps;
-  initialLoadedViews: Record<DashboardView, boolean>;
 };
 type DashboardSessionsPayload = {
   ok?: boolean;
@@ -71,25 +67,13 @@ type DashboardPayloadByView = {
 
 const LIVE_SESSION_REVALIDATION_INTERVAL_MS = 15_000;
 
-function getViewFromLocation(): DashboardView {
-  if (typeof window === 'undefined') {
-    return 'sessions';
-  }
-
-  const params = new URLSearchParams(window.location.search);
-  return params.get('view') === 'performance' ? 'performance' : 'sessions';
-}
-
 export function DashboardViewShell({
-  initialView,
   sessionsProps,
   performanceProps,
   sprintActivityProps,
   progressStateProps,
   groupZoneProps,
-  initialLoadedViews,
 }: DashboardViewShellProps) {
-  const [view, setView] = useState<DashboardView>(initialView);
   const [resolvedSessionsProps, setResolvedSessionsProps] =
     useState(sessionsProps);
   const [resolvedPerformanceProps, setResolvedPerformanceProps] =
@@ -100,10 +84,8 @@ export function DashboardViewShell({
     useState(progressStateProps);
   const [resolvedGroupZoneProps, setResolvedGroupZoneProps] =
     useState(groupZoneProps);
-  const [loadedViews, setLoadedViews] = useState(initialLoadedViews);
-  const loadingViewRef = useRef<DashboardView | null>(null);
-  const loadedViewsRef = useRef(initialLoadedViews);
-  const visibleViewRef = useRef(initialView);
+  const [showPerformanceDetails, setShowPerformanceDetails] = useState(false);
+  const detailsRef = useRef<HTMLDivElement | null>(null);
   const lastVisibleRevalidationRef = useRef(0);
 
   const applyPayload = useCallback(
@@ -162,27 +144,9 @@ export function DashboardViewShell({
           quadrants: performancePayload.progressQuadrants ?? [],
         }));
       }
-
-      setLoadedViews((current) => ({
-        ...current,
-        [nextView]: true,
-      }));
     },
     [],
   );
-
-  useEffect(() => {
-    setView(initialView);
-    visibleViewRef.current = initialView;
-  }, [initialView]);
-
-  useEffect(() => {
-    loadedViewsRef.current = loadedViews;
-  }, [loadedViews]);
-
-  useEffect(() => {
-    visibleViewRef.current = view;
-  }, [view]);
 
   useEffect(() => {
     setResolvedSessionsProps(sessionsProps);
@@ -190,47 +154,50 @@ export function DashboardViewShell({
     setResolvedSprintActivityProps(sprintActivityProps);
     setResolvedProgressStateProps(progressStateProps);
     setResolvedGroupZoneProps(groupZoneProps);
-    setLoadedViews(initialLoadedViews);
-    if (initialLoadedViews.sessions) {
-      seedDashboardPayload<DashboardPayloadByView, 'sessions'>('sessions', {
-        ok: true,
-        groups: sessionsProps.groups,
-        sessions: sessionsProps.sessions,
-      });
-    }
-    if (initialLoadedViews.performance) {
-      seedDashboardPayload<DashboardPayloadByView, 'performance'>(
-        'performance',
-        {
-          ok: true,
-          metrics: {
-            answeredCount: performanceProps.answeredCount,
-            completedSessionsCount: performanceProps.completedSessionsCount,
-            successRate: performanceProps.successRate,
-            averageConfidence: performanceProps.averageConfidence,
-          },
-          profileAnalytics: {
-            heatmap: performanceProps.heatmap,
-            blueprintGrid: performanceProps.blueprintGrid,
-            errorTypeBreakdown: performanceProps.errorTypeBreakdown,
-            weeklyTrend: performanceProps.weeklyTrend,
-            confidenceCalibration: performanceProps.confidenceCalibration,
-          },
-          sessionConfidenceBreakdown:
-            performanceProps.sessionConfidenceBreakdown,
-          progressQuadrants: progressStateProps.quadrants,
-          progressQuadrantQuestions: performanceProps.progressQuadrantQuestions,
-        },
-      );
-    }
+    seedDashboardPayload<DashboardPayloadByView, 'sessions'>('sessions', {
+      ok: true,
+      groups: sessionsProps.groups,
+      sessions: sessionsProps.sessions,
+    });
+    seedDashboardPayload<DashboardPayloadByView, 'performance'>('performance', {
+      ok: true,
+      metrics: {
+        answeredCount: performanceProps.answeredCount,
+        completedSessionsCount: performanceProps.completedSessionsCount,
+        successRate: performanceProps.successRate,
+        averageConfidence: performanceProps.averageConfidence,
+      },
+      profileAnalytics: {
+        heatmap: performanceProps.heatmap,
+        blueprintGrid: performanceProps.blueprintGrid,
+        errorTypeBreakdown: performanceProps.errorTypeBreakdown,
+        weeklyTrend: performanceProps.weeklyTrend,
+        confidenceCalibration: performanceProps.confidenceCalibration,
+      },
+      sessionConfidenceBreakdown: performanceProps.sessionConfidenceBreakdown,
+      progressQuadrants: progressStateProps.quadrants,
+      progressQuadrantQuestions: performanceProps.progressQuadrantQuestions,
+    });
   }, [
-    initialLoadedViews,
     groupZoneProps,
     performanceProps,
     progressStateProps,
     sessionsProps,
     sprintActivityProps,
   ]);
+
+  const reloadDashboardData = useCallback(
+    (views: DashboardView[] = ['sessions', 'performance']) => {
+      for (const nextView of views) {
+        void fetchDashboardPayload<DashboardPayloadByView, typeof nextView>(
+          nextView,
+        ).then((payload) => {
+          applyPayload(nextView, payload);
+        });
+      }
+    },
+    [applyPayload],
+  );
 
   useEffect(() => {
     const staleViews = consumeDashboardPayloadStale();
@@ -240,36 +207,22 @@ export function DashboardViewShell({
 
     for (const staleView of staleViews) {
       invalidateDashboardPayloadCache(staleView);
-      void fetchDashboardPayload<DashboardPayloadByView, typeof staleView>(
-        staleView,
-      ).then((payload) => {
-        applyPayload(staleView, payload);
-      });
+      reloadDashboardData([staleView]);
     }
-  }, [applyPayload]);
+  }, [reloadDashboardData]);
 
   useEffect(() => {
     function handleDashboardView(event: Event) {
       const detail = (event as CustomEvent<{ view?: DashboardView }>).detail;
-      const nextView =
-        detail?.view === 'performance' ? 'performance' : 'sessions';
-      setView(nextView);
-      visibleViewRef.current = nextView;
-    }
-
-    function handleDashboardPrefetch(event: Event) {
-      const detail = (event as CustomEvent<{ view?: DashboardView }>).detail;
-      const nextView =
-        detail?.view === 'performance' ? 'performance' : 'sessions';
-      if (loadedViewsRef.current[nextView]) {
-        return;
+      if (detail?.view === 'performance') {
+        setShowPerformanceDetails(true);
+        window.requestAnimationFrame(() => {
+          detailsRef.current?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+          });
+        });
       }
-
-      void fetchDashboardPayload<DashboardPayloadByView, typeof nextView>(
-        nextView,
-      ).then((payload) => {
-        applyPayload(nextView, payload);
-      });
     }
 
     function handleDashboardInvalidate(event: Event) {
@@ -279,23 +232,7 @@ export function DashboardViewShell({
         ? [detail.view]
         : ['sessions', 'performance'];
 
-      for (const nextView of viewsToReload) {
-        if (!loadedViewsRef.current[nextView]) {
-          continue;
-        }
-
-        void fetchDashboardPayload<DashboardPayloadByView, typeof nextView>(
-          nextView,
-        ).then((payload) => {
-          applyPayload(nextView, payload);
-        });
-      }
-    }
-
-    function handlePopState() {
-      const nextView = getViewFromLocation();
-      setView(nextView);
-      visibleViewRef.current = nextView;
+      reloadDashboardData(viewsToReload);
     }
 
     window.addEventListener(
@@ -303,14 +240,9 @@ export function DashboardViewShell({
       handleDashboardView as EventListener,
     );
     window.addEventListener(
-      'activeboard:dashboard-prefetch',
-      handleDashboardPrefetch as EventListener,
-    );
-    window.addEventListener(
       'activeboard:dashboard-invalidate',
       handleDashboardInvalidate as EventListener,
     );
-    window.addEventListener('popstate', handlePopState);
 
     return () => {
       window.removeEventListener(
@@ -318,16 +250,11 @@ export function DashboardViewShell({
         handleDashboardView as EventListener,
       );
       window.removeEventListener(
-        'activeboard:dashboard-prefetch',
-        handleDashboardPrefetch as EventListener,
-      );
-      window.removeEventListener(
         'activeboard:dashboard-invalidate',
         handleDashboardInvalidate as EventListener,
       );
-      window.removeEventListener('popstate', handlePopState);
     };
-  }, [applyPayload]);
+  }, [reloadDashboardData]);
 
   useEffect(() => {
     function revalidateVisibleView() {
@@ -339,13 +266,8 @@ export function DashboardViewShell({
         return;
       }
 
-      const currentView = visibleViewRef.current;
       lastVisibleRevalidationRef.current = now;
-      void fetchDashboardPayload<DashboardPayloadByView, typeof currentView>(
-        currentView,
-      ).then((payload) => {
-        applyPayload(currentView, payload);
-      });
+      reloadDashboardData();
     }
 
     window.addEventListener('focus', revalidateVisibleView);
@@ -355,18 +277,14 @@ export function DashboardViewShell({
       window.removeEventListener('focus', revalidateVisibleView);
       document.removeEventListener('visibilitychange', revalidateVisibleView);
     };
-  }, [applyPayload]);
+  }, [reloadDashboardData]);
 
   useEffect(() => {
     return subscribeSessionTabRecovery(() => {
       invalidateDashboardPayloadCache('sessions');
-      void fetchDashboardPayload<DashboardPayloadByView, 'sessions'>(
-        'sessions',
-      ).then((payload) => {
-        applyPayload('sessions', payload);
-      });
+      reloadDashboardData(['sessions']);
     });
-  }, [applyPayload]);
+  }, [reloadDashboardData]);
 
   useEffect(() => {
     let cancelled = false;
@@ -391,64 +309,98 @@ export function DashboardViewShell({
     };
   }, [applyPayload]);
 
-  useEffect(() => {
-    if (loadedViews[view]) {
-      return;
-    }
-
-    let cancelled = false;
-    loadingViewRef.current = view;
-    const loadView = async () => {
-      const payload = await fetchDashboardPayload<
-        DashboardPayloadByView,
-        typeof view
-      >(view);
-
-      if (cancelled || loadingViewRef.current !== view) {
-        return;
-      }
-
-      applyPayload(view, payload);
-    };
-
-    void loadView();
-
-    return () => {
-      cancelled = true;
-      if (loadingViewRef.current === view) {
-        loadingViewRef.current = null;
-      }
-    };
-  }, [applyPayload, loadedViews, view]);
-
   return (
     <div className="space-y-5">
       <DashboardSprintActivityZone {...resolvedSprintActivityProps} />
       <DashboardProgressStateZone {...resolvedProgressStateProps} />
       <DashboardGroupZone {...resolvedGroupZoneProps} />
-      <div hidden={view !== 'sessions'}>
-        {loadedViews.sessions ? (
-          <DashboardSessionsView {...resolvedSessionsProps} />
-        ) : (
-          <DashboardSkeleton />
-        )}
-      </div>
-      <div hidden={view !== 'performance'}>
-        {loadedViews.performance ? (
+      <DashboardSessionActionHost {...resolvedSessionsProps} />
+      {showPerformanceDetails ? (
+        <div ref={detailsRef} id="performance-details">
           <DashboardPerformanceView {...resolvedPerformanceProps} />
-        ) : (
-          <DashboardSkeleton />
-        )}
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function DashboardSkeleton() {
+function DashboardSessionActionHost({
+  locale,
+  groups,
+  canCreateSession,
+  createSessionAction,
+  labels,
+}: DashboardSessionsViewProps) {
+  const [isCreateSessionOpen, setIsCreateSessionOpen] = useState(false);
+  const [createSessionGroupId, setCreateSessionGroupId] = useState<
+    string | null
+  >(null);
+  const initialGroupId = useMemo(
+    () => createSessionGroupId ?? groups[0]?.id ?? '',
+    [createSessionGroupId, groups],
+  );
+
+  useEffect(() => {
+    function handleOpenCreateSession(event: Event) {
+      const detail = (event as CustomEvent<{ groupId?: string }>).detail;
+      const requestedGroupId = detail?.groupId;
+      const resolvedGroupId =
+        requestedGroupId &&
+        groups.some((group) => group.id === requestedGroupId)
+          ? requestedGroupId
+          : groups[0]?.id;
+
+      if (!resolvedGroupId) {
+        return;
+      }
+
+      setCreateSessionGroupId(resolvedGroupId);
+      setIsCreateSessionOpen(true);
+    }
+
+    window.addEventListener(
+      'activeboard:open-create-session',
+      handleOpenCreateSession,
+    );
+
+    return () => {
+      window.removeEventListener(
+        'activeboard:open-create-session',
+        handleOpenCreateSession,
+      );
+    };
+  }, [groups]);
+
+  if (!isCreateSessionOpen || groups.length === 0) {
+    return null;
+  }
+
   return (
-    <div className="space-y-4">
-      <div className="h-36 animate-pulse rounded-[8px] bg-white/[0.04]" />
-      <div className="h-28 animate-pulse rounded-[8px] bg-white/[0.04]" />
-    </div>
+    <CreateSessionModal
+      key={initialGroupId}
+      locale={locale}
+      groups={groups}
+      initialGroupId={initialGroupId}
+      canCreateSession={canCreateSession}
+      action={createSessionAction}
+      labels={{
+        newSession: labels.newSession,
+        createSession: labels.createSession,
+        createSessionPending: labels.createSessionPending,
+        groupName: labels.groupName,
+        sessionName: labels.sessionName,
+        sessionNamePlaceholder: labels.sessionNamePlaceholder,
+        questionCount: labels.questionCount,
+        timerMode: labels.timerMode,
+        perQuestionMode: labels.perQuestionMode,
+        globalMode: labels.globalMode,
+        timerSeconds: labels.timerSeconds,
+        totalTimerSeconds: labels.totalTimerSeconds,
+        modalHint: labels.modalHint,
+        close: labels.close,
+        groupAccessHint: labels.groupAccessHint,
+      }}
+      onClose={() => setIsCreateSessionOpen(false)}
+    />
   );
 }

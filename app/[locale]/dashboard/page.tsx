@@ -53,10 +53,7 @@ export default async function DashboardPage({
     redirect(`/${locale}/groups/${searchParams.groupId}`);
   }
 
-  const view = searchParams.view === 'performance' ? 'performance' : 'sessions';
-  const isSessionsView = view === 'sessions';
   const isSessionJoinFeedback =
-    isSessionsView &&
     searchParams.sessionJoinFeedback === '1' &&
     Boolean(searchParams.feedbackMessage);
 
@@ -281,7 +278,7 @@ export default async function DashboardPage({
   };
   const progressStateProps = {
     quadrants: performanceData.progressQuadrants,
-    detailsHref: `/${locale}/dashboard?view=performance`,
+    detailsHref: `/${locale}/dashboard#performance-details`,
     labels: {
       title: t('zoneProgressStateTitle'),
       subtitle: t('zoneProgressStateSubtitle'),
@@ -360,16 +357,11 @@ export default async function DashboardPage({
 
       <section className="mx-auto w-full max-w-[1440px] space-y-[18px] px-0 py-0 sm:px-2">
         <DashboardViewShell
-          initialView={view}
           sessionsProps={sessionsProps}
           performanceProps={performanceProps}
           sprintActivityProps={sprintActivityProps}
           progressStateProps={progressStateProps}
           groupZoneProps={groupZoneProps}
-          initialLoadedViews={{
-            sessions: true,
-            performance: !isSessionsView,
-          }}
         />
       </section>
     </main>

@@ -136,7 +136,7 @@ export async function joinSessionByCodeAction(formData: FormData) {
     (formData.get('sessionCode') as string | null)?.trim().toUpperCase() ?? '';
   const t = await getTranslations({ locale, namespace: 'Feedback' });
   const { supabase, user } = await getCurrentAuthUser();
-  const sessionsPath = `/${locale}/dashboard?view=sessions`;
+  const sessionsPath = `/${locale}/dashboard`;
 
   if (!user) {
     redirect(`/${locale}/auth/login`);
@@ -726,7 +726,7 @@ export async function createDashboardSessionAction(formData: FormData) {
   const sessionsPath =
     groupId && returnTo === groupDashboardPath(locale, groupId)
       ? returnTo
-      : `/${locale}/dashboard?view=sessions`;
+      : `/${locale}/dashboard`;
 
   if (
     !groupId ||
@@ -911,7 +911,7 @@ export async function cancelDashboardSessionAction(formData: FormData) {
   const sessionReturnPath =
     session && returnTo === groupDashboardPath(locale, session.group_id)
       ? returnTo
-      : `/${locale}/dashboard?view=sessions`;
+      : `/${locale}/dashboard`;
 
   if (!session) {
     redirect(withFeedback(sessionReturnPath, 'error', t('actionFailed')));

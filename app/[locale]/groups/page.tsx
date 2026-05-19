@@ -40,7 +40,7 @@ export default async function GroupsIndexPage({
             <Link href="/create-group" className="button-primary rounded-[7px] px-5 py-2.5 text-sm">
               {t('createGroup')}
             </Link>
-            <Link href="/dashboard?view=sessions" className="button-ghost rounded-[7px] px-5 py-2.5 text-sm text-slate-400">
+            <Link href="/dashboard" className="button-ghost rounded-[7px] px-5 py-2.5 text-sm text-slate-400">
               {t('sessions')}
             </Link>
           </div>
