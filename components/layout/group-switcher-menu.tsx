@@ -2,7 +2,6 @@
 
 import { ChevronDown, Users, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { usePathname } from 'next/navigation';
 
 import { ModalPortal } from '@/components/ui/modal-portal';
 import { useRouter } from '@/i18n/navigation';
@@ -49,8 +48,7 @@ export function GroupSwitcherMenu({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [failedAvatarIds, setFailedAvatarIds] = useState<string[]>([]);
-  const pathname = usePathname();
-  const pathGroupId = pathname.match(/\/groups\/([^/?#]+)/)?.[1] ?? null;
+  const pathGroupId = null;
   const selectedGroupId = pathGroupId;
   const selectedGroup = useMemo(
     () => groups.find((group) => group.id === selectedGroupId) ?? null,
@@ -76,7 +74,7 @@ export function GroupSwitcherMenu({
     if (!open) return;
 
     for (const group of groups.slice(0, 4)) {
-      router.prefetch(`/groups/${group.id}` as never);
+      router.prefetch(`/dashboard?groupId=${group.id}` as never);
     }
   }, [groups, open, router]);
 
@@ -148,14 +146,14 @@ export function GroupSwitcherMenu({
                       key={group.id}
                       type="button"
                       onMouseEnter={() => {
-                        router.prefetch(`/groups/${group.id}` as never);
+                        router.prefetch(`/dashboard?groupId=${group.id}` as never);
                       }}
                       onFocus={() => {
-                        router.prefetch(`/groups/${group.id}` as never);
+                        router.prefetch(`/dashboard?groupId=${group.id}` as never);
                       }}
                       onClick={() => {
                         setOpen(false);
-                        router.push(`/groups/${group.id}` as never);
+                        router.push(`/dashboard?groupId=${group.id}` as never);
                       }}
                       className={cn(
                         'block w-full rounded-[10px] border p-3 text-left transition',

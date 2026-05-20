@@ -1,5 +1,4 @@
 import { getTranslations } from 'next-intl/server';
-import { redirect } from 'next/navigation';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
 import type { DashboardGroupZoneProps } from '@/components/dashboard/dashboard-group-zone';
@@ -48,10 +47,6 @@ export default async function DashboardPage({
   const user = await requireUser(locale);
   const t = await getTranslations('Dashboard');
   const feedbackT = await getTranslations('Feedback');
-
-  if (searchParams.view === 'group' && searchParams.groupId) {
-    redirect(`/${locale}/groups/${searchParams.groupId}`);
-  }
 
   const isSessionJoinFeedback =
     searchParams.sessionJoinFeedback === '1' &&
@@ -302,6 +297,7 @@ export default async function DashboardPage({
   const groupZoneProps = {
     locale,
     groups: dashboardGroups,
+    initialGroupId: searchParams.groupId,
     createGroupHref: `/${locale}/create-group`,
     labels: {
       title: t('zoneGroupTitle'),
@@ -312,6 +308,23 @@ export default async function DashboardPage({
       scheduleSession: t('zoneGroupScheduleSession'),
       groupNotifications: t('zoneGroupNotifications'),
       leaveGroup: t('zoneGroupLeaveGroup'),
+      manageMembersTitle: t('zoneGroupManageMembersTitle'),
+      manageMembersDescription: t('zoneGroupManageMembersDescription'),
+      confirmedMembers: t('zoneGroupConfirmedMembers'),
+      seatsAvailable: t('zoneGroupSeatsAvailable'),
+      notificationsTitle: t('zoneGroupNotificationsTitle'),
+      notificationsDescription: t('zoneGroupNotificationsDescription'),
+      sessionReminders: t('zoneGroupSessionReminders'),
+      invitationUpdates: t('zoneGroupInvitationUpdates'),
+      liveSessionAlerts: t('zoneGroupLiveSessionAlerts'),
+      leaveGroupTitle: t('zoneGroupLeaveGroupTitle'),
+      leaveGroupDescription: t('zoneGroupLeaveGroupDescription', {
+        group: '{group}',
+      }),
+      leaveGroupConfirm: t('zoneGroupLeaveGroupConfirm'),
+      leaveGroupPending: t('zoneGroupLeaveGroupPending'),
+      leaveGroupSuccess: t('zoneGroupLeaveGroupSuccess'),
+      leaveGroupBlocked: t('zoneGroupLeaveGroupBlocked'),
       members: t('zoneGroupMembers'),
       live: t('zoneGroupLive'),
       noGroups: t('zoneGroupNoGroups'),

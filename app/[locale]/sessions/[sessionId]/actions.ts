@@ -33,7 +33,7 @@ import {
 import { withFeedback } from '@/lib/utils';
 
 function groupPath(locale: AppLocale, groupId: string) {
-  return `/${locale}/groups/${groupId}`;
+  return `/${locale}/dashboard?groupId=${encodeURIComponent(groupId)}`;
 }
 
 function runDeferredTasks(tasks: Array<Promise<unknown>>) {

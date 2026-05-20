@@ -72,7 +72,7 @@ export async function joinLookupGroupAction(formData: FormData) {
   if (existingMembership) {
     redirect(
       withFeedback(
-        `/${locale}/groups/${group.id}`,
+        `/${locale}/dashboard?groupId=${encodeURIComponent(group.id)}`,
         'success',
         t('groupJoined'),
       ),
@@ -109,8 +109,12 @@ export async function joinLookupGroupAction(formData: FormData) {
 
   revalidatePath(`/${locale}/dashboard`);
   revalidatePath(`/${locale}/lookup`);
-  revalidatePath(`/${locale}/groups/${group.id}`);
+  revalidatePath(`/${locale}/dashboard`);
   redirect(
-    withFeedback(`/${locale}/groups/${group.id}`, 'success', t('groupJoined')),
+    withFeedback(
+      `/${locale}/dashboard?groupId=${encodeURIComponent(group.id)}`,
+      'success',
+      t('groupJoined'),
+    ),
   );
 }

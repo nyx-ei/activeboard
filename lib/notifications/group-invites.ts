@@ -209,7 +209,9 @@ export async function sendGroupInviteEmail(input: SendGroupInviteEmailInput) {
 export async function sendGroupFullInviteNotificationEmail(
   input: SendGroupFullInviteNotificationEmailInput,
 ) {
-  const groupUrl = `${getAppUrl()}/${input.locale}/groups/${input.groupId}`;
+  const groupUrl = `${getAppUrl()}/${input.locale}/dashboard?groupId=${encodeURIComponent(
+    input.groupId,
+  )}`;
   const isFrench = input.locale === 'fr';
   const content = isFrench
     ? {
@@ -285,7 +287,9 @@ export async function sendGroupFullInviteNotificationEmail(
 export async function sendGroupMemberAddedEmail(
   input: SendGroupMemberAddedEmailInput,
 ) {
-  const dashboardUrl = `${getAppUrl()}/${input.locale}/groups/${input.groupId}`;
+  const dashboardUrl = `${getAppUrl()}/${input.locale}/dashboard?groupId=${encodeURIComponent(
+    input.groupId,
+  )}`;
   const memberName =
     input.memberName?.trim() ||
     input.memberEmail.split('@')[0] ||

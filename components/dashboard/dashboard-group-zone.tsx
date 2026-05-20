@@ -19,6 +19,7 @@ import {
   Play,
   Plus,
   Send,
+  Settings,
   UserPlus,
   UsersRound,
   X,
@@ -63,6 +64,7 @@ export type DashboardGroupZoneSession = {
 export type DashboardGroupZoneProps = {
   locale: string;
   groups: DashboardGroupZoneGroup[];
+  initialGroupId?: string;
   createGroupHref: string;
   labels: {
     title: string;
@@ -73,6 +75,21 @@ export type DashboardGroupZoneProps = {
     scheduleSession: string;
     groupNotifications: string;
     leaveGroup: string;
+    manageMembersTitle: string;
+    manageMembersDescription: string;
+    confirmedMembers: string;
+    seatsAvailable: string;
+    notificationsTitle: string;
+    notificationsDescription: string;
+    sessionReminders: string;
+    invitationUpdates: string;
+    liveSessionAlerts: string;
+    leaveGroupTitle: string;
+    leaveGroupDescription: string;
+    leaveGroupConfirm: string;
+    leaveGroupPending: string;
+    leaveGroupSuccess: string;
+    leaveGroupBlocked: string;
     members: string;
     live: string;
     noGroups: string;
@@ -115,19 +132,33 @@ export type DashboardGroupZoneProps = {
 export const DashboardGroupZone = memo(function DashboardGroupZone({
   locale,
   groups,
+  initialGroupId,
   createGroupHref,
   labels,
 }: DashboardGroupZoneProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isOverflowOpen, setIsOverflowOpen] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [activePanel, setActivePanel] = useState<
+    'members' | 'notifications' | 'leave' | null
+  >(null);
   const [inviteEmail, setInviteEmail] = useState('');
   const [isInviting, setIsInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [isLeavingGroup, setIsLeavingGroup] = useState(false);
+  const [notificationSettings, setNotificationSettings] = useState({
+    sessionReminders: true,
+    invitationUpdates: true,
+    liveSessionAlerts: true,
+  });
   const [cancellingSessionId, setCancellingSessionId] = useState<
     string | null
   >(null);
-  const [selectedGroupId, setSelectedGroupId] = useState(groups[0]?.id ?? '');
+  const [selectedGroupId, setSelectedGroupId] = useState(
+    initialGroupId && groups.some((group) => group.id === initialGroupId)
+      ? initialGroupId
+      : (groups[0]?.id ?? ''),
+  );
   const router = useRouter();
   const groupMenuRef = useRef<HTMLDivElement | null>(null);
   const overflowMenuRef = useRef<HTMLDivElement | null>(null);
@@ -184,11 +215,19 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
       return;
     }
 
+    const requestedGroup = initialGroupId
+      ? groups.find((group) => group.id === initialGroupId)
+      : null;
+    if (requestedGroup && selectedGroupId !== requestedGroup.id) {
+      setSelectedGroupId(requestedGroup.id);
+      return;
+    }
+
     const firstGroup = groups[0];
     if (firstGroup && !groups.some((group) => group.id === selectedGroupId)) {
       setSelectedGroupId(firstGroup.id);
     }
-  }, [groups, selectedGroupId]);
+  }, [groups, initialGroupId, selectedGroupId]);
 
   useEffect(() => {
     const liveSignature = getLiveGroupsSignature(groups);
@@ -396,9 +435,12 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
               {isOverflowOpen ? (
                 <div className="absolute right-0 z-30 mt-2 w-[min(270px,calc(100vw-32px))] rounded-[14px] border border-white/[0.09] bg-[#0d332d] p-2 shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
                   <GroupOverflowItem
-                    href={`/${locale}/groups/${selectedGroup.id}`}
                     icon={<UsersRound className="h-5 w-5" aria-hidden="true" />}
                     label={labels.manageMembers}
+                    onClick={() => {
+                      setIsOverflowOpen(false);
+                      setActivePanel('members');
+                    }}
                   />
                   <button
                     type="button"
@@ -416,14 +458,20 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                     {labels.scheduleSession}
                   </button>
                   <GroupOverflowItem
-                    href={`/${locale}/groups/${selectedGroup.id}`}
                     icon={<Bell className="h-5 w-5" aria-hidden="true" />}
                     label={labels.groupNotifications}
+                    onClick={() => {
+                      setIsOverflowOpen(false);
+                      setActivePanel('notifications');
+                    }}
                   />
                   <GroupOverflowItem
-                    href={`/${locale}/groups/${selectedGroup.id}`}
                     icon={<LogOut className="h-5 w-5" aria-hidden="true" />}
                     label={labels.leaveGroup}
+                    onClick={() => {
+                      setIsOverflowOpen(false);
+                      setActivePanel('leave');
+                    }}
                   />
                 </div>
               ) : null}
@@ -669,6 +717,184 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
             {labels.viewAllSessions}
           </a>
         </footer>
+      ) : null}
+
+      {selectedGroup && activePanel === 'members' ? (
+        <Modal
+          open
+          onClose={() => setActivePanel(null)}
+          labelledBy="dashboard-group-members-title"
+          contentClassName="w-full rounded-t-[18px] border border-white/[0.08] bg-[#081b18] shadow-2xl sm:max-w-[560px] sm:rounded-[18px]"
+        >
+          <div className="p-5 sm:p-6">
+            <GroupPanelHeader
+              id="dashboard-group-members-title"
+              icon={<UsersRound className="h-4 w-4" aria-hidden="true" />}
+              title={labels.manageMembersTitle}
+              description={labels.manageMembersDescription}
+              onClose={() => setActivePanel(null)}
+            />
+
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <PanelStat
+                label={labels.confirmedMembers}
+                value={`${selectedGroup.memberCount}/${selectedMaxMembers}`}
+              />
+              <PanelStat
+                label={labels.seatsAvailable}
+                value={String(selectedSeatsAvailable)}
+              />
+            </div>
+
+            <div className="mt-5 space-y-2">
+              {selectedMembers.length > 0 ? (
+                selectedMembers.map((member) => (
+                  <div
+                    key={member.id}
+                    className="flex items-center gap-3 rounded-[12px] border border-white/[0.055] bg-white/[0.02] px-3 py-3"
+                  >
+                    <span
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[#22504a] bg-cover bg-center text-[12px] font-semibold text-[#9FF0CE]"
+                      style={{
+                        backgroundImage: member.avatarUrl
+                          ? `url("${member.avatarUrl}")`
+                          : undefined,
+                      }}
+                    >
+                      {member.avatarUrl ? null : member.initials}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[14px] font-semibold text-[#e8f4f0]">
+                        {member.initials}
+                      </span>
+                      <span className="mt-0.5 block text-[12px] text-[#8fa7a2]">
+                        {labels.members}
+                      </span>
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-[12px] border border-dashed border-white/[0.08] px-3 py-4 text-sm text-[#8fa7a2]">
+                  {labels.noData}
+                </div>
+              )}
+            </div>
+
+            {canInviteSelectedGroup ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setActivePanel(null);
+                  setInviteError(null);
+                  setIsInviteOpen(true);
+                }}
+                className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[12px] bg-[#20D9A3] px-4 text-sm font-semibold text-[#062b22] transition hover:bg-[#2fe9b1]"
+              >
+                <UserPlus className="h-4 w-4" aria-hidden="true" />
+                {labels.invite}
+              </button>
+            ) : null}
+          </div>
+        </Modal>
+      ) : null}
+
+      {selectedGroup && activePanel === 'notifications' ? (
+        <Modal
+          open
+          onClose={() => setActivePanel(null)}
+          labelledBy="dashboard-group-notifications-title"
+          contentClassName="w-full rounded-t-[18px] border border-white/[0.08] bg-[#081b18] shadow-2xl sm:max-w-[520px] sm:rounded-[18px]"
+        >
+          <div className="p-5 sm:p-6">
+            <GroupPanelHeader
+              id="dashboard-group-notifications-title"
+              icon={<Bell className="h-4 w-4" aria-hidden="true" />}
+              title={labels.notificationsTitle}
+              description={labels.notificationsDescription}
+              onClose={() => setActivePanel(null)}
+            />
+
+            <div className="mt-5 space-y-2">
+              <NotificationToggle
+                label={labels.sessionReminders}
+                enabled={notificationSettings.sessionReminders}
+                onChange={() =>
+                  setNotificationSettings((current) => ({
+                    ...current,
+                    sessionReminders: !current.sessionReminders,
+                  }))
+                }
+              />
+              <NotificationToggle
+                label={labels.invitationUpdates}
+                enabled={notificationSettings.invitationUpdates}
+                onChange={() =>
+                  setNotificationSettings((current) => ({
+                    ...current,
+                    invitationUpdates: !current.invitationUpdates,
+                  }))
+                }
+              />
+              <NotificationToggle
+                label={labels.liveSessionAlerts}
+                enabled={notificationSettings.liveSessionAlerts}
+                onChange={() =>
+                  setNotificationSettings((current) => ({
+                    ...current,
+                    liveSessionAlerts: !current.liveSessionAlerts,
+                  }))
+                }
+              />
+            </div>
+          </div>
+        </Modal>
+      ) : null}
+
+      {selectedGroup && activePanel === 'leave' ? (
+        <Modal
+          open
+          onClose={() => setActivePanel(null)}
+          labelledBy="dashboard-group-leave-title"
+          contentClassName="w-full rounded-t-[18px] border border-white/[0.08] bg-[#081b18] shadow-2xl sm:max-w-[500px] sm:rounded-[18px]"
+        >
+          <div className="p-5 sm:p-6">
+            <GroupPanelHeader
+              id="dashboard-group-leave-title"
+              icon={<LogOut className="h-4 w-4" aria-hidden="true" />}
+              title={labels.leaveGroupTitle}
+              description={labels.leaveGroupDescription.replace(
+                '{group}',
+                selectedGroup.name,
+              )}
+              onClose={() => setActivePanel(null)}
+            />
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setActivePanel(null)}
+                className="inline-flex min-h-11 items-center justify-center rounded-[11px] border border-white/[0.08] px-4 text-sm font-semibold text-[#e8f4f0] transition hover:bg-white/[0.04]"
+              >
+                {labels.cancelSession}
+              </button>
+              <button
+                type="button"
+                disabled={isLeavingGroup}
+                onClick={() =>
+                  void leaveDashboardGroup({
+                    groupId: selectedGroup.id,
+                    locale,
+                    labels,
+                    setIsLeavingGroup,
+                    onDone: () => setActivePanel(null),
+                  })
+                }
+                className="inline-flex min-h-11 items-center justify-center rounded-[11px] bg-red-400 px-4 text-sm font-semibold text-[#250607] transition hover:bg-red-300 disabled:cursor-wait disabled:opacity-70"
+              >
+                {isLeavingGroup ? labels.leaveGroupPending : labels.leaveGroupConfirm}
+              </button>
+            </div>
+          </div>
+        </Modal>
       ) : null}
 
       {selectedGroup && isInviteOpen ? (
@@ -942,6 +1168,56 @@ async function cancelDashboardScheduledSession({
   }
 }
 
+async function leaveDashboardGroup({
+  groupId,
+  locale,
+  labels,
+  setIsLeavingGroup,
+  onDone,
+}: {
+  groupId: string;
+  locale: string;
+  labels: DashboardGroupZoneProps['labels'];
+  setIsLeavingGroup: (value: boolean) => void;
+  onDone: () => void;
+}) {
+  setIsLeavingGroup(true);
+
+  try {
+    const response = await fetch(`/api/groups/${groupId}/leave`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      cache: 'no-store',
+      body: JSON.stringify({ locale }),
+    });
+    const payload = (await response.json().catch(() => null)) as {
+      reason?: string;
+    } | null;
+
+    if (!response.ok) {
+      const message =
+        payload?.reason === 'active_session'
+          ? labels.leaveGroupBlocked
+          : labels.actionFailed;
+      notifyDashboardGroupAction(message, 'error');
+      return;
+    }
+
+    onDone();
+    window.dispatchEvent(
+      new CustomEvent('activeboard:dashboard-invalidate', {
+        detail: { view: 'sessions' },
+      }),
+    );
+    notifyDashboardGroupAction(labels.leaveGroupSuccess, 'success');
+  } catch {
+    notifyDashboardGroupAction(labels.actionFailed, 'error');
+  } finally {
+    setIsLeavingGroup(false);
+  }
+}
+
 function getInviteErrorMessage(
   reason: string,
   labels: DashboardGroupZoneProps['labels'],
@@ -976,22 +1252,110 @@ function getGroupInitials(name: string) {
 }
 
 function GroupOverflowItem({
-  href,
   icon,
   label,
+  onClick,
 }: {
-  href: string;
   icon: ReactNode;
   label: string;
+  onClick: () => void;
 }) {
   return (
-    <a
-      href={href}
-      className="flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[14px] font-medium text-[#e8f4f0] transition hover:bg-white/[0.04]"
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-[14px] font-medium text-[#e8f4f0] transition hover:bg-white/[0.04]"
     >
       <span className="text-[#8fa7a2]">{icon}</span>
       {label}
-    </a>
+    </button>
+  );
+}
+
+function GroupPanelHeader({
+  id,
+  icon,
+  title,
+  description,
+  onClose,
+}: {
+  id: string;
+  icon: ReactNode;
+  title: string;
+  description: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#20D9A3]/10 text-[#9FF0CE]">
+          {icon}
+        </span>
+        <ModalTitle
+          id={id}
+          className="mt-4 text-xl font-semibold tracking-[-0.02em] text-[#e8f4f0]"
+        >
+          {title}
+        </ModalTitle>
+        <p className="mt-2 text-sm leading-5 text-[#8fa7a2]">{description}</p>
+      </div>
+      <button
+        type="button"
+        onClick={onClose}
+        className="rounded-full p-2 text-[#8fa7a2] transition hover:bg-white/[0.06] hover:text-white"
+        aria-label={title}
+      >
+        <X className="h-4 w-4" aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
+
+function PanelStat({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="rounded-[12px] border border-white/[0.055] bg-white/[0.02] px-3 py-3">
+      <span className="block text-[11px] font-medium uppercase tracking-[0.08em] text-[#6f8984]">
+        {label}
+      </span>
+      <span className="mt-1 block text-[22px] font-semibold leading-none text-[#20D9A3]">
+        {value}
+      </span>
+    </span>
+  );
+}
+
+function NotificationToggle({
+  label,
+  enabled,
+  onChange,
+}: {
+  label: string;
+  enabled: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      className="flex w-full items-center justify-between gap-3 rounded-[12px] border border-white/[0.055] bg-white/[0.02] px-3 py-3 text-left transition hover:bg-white/[0.04]"
+    >
+      <span className="flex items-center gap-3 text-sm font-semibold text-[#e8f4f0]">
+        <Settings className="h-4 w-4 text-[#8fa7a2]" aria-hidden="true" />
+        {label}
+      </span>
+      <span
+        className={`flex h-7 w-12 items-center rounded-full p-1 transition ${
+          enabled ? 'bg-[#20D9A3]' : 'bg-white/[0.08]'
+        }`}
+        aria-hidden="true"
+      >
+        <span
+          className={`h-5 w-5 rounded-full bg-white transition ${
+            enabled ? 'translate-x-5' : 'translate-x-0'
+          }`}
+        />
+      </span>
+    </button>
   );
 }
 
