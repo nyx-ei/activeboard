@@ -17,7 +17,7 @@ type CancelPayload = {
 };
 
 function groupDashboardPath(locale: AppLocale, groupId: string) {
-  return `/${locale}/groups/${groupId}`;
+  return `/${locale}/dashboard?groupId=${encodeURIComponent(groupId)}`;
 }
 
 export async function POST(request: Request, { params }: RouteContext) {

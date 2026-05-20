@@ -144,7 +144,9 @@ export function LandingGroupSetupForm({
       window.location.assign(
         `/${locale}/auth/login?onboarding=founder&email=${encodeURIComponent(
           founderEmail,
-        )}&next=${encodeURIComponent(`/${locale}/groups/${result.groupId}`)}`,
+        )}&next=${encodeURIComponent(
+          `/${locale}/dashboard?groupId=${encodeURIComponent(result.groupId)}`,
+        )}`,
       );
     });
   }

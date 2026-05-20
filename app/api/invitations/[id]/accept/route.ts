@@ -400,7 +400,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     invitation.session_id &&
     verification.sessionAdmission.reason !== 'session_ended'
       ? `/${locale}/sessions/${invitation.session_id}`
-      : `/${locale}/groups/${group.id}`;
+      : `/${locale}/dashboard?groupId=${encodeURIComponent(group.id)}`;
 
   return NextResponse.json({
     accepted: true,

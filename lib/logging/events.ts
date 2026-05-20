@@ -15,6 +15,7 @@ export const APP_EVENTS = {
   groupMemberAddedEmailFailed: 'group_member_added_email_failed',
   groupInviteAccepted: 'group_invite_accepted',
   groupInviteDeclined: 'group_invite_declined',
+  groupLeft: 'group_left',
   onTheFlyInviteVerificationPassed: 'on_the_fly_invite_verification_passed',
   onTheFlyInviteVerificationBlocked: 'on_the_fly_invite_verification_blocked',
   onTheFlyInviteAccepted: 'on_the_fly_invite_accepted',

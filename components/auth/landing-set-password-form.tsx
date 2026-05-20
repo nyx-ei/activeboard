@@ -162,7 +162,7 @@ export function LandingSetPasswordForm({
         }
 
         const resolvedNextPath = result.groupId
-          ? `/${locale}/groups/${result.groupId}`
+          ? `/${locale}/dashboard?groupId=${encodeURIComponent(result.groupId)}`
           : nextPath;
         window.location.assign(
           `/${locale}/auth/login?next=${encodeURIComponent(resolvedNextPath)}`,

@@ -41,6 +41,10 @@ function withSessionJoinFeedback(
   return `${url.pathname}?${url.searchParams.toString()}`;
 }
 
+function groupDashboardPath(locale: AppLocale, groupId: string) {
+  return `/${locale}/dashboard?groupId=${encodeURIComponent(groupId)}`;
+}
+
 function getInviteAcceptedRedirect(
   locale: AppLocale,
   verification: InviteAdmissionSuccess,
@@ -55,14 +59,25 @@ function getInviteAcceptedRedirect(
     sessionId &&
     verification.sessionAdmission.reason === 'joining_next_question'
   ) {
-    return `/${locale}/groups/${verification.invite.groupId}?context=joining-next-question&sessionId=${sessionId}`;
+    const url = new URL(
+      groupDashboardPath(locale, verification.invite.groupId),
+      'http://localhost',
+    );
+    url.searchParams.set('context', 'joining-next-question');
+    url.searchParams.set('sessionId', sessionId);
+    return `${url.pathname}?${url.searchParams.toString()}`;
   }
 
   if (verification.sessionAdmission.reason === 'session_ended') {
-    return `/${locale}/groups/${verification.invite.groupId}?context=joined-session-ended`;
+    const url = new URL(
+      groupDashboardPath(locale, verification.invite.groupId),
+      'http://localhost',
+    );
+    url.searchParams.set('context', 'joined-session-ended');
+    return `${url.pathname}?${url.searchParams.toString()}`;
   }
 
-  return `/${locale}/groups/${verification.invite.groupId}`;
+  return groupDashboardPath(locale, verification.invite.groupId);
 }
 
 async function recordSkippedAnswersForSessionInvite({
@@ -696,7 +711,7 @@ export async function completeInviteOnboardingAction(formData: FormData) {
   }
 
   revalidatePath(`/${locale}/dashboard`);
-  revalidatePath(`/${locale}/groups/${invite.group_id}`);
+  revalidatePath(groupDashboardPath(locale, invite.group_id));
   revalidatePath(safeRedirectTo);
   const acceptedRedirectTo = getInviteAcceptedRedirect(locale, verification);
   revalidatePath(acceptedRedirectTo);
@@ -985,14 +1000,10 @@ async function requireFounderDashboardMembership(
     .maybeSingle();
 
   if (!membership?.is_founder) {
-    redirect(withFeedback(`/${locale}/groups`, 'error', t('notAuthorized')));
+    redirect(withFeedback(`/${locale}/dashboard`, 'error', t('notAuthorized')));
   }
 
   return { supabase, user, t };
-}
-
-function groupDashboardPath(locale: AppLocale, groupId: string) {
-  return `/${locale}/groups/${groupId}`;
 }
 
 export async function updateUserScheduleAction(formData: FormData) {
@@ -1600,7 +1611,7 @@ export async function transferDashboardCaptainAction(formData: FormData) {
   }
 
   if (!sessionId || !targetUserId || targetUserId === user.id) {
-    redirect(withFeedback(`/${locale}/groups`, 'error', t('missingFields')));
+    redirect(withFeedback(`/${locale}/dashboard`, 'error', t('missingFields')));
   }
 
   const { data: session } = await supabase
@@ -1614,11 +1625,11 @@ export async function transferDashboardCaptainAction(formData: FormData) {
     !session ||
     (session.status !== 'active' && session.status !== 'scheduled')
   ) {
-    redirect(withFeedback(`/${locale}/groups`, 'error', t('actionFailed')));
+    redirect(withFeedback(`/${locale}/dashboard`, 'error', t('actionFailed')));
   }
 
   if (session.leader_id !== user.id) {
-    redirect(withFeedback(`/${locale}/groups`, 'error', t('notAuthorized')));
+    redirect(withFeedback(`/${locale}/dashboard`, 'error', t('notAuthorized')));
   }
 
   const { data: targetMembership } = await supabase
@@ -1630,7 +1641,7 @@ export async function transferDashboardCaptainAction(formData: FormData) {
     .maybeSingle();
 
   if (!targetMembership) {
-    redirect(withFeedback(`/${locale}/groups`, 'error', t('notAuthorized')));
+    redirect(withFeedback(`/${locale}/dashboard`, 'error', t('notAuthorized')));
   }
 
   const { result, error } = await transferSessionCaptain(supabase, {
@@ -1641,13 +1652,13 @@ export async function transferDashboardCaptainAction(formData: FormData) {
   });
 
   if (error || !result) {
-    redirect(withFeedback(`/${locale}/groups`, 'error', t('actionFailed')));
+    redirect(withFeedback(`/${locale}/dashboard`, 'error', t('actionFailed')));
   }
 
   if (!result.ok) {
     const redirectPath = result.group_id
       ? groupDashboardPath(locale, result.group_id)
-      : `/${locale}/groups`;
+      : `/${locale}/dashboard`;
     const messageKey = result.message_key ?? 'sessionStateChanged';
     redirect(withFeedback(redirectPath, 'error', t(messageKey)));
   }

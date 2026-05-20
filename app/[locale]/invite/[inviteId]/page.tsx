@@ -125,7 +125,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
   }
 
   if (invite.status !== 'pending') {
-    redirect(`/${locale}/groups/${invite.group_id}`);
+    redirect(`/${locale}/dashboard?groupId=${encodeURIComponent(invite.group_id)}`);
   }
 
   const [
@@ -337,7 +337,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
       <InviteOnboardingWizard
         locale={locale}
         inviteId={invite.id}
-        redirectTo={`/${locale}/groups/${invite.group_id}`}
+        redirectTo={`/${locale}/dashboard?groupId=${encodeURIComponent(invite.group_id)}`}
         groupName={group.name}
         inviteCode={group.invite_code}
         inviteSchedules={inviteSchedules ?? []}

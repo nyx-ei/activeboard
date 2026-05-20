@@ -307,12 +307,18 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
 
   function goToWorkspace() {
     if (requiresLogin) {
-      const next = createdGroupId ? `/${locale}/groups/${createdGroupId}` : `/${locale}/dashboard`;
+      const next = createdGroupId
+        ? `/${locale}/dashboard?groupId=${encodeURIComponent(createdGroupId)}`
+        : `/${locale}/dashboard`;
       window.location.assign(`/${locale}/auth/login?next=${encodeURIComponent(next)}`);
       return;
     }
 
-    window.location.assign(createdGroupId ? `/${locale}/groups/${createdGroupId}` : `/${locale}/dashboard`);
+    window.location.assign(
+      createdGroupId
+        ? `/${locale}/dashboard?groupId=${encodeURIComponent(createdGroupId)}`
+        : `/${locale}/dashboard`,
+    );
   }
 
   const bankLabels: Record<(typeof BANK_OPTIONS)[number], string> = {

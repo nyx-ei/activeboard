@@ -22,7 +22,7 @@ type CreateSessionPayload = {
 };
 
 function groupDashboardPath(locale: AppLocale, groupId: string) {
-  return `/${locale}/groups/${groupId}`;
+  return `/${locale}/dashboard?groupId=${encodeURIComponent(groupId)}`;
 }
 
 function getStaticSessionScheduledFeedback(locale: AppLocale) {

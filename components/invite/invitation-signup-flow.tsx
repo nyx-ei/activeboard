@@ -154,7 +154,10 @@ export function InvitationSignupFlow({
     }
 
     window.location.assign(
-      acceptPayload.redirectTo ?? `/${locale}/groups/${acceptPayload.group.id}`,
+      acceptPayload.redirectTo ??
+        `/${locale}/dashboard?groupId=${encodeURIComponent(
+          acceptPayload.group.id,
+        )}`,
     );
   }
 

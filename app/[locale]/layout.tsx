@@ -193,7 +193,7 @@ export default async function LocaleLayout({
                     <LiveGroupsPill
                       href={
                         shellData.canBrowseLookupLayer
-                          ? `${shellData.preferredGroupId ? `/groups/${shellData.preferredGroupId}` : '/groups'}?live=1`
+                          ? '/lookup'
                           : '/billing'
                       }
                       label={dashboardT('joinLiveGroups')}

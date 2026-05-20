@@ -61,8 +61,8 @@ export function CreateSessionModal({
     groups.find((group) => group.id === selectedGroupId) ?? groups[0] ?? null;
   const memberCount = selectedGroup?.memberCount ?? 0;
   const returnTo = selectedGroup
-    ? `/${locale}/groups/${selectedGroup.id}`
-    : `/${locale}/groups`;
+    ? `/${locale}/dashboard?groupId=${encodeURIComponent(selectedGroup.id)}`
+    : `/${locale}/dashboard`;
 
   const isValid =
     canCreateSession &&

@@ -63,7 +63,10 @@ export function InvitationAutoAccept({
         }
 
         window.location.assign(
-          payload.redirectTo ?? `/${locale}/groups/${payload.group.id}`,
+          payload.redirectTo ??
+            `/${locale}/dashboard?groupId=${encodeURIComponent(
+              payload.group.id,
+            )}`,
         );
       } catch (acceptError) {
         if ((acceptError as Error).name === 'AbortError') {
