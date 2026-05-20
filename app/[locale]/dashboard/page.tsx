@@ -363,7 +363,7 @@ export default async function DashboardPage({
         feedbackId={isSessionJoinFeedback ? undefined : searchParams.feedbackId}
       />
 
-      <section className="mx-auto w-full max-w-[1440px] space-y-[18px] px-0 py-0 sm:px-2">
+      <section className="mx-auto w-full max-w-[1440px] space-y-[14px] px-3 py-0 sm:space-y-[18px] sm:px-2">
         <DashboardViewShell
           sessionsProps={sessionsProps}
           performanceProps={performanceProps}
