@@ -246,13 +246,13 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   }, [isOpen, isOverflowOpen]);
 
   return (
-    <section className="v11-card px-5 py-5 sm:px-6 sm:py-6 lg:px-8">
+    <section className="v11-card px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex min-w-0 flex-wrap items-center gap-4">
+        <div className="flex min-w-0 flex-wrap items-center gap-3 sm:gap-4">
           <div ref={groupMenuRef} className="relative">
             <button
               type="button"
-              className={`flex items-center gap-2 rounded-[10px] px-2 py-1 text-[22px] font-medium tracking-[-0.035em] text-[#e8f4f0] transition hover:bg-white/[0.03] sm:text-[24px] ${
+              className={`flex items-center gap-2 rounded-[10px] px-1 py-1 text-[21px] font-medium tracking-[-0.035em] text-[#e8f4f0] transition hover:bg-white/[0.03] sm:px-2 sm:text-[24px] ${
                 isOpen ? 'bg-white/[0.03]' : ''
               }`}
               aria-expanded={isOpen}
@@ -355,7 +355,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="grid grid-cols-[1fr_auto] gap-2 sm:flex sm:flex-row sm:items-center sm:gap-3">
           {selectedGroup ? (
             <button
               type="button"
@@ -368,7 +368,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                 setInviteError(null);
                 setIsInviteOpen(true);
               }}
-              className={`inline-flex h-12 items-center justify-center gap-2 rounded-[12px] border px-5 text-[15px] font-semibold transition ${
+              className={`inline-flex h-11 items-center justify-center gap-2 rounded-[12px] border px-4 text-[14px] font-semibold transition sm:h-12 sm:px-5 sm:text-[15px] ${
                 canInviteSelectedGroup
                   ? 'border-white/[0.06] bg-white/[0.02] text-[#e8f4f0] hover:border-[#20D9A3]/35 hover:bg-[#20D9A3]/10'
                   : 'cursor-not-allowed border-white/[0.04] bg-white/[0.012] text-[#5f7b75]'
@@ -387,7 +387,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                   setIsOverflowOpen((current) => !current);
                   setIsOpen(false);
                 }}
-                className="inline-flex h-12 w-12 items-center justify-center rounded-[12px] border border-white/[0.06] bg-white/[0.02] text-[#8fa7a2] transition hover:border-white/[0.1] hover:bg-white/[0.04] hover:text-white"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-[12px] border border-white/[0.06] bg-white/[0.02] text-[#8fa7a2] transition hover:border-white/[0.1] hover:bg-white/[0.04] hover:text-white sm:h-12 sm:w-12"
                 aria-expanded={isOverflowOpen}
                 aria-label={labels.dropdownLabel}
               >
@@ -440,7 +440,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                   }),
                 );
               }}
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-[12px] bg-[#20D9A3] px-6 text-[15px] font-semibold text-[#062b22] transition hover:bg-[#2fe9b1]"
+              className="col-span-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[12px] bg-[#20D9A3] px-5 text-[14px] font-semibold text-[#062b22] transition hover:bg-[#2fe9b1] sm:col-auto sm:h-12 sm:w-auto sm:px-6 sm:text-[15px]"
             >
               <CalendarClock className="h-4 w-4" aria-hidden="true" />
               {labels.startSession}
@@ -464,7 +464,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
       ) : null}
 
       {selectedGroup ? (
-        <div className="mt-[22px]">
+        <div className="mt-4 sm:mt-[22px]">
           {selectedActiveSession ? (
             <a
               href={`/${locale}/sessions/${selectedActiveSession.id}`}
@@ -474,23 +474,23 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
               onPointerEnter={() =>
                 prefetchSession(`/${locale}/sessions/${selectedActiveSession.id}`)
               }
-              className="group flex flex-col gap-4 rounded-[14px] border border-[#20D9A3]/35 bg-[linear-gradient(135deg,rgba(32,217,163,0.12),rgba(32,217,163,0.025))] px-5 py-4 transition hover:border-[#20D9A3]/60 hover:bg-[#20D9A3]/[0.08] sm:flex-row sm:items-center"
+              className="group grid grid-cols-[1fr_auto] items-center gap-3 rounded-[14px] border border-[#20D9A3]/35 bg-[linear-gradient(135deg,rgba(32,217,163,0.12),rgba(32,217,163,0.025))] px-3 py-3 transition hover:border-[#20D9A3]/60 hover:bg-[#20D9A3]/[0.08] sm:flex sm:flex-row sm:items-center sm:gap-4 sm:px-5 sm:py-4"
             >
-              <span className="flex min-w-0 flex-1 items-start gap-4">
-                <span className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[11px] border border-[#20D9A3]/25 bg-[#20D9A3]/15 text-[#9FF0CE]">
+              <span className="flex min-w-0 flex-1 items-center gap-3 sm:items-start sm:gap-4">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-[#20D9A3]/25 bg-[#20D9A3]/15 text-[#9FF0CE] sm:h-[42px] sm:w-[42px] sm:rounded-[11px]">
                   <Play className="h-4 w-4 fill-current" aria-hidden="true" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="inline-flex items-center gap-2 rounded-[6px] bg-[#20D9A3]/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[#9FF0CE]">
+                  <span className="inline-flex items-center gap-2 rounded-[6px] bg-[#20D9A3]/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-[#9FF0CE] sm:px-2.5 sm:py-1 sm:text-[11px]">
                     <span className="live-dot" aria-hidden="true" />
                     {labels.live}
                   </span>
-                  <span className="mt-2 block truncate text-[16px] font-medium tracking-[-0.015em] text-[#e8f4f0]">
+                  <span className="mt-1 block truncate text-[14px] font-medium tracking-[-0.015em] text-[#e8f4f0] sm:mt-2 sm:text-[16px]">
                     {selectedActiveSession.name ?? labels.nextSession}
                   </span>
                   {activeProgress ? (
                     <>
-                      <span className="mt-2 flex flex-wrap items-center gap-2 text-[13px] text-[#8fa7a2]">
+                      <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] text-[#8fa7a2] sm:mt-2 sm:gap-2 sm:text-[13px]">
                         <span className="font-semibold text-[#e8f4f0]">
                           Q{activeProgress.current}/{activeProgress.total}
                         </span>
@@ -499,7 +499,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                           {selectedGroup.memberCount} {labels.members}
                         </span>
                       </span>
-                      <span className="mt-3 block h-2 overflow-hidden rounded-full bg-[#102b27]">
+                      <span className="mt-2 hidden h-2 overflow-hidden rounded-full bg-[#102b27] sm:block">
                         <span
                           className="block h-full rounded-full bg-[#20D9A3] shadow-[0_0_18px_rgba(32,217,163,0.42)]"
                           style={{ width: `${activeProgress.percent}%` }}
@@ -509,31 +509,31 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                   ) : null}
                 </span>
               </span>
-              <span className="inline-flex w-full shrink-0 items-center justify-center rounded-[10px] bg-[#20D9A3] px-4 py-2.5 text-[13px] font-semibold text-[#062b22] transition group-hover:bg-[#2fe9b1] sm:w-auto">
+              <span className="inline-flex shrink-0 items-center justify-center rounded-[10px] border border-white/[0.07] bg-white/[0.025] px-3 py-2 text-[13px] font-semibold text-[#e8f4f0] transition group-hover:border-[#20D9A3]/40 group-hover:bg-[#20D9A3]/10 sm:w-auto sm:bg-[#20D9A3] sm:px-4 sm:py-2.5 sm:text-[#062b22] sm:group-hover:bg-[#2fe9b1]">
                 {labels.joinLiveSession}
               </span>
             </a>
           ) : selectedNextSession && sessionHref ? (
             <div
-              className="flex flex-col gap-4 rounded-[14px] border border-white/[0.06] bg-white/[0.018] px-5 py-4 transition hover:border-white/[0.1] hover:bg-white/[0.03] sm:flex-row sm:items-center"
+              className="flex flex-col gap-3 rounded-[14px] border border-white/[0.06] bg-white/[0.018] px-3 py-3 transition hover:border-white/[0.1] hover:bg-white/[0.03] sm:flex-row sm:items-center sm:gap-4 sm:px-5 sm:py-4"
             >
               <a
                 href={sessionHref}
                 onFocus={() => prefetchSession(sessionHref)}
                 onPointerEnter={() => prefetchSession(sessionHref)}
-                className="flex min-w-0 flex-1 items-start gap-4"
+                className="flex min-w-0 flex-1 items-start gap-3 sm:gap-4"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[11px] border border-[#6BA8F2]/25 bg-[#6BA8F2]/15 text-[#A8C9F4]">
-                  <CalendarClock className="h-5 w-5" aria-hidden="true" />
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border border-[#6BA8F2]/25 bg-[#6BA8F2]/15 text-[#A8C9F4] sm:h-11 sm:w-11 sm:rounded-[11px]">
+                  <CalendarClock className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="text-[13px] font-normal tracking-[0.02em] text-[#8fa7a2]">
                     {labels.nextSession}
                   </span>
-                  <span className="mt-1.5 block truncate text-[17px] font-semibold tracking-[-0.02em] text-[#e8f4f0]">
+                  <span className="mt-1 block truncate text-[15px] font-semibold tracking-[-0.02em] text-[#e8f4f0] sm:mt-1.5 sm:text-[17px]">
                     {selectedNextSession.name ?? labels.nextSession}
                   </span>
-                  <span className="mt-2 flex flex-wrap items-center gap-2 text-[13px] text-[#8fa7a2]">
+                  <span className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[12px] text-[#8fa7a2] sm:mt-2 sm:gap-2 sm:text-[13px]">
                     {labels.scheduledFor.replace(
                       '{date}',
                       formatSessionDate(
@@ -551,7 +551,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                   </span>
                 </span>
               </a>
-              <span className="flex shrink-0 items-center gap-2">
+              <span className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
                 <button
                   type="button"
                   onClick={() => {
@@ -565,7 +565,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                       }),
                     );
                   }}
-                  className="inline-flex h-10 items-center justify-center rounded-[10px] border border-white/[0.07] bg-white/[0.025] px-5 text-[13px] font-semibold text-[#e8f4f0] transition hover:border-white/[0.12] hover:bg-white/[0.045]"
+                  className="inline-flex h-9 items-center justify-center rounded-[10px] border border-white/[0.07] bg-white/[0.025] px-4 text-[12px] font-semibold text-[#e8f4f0] transition hover:border-white/[0.12] hover:bg-white/[0.045] sm:h-10 sm:px-5 sm:text-[13px]"
                 >
                   {labels.editSession}
                 </button>
@@ -580,7 +580,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                       setCancellingSessionId,
                     })
                   }
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-[10px] border border-white/[0.07] bg-white/[0.025] text-[#8fa7a2] transition hover:border-red-300/30 hover:bg-red-400/10 hover:text-red-100 disabled:cursor-wait disabled:opacity-60"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-white/[0.07] bg-white/[0.025] text-[#8fa7a2] transition hover:border-red-300/30 hover:bg-red-400/10 hover:text-red-100 disabled:cursor-wait disabled:opacity-60 sm:h-10 sm:w-10"
                   aria-label={labels.cancelSession}
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
@@ -588,12 +588,12 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
               </span>
             </div>
           ) : (
-            <div className="flex items-center gap-4 rounded-[14px] border border-dashed border-white/[0.09] bg-transparent px-5 py-[18px] text-[#8fa7a2]">
-              <span className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[11px] border border-white/[0.045] bg-white/[0.03] text-[#5c7773]">
+            <div className="flex items-center gap-3 rounded-[14px] border border-dashed border-white/[0.09] bg-transparent px-3 py-3 text-[#8fa7a2] sm:gap-4 sm:px-5 sm:py-[18px]">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border border-white/[0.045] bg-white/[0.03] text-[#5c7773] sm:h-[42px] sm:w-[42px] sm:rounded-[11px]">
                 <CalendarClock className="h-5 w-5" aria-hidden="true" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[16px] font-medium text-[#e8f4f0]">
+                <span className="block text-[14px] font-medium text-[#e8f4f0] sm:text-[16px]">
                   {labels.noUpcomingSession}
                 </span>
                 <span className="mt-1 block text-[13px] text-[#5c7773]">

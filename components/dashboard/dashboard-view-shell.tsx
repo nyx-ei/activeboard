@@ -312,7 +312,9 @@ export function DashboardViewShell({
   return (
     <div className="space-y-5">
       <DashboardSprintActivityZone {...resolvedSprintActivityProps} />
-      <DashboardProgressStateZone {...resolvedProgressStateProps} />
+      <div className="hidden md:block">
+        <DashboardProgressStateZone {...resolvedProgressStateProps} />
+      </div>
       <DashboardGroupZone {...resolvedGroupZoneProps} />
       <DashboardSessionActionHost {...resolvedSessionsProps} />
       {showPerformanceDetails ? (

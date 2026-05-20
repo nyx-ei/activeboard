@@ -210,8 +210,8 @@ export const DashboardSprintActivityZone = memo(
     }
 
     return (
-      <section className="v11-card px-5 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-5">
-        <div className="mb-4 flex items-start justify-between gap-4">
+      <section className="v11-card px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-5">
+        <div className="mb-4 flex items-start justify-between gap-4 sm:mb-4">
           <div>
             <p className="v11-card-title">{labels.title}</p>
             <h1 className="sr-only">
@@ -224,7 +224,7 @@ export const DashboardSprintActivityZone = memo(
           </div>
           <button
             type="button"
-            className="hidden h-10 w-10 items-center justify-center rounded-[12px] border border-white/[0.045] bg-white/[0.025] text-[#8fa7a2] transition hover:border-white/[0.09] hover:bg-white/[0.04] hover:text-[#e8f4f0] sm:inline-flex"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-[11px] border border-white/[0.045] bg-white/[0.025] text-[#8fa7a2] transition hover:border-white/[0.09] hover:bg-white/[0.04] hover:text-[#e8f4f0] sm:h-10 sm:w-10 sm:rounded-[12px]"
             aria-label={labels.title}
             onClick={() => void shareSprintActivity()}
           >
@@ -232,24 +232,24 @@ export const DashboardSprintActivityZone = memo(
           </button>
         </div>
 
-        <div className="grid gap-7 xl:grid-cols-[350px_minmax(0,1fr)] xl:items-center 2xl:grid-cols-[400px_minmax(0,1fr)]">
-          <div className="flex max-w-[350px] items-center 2xl:max-w-[400px]">
+        <div className="grid gap-5 sm:gap-7 xl:grid-cols-[350px_minmax(0,1fr)] xl:items-center 2xl:grid-cols-[400px_minmax(0,1fr)]">
+          <div className="mx-auto flex w-full max-w-[300px] items-center sm:max-w-[350px] xl:mx-0 2xl:max-w-[400px]">
             {cards.map((card, index) => {
               return (
                 <article
                   key={card.key}
-                  className={`flex min-w-0 flex-1 flex-col justify-center gap-[16px] ${
+                  className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-[10px] text-center sm:items-start sm:gap-[16px] sm:text-left ${
                     index > 0
-                      ? 'border-l border-white/[0.045] pl-5 sm:pl-7'
-                      : 'pr-5 sm:pr-7'
+                      ? 'border-l border-white/[0.045] pl-4 sm:pl-7'
+                      : 'pr-4 sm:pr-7'
                   }`}
                 >
                   <p
-                    className={`text-[38px] font-semibold leading-none tracking-[-0.03em] sm:text-[48px] xl:text-[52px] 2xl:text-[58px] ${card.accent}`}
+                    className={`text-[34px] font-semibold leading-none tracking-[-0.03em] sm:text-[48px] xl:text-[52px] 2xl:text-[58px] ${card.accent}`}
                   >
                     {card.value}
                   </p>
-                  <p className="max-w-[104px] text-[14px] font-normal leading-[1.35] text-[#8fa7a2]">
+                  <p className="max-w-[90px] text-[13px] font-normal leading-[1.35] text-[#d7e3df] sm:max-w-[104px] sm:text-[14px] sm:text-[#8fa7a2]">
                     {card.label}
                   </p>
                 </article>
@@ -258,32 +258,35 @@ export const DashboardSprintActivityZone = memo(
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="overflow-x-auto pb-1 xl:overflow-visible">
-              <div className="w-full min-w-[672px] xl:min-w-0">
-                <div className="ml-[29px] grid grid-cols-[repeat(28,minmax(14px,1fr))] gap-y-0 text-[12px] font-normal leading-[14px] text-[#8fa7a2] [column-gap:8px]">
+            <div className="overflow-visible pb-0 sm:overflow-x-auto sm:pb-1 xl:overflow-visible">
+              <div className="w-full min-w-0 sm:min-w-[672px] xl:min-w-0">
+                <div className="ml-[17px] grid grid-cols-[repeat(28,minmax(7px,1fr))] gap-y-0 text-[10px] font-normal leading-[11px] text-[#d7e3df] [column-gap:1px] sm:ml-[29px] sm:grid-cols-[repeat(28,minmax(14px,1fr))] sm:text-[12px] sm:leading-[14px] sm:text-[#8fa7a2] sm:[column-gap:8px]">
                   {heatmapMonthMarkers.map((label, index) => (
                     <span
                       key={`${label}-${index}`}
-                      className="h-5 justify-self-start"
+                      className="h-4 justify-self-start sm:h-5"
                     >
                       {label}
                     </span>
                   ))}
                 </div>
-                <div className="mt-1.5 flex items-start gap-[8px]">
-                  <div className="flex w-[21px] flex-col gap-[8px] text-[11px] leading-[14px] text-[#6f8984]">
+                <div className="mt-1.5 flex items-start gap-[5px] sm:gap-[8px]">
+                  <div className="flex w-[12px] flex-col gap-[4px] text-[10px] leading-[7px] text-[#d7e3df] sm:w-[21px] sm:gap-[8px] sm:text-[11px] sm:leading-[14px] sm:text-[#6f8984]">
                     {displayedWeekdays.map((weekday, index) => (
-                      <span key={`${weekday}-${index}`} className="h-[14px]">
+                      <span
+                        key={`${weekday}-${index}`}
+                        className="h-[7px] sm:h-[14px]"
+                      >
                         {weekday}
                       </span>
                     ))}
                   </div>
-                  <div className="grid w-full grid-flow-col grid-rows-7 gap-y-[8px] [column-gap:8px] [grid-auto-columns:minmax(14px,1fr)]">
+                  <div className="grid w-full grid-flow-col grid-rows-7 gap-y-[4px] [column-gap:1px] [grid-auto-columns:minmax(7px,1fr)] sm:gap-y-[8px] sm:[column-gap:8px] sm:[grid-auto-columns:minmax(14px,1fr)]">
                     {heatmapWeeks.map((week, weekIndex) =>
                       week.map((day) => (
                         <div
                           key={`${weekIndex}-${day.date}`}
-                          className={`h-[14px] w-[14px] justify-self-start rounded-[4px] ${getHeatmapCellClass(day.intensity)}`}
+                          className={`h-[7px] w-[7px] justify-self-start rounded-[2px] sm:h-[14px] sm:w-[14px] sm:rounded-[4px] ${getHeatmapCellClass(day.intensity)}`}
                           title={`${day.date} - ${day.count}`}
                         />
                       )),
