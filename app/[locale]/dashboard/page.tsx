@@ -278,7 +278,7 @@ export default async function DashboardPage({
   };
   const progressStateProps = {
     quadrants: performanceData.progressQuadrants,
-    detailsHref: `/${locale}/dashboard#performance-details`,
+    detailsHref: `/${locale}/dashboard/progression`,
     labels: {
       title: t('zoneProgressStateTitle'),
       subtitle: t('zoneProgressStateSubtitle'),
