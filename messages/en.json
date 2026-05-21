@@ -24,7 +24,7 @@
     "findPartners": "Find partners",
     "signingOut": "Signing out...",
     "loading": "Loading...",
-    "questionProgressLabel": "{current} of {total} free questions answered"
+    "questionProgressLabel": "{current} of {total} free questions remaining"
   },
   "Landing": {
     "navHowItWorks": "How it works",

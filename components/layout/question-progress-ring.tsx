@@ -6,8 +6,8 @@ type QuestionProgressRingProps = {
   label: string;
 };
 
-function getProgressTone(answeredCount: number) {
-  if (answeredCount >= TRIAL_QUESTION_LIMIT) {
+function getProgressTone(remainingCount: number) {
+  if (remainingCount === 0) {
     return {
       ring: '#ef4444',
       text: 'text-red-300',
@@ -15,7 +15,7 @@ function getProgressTone(answeredCount: number) {
     };
   }
 
-  if (answeredCount >= 85) {
+  if (remainingCount <= 15) {
     return {
       ring: '#f59e0b',
       text: 'text-amber-300',
@@ -23,7 +23,7 @@ function getProgressTone(answeredCount: number) {
     };
   }
 
-  if (answeredCount >= 70) {
+  if (remainingCount <= 30) {
     return {
       ring: '#34d399',
       text: 'text-emerald-300',
@@ -42,13 +42,16 @@ export function QuestionProgressRing({
   answeredCount,
   label,
 }: QuestionProgressRingProps) {
-  const clampedCount = Math.max(0, answeredCount);
-  const visibleCount = Math.min(clampedCount, TRIAL_QUESTION_LIMIT);
+  const clampedAnsweredCount = Math.max(0, answeredCount);
+  const remainingCount = Math.max(
+    TRIAL_QUESTION_LIMIT - clampedAnsweredCount,
+    0,
+  );
   const progress = Math.min(
     100,
-    Math.round((visibleCount / TRIAL_QUESTION_LIMIT) * 100),
+    Math.round((remainingCount / TRIAL_QUESTION_LIMIT) * 100),
   );
-  const tone = getProgressTone(clampedCount);
+  const tone = getProgressTone(remainingCount);
 
   return (
     <Link
@@ -67,7 +70,7 @@ export function QuestionProgressRing({
       <span
         className={`relative z-10 text-[14px] font-semibold leading-none tabular-nums sm:text-[16px] ${tone.text}`}
       >
-        {visibleCount}
+        {remainingCount}
       </span>
     </Link>
   );
