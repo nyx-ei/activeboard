@@ -24,7 +24,7 @@
                    "findPartners":  "Trouver des partenaires",
                    "signingOut":  "Déconnexion...",
                    "loading":  "Chargement...",
-                   "questionProgressLabel":  "{current} sur {total} questions gratuites répondues"
+                   "questionProgressLabel":  "{current} sur {total} questions gratuites restantes"
                },
     "Landing":  {
                     "navHowItWorks":  "Comment ça marche",

@@ -182,9 +182,9 @@ export default async function LocaleLayout({
                       <QuestionProgressRing
                         answeredCount={shellData.questionsAnswered}
                         label={t('questionProgressLabel', {
-                          current: Math.min(
-                            shellData.questionsAnswered,
-                            TRIAL_QUESTION_LIMIT,
+                          current: Math.max(
+                            TRIAL_QUESTION_LIMIT - shellData.questionsAnswered,
+                            0,
                           ),
                           total: TRIAL_QUESTION_LIMIT,
                         })}
