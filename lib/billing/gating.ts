@@ -4,7 +4,7 @@ import { getTranslations } from 'next-intl/server';
 
 import type { AppLocale } from '@/i18n/routing';
 import { isFeatureEnabled } from '@/lib/features/flags';
-import { getUserBillingSnapshot, getUserTierCapabilities } from '@/lib/billing/user-tier';
+import { deriveUserTier, getUserBillingSnapshot, getUserTierCapabilities } from '@/lib/billing/user-tier';
 import { withFeedback } from '@/lib/utils';
 
 export type UserTierCapability = keyof ReturnType<typeof getUserTierCapabilities>;
@@ -14,11 +14,19 @@ export const getUserAccessState = cache(async (userId: string) => {
     isFeatureEnabled('canEnforceUserTierGating'),
     getUserBillingSnapshot(userId),
   ]);
-  const capabilities = snapshot ? getUserTierCapabilities(snapshot.user_tier) : null;
+  const effectiveUserTier = snapshot
+    ? deriveUserTier({
+        questionsAnswered: snapshot.questions_answered,
+        hasValidPaymentMethod: snapshot.has_valid_payment_method,
+        subscriptionStatus: snapshot.subscription_status,
+      })
+    : null;
+  const capabilities = effectiveUserTier ? getUserTierCapabilities(effectiveUserTier) : null;
 
   return {
     gatingEnabled,
     snapshot,
+    effectiveUserTier,
     capabilities,
   };
 });

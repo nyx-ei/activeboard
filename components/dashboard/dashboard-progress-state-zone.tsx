@@ -140,7 +140,7 @@ export const DashboardProgressStateZone = memo(
                 {totalAnswers} {labels.answers}
               </p>
             ) : (
-              <span className="inline-flex h-8 items-center rounded-full border border-white/[0.06] bg-white/[0.025] px-3 text-[12px] font-medium text-[#8fa7a2]">
+              <span className="inline-flex h-8 items-center rounded-full border border-[#2b5048] bg-[#0f302b] px-3 text-[12px] font-medium text-[#b7cbc6] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.025)]">
                 {labels.noData}
               </span>
             )}

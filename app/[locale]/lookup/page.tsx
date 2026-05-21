@@ -51,22 +51,30 @@ export default async function LookupPage({
         feedbackId={searchParams.feedbackId}
       />
 
-      <section className="surface-mockup p-4 sm:p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="border-brand/20 bg-brand/10 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-extrabold text-brand">
+      <section className="overflow-hidden rounded-[16px] border border-white/[0.055] bg-[#071f1c] px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-end">
+          <div className="min-w-0">
+            <p className="inline-flex items-center gap-2 rounded-full border border-brand/25 bg-brand/10 px-3 py-1 text-xs font-extrabold text-brand">
               <Search className="h-3.5 w-3.5" aria-hidden="true" />
               {t('eyebrow')}
             </p>
-            <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
+            <h1 className="mt-5 max-w-[780px] text-[30px] font-semibold leading-[1.08] tracking-[-0.035em] text-white sm:text-[44px]">
               {t('title')}
             </h1>
-            <p className="mt-2 max-w-[640px] text-sm font-medium leading-6 text-slate-400">
+            <p className="mt-3 max-w-[680px] text-sm font-medium leading-6 text-[#8fa7a2] sm:text-[15px]">
               {t('description')}
             </p>
           </div>
-          <div className="rounded-[12px] border border-white/[0.06] bg-white/[0.035] px-4 py-3 text-sm font-extrabold text-slate-300">
-            {t('availableGroups', { count: groups.length })}
+          <div className="rounded-[14px] border border-white/[0.06] bg-white/[0.025] p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#6f8984]">
+              {t('availableGroups', { count: groups.length })}
+            </p>
+            <p className="mt-3 text-[52px] font-semibold leading-none tracking-[-0.05em] text-brand">
+              {groups.length}
+            </p>
+            <p className="mt-2 text-xs font-medium leading-5 text-[#8fa7a2]">
+              {t('emptyDescription')}
+            </p>
           </div>
         </div>
       </section>
@@ -82,29 +90,29 @@ export default async function LookupPage({
             return (
               <article
                 key={group.id}
-                className="rounded-[14px] border border-white/[0.06] bg-[#0b1220] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.22)]"
+                className="flex min-h-[230px] flex-col rounded-[14px] border border-white/[0.055] bg-[#0b2522] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.22)]"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h2 className="truncate text-base font-extrabold text-white">
+                    <h2 className="truncate text-base font-semibold tracking-[-0.01em] text-white">
                       {group.name}
                     </h2>
-                    <p className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                    <p className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-[#6f8984]">
                       {group.language}
                     </p>
                   </div>
-                  <span className="bg-brand/10 rounded-full px-2.5 py-1 text-xs font-extrabold text-brand">
+                  <span className="rounded-full border border-brand/25 bg-brand/10 px-2.5 py-1 text-xs font-extrabold text-brand">
                     {t('spotsRemaining', { count: remainingPlaces })}
                   </span>
                 </div>
 
-                <div className="mt-4 flex items-center justify-between gap-3">
+                <div className="mt-5 flex items-center justify-between gap-3">
                   <div className="flex -space-x-2">
                     {group.members.length > 0 ? (
                       group.members.map((member) => (
                         <span
                           key={member.id}
-                          className="flex h-8 w-8 items-center justify-center rounded-full border border-[#0b1220] bg-[#183247] text-[10px] font-extrabold text-slate-100"
+                          className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[#0b2522] bg-[#183247] text-[10px] font-extrabold text-slate-100"
                         >
                           {member.initials}
                         </span>
@@ -115,12 +123,12 @@ export default async function LookupPage({
                       </span>
                     )}
                   </div>
-                  <p className="text-xs font-bold text-slate-400">
+                  <p className="text-xs font-bold text-[#8fa7a2]">
                     {t('weeklyQuestions', { count: group.weeklyQuestions })}
                   </p>
                 </div>
 
-                <form action={joinLookupGroupAction} className="mt-4">
+                <form action={joinLookupGroupAction} className="mt-auto pt-5">
                   <input type="hidden" name="locale" value={locale} />
                   <input
                     type="hidden"

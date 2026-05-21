@@ -86,7 +86,7 @@ export default async function LocaleLayout({
                 accessState,
                 'canBrowseLookupLayer',
               ),
-              isActive: accessState.snapshot?.user_tier === 'active',
+              isActive: accessState.effectiveUserTier === 'active',
               questionsAnswered: accessState.snapshot?.questions_answered ?? 0,
               preferredGroupId: memberships[0]?.group_id ?? null,
             };
