@@ -9,15 +9,18 @@ import {
   type ReactNode,
 } from 'react';
 import {
+  ArrowRight,
   Bell,
   CalendarClock,
   Check,
   ChevronDown,
+  Lock,
   LogOut,
   Mail,
   MoreHorizontal,
   Play,
   Plus,
+  Search,
   Send,
   Settings,
   UserPlus,
@@ -66,6 +69,8 @@ export type DashboardGroupZoneProps = {
   groups: DashboardGroupZoneGroup[];
   initialGroupId?: string;
   createGroupHref: string;
+  liveGroupsHref: string;
+  canBrowseLookupLayer: boolean;
   labels: {
     title: string;
     subtitle: string;
@@ -126,6 +131,12 @@ export type DashboardGroupZoneProps = {
     cancelSession: string;
     cancelSessionSuccess: string;
     memberRequirementPrompt: string;
+    exploreLiveGroupsTitle: string;
+    exploreLiveGroupsDescription: string;
+    exploreLiveGroupsLockedTitle: string;
+    exploreLiveGroupsLockedDescription: string;
+    exploreLiveGroupsCta: string;
+    exploreLiveGroupsUpgrade: string;
   };
 };
 
@@ -134,6 +145,8 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   groups,
   initialGroupId,
   createGroupHref,
+  liveGroupsHref,
+  canBrowseLookupLayer,
   labels,
 }: DashboardGroupZoneProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -652,6 +665,55 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
           )}
         </div>
       ) : null}
+
+      <a
+        href={liveGroupsHref}
+        className={`group mt-[18px] flex flex-col gap-4 rounded-[14px] border px-4 py-4 transition sm:flex-row sm:items-center sm:justify-between sm:px-5 ${
+          canBrowseLookupLayer
+            ? 'border-[#20D9A3]/25 bg-[#20D9A3]/[0.07] hover:border-[#20D9A3]/45 hover:bg-[#20D9A3]/[0.1]'
+            : 'border-amber-300/20 bg-amber-300/[0.055] hover:border-amber-300/30 hover:bg-amber-300/[0.075]'
+        }`}
+      >
+        <span className="flex min-w-0 items-start gap-3">
+          <span
+            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[11px] border ${
+              canBrowseLookupLayer
+                ? 'border-[#20D9A3]/25 bg-[#20D9A3]/[0.12] text-[#9FF0CE]'
+                : 'border-amber-300/20 bg-amber-300/10 text-amber-100'
+            }`}
+          >
+            {canBrowseLookupLayer ? (
+              <Search className="h-5 w-5" aria-hidden="true" />
+            ) : (
+              <Lock className="h-5 w-5" aria-hidden="true" />
+            )}
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[16px] font-semibold tracking-[-0.02em] text-[#e8f4f0]">
+              {canBrowseLookupLayer
+                ? labels.exploreLiveGroupsTitle
+                : labels.exploreLiveGroupsLockedTitle}
+            </span>
+            <span className="mt-1 block max-w-[620px] text-[13px] leading-5 text-[#8fa7a2]">
+              {canBrowseLookupLayer
+                ? labels.exploreLiveGroupsDescription
+                : labels.exploreLiveGroupsLockedDescription}
+            </span>
+          </span>
+        </span>
+        <span
+          className={`inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-[10px] px-4 text-[13px] font-semibold transition ${
+            canBrowseLookupLayer
+              ? 'bg-[#20D9A3] text-[#062b22] group-hover:bg-[#2fe9b1]'
+              : 'border border-amber-300/20 bg-amber-300/10 text-amber-100 group-hover:bg-amber-300/15'
+          }`}
+        >
+          {canBrowseLookupLayer
+            ? labels.exploreLiveGroupsCta
+            : labels.exploreLiveGroupsUpgrade}
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </span>
+      </a>
 
       {selectedGroup && recentSessions.length > 0 ? (
         <footer className="mt-[22px] border-t border-white/[0.055] pt-[18px]">

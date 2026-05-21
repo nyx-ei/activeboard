@@ -10,7 +10,6 @@ import { Search } from 'lucide-react';
 
 import { LandingSignInLink } from '@/components/layout/landing-sign-in-link';
 import { LanguageSwitcher } from '@/components/layout/language-switcher';
-import { LiveGroupsPill } from '@/components/layout/live-groups-pill';
 import { ProfileMenu } from '@/components/layout/profile-menu';
 import { QuestionProgressRing } from '@/components/layout/question-progress-ring';
 import { OfflineStatusBanner } from '@/components/pwa/offline-status-banner';
@@ -56,11 +55,10 @@ export default async function LocaleLayout({
 
   setRequestLocale(locale);
   const user = await getCurrentUser();
-  const [messages, t, dashboardT, billingT, profileT, shellData] =
+  const [messages, t, billingT, profileT, shellData] =
     await Promise.all([
       getMessages(),
       getTranslations('Common'),
-      getTranslations('Dashboard'),
       getTranslations('Billing'),
       getTranslations('Profile'),
       user
@@ -190,15 +188,6 @@ export default async function LocaleLayout({
                         })}
                       />
                     ) : null}
-                    <LiveGroupsPill
-                      href={
-                        shellData.canBrowseLookupLayer
-                          ? '/lookup'
-                          : '/billing'
-                      }
-                      label={dashboardT('joinLiveGroups')}
-                      canBrowseLookupLayer={shellData.canBrowseLookupLayer}
-                    />
                     <ProfileMenu
                       initials={initials}
                       name={displayName}
