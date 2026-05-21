@@ -6,6 +6,7 @@ import { hasEmailEnv } from '@/lib/env';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
 import { sendGroupInviteEmail } from '@/lib/notifications/group-invites';
+import { createInAppNotification } from '@/lib/notifications/in-app';
 import { createPerfTracker } from '@/lib/observability/perf';
 import { getCurrentAuthUser } from '@/lib/session/flow';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
@@ -278,6 +279,22 @@ export async function POST(request: Request, { params }: RouteContext) {
       { ok: false, reason: 'action_failed' },
       { status: 500 },
     );
+  }
+
+  if (existingUser?.id) {
+    void createInAppNotification({
+      admin,
+      userId: existingUser.id,
+      groupId: session.group_id,
+      sessionId: session.id,
+      invitationId: invitation.id,
+      type: 'group_invite',
+      targetPath: `/invite/${invitation.id}`,
+      titleEn: 'Live session invite',
+      titleFr: 'Invitation à une session en direct',
+      bodyEn: `${inviter?.display_name ?? inviter?.email ?? user.email ?? 'ActiveBoard'} invited you to join "${session.name ?? group.name}".`,
+      bodyFr: `${inviter?.display_name ?? inviter?.email ?? user.email ?? 'ActiveBoard'} t'a invité à rejoindre "${session.name ?? group.name}".`,
+    });
   }
 
   await logAppEvent({

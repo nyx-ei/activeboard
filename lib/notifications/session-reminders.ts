@@ -1,6 +1,7 @@
 import { getAppUrl } from '@/lib/env';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
+import { createInAppNotification } from '@/lib/notifications/in-app';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import type { Database } from '@/lib/supabase/types';
 import { sendEmail } from '@/lib/email/mailersend';
@@ -268,6 +269,19 @@ export async function dispatchDueSessionReminders(now = new Date()) {
         sentReminderKeys.add(sentKey);
         sentEmailsForSessionReminder.add(normalizedRecipientEmail);
         sentReminders += 1;
+
+        await createInAppNotification({
+          admin: supabase,
+          userId: user.id,
+          groupId: session.group_id,
+          sessionId: session.id,
+          type: 'session_starting_soon',
+          targetPath: `/sessions/${session.id}`,
+          titleEn: 'Session starting soon',
+          titleFr: 'Session bientôt en direct',
+          bodyEn: `"${session.name ?? group?.name ?? 'ActiveBoard'}" starts in ${formatReminderMeta(reminderKey).short}.`,
+          bodyFr: `"${session.name ?? group?.name ?? 'ActiveBoard'}" commence dans ${formatReminderMeta(reminderKey).short}.`,
+        });
 
         await logAppEvent({
           eventName: APP_EVENTS.sessionReminderSent,
