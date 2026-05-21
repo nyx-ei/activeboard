@@ -4,6 +4,7 @@ import { getTranslations } from 'next-intl/server';
 import type { AppLocale } from '@/i18n/routing';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
+import { createGroupNotifications } from '@/lib/notifications/in-app';
 import { createPerfTracker } from '@/lib/observability/perf';
 import { getCurrentAuthUser } from '@/lib/session/flow';
 
@@ -124,6 +125,17 @@ export async function POST(request: Request, { params }: RouteContext) {
       previous_status: session.status,
       new_status: 'cancelled',
     },
+  });
+  void createGroupNotifications({
+    groupId: session.group_id,
+    sessionId,
+    actorUserId: user.id,
+    type: 'session_cancelled',
+    targetPath: sessionReturnPath.replace(`/${locale}`, '') || '/dashboard',
+    titleEn: 'Session cancelled',
+    titleFr: 'Session annulée',
+    bodyEn: 'A scheduled session was cancelled.',
+    bodyFr: 'Une session programmée a été annulée.',
   });
   perf.step('deferred_side_effects_started');
   perf.done({ previousStatus: session.status });

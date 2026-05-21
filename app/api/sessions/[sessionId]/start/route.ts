@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server';
 
 import type { AppLocale } from '@/i18n/routing';
 import { getUserTierCapabilities } from '@/lib/billing/user-tier';
+import { createGroupNotifications } from '@/lib/notifications/in-app';
 import { createPerfTracker } from '@/lib/observability/perf';
 import { createInitialQuestionFast } from '@/lib/session/flow';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
@@ -21,6 +22,28 @@ type FastStartSessionResult = {
   message_key: string | null;
   question_id: string | null;
 };
+
+async function notifySessionStarted({
+  groupId,
+  sessionId,
+  actorUserId,
+}: {
+  groupId: string;
+  sessionId: string;
+  actorUserId?: string | null;
+}) {
+  await createGroupNotifications({
+    groupId,
+    sessionId,
+    actorUserId,
+    type: 'session_started',
+    targetPath: `/sessions/${sessionId}`,
+    titleEn: 'Session started',
+    titleFr: 'Session démarrée',
+    bodyEn: 'A live session has started in your group.',
+    bodyFr: 'Une session en direct a démarré dans ton groupe.',
+  });
+}
 
 export async function POST(request: Request, { params }: RouteContext) {
   const sessionId = params.sessionId;
@@ -77,6 +100,25 @@ export async function POST(request: Request, { params }: RouteContext) {
               : 400,
         },
       );
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const admin = createSupabaseAdminClient();
+    const { data: session } = await admin
+      .schema('public')
+      .from('sessions')
+      .select('group_id')
+      .eq('id', sessionId)
+      .maybeSingle();
+
+    if (session?.group_id) {
+      void notifySessionStarted({
+        groupId: session.group_id,
+        sessionId,
+        actorUserId: user?.id,
+      });
     }
 
     perf.done({ questionId: fastResult.question_id, fastPath: true });
@@ -184,6 +226,11 @@ export async function POST(request: Request, { params }: RouteContext) {
         }),
       ]);
       perf.step('session_started');
+      void notifySessionStarted({
+        groupId: session.group_id,
+        sessionId,
+        actorUserId: user.id,
+      });
       perf.done({ questionId: question.id });
       fallbackQuestionId = question.id;
     } catch {

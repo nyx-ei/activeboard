@@ -7,6 +7,7 @@ import { hasEmailEnv } from '@/lib/env';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
 import { sendSessionCalendarInvites } from '@/lib/notifications/calendar-invites';
+import { createGroupNotifications } from '@/lib/notifications/in-app';
 import { createPerfTracker } from '@/lib/observability/perf';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -35,6 +36,30 @@ type FastCreateSessionResult = {
   session_id: string | null;
   reused: boolean | null;
 };
+
+async function notifySessionScheduled({
+  groupId,
+  sessionId,
+  sessionName,
+  actorUserId,
+}: {
+  groupId: string;
+  sessionId: string;
+  sessionName: string;
+  actorUserId?: string | null;
+}) {
+  await createGroupNotifications({
+    groupId,
+    sessionId,
+    actorUserId,
+    type: 'session_scheduled',
+    targetPath: `/sessions/${sessionId}`,
+    titleEn: 'Session scheduled',
+    titleFr: 'Session programmée',
+    bodyEn: `"${sessionName}" is ready for your group.`,
+    bodyFr: `"${sessionName}" est prête pour ton groupe.`,
+  });
+}
 
 export async function POST(request: Request) {
   const body = (await request
@@ -127,6 +152,19 @@ export async function POST(request: Request) {
               : 400,
         },
       );
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!fastResult.reused) {
+      void notifySessionScheduled({
+        groupId,
+        sessionId: fastResult.session_id,
+        sessionName,
+        actorUserId: user?.id,
+      });
     }
 
     perf.done({
@@ -293,6 +331,12 @@ export async function POST(request: Request) {
           });
         })
       : Promise.resolve(),
+    notifySessionScheduled({
+      groupId,
+      sessionId: createdSession.id,
+      sessionName,
+      actorUserId: user.id,
+    }),
   ]);
   perf.step('deferred_side_effects_started');
   perf.done({ sessionId: createdSession.id });

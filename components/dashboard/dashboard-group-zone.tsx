@@ -1,12 +1,15 @@
 'use client';
 
 import {
+  useCallback,
   memo,
   useEffect,
   useMemo,
   useRef,
   useState,
+  type Dispatch,
   type ReactNode,
+  type SetStateAction,
 } from 'react';
 import {
   ArrowRight,
@@ -14,6 +17,7 @@ import {
   CalendarClock,
   Check,
   ChevronDown,
+  Clock,
   Lock,
   LogOut,
   Mail,
@@ -22,7 +26,6 @@ import {
   Plus,
   Search,
   Send,
-  Settings,
   UserPlus,
   UsersRound,
   X,
@@ -64,6 +67,16 @@ export type DashboardGroupZoneSession = {
   accuracyPercent?: number | null;
 };
 
+type DashboardGroupNotification = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  href: string;
+  readAt: string | null;
+  createdAt: string;
+};
+
 export type DashboardGroupZoneProps = {
   locale: string;
   groups: DashboardGroupZoneGroup[];
@@ -86,9 +99,9 @@ export type DashboardGroupZoneProps = {
     seatsAvailable: string;
     notificationsTitle: string;
     notificationsDescription: string;
-    sessionReminders: string;
-    invitationUpdates: string;
-    liveSessionAlerts: string;
+    notificationsEmpty: string;
+    notificationsUnread: string;
+    notificationsLoading: string;
     leaveGroupTitle: string;
     leaveGroupDescription: string;
     leaveGroupConfirm: string;
@@ -159,11 +172,11 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   const [isInviting, setIsInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [isLeavingGroup, setIsLeavingGroup] = useState(false);
-  const [notificationSettings, setNotificationSettings] = useState({
-    sessionReminders: true,
-    invitationUpdates: true,
-    liveSessionAlerts: true,
-  });
+  const [notifications, setNotifications] = useState<
+    DashboardGroupNotification[]
+  >([]);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [cancellingSessionId, setCancellingSessionId] = useState<
     string | null
   >(null);
@@ -221,6 +234,37 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
     }
   }
 
+  const loadNotifications = useCallback(
+    async (groupId: string) => {
+      setIsLoadingNotifications(true);
+
+      try {
+        const response = await fetch(
+          `/api/groups/${groupId}/notifications?locale=${locale}`,
+          {
+            cache: 'no-store',
+            credentials: 'same-origin',
+          },
+        );
+        const payload = (await response.json().catch(() => null)) as {
+          ok?: boolean;
+          unreadCount?: number;
+          notifications?: DashboardGroupNotification[];
+        } | null;
+
+        if (!response.ok || !payload?.ok) {
+          return;
+        }
+
+        setNotifications(payload.notifications ?? []);
+        setUnreadNotificationCount(payload.unreadCount ?? 0);
+      } finally {
+        setIsLoadingNotifications(false);
+      }
+    },
+    [locale],
+  );
+
   useEffect(() => {
     if (groups.length === 0) {
       setSelectedGroupId('');
@@ -266,6 +310,16 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
       router.prefetch(sessionHref as never);
     }
   }, [router, sessionHref]);
+
+  useEffect(() => {
+    if (!selectedGroup?.id) {
+      setNotifications([]);
+      setUnreadNotificationCount(0);
+      return;
+    }
+
+    void loadNotifications(selectedGroup.id);
+  }, [loadNotifications, selectedGroup?.id]);
 
   useEffect(() => {
     if (!isOpen && !isOverflowOpen) {
@@ -473,9 +527,17 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                   <GroupOverflowItem
                     icon={<Bell className="h-5 w-5" aria-hidden="true" />}
                     label={labels.groupNotifications}
+                    badge={
+                      unreadNotificationCount > 0
+                        ? String(Math.min(unreadNotificationCount, 99))
+                        : undefined
+                    }
                     onClick={() => {
                       setIsOverflowOpen(false);
                       setActivePanel('notifications');
+                      if (selectedGroup?.id) {
+                        void loadNotifications(selectedGroup.id);
+                      }
                     }}
                   />
                   <GroupOverflowItem
@@ -872,41 +934,44 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
               id="dashboard-group-notifications-title"
               icon={<Bell className="h-4 w-4" aria-hidden="true" />}
               title={labels.notificationsTitle}
-              description={labels.notificationsDescription}
+              description={
+                unreadNotificationCount > 0
+                  ? labels.notificationsUnread.replace(
+                      '{count}',
+                      String(unreadNotificationCount),
+                    )
+                  : labels.notificationsDescription
+              }
               onClose={() => setActivePanel(null)}
             />
 
-            <div className="mt-5 space-y-2">
-              <NotificationToggle
-                label={labels.sessionReminders}
-                enabled={notificationSettings.sessionReminders}
-                onChange={() =>
-                  setNotificationSettings((current) => ({
-                    ...current,
-                    sessionReminders: !current.sessionReminders,
-                  }))
-                }
-              />
-              <NotificationToggle
-                label={labels.invitationUpdates}
-                enabled={notificationSettings.invitationUpdates}
-                onChange={() =>
-                  setNotificationSettings((current) => ({
-                    ...current,
-                    invitationUpdates: !current.invitationUpdates,
-                  }))
-                }
-              />
-              <NotificationToggle
-                label={labels.liveSessionAlerts}
-                enabled={notificationSettings.liveSessionAlerts}
-                onChange={() =>
-                  setNotificationSettings((current) => ({
-                    ...current,
-                    liveSessionAlerts: !current.liveSessionAlerts,
-                  }))
-                }
-              />
+            <div className="mt-5 max-h-[min(70vh,520px)] space-y-2 overflow-y-auto pr-1">
+              {isLoadingNotifications ? (
+                <div className="rounded-[12px] border border-white/[0.055] bg-white/[0.02] px-4 py-5 text-sm font-semibold text-[#8fa7a2]">
+                  {labels.notificationsLoading}
+                </div>
+              ) : notifications.length > 0 && selectedGroup ? (
+                notifications.map((notification) => (
+                  <NotificationListItem
+                    key={notification.id}
+                    notification={notification}
+                    locale={locale}
+                    onOpen={() =>
+                      void openGroupNotification({
+                        groupId: selectedGroup.id,
+                        notification,
+                        setNotifications,
+                        setUnreadNotificationCount,
+                        router,
+                      })
+                    }
+                  />
+                ))
+              ) : (
+                <div className="rounded-[12px] border border-dashed border-white/[0.08] px-4 py-5 text-sm font-semibold text-[#8fa7a2]">
+                  {labels.notificationsEmpty}
+                </div>
+              )}
             </div>
           </div>
         </Modal>
@@ -1316,10 +1381,12 @@ function getGroupInitials(name: string) {
 function GroupOverflowItem({
   icon,
   label,
+  badge,
   onClick,
 }: {
   icon: ReactNode;
   label: string;
+  badge?: string;
   onClick: () => void;
 }) {
   return (
@@ -1329,7 +1396,12 @@ function GroupOverflowItem({
       className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-[14px] font-medium text-[#e8f4f0] transition hover:bg-white/[0.04]"
     >
       <span className="text-[#8fa7a2]">{icon}</span>
-      {label}
+      <span className="min-w-0 flex-1">{label}</span>
+      {badge ? (
+        <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-[#20D9A3] px-1.5 py-0.5 text-[11px] font-bold leading-none text-[#062b22]">
+          {badge}
+        </span>
+      ) : null}
     </button>
   );
 }
@@ -1386,39 +1458,98 @@ function PanelStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function NotificationToggle({
-  label,
-  enabled,
-  onChange,
+function NotificationListItem({
+  notification,
+  locale,
+  onOpen,
 }: {
-  label: string;
-  enabled: boolean;
-  onChange: () => void;
+  notification: DashboardGroupNotification;
+  locale: string;
+  onOpen: () => void;
 }) {
+  const isUnread = !notification.readAt;
+
   return (
     <button
       type="button"
-      onClick={onChange}
-      className="flex w-full items-center justify-between gap-3 rounded-[12px] border border-white/[0.055] bg-white/[0.02] px-3 py-3 text-left transition hover:bg-white/[0.04]"
+      onClick={onOpen}
+      className={`flex w-full items-start gap-3 rounded-[12px] border px-3 py-3 text-left transition hover:bg-white/[0.04] ${
+        isUnread
+          ? 'border-[#20D9A3]/25 bg-[#20D9A3]/[0.06]'
+          : 'border-white/[0.055] bg-white/[0.02]'
+      }`}
     >
-      <span className="flex items-center gap-3 text-sm font-semibold text-[#e8f4f0]">
-        <Settings className="h-4 w-4 text-[#8fa7a2]" aria-hidden="true" />
-        {label}
-      </span>
       <span
-        className={`flex h-7 w-12 items-center rounded-full p-1 transition ${
-          enabled ? 'bg-[#20D9A3]' : 'bg-white/[0.08]'
+        className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border ${
+          isUnread
+            ? 'border-[#20D9A3]/25 bg-[#20D9A3]/10 text-[#9FF0CE]'
+            : 'border-white/[0.055] bg-white/[0.025] text-[#8fa7a2]'
         }`}
-        aria-hidden="true"
       >
-        <span
-          className={`h-5 w-5 rounded-full bg-white transition ${
-            enabled ? 'translate-x-5' : 'translate-x-0'
-          }`}
-        />
+        <Bell className="h-4 w-4" aria-hidden="true" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex min-w-0 items-start justify-between gap-3">
+          <span className="min-w-0 text-sm font-semibold leading-5 text-[#e8f4f0]">
+            {notification.title}
+          </span>
+          {isUnread ? (
+            <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#20D9A3]" />
+          ) : null}
+        </span>
+        <span className="mt-1 block text-[13px] leading-5 text-[#8fa7a2]">
+          {notification.body}
+        </span>
+        <span className="mt-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-[#5f7b75]">
+          <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+          {formatNotificationDate(notification.createdAt, locale)}
+        </span>
       </span>
     </button>
   );
+}
+
+async function openGroupNotification({
+  groupId,
+  notification,
+  setNotifications,
+  setUnreadNotificationCount,
+  router,
+}: {
+  groupId: string;
+  notification: DashboardGroupNotification;
+  setNotifications: Dispatch<SetStateAction<DashboardGroupNotification[]>>;
+  setUnreadNotificationCount: Dispatch<SetStateAction<number>>;
+  router: ReturnType<typeof useRouter>;
+}) {
+  if (!notification.readAt) {
+    const readAt = new Date().toISOString();
+    setNotifications((current) =>
+      current.map((item) =>
+        item.id === notification.id ? { ...item, readAt } : item,
+      ),
+    );
+    setUnreadNotificationCount((current) => Math.max(0, current - 1));
+
+    void fetch(`/api/groups/${groupId}/notifications`, {
+      method: 'PATCH',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notificationId: notification.id }),
+    });
+  }
+
+  router.push(notification.href as never);
+}
+
+function formatNotificationDate(value: string, locale: string) {
+  return new Intl.DateTimeFormat(locale, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
 }
 
 function MetricPill({ label, value }: { label: string; value: string }) {
