@@ -176,6 +176,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   const groupMenuRef = useRef<HTMLDivElement | null>(null);
   const overflowMenuRef = useRef<HTMLDivElement | null>(null);
   const liveSignatureRef = useRef('');
+  const appliedInitialGroupIdRef = useRef<string | null>(null);
   const selectedGroup = useMemo(
     () =>
       groups.find((group) => group.id === selectedGroupId) ?? groups[0] ?? null,
@@ -253,15 +254,24 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
     if (groups.length === 0) {
       setSelectedGroupId('');
       liveSignatureRef.current = '';
+      appliedInitialGroupIdRef.current = null;
       return;
     }
 
     const requestedGroup = initialGroupId
       ? groups.find((group) => group.id === initialGroupId)
       : null;
-    if (requestedGroup && selectedGroupId !== requestedGroup.id) {
+    if (
+      requestedGroup &&
+      appliedInitialGroupIdRef.current !== requestedGroup.id
+    ) {
+      appliedInitialGroupIdRef.current = requestedGroup.id;
       setSelectedGroupId(requestedGroup.id);
       return;
+    }
+
+    if (!initialGroupId) {
+      appliedInitialGroupIdRef.current = null;
     }
 
     const firstGroup = groups[0];
