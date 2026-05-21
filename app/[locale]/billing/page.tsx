@@ -44,7 +44,7 @@ export default async function BillingPage({ params }: BillingPageProps) {
   const paymentLink = getUnlimitedPaymentLink(snapshot.email ?? user.email ?? null);
 
   return (
-    <main className="fixed inset-0 z-50 flex min-h-screen items-end justify-center overflow-y-auto bg-black/74 px-0 py-0 backdrop-blur-[2px] sm:px-4 sm:py-6">
+    <main className="fixed inset-0 z-50 flex h-dvh min-h-dvh items-end justify-center overflow-y-auto overscroll-none bg-black/74 px-0 py-0 backdrop-blur-[2px] sm:px-4 sm:py-6">
       <div className="w-full max-w-[420px] animate-in slide-in-from-bottom-4 duration-200 sm:max-w-[460px]">
         <section className="rounded-t-[16px] border border-white/[0.06] bg-[#11192c] p-5 shadow-[0_-24px_70px_rgba(0,0,0,0.55)] sm:rounded-[15px] sm:p-6">
           <div className="flex items-center justify-between gap-4">
