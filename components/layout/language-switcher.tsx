@@ -1,7 +1,7 @@
 'use client';
 
 import { Globe } from 'lucide-react';
-import { useMemo, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useTransition } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 
@@ -26,6 +26,23 @@ export function LanguageSwitcher({
     [searchParams],
   );
   const nextLocale = locale === 'en' ? 'fr' : 'en';
+  const nextRoute = useMemo(
+    () => ({
+      pathname,
+      query,
+    }),
+    [pathname, query],
+  );
+
+  const prefetchNextLocale = useCallback(() => {
+    router.prefetch(nextRoute as never, { locale: nextLocale });
+  }, [nextLocale, nextRoute, router]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(prefetchNextLocale, 150);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [prefetchNextLocale]);
 
   function persistLocalePreference(selectedLocale: AppLocale) {
     if (!persistUserPreference) {
@@ -49,17 +66,13 @@ export function LanguageSwitcher({
     <button
       type="button"
       onClick={() => {
-        persistLocalePreference(nextLocale);
         startTransition(() => {
-          router.replace(
-            {
-              pathname,
-              query,
-            },
-            { locale: nextLocale },
-          );
+          router.replace(nextRoute as never, { locale: nextLocale });
         });
+        window.setTimeout(() => persistLocalePreference(nextLocale), 0);
       }}
+      onFocus={prefetchNextLocale}
+      onPointerEnter={prefetchNextLocale}
       className="inline-flex items-center gap-2 rounded-full px-1.5 py-1 text-sm font-semibold text-[#8fa7a2] transition hover:text-white sm:px-2 sm:text-base"
       aria-label={isPending ? t('switchingLanguage') : t('language')}
       disabled={isPending}
