@@ -518,7 +518,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                     onClick={() => {
                       setIsOverflowOpen(false);
                       router.push(
-                        `/${locale}/dashboard/groups/${selectedGroup.id}/notifications` as never,
+                        `/dashboard/groups/${selectedGroup.id}/notifications` as never,
                       );
                     }}
                   />
