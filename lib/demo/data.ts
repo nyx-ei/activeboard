@@ -864,9 +864,46 @@ async function getDashboardCore(userId: string) {
       .order('scheduled_at', { ascending: false })
       .limit(DASHBOARD_SESSION_LIMIT),
   ]);
+  let dashboardGroupRows = groupsResult.data ?? [];
+
+  if (dashboardGroupRows.length === 0) {
+    const membershipsResult = await supabaseAdmin
+      .schema('public')
+      .from('group_members')
+      .select('group_id, is_founder')
+      .eq('user_id', userId);
+    const fallbackGroupIds = [
+      ...new Set(
+        (membershipsResult.data ?? [])
+          .map((membership) => membership.group_id)
+          .filter((groupId): groupId is string => Boolean(groupId)),
+      ),
+    ];
+    const fallbackGroupsResult =
+      fallbackGroupIds.length > 0
+        ? await supabaseAdmin
+            .schema('public')
+            .from('groups')
+            .select('id, name')
+            .in('id', fallbackGroupIds)
+        : { data: [] };
+    const fallbackGroupById = new Map(
+      (fallbackGroupsResult.data ?? []).map((group) => [group.id, group]),
+    );
+
+    dashboardGroupRows = (membershipsResult.data ?? []).map((membership) => ({
+      group_id: membership.group_id,
+      is_founder: membership.is_founder ?? false,
+      name: membership.group_id
+        ? (fallbackGroupById.get(membership.group_id)?.name ?? null)
+        : null,
+      member_count: null,
+    }));
+  }
+
   const groupIds = [
     ...new Set(
-      (groupsResult.data ?? [])
+      dashboardGroupRows
         .map((group) => group.group_id)
         .filter((groupId): groupId is string => Boolean(groupId)),
     ),
@@ -938,7 +975,7 @@ async function getDashboardCore(userId: string) {
   const groupsById = new Map<string, { name: string }>();
   const groups: DashboardGroup[] = [];
 
-  for (const group of groupsResult.data ?? []) {
+  for (const group of dashboardGroupRows) {
     if (!group.group_id || !group.name) {
       continue;
     }
@@ -949,7 +986,7 @@ async function getDashboardCore(userId: string) {
       id: group.group_id,
       name: group.name,
       is_founder: Boolean(group.is_founder),
-      memberCount: group.member_count ?? 0,
+      memberCount: group.member_count ?? groupMembers.length,
       maxMembers: groupLimitsById.get(group.group_id) ?? 5,
       membersPreview: groupMembers.slice(0, 5).map((member) => {
         const profile = member.user_id
@@ -1363,6 +1400,8 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
   perf.step('analytics_views_loaded');
 
   const metricsRow = metricsResult.data;
+  const progressQuadrantAnswers = (progressQuadrantAnswersResult.data ??
+    []) as ProgressQuadrantAnswerRow[];
   const profileAnalyticsRow = profileAnalyticsResult.data
     ? ({
         heatmap_data: profileAnalyticsResult.data.heatmap_data,
@@ -1378,7 +1417,10 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
       } satisfies MaterializedProfileAnalyticsRow)
     : null;
 
-  const answeredCount = metricsRow?.answered_count ?? 0;
+  const answeredCount = Math.max(
+    metricsRow?.answered_count ?? 0,
+    progressQuadrantAnswers.length,
+  );
   const correctCount = metricsRow?.correct_count ?? 0;
   const incorrectCount = metricsRow?.incorrect_count ?? 0;
   const sessionConfidenceBreakdown: SessionConfidenceBreakdownItem[] = [];
@@ -1410,7 +1452,7 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
     answeredCount,
   );
   const progressState = buildProgressQuadrants(
-    (progressQuadrantAnswersResult.data ?? []) as ProgressQuadrantAnswerRow[],
+    progressQuadrantAnswers,
     answeredCount,
   );
   perf.done({

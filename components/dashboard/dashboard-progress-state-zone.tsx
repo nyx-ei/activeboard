@@ -1,6 +1,7 @@
 'use client';
 
 import { memo } from 'react';
+import Link from 'next/link';
 import {
   AlertTriangle,
   ArrowRight,
@@ -140,13 +141,14 @@ export const DashboardProgressStateZone = memo(
                 ? `${totalAnswers} ${labels.answers}`
                 : labels.noData}
             </span>
-            <a
-              href={detailsHref}
+            <Link
+              href={detailsHref as never}
+              prefetch
               className="inline-flex items-center gap-1 text-[15px] font-medium text-[#20D9A3] transition hover:text-[#9FF0CE]"
             >
               {labels.viewDetails}
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </a>
+            </Link>
           </div>
         </div>
 
