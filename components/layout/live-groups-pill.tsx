@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Lock } from 'lucide-react';
+import { Lock, UsersRound } from 'lucide-react';
 
 import { Link } from '@/i18n/navigation';
 
@@ -49,13 +49,19 @@ export function LiveGroupsPill({
     return () => controller.abort();
   }, [canBrowseLookupLayer]);
 
+  const Icon = canBrowseLookupLayer ? UsersRound : Lock;
+
   return (
     <Link
       href={href}
-      className="inline-flex h-10 items-center gap-1.5 rounded-[8px] bg-amber-500/10 px-3 text-xs font-extrabold text-amber-400 ring-1 ring-amber-500/10 transition hover:bg-amber-500/15"
+      className={`inline-flex h-10 items-center gap-1.5 rounded-[8px] px-3 text-xs font-extrabold ring-1 transition ${
+        canBrowseLookupLayer
+          ? 'bg-brand/10 text-brand ring-brand/15 hover:bg-brand/15'
+          : 'bg-amber-500/10 text-amber-400 ring-amber-500/10 hover:bg-amber-500/15'
+      }`}
       aria-label={`${label} ${count}`}
     >
-      <Lock className="h-3.5 w-3.5" aria-hidden="true" strokeWidth={1.8} />
+      <Icon className="h-3.5 w-3.5" aria-hidden="true" strokeWidth={1.8} />
       {count}
     </Link>
   );

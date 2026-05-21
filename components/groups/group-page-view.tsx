@@ -11,7 +11,6 @@ import {
 import { GroupEditModal } from '@/components/dashboard/group-edit-modal';
 import { GroupScheduleModal } from '@/components/dashboard/group-schedule-modal';
 import { InviteMemberForm } from '@/components/dashboard/group-settings-forms';
-import { LiveGroupsModal } from '@/components/dashboard/live-groups-modal';
 import { fetchCachedGroupData } from '@/components/groups/group-data-cache';
 import {
   GroupInviteCard,
@@ -20,6 +19,7 @@ import {
 import { GroupInvitationsSettingsCard } from '@/components/groups/group-invitations-settings-card';
 import { GroupSwitcherMenu } from '@/components/layout/group-switcher-menu';
 import { CalendarIcon, UsersIcon } from '@/components/ui/dashboard-icons';
+import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 
 const CANCELLED_SESSION_STORAGE_KEY = 'activeboard:cancelled-session-ids';
@@ -96,7 +96,6 @@ type GroupPageViewProps = {
   }>;
   currentUserInitials: string;
   canBrowseLookupLayer: boolean;
-  initialLiveOpen: boolean;
   primaryGroup: {
     id: string;
     name: string;
@@ -255,7 +254,6 @@ export function GroupPageView({
   shellGroups,
   currentUserInitials,
   canBrowseLookupLayer,
-  initialLiveOpen,
   primaryGroup,
   isPrimaryGroupFounder,
   currentCaptainId,
@@ -454,35 +452,12 @@ export function GroupPageView({
         />
       ) : null}
 
-      {canBrowseLookupLayer ? (
-        <LiveGroupsModal
-          locale={locale}
-          canJoinLiveGroups={canBrowseLookupLayer}
-          initialOpen={initialLiveOpen}
-          joinGroupAction={actions.joinGroupAction}
-          labels={{
-            open: labels.joinLiveGroups,
-            title: labels.liveGroupsTitle,
-            close: labels.close,
-            join: labels.liveGroupJoin,
-            joinPending: labels.joinGroupPending,
-            upgradeRequired: labels.unlimitedPlanRequired,
-            upgradeDescription: labels.unlimitedPlanRequiredDescription,
-            upgrade: labels.upgrade,
-            empty: labels.liveGroupsEmpty,
-            remainingPlaces: labels.liveGroupRemainingPlaces,
-            oneRemainingPlace: labels.oneRemainingPlace,
-            secondsAgo: labels.liveGroupSecondsAgo,
-            minutesAgo: labels.liveGroupMinutesAgo,
-            hoursAgo: labels.liveGroupHoursAgo,
-            daysAgo: labels.liveGroupDaysAgo,
-            weeksAgo: labels.liveGroupWeeksAgo,
-            monthsAgo: labels.liveGroupMonthsAgo,
-            yearsAgo: labels.liveGroupYearsAgo,
-            averageWeekly: labels.averageWeeklyShort,
-          }}
-        />
-      ) : null}
+      <Link
+        href={canBrowseLookupLayer ? '/lookup' : '/billing'}
+        className="flex h-[50px] w-full items-center justify-center gap-2 rounded-[9px] bg-[#344258] text-sm font-extrabold text-white transition hover:bg-[#3b4a62]"
+      >
+        {labels.joinLiveGroups}
+      </Link>
 
       <section className="surface-mockup p-4">
         <div className="flex items-start justify-between gap-3">

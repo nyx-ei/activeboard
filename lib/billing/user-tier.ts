@@ -60,12 +60,12 @@ export function deriveUserTier({
   hasValidPaymentMethod: boolean;
   subscriptionStatus: SubscriptionStatus;
 }): UserTier {
-  if (questionsAnswered < TRIAL_QUESTION_LIMIT) {
-    return USER_TIERS.trial;
-  }
-
   if (subscriptionStatus === SUBSCRIPTION_STATUSES.active || subscriptionStatus === SUBSCRIPTION_STATUSES.trialing) {
     return USER_TIERS.active;
+  }
+
+  if (questionsAnswered < TRIAL_QUESTION_LIMIT) {
+    return USER_TIERS.trial;
   }
 
   if (hasValidPaymentMethod) {
