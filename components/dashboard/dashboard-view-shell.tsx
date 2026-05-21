@@ -63,6 +63,7 @@ type DashboardPayloadByView = {
 };
 
 const LIVE_SESSION_REVALIDATION_INTERVAL_MS = 15_000;
+const PERFORMANCE_REVALIDATION_INTERVAL_MS = 30_000;
 
 export function DashboardViewShell({
   sessionsProps,
@@ -232,7 +233,8 @@ export function DashboardViewShell({
   useEffect(() => {
     return subscribeSessionTabRecovery(() => {
       invalidateDashboardPayloadCache('sessions');
-      reloadDashboardData(['sessions']);
+      invalidateDashboardPayloadCache('performance');
+      reloadDashboardData(['sessions', 'performance']);
     });
   }, [reloadDashboardData]);
 
@@ -252,6 +254,30 @@ export function DashboardViewShell({
         }
       });
     }, LIVE_SESSION_REVALIDATION_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [applyPayload]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const intervalId = window.setInterval(() => {
+      if (cancelled || document.visibilityState === 'hidden') {
+        return;
+      }
+
+      invalidateDashboardPayloadCache('performance');
+      void fetchDashboardPayload<DashboardPayloadByView, 'performance'>(
+        'performance',
+      ).then((payload) => {
+        if (!cancelled) {
+          applyPayload('performance', payload);
+        }
+      });
+    }, PERFORMANCE_REVALIDATION_INTERVAL_MS);
 
     return () => {
       cancelled = true;

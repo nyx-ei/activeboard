@@ -53,6 +53,7 @@ export function SessionDashboardBackButton({
     setIsConfirming(false);
     window.sessionStorage.removeItem('activeboard:session-flow-active');
     markDashboardPayloadStale('sessions');
+    markDashboardPayloadStale('performance');
     router.prefetch(href as never);
     if (sessionId) {
       void fetch(`/api/sessions/${sessionId}/quit`, {
