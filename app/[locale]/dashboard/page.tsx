@@ -322,9 +322,11 @@ export default async function DashboardPage({
       seatsAvailable: t('zoneGroupSeatsAvailable'),
       notificationsTitle: t('zoneGroupNotificationsTitle'),
       notificationsDescription: t('zoneGroupNotificationsDescription'),
-      sessionReminders: t('zoneGroupSessionReminders'),
-      invitationUpdates: t('zoneGroupInvitationUpdates'),
-      liveSessionAlerts: t('zoneGroupLiveSessionAlerts'),
+      notificationsEmpty: t('zoneGroupNotificationsEmpty'),
+      notificationsUnread: t('zoneGroupNotificationsUnread', {
+        count: '{count}',
+      }),
+      notificationsLoading: t('zoneGroupNotificationsLoading'),
       leaveGroupTitle: t('zoneGroupLeaveGroupTitle'),
       leaveGroupDescription: t('zoneGroupLeaveGroupDescription', {
         group: '{group}',

@@ -5,6 +5,7 @@ import { hasEmailEnv } from '@/lib/env';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
 import { sendGroupInviteEmail } from '@/lib/notifications/group-invites';
+import { createInAppNotification } from '@/lib/notifications/in-app';
 import { createPerfTracker } from '@/lib/observability/perf';
 import { getCurrentAuthUser } from '@/lib/session/flow';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
@@ -326,6 +327,21 @@ export async function POST(request: Request, { params }: RouteContext) {
     }
 
     created.push(invitation);
+
+    if (existingUser?.id) {
+      void createInAppNotification({
+        admin,
+        userId: existingUser.id,
+        groupId,
+        invitationId: invitation.id,
+        type: 'group_invite',
+        targetPath: `/invite/${invitation.id}`,
+        titleEn: 'Group invite',
+        titleFr: 'Invitation de groupe',
+        bodyEn: `${inviterName} invited you to join "${group.name}".`,
+        bodyFr: `${inviterName} t'a invité à rejoindre "${group.name}".`,
+      });
+    }
 
     await logAppEvent({
       eventName: APP_EVENTS.groupInviteSent,

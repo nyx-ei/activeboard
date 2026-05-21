@@ -8,6 +8,10 @@ import {
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
 import { sendGroupFullInviteNotificationEmail } from '@/lib/notifications/group-invites';
+import {
+  createGroupNotifications,
+  createInAppNotification,
+} from '@/lib/notifications/in-app';
 import { createPerfTracker } from '@/lib/observability/perf';
 import { getCurrentAuthUser } from '@/lib/session/flow';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
@@ -370,6 +374,36 @@ export async function POST(request: Request, { params }: RouteContext) {
     },
     useAdmin: true,
   });
+
+  await createInAppNotification({
+    admin,
+    userId: invitation.invited_by,
+    groupId: group.id,
+    sessionId: invitation.session_id,
+    invitationId: invitation.id,
+    type: 'group_invite_accepted',
+    targetPath: `/dashboard?groupId=${encodeURIComponent(group.id)}`,
+    titleEn: 'Invite accepted',
+    titleFr: 'Invitation acceptée',
+    bodyEn: `${user.email ?? 'A teammate'} joined "${group.name}".`,
+    bodyFr: `${user.email ?? 'Un coéquipier'} a rejoint "${group.name}".`,
+  });
+
+  if (!verification.alreadyMember) {
+    await createGroupNotifications({
+      admin,
+      groupId: group.id,
+      actorUserId: user.id,
+      sessionId: invitation.session_id,
+      invitationId: invitation.id,
+      type: 'group_member_added',
+      targetPath: `/dashboard?groupId=${encodeURIComponent(group.id)}`,
+      titleEn: 'New group member',
+      titleFr: 'Nouveau membre du groupe',
+      bodyEn: `${user.email ?? 'A teammate'} joined "${group.name}".`,
+      bodyFr: `${user.email ?? 'Un coéquipier'} a rejoint "${group.name}".`,
+    });
+  }
 
   if (invitation.source === 'on_the_fly' && invitation.session_id) {
     await logAppEvent({
