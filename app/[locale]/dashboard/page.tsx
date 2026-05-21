@@ -65,6 +65,10 @@ export default async function DashboardPage({
     accessState,
     'canCreateSession',
   );
+  const canBrowseLookupLayer = hasUserTierCapability(
+    accessState,
+    'canBrowseLookupLayer',
+  );
   const trialProgress = getTrialProgressSnapshot(
     billingSnapshot?.questions_answered ?? 0,
   );
@@ -299,6 +303,10 @@ export default async function DashboardPage({
     groups: dashboardGroups,
     initialGroupId: searchParams.groupId,
     createGroupHref: `/${locale}/create-group`,
+    liveGroupsHref: canBrowseLookupLayer
+      ? `/${locale}/lookup`
+      : `/${locale}/billing`,
+    canBrowseLookupLayer,
     labels: {
       title: t('zoneGroupTitle'),
       subtitle: t('zoneGroupSubtitle'),
@@ -363,6 +371,14 @@ export default async function DashboardPage({
       memberRequirementPrompt: t('memberRequirementPrompt', {
         count: '{count}',
       }),
+      exploreLiveGroupsTitle: t('zoneGroupExploreLiveTitle'),
+      exploreLiveGroupsDescription: t('zoneGroupExploreLiveDescription'),
+      exploreLiveGroupsLockedTitle: t('zoneGroupExploreLiveLockedTitle'),
+      exploreLiveGroupsLockedDescription: t(
+        'zoneGroupExploreLiveLockedDescription',
+      ),
+      exploreLiveGroupsCta: t('zoneGroupExploreLiveCta'),
+      exploreLiveGroupsUpgrade: t('zoneGroupExploreLiveUpgrade'),
     },
   } satisfies DashboardGroupZoneProps;
 
