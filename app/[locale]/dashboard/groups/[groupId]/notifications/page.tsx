@@ -119,7 +119,7 @@ export default async function DashboardGroupNotificationsPage({
   return (
     <DashboardGroupNotificationsView
       groupId={groupId}
-      backHref={`/dashboard?groupId=${encodeURIComponent(groupId)}`}
+      backHref="/dashboard"
       groupName={group.name}
       notifications={notifications}
       unreadCount={unreadResult.count ?? 0}
