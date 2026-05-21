@@ -2,10 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import {
-  DashboardPerformanceView,
-  type DashboardPerformanceViewProps,
-} from '@/components/dashboard/dashboard-performance-view';
+import type { DashboardPerformanceViewProps } from '@/components/dashboard/dashboard-performance-view';
 import {
   DashboardGroupZone,
   type DashboardGroupZoneProps,
@@ -76,16 +73,12 @@ export function DashboardViewShell({
 }: DashboardViewShellProps) {
   const [resolvedSessionsProps, setResolvedSessionsProps] =
     useState(sessionsProps);
-  const [resolvedPerformanceProps, setResolvedPerformanceProps] =
-    useState(performanceProps);
   const [resolvedSprintActivityProps, setResolvedSprintActivityProps] =
     useState(sprintActivityProps);
   const [resolvedProgressStateProps, setResolvedProgressStateProps] =
     useState(progressStateProps);
   const [resolvedGroupZoneProps, setResolvedGroupZoneProps] =
     useState(groupZoneProps);
-  const [showPerformanceDetails, setShowPerformanceDetails] = useState(false);
-  const detailsRef = useRef<HTMLDivElement | null>(null);
   const lastVisibleRevalidationRef = useRef(0);
 
   const applyPayload = useCallback(
@@ -110,27 +103,6 @@ export function DashboardViewShell({
         }));
       } else {
         const performancePayload = payload as DashboardPerformancePayload;
-        setResolvedPerformanceProps((current) => ({
-          ...current,
-          answeredCount: performancePayload.metrics?.answeredCount ?? 0,
-          completedSessionsCount:
-            performancePayload.metrics?.completedSessionsCount ?? 0,
-          successRate: performancePayload.metrics?.successRate ?? null,
-          averageConfidence:
-            performancePayload.metrics?.averageConfidence ?? null,
-          heatmap: performancePayload.profileAnalytics?.heatmap ?? [],
-          blueprintGrid:
-            performancePayload.profileAnalytics?.blueprintGrid ?? [],
-          errorTypeBreakdown:
-            performancePayload.profileAnalytics?.errorTypeBreakdown ?? [],
-          weeklyTrend: performancePayload.profileAnalytics?.weeklyTrend ?? [],
-          confidenceCalibration:
-            performancePayload.profileAnalytics?.confidenceCalibration ?? [],
-          sessionConfidenceBreakdown:
-            performancePayload.sessionConfidenceBreakdown ?? [],
-          progressQuadrantQuestions:
-            performancePayload.progressQuadrantQuestions ?? [],
-        }));
         setResolvedSprintActivityProps((current) => ({
           ...current,
           answeredCount: performancePayload.metrics?.answeredCount ?? 0,
@@ -150,7 +122,6 @@ export function DashboardViewShell({
 
   useEffect(() => {
     setResolvedSessionsProps(sessionsProps);
-    setResolvedPerformanceProps(performanceProps);
     setResolvedSprintActivityProps(sprintActivityProps);
     setResolvedProgressStateProps(progressStateProps);
     setResolvedGroupZoneProps(groupZoneProps);
@@ -212,19 +183,6 @@ export function DashboardViewShell({
   }, [reloadDashboardData]);
 
   useEffect(() => {
-    function handleDashboardView(event: Event) {
-      const detail = (event as CustomEvent<{ view?: DashboardView }>).detail;
-      if (detail?.view === 'performance') {
-        setShowPerformanceDetails(true);
-        window.requestAnimationFrame(() => {
-          detailsRef.current?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start',
-          });
-        });
-      }
-    }
-
     function handleDashboardInvalidate(event: Event) {
       const detail = (event as CustomEvent<{ view?: DashboardView }>).detail;
       invalidateDashboardPayloadCache(detail?.view);
@@ -236,19 +194,11 @@ export function DashboardViewShell({
     }
 
     window.addEventListener(
-      'activeboard:dashboard-view',
-      handleDashboardView as EventListener,
-    );
-    window.addEventListener(
       'activeboard:dashboard-invalidate',
       handleDashboardInvalidate as EventListener,
     );
 
     return () => {
-      window.removeEventListener(
-        'activeboard:dashboard-view',
-        handleDashboardView as EventListener,
-      );
       window.removeEventListener(
         'activeboard:dashboard-invalidate',
         handleDashboardInvalidate as EventListener,
@@ -317,11 +267,6 @@ export function DashboardViewShell({
       </div>
       <DashboardGroupZone {...resolvedGroupZoneProps} />
       <DashboardSessionActionHost {...resolvedSessionsProps} />
-      {showPerformanceDetails ? (
-        <div ref={detailsRef} id="performance-details">
-          <DashboardPerformanceView {...resolvedPerformanceProps} />
-        </div>
-      ) : null}
     </div>
   );
 }

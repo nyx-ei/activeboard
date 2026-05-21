@@ -135,23 +135,18 @@ export const DashboardProgressStateZone = memo(
             <p className="v11-card-sub mt-1">{labels.subtitle}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3 sm:justify-end">
-            <p className="text-[12px] font-medium text-[#8fa7a2]">
-              {totalAnswers > 0
-                ? `${totalAnswers} ${labels.answers}`
-                : labels.noData}
-            </p>
+            {totalAnswers > 0 ? (
+              <p className="text-[12px] font-medium text-[#8fa7a2]">
+                {totalAnswers} {labels.answers}
+              </p>
+            ) : (
+              <span className="inline-flex h-8 items-center rounded-full border border-white/[0.06] bg-white/[0.025] px-3 text-[12px] font-medium text-[#8fa7a2]">
+                {labels.noData}
+              </span>
+            )}
             <a
               href={detailsHref}
               className="inline-flex items-center gap-1 text-[15px] font-medium text-[#20D9A3] transition hover:text-[#9FF0CE]"
-              onClick={(event) => {
-                event.preventDefault();
-                window.history.pushState({}, '', detailsHref);
-                window.dispatchEvent(
-                  new CustomEvent('activeboard:dashboard-view', {
-                    detail: { view: 'performance' },
-                  }),
-                );
-              }}
             >
               {labels.viewDetails}
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
