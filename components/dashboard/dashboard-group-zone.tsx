@@ -7,9 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
-  type Dispatch,
   type ReactNode,
-  type SetStateAction,
 } from 'react';
 import {
   ArrowRight,
@@ -17,7 +15,6 @@ import {
   CalendarClock,
   Check,
   ChevronDown,
-  Clock,
   Lock,
   LogOut,
   Mail,
@@ -68,13 +65,7 @@ export type DashboardGroupZoneSession = {
 };
 
 type DashboardGroupNotification = {
-  id: string;
-  type: string;
-  title: string;
-  body: string;
-  href: string;
   readAt: string | null;
-  createdAt: string;
 };
 
 export type DashboardGroupZoneProps = {
@@ -166,17 +157,13 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   const [isOverflowOpen, setIsOverflowOpen] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [activePanel, setActivePanel] = useState<
-    'members' | 'notifications' | 'leave' | null
+    'members' | 'leave' | null
   >(null);
   const [inviteEmail, setInviteEmail] = useState('');
   const [isInviting, setIsInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [isLeavingGroup, setIsLeavingGroup] = useState(false);
-  const [notifications, setNotifications] = useState<
-    DashboardGroupNotification[]
-  >([]);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
-  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [cancellingSessionId, setCancellingSessionId] = useState<
     string | null
   >(null);
@@ -236,8 +223,6 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
 
   const loadNotifications = useCallback(
     async (groupId: string) => {
-      setIsLoadingNotifications(true);
-
       try {
         const response = await fetch(
           `/api/groups/${groupId}/notifications?locale=${locale}`,
@@ -256,10 +241,9 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
           return;
         }
 
-        setNotifications(payload.notifications ?? []);
         setUnreadNotificationCount(payload.unreadCount ?? 0);
-      } finally {
-        setIsLoadingNotifications(false);
+      } catch {
+        // Notification badge refresh must never block the dashboard.
       }
     },
     [locale],
@@ -313,7 +297,6 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
 
   useEffect(() => {
     if (!selectedGroup?.id) {
-      setNotifications([]);
       setUnreadNotificationCount(0);
       return;
     }
@@ -534,10 +517,9 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                     }
                     onClick={() => {
                       setIsOverflowOpen(false);
-                      setActivePanel('notifications');
-                      if (selectedGroup?.id) {
-                        void loadNotifications(selectedGroup.id);
-                      }
+                      router.push(
+                        `/${locale}/dashboard/groups/${selectedGroup.id}/notifications` as never,
+                      );
                     }}
                   />
                   <GroupOverflowItem
@@ -918,61 +900,6 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                 {labels.invite}
               </button>
             ) : null}
-          </div>
-        </Modal>
-      ) : null}
-
-      {selectedGroup && activePanel === 'notifications' ? (
-        <Modal
-          open
-          onClose={() => setActivePanel(null)}
-          labelledBy="dashboard-group-notifications-title"
-          contentClassName="w-full rounded-t-[18px] border border-white/[0.08] bg-[#081b18] shadow-2xl sm:max-w-[520px] sm:rounded-[18px]"
-        >
-          <div className="p-5 sm:p-6">
-            <GroupPanelHeader
-              id="dashboard-group-notifications-title"
-              icon={<Bell className="h-4 w-4" aria-hidden="true" />}
-              title={labels.notificationsTitle}
-              description={
-                unreadNotificationCount > 0
-                  ? labels.notificationsUnread.replace(
-                      '{count}',
-                      String(unreadNotificationCount),
-                    )
-                  : labels.notificationsDescription
-              }
-              onClose={() => setActivePanel(null)}
-            />
-
-            <div className="mt-5 max-h-[min(70vh,520px)] space-y-2 overflow-y-auto pr-1">
-              {isLoadingNotifications ? (
-                <div className="rounded-[12px] border border-white/[0.055] bg-white/[0.02] px-4 py-5 text-sm font-semibold text-[#8fa7a2]">
-                  {labels.notificationsLoading}
-                </div>
-              ) : notifications.length > 0 && selectedGroup ? (
-                notifications.map((notification) => (
-                  <NotificationListItem
-                    key={notification.id}
-                    notification={notification}
-                    locale={locale}
-                    onOpen={() =>
-                      void openGroupNotification({
-                        groupId: selectedGroup.id,
-                        notification,
-                        setNotifications,
-                        setUnreadNotificationCount,
-                        router,
-                      })
-                    }
-                  />
-                ))
-              ) : (
-                <div className="rounded-[12px] border border-dashed border-white/[0.08] px-4 py-5 text-sm font-semibold text-[#8fa7a2]">
-                  {labels.notificationsEmpty}
-                </div>
-              )}
-            </div>
           </div>
         </Modal>
       ) : null}
@@ -1456,100 +1383,6 @@ function PanelStat({ label, value }: { label: string; value: string }) {
       </span>
     </span>
   );
-}
-
-function NotificationListItem({
-  notification,
-  locale,
-  onOpen,
-}: {
-  notification: DashboardGroupNotification;
-  locale: string;
-  onOpen: () => void;
-}) {
-  const isUnread = !notification.readAt;
-
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className={`flex w-full items-start gap-3 rounded-[12px] border px-3 py-3 text-left transition hover:bg-white/[0.04] ${
-        isUnread
-          ? 'border-[#20D9A3]/25 bg-[#20D9A3]/[0.06]'
-          : 'border-white/[0.055] bg-white/[0.02]'
-      }`}
-    >
-      <span
-        className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border ${
-          isUnread
-            ? 'border-[#20D9A3]/25 bg-[#20D9A3]/10 text-[#9FF0CE]'
-            : 'border-white/[0.055] bg-white/[0.025] text-[#8fa7a2]'
-        }`}
-      >
-        <Bell className="h-4 w-4" aria-hidden="true" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex min-w-0 items-start justify-between gap-3">
-          <span className="min-w-0 text-sm font-semibold leading-5 text-[#e8f4f0]">
-            {notification.title}
-          </span>
-          {isUnread ? (
-            <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#20D9A3]" />
-          ) : null}
-        </span>
-        <span className="mt-1 block text-[13px] leading-5 text-[#8fa7a2]">
-          {notification.body}
-        </span>
-        <span className="mt-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-[#5f7b75]">
-          <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-          {formatNotificationDate(notification.createdAt, locale)}
-        </span>
-      </span>
-    </button>
-  );
-}
-
-async function openGroupNotification({
-  groupId,
-  notification,
-  setNotifications,
-  setUnreadNotificationCount,
-  router,
-}: {
-  groupId: string;
-  notification: DashboardGroupNotification;
-  setNotifications: Dispatch<SetStateAction<DashboardGroupNotification[]>>;
-  setUnreadNotificationCount: Dispatch<SetStateAction<number>>;
-  router: ReturnType<typeof useRouter>;
-}) {
-  if (!notification.readAt) {
-    const readAt = new Date().toISOString();
-    setNotifications((current) =>
-      current.map((item) =>
-        item.id === notification.id ? { ...item, readAt } : item,
-      ),
-    );
-    setUnreadNotificationCount((current) => Math.max(0, current - 1));
-
-    void fetch(`/api/groups/${groupId}/notifications`, {
-      method: 'PATCH',
-      credentials: 'same-origin',
-      cache: 'no-store',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notificationId: notification.id }),
-    });
-  }
-
-  router.push(notification.href as never);
-}
-
-function formatNotificationDate(value: string, locale: string) {
-  return new Intl.DateTimeFormat(locale, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value));
 }
 
 function MetricPill({ label, value }: { label: string; value: string }) {
