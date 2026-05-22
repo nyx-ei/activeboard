@@ -174,9 +174,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   );
   const router = useRouter();
   const groupMenuRef = useRef<HTMLDivElement | null>(null);
-  const mobileGroupMenuRef = useRef<HTMLDivElement | null>(null);
   const overflowMenuRef = useRef<HTMLDivElement | null>(null);
-  const mobileOverflowMenuRef = useRef<HTMLDivElement | null>(null);
   const liveSignatureRef = useRef('');
   const appliedInitialGroupIdRef = useRef<string | null>(null);
   const selectedGroup = useMemo(
@@ -331,9 +329,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
 
       if (
         groupMenuRef.current?.contains(target) ||
-        mobileGroupMenuRef.current?.contains(target) ||
-        overflowMenuRef.current?.contains(target) ||
-        mobileOverflowMenuRef.current?.contains(target)
+        overflowMenuRef.current?.contains(target)
       ) {
         return;
       }
@@ -352,11 +348,11 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   return (
     <section className="v11-card px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
       <div className="sm:hidden">
-        <div className="flex items-start justify-between gap-3">
-          <div ref={mobileGroupMenuRef} className="relative min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-3">
+          <div ref={groupMenuRef} className="relative min-w-0 flex-1">
             <button
               type="button"
-              className={`flex max-w-full items-center gap-2 rounded-[10px] py-1 pr-2 text-left text-[30px] font-medium leading-tight text-[#e8f4f0] transition hover:bg-white/[0.03] ${
+              className={`flex max-w-full items-center gap-2 rounded-[10px] pr-2 text-left text-[32px] font-medium leading-none text-[#e8f4f0] transition hover:bg-white/[0.03] ${
                 isOpen ? 'bg-white/[0.03]' : ''
               }`}
               aria-expanded={isOpen}
@@ -365,14 +361,11 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                 setIsOverflowOpen(false);
               }}
             >
-              {selectedGroup?.hasLiveSession ? (
-                <span className="live-dot shrink-0" aria-hidden="true" />
-              ) : null}
               <span className="truncate">
                 {selectedGroup?.name ?? labels.noGroups}
               </span>
               <ChevronDown
-                className={`h-5 w-5 shrink-0 text-[#8fa7a2] transition ${
+                className={`h-6 w-6 shrink-0 text-[#8fa7a2] transition ${
                   isOpen ? 'rotate-180' : ''
                 }`}
                 aria-hidden="true"
@@ -380,7 +373,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
             </button>
 
             {isOpen ? (
-              <div className="absolute left-0 z-30 mt-2 w-[min(320px,calc(100vw-40px))] overflow-hidden rounded-[14px] border border-white/[0.09] bg-[#0d332d] p-1.5 shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
+              <div className="absolute left-0 z-30 mt-2 w-[min(330px,calc(100vw-40px))] overflow-hidden rounded-[14px] border border-white/[0.09] bg-[#0d332d] p-1.5 shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
                 <p className="px-3 pb-2 pt-2 text-[11px] font-medium uppercase tracking-[0.08em] text-[#6f8984]">
                   {labels.groupsListTitle}
                 </p>
@@ -444,7 +437,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
             ) : null}
           </div>
 
-          <div className="flex shrink-0 items-center pt-0.5">
+          <div className="flex shrink-0 items-center">
             <MemberAvatarStack members={selectedMembers.slice(0, 3)} />
             {selectedGroup &&
             selectedGroup.memberCount > selectedMembers.slice(0, 3).length ? (
@@ -460,139 +453,84 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
 
         {selectedGroup ? (
           <div className="mt-5 space-y-3">
-            <div className="grid grid-cols-[1fr_72px] gap-2">
-              <div className="min-w-0 rounded-[14px] border border-white/[0.06] bg-white/[0.018] px-3 py-3">
-                {selectedActiveSession ? (
-                  <a
-                    href={`/${locale}/sessions/${selectedActiveSession.id}`}
-                    onFocus={() =>
-                      prefetchSession(
-                        `/${locale}/sessions/${selectedActiveSession.id}`,
-                      )
-                    }
-                    onPointerEnter={() =>
-                      prefetchSession(
-                        `/${locale}/sessions/${selectedActiveSession.id}`,
-                      )
-                    }
-                    className="grid grid-cols-[auto_1fr_auto] items-center gap-3"
+            <div className="grid grid-cols-[minmax(0,1fr)_64px] gap-2">
+              <div className="grid min-h-[74px] grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-2 rounded-[14px] border border-white/[0.06] bg-white/[0.018] px-3 py-3">
+                <div className="flex min-w-[82px] items-center">
+                  <MemberAvatarStack members={selectedMembers.slice(0, 3)} />
+                </div>
+
+                <a
+                  href={
+                    selectedActiveSession
+                      ? `/${locale}/sessions/${selectedActiveSession.id}`
+                      : (sessionHref ?? `/${locale}/dashboard`)
+                  }
+                  onFocus={() =>
+                    prefetchSession(
+                      selectedActiveSession
+                        ? `/${locale}/sessions/${selectedActiveSession.id}`
+                        : sessionHref,
+                    )
+                  }
+                  onPointerEnter={() =>
+                    prefetchSession(
+                      selectedActiveSession
+                        ? `/${locale}/sessions/${selectedActiveSession.id}`
+                        : sessionHref,
+                    )
+                  }
+                  className="min-w-0"
+                >
+                  <span
+                    className={`block truncate text-[13px] font-medium ${
+                      selectedActiveSession ? 'text-[#20D9A3]' : 'text-[#8fa7a2]'
+                    }`}
                   >
-                    <span className="flex h-11 w-11 items-center justify-center rounded-[11px] border border-[#20D9A3]/25 bg-[#20D9A3]/15 text-[#9FF0CE]">
-                      <Play className="h-4 w-4 fill-current" aria-hidden="true" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-[12px] font-medium text-[#20D9A3]">
-                        {labels.live}
-                      </span>
-                      <span className="mt-0.5 block truncate text-[15px] font-semibold text-[#e8f4f0]">
-                        {selectedActiveSession.name ?? labels.nextSession}
-                      </span>
-                      <span className="mt-0.5 block truncate text-[12px] text-[#8fa7a2]">
-                        {formatSessionDate(
+                    {selectedActiveSession
+                      ? labels.live
+                      : selectedNextSession
+                        ? labels.nextSession
+                        : labels.noUpcomingSession}
+                  </span>
+                  <span className="mt-0.5 block truncate text-[15px] font-semibold text-[#e8f4f0]">
+                    {selectedActiveSession?.name ??
+                      selectedNextSession?.name ??
+                      labels.noUpcomingSession}
+                  </span>
+                  <span className="mt-0.5 block truncate text-[12px] text-[#8fa7a2]">
+                    {selectedActiveSession
+                      ? formatSessionDate(
                           selectedActiveSession.started_at ??
                             selectedActiveSession.scheduled_at,
                           locale,
-                        )}
-                      </span>
-                    </span>
-                    <span className="inline-flex h-9 items-center rounded-[10px] border border-white/[0.08] px-3 text-[12px] font-semibold text-[#e8f4f0]">
-                      {labels.joinLiveSession}
-                    </span>
+                        )
+                      : selectedNextSession
+                        ? formatSessionDate(selectedNextSession.scheduled_at, locale)
+                        : `${selectedGroup.memberCount} ${labels.members}`}
+                  </span>
+                </a>
+
+                {selectedActiveSession ? (
+                  <a
+                    href={`/${locale}/sessions/${selectedActiveSession.id}`}
+                    className="relative inline-flex h-9 shrink-0 items-center justify-center rounded-[10px] border border-white/[0.08] px-3 text-[12px] font-semibold text-[#e8f4f0]"
+                  >
+                    <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-red-400" />
+                    {labels.joinLiveSession}
                   </a>
-                ) : selectedNextSession && sessionHref ? (
-                  <div className="grid grid-cols-[auto_1fr] gap-3">
-                    <a
-                      href={sessionHref}
-                      onFocus={() => prefetchSession(sessionHref)}
-                      onPointerEnter={() => prefetchSession(sessionHref)}
-                      className="contents"
-                    >
-                      <span className="flex h-11 w-11 items-center justify-center rounded-[11px] border border-[#6BA8F2]/25 bg-[#6BA8F2]/15 text-[#A8C9F4]">
-                        <CalendarClock className="h-5 w-5" aria-hidden="true" />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block text-[12px] font-medium text-[#8fa7a2]">
-                          {labels.nextSession}
-                        </span>
-                        <span className="mt-0.5 block truncate text-[15px] font-semibold text-[#e8f4f0]">
-                          {selectedNextSession.name ?? labels.nextSession}
-                        </span>
-                        <span className="mt-1 block truncate text-[12px] text-[#8fa7a2]">
-                          {labels.scheduledFor.replace(
-                            '{date}',
-                            formatSessionDate(
-                              selectedNextSession.scheduled_at,
-                              locale,
-                            ),
-                          )}
-                        </span>
-                        <span className="mt-0.5 block truncate text-[12px] text-[#8fa7a2]">
-                          {selectedNextSession.question_goal}{' '}
-                          {labels.questionsUnit} ·{' '}
-                          {labels.timerLabel.replace(
-                            '{seconds}',
-                            String(selectedNextSession.timer_seconds),
-                          )}
-                        </span>
-                      </span>
-                    </a>
-                    <span className="col-span-2 flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          window.dispatchEvent(
-                            new CustomEvent('activeboard:open-create-session', {
-                              detail: { groupId: selectedGroup.id },
-                            }),
-                          );
-                        }}
-                        className="inline-flex h-9 items-center justify-center rounded-[10px] border border-white/[0.07] bg-white/[0.025] px-4 text-[12px] font-semibold text-[#e8f4f0]"
-                      >
-                        {labels.editSession}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={cancellingSessionId === selectedNextSession.id}
-                        onClick={() =>
-                          void cancelDashboardScheduledSession({
-                            sessionId: selectedNextSession.id,
-                            locale,
-                            labels,
-                            setCancellingSessionId,
-                          })
-                        }
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-[10px] border border-white/[0.07] bg-white/[0.025] text-[#8fa7a2] disabled:cursor-wait disabled:opacity-60"
-                        aria-label={labels.cancelSession}
-                      >
-                        <X className="h-4 w-4" aria-hidden="true" />
-                      </button>
-                    </span>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-[auto_1fr] items-center gap-3">
-                    <span className="flex h-11 w-11 items-center justify-center rounded-[11px] border border-white/[0.045] bg-white/[0.03] text-[#5c7773]">
-                      <CalendarClock className="h-5 w-5" aria-hidden="true" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-[15px] font-semibold text-[#e8f4f0]">
-                        {labels.noUpcomingSession}
-                      </span>
-                      <span className="mt-0.5 block truncate text-[12px] text-[#8fa7a2]">
-                        {labels.subtitle}
-                      </span>
-                    </span>
-                  </div>
-                )}
+                ) : null}
+
+                <ChevronDown className="h-6 w-6 shrink-0 text-[#d7e3df]" aria-hidden="true" />
               </div>
 
-              <div ref={mobileOverflowMenuRef} className="relative">
+              <div ref={overflowMenuRef} className="relative">
                 <button
                   type="button"
                   onClick={() => {
                     setIsOverflowOpen((current) => !current);
                     setIsOpen(false);
                   }}
-                  className="flex h-full min-h-[72px] w-full items-center justify-center rounded-[14px] border border-white/[0.06] bg-white/[0.018] text-[#d7e3df] transition hover:border-white/[0.1] hover:bg-white/[0.04]"
+                  className="flex h-full min-h-[74px] w-full items-center justify-center rounded-[14px] border border-white/[0.06] bg-white/[0.018] text-[#d7e3df] transition hover:border-white/[0.1] hover:bg-white/[0.04]"
                   aria-expanded={isOverflowOpen}
                   aria-label={labels.dropdownLabel}
                 >
@@ -676,24 +614,44 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                   }),
                 );
               }}
-              className={`inline-flex h-[54px] w-full items-center justify-center gap-2 rounded-[14px] px-5 text-[18px] font-semibold transition ${
+              className={`inline-flex h-[46px] w-full items-center justify-center gap-2 rounded-[12px] px-4 text-[15px] font-semibold transition ${
                 canStartSelectedGroup
                   ? 'bg-[#20D9A3] text-[#062b22] hover:bg-[#2fe9b1]'
                   : 'cursor-not-allowed bg-white/[0.16] text-[#8fa7a2]'
               }`}
             >
-              <CalendarClock className="h-5 w-5" aria-hidden="true" />
+              <CalendarClock className="h-4 w-4" aria-hidden="true" />
               {labels.startSession}
             </button>
 
-            {shouldShowMemberPrompt ? (
-              <div className="rounded-[14px] border border-[#20D9A3]/20 bg-[#20D9A3]/[0.07] px-4 py-3 text-[13px] font-semibold leading-snug text-[#e8f4f0]">
-                {labels.memberRequirementPrompt.replace(
-                  '{count}',
-                  String(selectedGroup.memberCount),
+            <a
+              href={liveGroupsHref}
+              className={`flex min-h-[48px] items-center gap-3 rounded-[13px] border px-3 py-2 transition ${
+                canBrowseLookupLayer
+                  ? 'border-[#20D9A3]/25 bg-[#20D9A3]/[0.07]'
+                  : 'border-amber-300/20 bg-amber-300/[0.055]'
+              }`}
+            >
+              <span
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border ${
+                  canBrowseLookupLayer
+                    ? 'border-[#20D9A3]/25 bg-[#20D9A3]/[0.12] text-[#9FF0CE]'
+                    : 'border-amber-300/20 bg-amber-300/10 text-amber-100'
+                }`}
+              >
+                {canBrowseLookupLayer ? (
+                  <Search className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <Lock className="h-4 w-4" aria-hidden="true" />
                 )}
-              </div>
-            ) : null}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-[#e8f4f0]">
+                {canBrowseLookupLayer
+                  ? labels.exploreLiveGroupsTitle
+                  : labels.exploreLiveGroupsLockedTitle}
+              </span>
+              <ArrowRight className="h-4 w-4 shrink-0 text-[#9FF0CE]" aria-hidden="true" />
+            </a>
 
             {latestRecentSession ? (
               <a
@@ -704,9 +662,9 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                 onPointerEnter={() =>
                   prefetchSession(`/${locale}/sessions/${latestRecentSession.id}`)
                 }
-                className="flex items-center gap-3 rounded-[14px] border border-white/[0.055] bg-white/[0.018] px-3 py-3"
+                className="flex items-center gap-3 rounded-[13px] border border-white/[0.055] bg-white/[0.018] px-3 py-3"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#20D9A3]/12 text-[#9FF0CE]">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#20D9A3]/12 text-[#9FF0CE]">
                   <ArrowRight className="h-5 w-5" aria-hidden="true" />
                 </span>
                 <span className="min-w-0 flex-1">
@@ -720,9 +678,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                   </span>
                 </span>
                 <span className="rounded-full bg-[#20D9A3]/12 px-3 py-1 text-[12px] font-medium text-[#9FF0CE]">
-                  {latestRecentSession.completionPercent === 100
-                    ? labels.completion
-                    : labels.live}
+                  {selectedGroup.hasLiveSession ? labels.live : labels.completion}
                 </span>
               </a>
             ) : null}
