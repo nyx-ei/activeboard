@@ -611,10 +611,11 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                 ) : null}
               </div>
 
-              <div ref={overflowMenuRef} className="relative">
+              <div ref={mobileOverflowMenuRef} className="relative">
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={(event) => {
+                    event.stopPropagation();
                     setIsOverflowOpen((current) => !current);
                     setIsOpen(false);
                   }}
@@ -625,7 +626,11 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                   <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
                 </button>
                 {isOverflowOpen ? (
-                  <div className="absolute right-0 z-30 mt-2 w-[min(270px,calc(100vw-32px))] rounded-[14px] border border-white/[0.09] bg-[#0d332d] p-2 shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
+                  <div
+                    className="absolute right-0 z-30 mt-2 w-[min(270px,calc(100vw-32px))] rounded-[14px] border border-white/[0.09] bg-[#0d332d] p-2 shadow-[0_24px_60px_rgba(0,0,0,0.5)]"
+                    onClick={(event) => event.stopPropagation()}
+                    onPointerDown={(event) => event.stopPropagation()}
+                  >
                     <GroupOverflowItem
                       icon={<UsersRound className="h-5 w-5" aria-hidden="true" />}
                       label={labels.manageMembers}
@@ -648,7 +653,8 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                     />
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={(event) => {
+                        event.stopPropagation();
                         setIsOverflowOpen(false);
                         window.dispatchEvent(
                           new CustomEvent('activeboard:open-create-session', {
