@@ -200,6 +200,12 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   const recentSessions = selectedGroup?.recentSessions?.slice(0, 3) ?? [];
   const latestRecentSession = recentSessions[0] ?? null;
   const mobileJoinLabel = getCompactJoinLabel(labels.joinLiveSession);
+  const mobileLiveGroupsLabel = getCompactLiveGroupsLabel(
+    canBrowseLookupLayer
+      ? labels.exploreLiveGroupsTitle
+      : labels.exploreLiveGroupsLockedTitle,
+    locale,
+  );
   const selectedSeatsAvailable = selectedGroup
     ? Math.max(0, selectedMaxMembers - selectedGroup.memberCount)
     : 0;
@@ -357,27 +363,15 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
           <div ref={groupMenuRef} className="relative min-w-0 flex-1">
             <button
               type="button"
-              className={`flex max-w-full items-center gap-2 rounded-[10px] pr-2 text-left text-[26px] font-medium leading-tight text-[#e8f4f0] transition hover:bg-white/[0.03] ${
-                isOpen ? 'bg-white/[0.03]' : ''
-              }`}
-              aria-expanded={isOpen}
-              onClick={() => {
-                setIsOpen((current) => !current);
-                setIsOverflowOpen(false);
-              }}
+              className="pointer-events-none flex max-w-full items-center gap-2 rounded-[10px] pr-2 text-left text-[26px] font-medium leading-tight text-[#e8f4f0]"
+              tabIndex={-1}
             >
               <span className="truncate">
                 {selectedGroup?.name ?? labels.noGroups}
               </span>
-              <ChevronDown
-                className={`h-6 w-6 shrink-0 text-[#8fa7a2] transition ${
-                  isOpen ? 'rotate-180' : ''
-                }`}
-                aria-hidden="true"
-              />
             </button>
 
-            {isOpen ? (
+            {false ? (
               <div className="absolute left-0 z-30 mt-2 w-[min(330px,calc(100vw-40px))] overflow-hidden rounded-[14px] border border-white/[0.09] bg-[#0d332d] p-1.5 shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
                 <p className="px-3 pb-2 pt-2 text-[11px] font-medium uppercase tracking-[0.08em] text-[#6f8984]">
                   {labels.groupsListTitle}
@@ -459,7 +453,26 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
         {selectedGroup ? (
           <div className="mt-5 space-y-3">
             <div className="grid grid-cols-[minmax(0,1fr)_50px] gap-2">
-              <div className="grid min-h-[66px] grid-cols-[58px_minmax(0,1fr)_auto_18px] items-center gap-1.5 rounded-[13px] border border-white/[0.06] bg-white/[0.018] px-2.5 py-2">
+              <div
+                ref={mobileGroupSwitcherRef}
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  setIsOpen((current) => !current);
+                  setIsOverflowOpen(false);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    setIsOpen((current) => !current);
+                    setIsOverflowOpen(false);
+                  }
+                }}
+                className={`relative grid min-h-[66px] grid-cols-[58px_minmax(0,1fr)_auto] items-center gap-1.5 rounded-[13px] border border-white/[0.06] bg-white/[0.018] px-2.5 py-2 transition hover:bg-white/[0.03] ${
+                  isOpen ? 'border-[#20D9A3]/25 bg-[#20D9A3]/[0.04]' : ''
+                }`}
+                aria-expanded={isOpen}
+              >
                 <div className="flex min-w-0 items-center">
                   <MemberAvatarStack members={selectedMembers.slice(0, 2)} />
                 </div>
@@ -518,30 +531,78 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                 {selectedActiveSession ? (
                   <a
                     href={`/${locale}/sessions/${selectedActiveSession.id}`}
+                    onClick={(event) => event.stopPropagation()}
                     className="relative inline-flex h-8 max-w-[74px] shrink-0 items-center justify-center rounded-[9px] border border-white/[0.08] px-2 text-[11px] font-semibold text-[#e8f4f0]"
                   >
                     <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-red-400" />
                     {mobileJoinLabel}
                   </a>
                 ) : null}
+                {isOpen ? (
+                  <div className="absolute left-0 top-full z-30 mt-2 w-[min(330px,calc(100vw-88px))] overflow-hidden rounded-[14px] border border-white/[0.09] bg-[#0d332d] p-1.5 shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
+                    <p className="px-3 pb-2 pt-2 text-[11px] font-medium uppercase tracking-[0.08em] text-[#6f8984]">
+                      {labels.groupsListTitle}
+                    </p>
+                    {groups.length > 0 ? (
+                      groups.map((group) => {
+                        const isSelected = selectedGroup?.id === group.id;
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsOpen((current) => !current);
-                    setIsOverflowOpen(false);
-                  }}
-                  className="flex h-7 w-5 items-center justify-center text-[#d7e3df]"
-                  aria-expanded={isOpen}
-                  aria-label={labels.dropdownLabel}
-                >
-                  <ChevronDown
-                    className={`h-5 w-5 shrink-0 transition ${
-                      isOpen ? 'rotate-180' : ''
-                    }`}
-                    aria-hidden="true"
-                  />
-                </button>
+                        return (
+                          <button
+                            key={group.id}
+                            type="button"
+                            className={`flex w-full items-center gap-3 rounded-[11px] px-3 py-2.5 text-left transition hover:bg-white/[0.04] ${
+                              isSelected ? 'bg-[#20D9A3]/10' : ''
+                            }`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedGroupId(group.id);
+                              setIsOpen(false);
+                              setIsOverflowOpen(false);
+                            }}
+                          >
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] border border-white/[0.09] bg-[#22504a] text-[12px] font-semibold text-white">
+                              {getGroupInitials(group.name)}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="flex min-w-0 items-center gap-2">
+                                {group.hasLiveSession ? (
+                                  <span className="live-dot" aria-hidden="true" />
+                                ) : null}
+                                <span className="truncate text-[15px] font-semibold text-[#e8f4f0]">
+                                  {group.name}
+                                </span>
+                              </span>
+                              <span className="mt-1 block text-[13px] font-normal text-[#8fa7a2]">
+                                {group.memberCount} {labels.members} ·{' '}
+                                {group.memberCount}/{group.maxMembers ?? 5}{' '}
+                                {labels.seats}
+                              </span>
+                            </span>
+                            {isSelected ? (
+                              <Check
+                                className="h-4 w-4 shrink-0 text-[#20D9A3]"
+                                aria-hidden="true"
+                              />
+                            ) : null}
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <p className="px-3 py-4 text-[14px] font-medium text-[#8fa7a2]">
+                        {labels.noGroups}
+                      </p>
+                    )}
+                    <a
+                      href={createGroupHref}
+                      onClick={(event) => event.stopPropagation()}
+                      className="mt-1 flex items-center gap-2 border-t border-white/[0.045] px-3 py-3 text-[14px] font-medium text-[#20D9A3] transition hover:bg-[#20D9A3]/[0.06]"
+                    >
+                      <Plus className="h-4 w-4" aria-hidden="true" />
+                      {labels.createAnother}
+                    </a>
+                  </div>
+                ) : null}
               </div>
 
               <div ref={overflowMenuRef} className="relative">
@@ -667,9 +728,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                 )}
               </span>
               <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-[#e8f4f0]">
-                {canBrowseLookupLayer
-                  ? labels.exploreLiveGroupsTitle
-                  : labels.exploreLiveGroupsLockedTitle}
+                {mobileLiveGroupsLabel}
               </span>
               <ArrowRight className="h-4 w-4 shrink-0 text-[#9FF0CE]" aria-hidden="true" />
             </a>
@@ -1681,6 +1740,10 @@ function getGroupInitials(name: string) {
 function getCompactJoinLabel(label: string) {
   const firstWord = label.trim().split(/\s+/)[0];
   return firstWord || label;
+}
+
+function getCompactLiveGroupsLabel(_label: string, locale: string) {
+  return locale === 'fr' ? 'Groupes en direct' : 'Live groups';
 }
 
 function GroupOverflowItem({
