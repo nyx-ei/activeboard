@@ -468,7 +468,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                     setIsOverflowOpen(false);
                   }
                 }}
-                className={`relative grid min-h-[66px] grid-cols-[58px_minmax(0,1fr)_auto] items-center gap-1.5 rounded-[13px] border border-white/[0.06] bg-white/[0.018] px-2.5 py-2 transition hover:bg-white/[0.03] ${
+                className={`relative grid min-h-[66px] grid-cols-[54px_minmax(0,1fr)_auto_16px] items-center gap-1.5 rounded-[13px] border border-white/[0.06] bg-white/[0.018] px-2.5 py-2 transition hover:bg-white/[0.03] ${
                   isOpen ? 'border-[#20D9A3]/25 bg-[#20D9A3]/[0.04]' : ''
                 }`}
                 aria-expanded={isOpen}
@@ -532,12 +532,18 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                   <a
                     href={`/${locale}/sessions/${selectedActiveSession.id}`}
                     onClick={(event) => event.stopPropagation()}
-                    className="relative inline-flex h-8 max-w-[74px] shrink-0 items-center justify-center rounded-[9px] border border-white/[0.08] px-2 text-[11px] font-semibold text-[#e8f4f0]"
+                    className="relative inline-flex h-8 max-w-[68px] shrink-0 items-center justify-center rounded-[9px] border border-white/[0.08] px-1.5 text-[11px] font-semibold text-[#e8f4f0]"
                   >
                     <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-red-400" />
                     {mobileJoinLabel}
                   </a>
                 ) : null}
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 justify-self-end text-[#d7e3df] transition ${
+                    isOpen ? 'rotate-180' : ''
+                  }`}
+                  aria-hidden="true"
+                />
                 {isOpen ? (
                   <div className="absolute left-0 top-full z-30 mt-2 w-[min(330px,calc(100vw-88px))] overflow-hidden rounded-[14px] border border-white/[0.09] bg-[#0d332d] p-1.5 shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
                     <p className="px-3 pb-2 pt-2 text-[11px] font-medium uppercase tracking-[0.08em] text-[#6f8984]">
