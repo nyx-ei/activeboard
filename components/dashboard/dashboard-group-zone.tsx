@@ -174,8 +174,11 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   );
   const router = useRouter();
   const groupMenuRef = useRef<HTMLDivElement | null>(null);
+  const mobileGroupSwitcherRef = useRef<HTMLDivElement | null>(null);
   const overflowMenuRef = useRef<HTMLDivElement | null>(null);
+  const mobileOverflowMenuRef = useRef<HTMLDivElement | null>(null);
   const liveSignatureRef = useRef('');
+  const appliedInitialGroupIdRef = useRef<string | null>(null);
   const selectedGroup = useMemo(
     () =>
       groups.find((group) => group.id === selectedGroupId) ?? groups[0] ?? null,
@@ -196,6 +199,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
     : null;
   const recentSessions = selectedGroup?.recentSessions?.slice(0, 3) ?? [];
   const latestRecentSession = recentSessions[0] ?? null;
+  const mobileJoinLabel = getCompactJoinLabel(labels.joinLiveSession);
   const selectedSeatsAvailable = selectedGroup
     ? Math.max(0, selectedMaxMembers - selectedGroup.memberCount)
     : 0;
@@ -254,15 +258,24 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
     if (groups.length === 0) {
       setSelectedGroupId('');
       liveSignatureRef.current = '';
+      appliedInitialGroupIdRef.current = null;
       return;
     }
 
     const requestedGroup = initialGroupId
       ? groups.find((group) => group.id === initialGroupId)
       : null;
-    if (requestedGroup && selectedGroupId !== requestedGroup.id) {
+    if (
+      requestedGroup &&
+      appliedInitialGroupIdRef.current !== requestedGroup.id
+    ) {
+      appliedInitialGroupIdRef.current = requestedGroup.id;
       setSelectedGroupId(requestedGroup.id);
       return;
+    }
+
+    if (!initialGroupId) {
+      appliedInitialGroupIdRef.current = null;
     }
 
     const firstGroup = groups[0];
@@ -319,7 +332,9 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
 
       if (
         groupMenuRef.current?.contains(target) ||
-        overflowMenuRef.current?.contains(target)
+        mobileGroupSwitcherRef.current?.contains(target) ||
+        overflowMenuRef.current?.contains(target) ||
+        mobileOverflowMenuRef.current?.contains(target)
       ) {
         return;
       }
@@ -342,7 +357,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
           <div ref={groupMenuRef} className="relative min-w-0 flex-1">
             <button
               type="button"
-              className={`flex max-w-full items-center gap-2 rounded-[10px] pr-2 text-left text-[32px] font-medium leading-none text-[#e8f4f0] transition hover:bg-white/[0.03] ${
+              className={`flex max-w-full items-center gap-2 rounded-[10px] pr-2 text-left text-[26px] font-medium leading-tight text-[#e8f4f0] transition hover:bg-white/[0.03] ${
                 isOpen ? 'bg-white/[0.03]' : ''
               }`}
               aria-expanded={isOpen}
@@ -427,7 +442,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
             ) : null}
           </div>
 
-          <div className="flex shrink-0 items-center">
+          <div className="hidden shrink-0 items-center">
             <MemberAvatarStack members={selectedMembers.slice(0, 3)} />
             {selectedGroup &&
             selectedGroup.memberCount > selectedMembers.slice(0, 3).length ? (
@@ -443,10 +458,10 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
 
         {selectedGroup ? (
           <div className="mt-5 space-y-3">
-            <div className="grid grid-cols-[minmax(0,1fr)_64px] gap-2">
-              <div className="grid min-h-[74px] grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-2 rounded-[14px] border border-white/[0.06] bg-white/[0.018] px-3 py-3">
-                <div className="flex min-w-[82px] items-center">
-                  <MemberAvatarStack members={selectedMembers.slice(0, 3)} />
+            <div className="grid grid-cols-[minmax(0,1fr)_50px] gap-2">
+              <div className="grid min-h-[66px] grid-cols-[58px_minmax(0,1fr)_auto_18px] items-center gap-1.5 rounded-[13px] border border-white/[0.06] bg-white/[0.018] px-2.5 py-2">
+                <div className="flex min-w-0 items-center">
+                  <MemberAvatarStack members={selectedMembers.slice(0, 2)} />
                 </div>
 
                 <a
@@ -503,14 +518,30 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                 {selectedActiveSession ? (
                   <a
                     href={`/${locale}/sessions/${selectedActiveSession.id}`}
-                    className="relative inline-flex h-9 shrink-0 items-center justify-center rounded-[10px] border border-white/[0.08] px-3 text-[12px] font-semibold text-[#e8f4f0]"
+                    className="relative inline-flex h-8 max-w-[74px] shrink-0 items-center justify-center rounded-[9px] border border-white/[0.08] px-2 text-[11px] font-semibold text-[#e8f4f0]"
                   >
                     <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-red-400" />
-                    {labels.joinLiveSession}
+                    {mobileJoinLabel}
                   </a>
                 ) : null}
 
-                <ChevronDown className="h-6 w-6 shrink-0 text-[#d7e3df]" aria-hidden="true" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen((current) => !current);
+                    setIsOverflowOpen(false);
+                  }}
+                  className="flex h-7 w-5 items-center justify-center text-[#d7e3df]"
+                  aria-expanded={isOpen}
+                  aria-label={labels.dropdownLabel}
+                >
+                  <ChevronDown
+                    className={`h-5 w-5 shrink-0 transition ${
+                      isOpen ? 'rotate-180' : ''
+                    }`}
+                    aria-hidden="true"
+                  />
+                </button>
               </div>
 
               <div ref={overflowMenuRef} className="relative">
@@ -520,11 +551,11 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                     setIsOverflowOpen((current) => !current);
                     setIsOpen(false);
                   }}
-                  className="flex h-full min-h-[74px] w-full items-center justify-center rounded-[14px] border border-white/[0.06] bg-white/[0.018] text-[#d7e3df] transition hover:border-white/[0.1] hover:bg-white/[0.04]"
+                  className="flex h-full min-h-[66px] w-full items-center justify-center rounded-[13px] border border-white/[0.06] bg-white/[0.018] text-[#d7e3df] transition hover:border-white/[0.1] hover:bg-white/[0.04]"
                   aria-expanded={isOverflowOpen}
                   aria-label={labels.dropdownLabel}
                 >
-                  <MoreHorizontal className="h-6 w-6" aria-hidden="true" />
+                  <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
                 </button>
                 {isOverflowOpen ? (
                   <div className="absolute right-0 z-30 mt-2 w-[min(270px,calc(100vw-32px))] rounded-[14px] border border-white/[0.09] bg-[#0d332d] p-2 shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
@@ -662,8 +693,8 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
                     {latestRecentSession.name ?? labels.nextSession}
                   </span>
                   <span className="mt-1 block truncate text-[12px] text-[#8fa7a2]">
-                    {latestRecentSession.questionCount ?? 0}{' '}
-                    {labels.questionsUnit} ·{' '}
+                    {latestRecentSession.questionCount ?? 0} Q
+                    ·{' '}
                     {formatSessionDate(latestRecentSession.scheduled_at, locale)}
                   </span>
                 </span>
@@ -1645,6 +1676,11 @@ function getGroupInitials(name: string) {
     .toUpperCase();
 
   return initials || 'AB';
+}
+
+function getCompactJoinLabel(label: string) {
+  const firstWord = label.trim().split(/\s+/)[0];
+  return firstWord || label;
 }
 
 function GroupOverflowItem({
