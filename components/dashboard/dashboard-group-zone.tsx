@@ -195,6 +195,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
     ? getLiveSessionProgress(selectedActiveSession)
     : null;
   const recentSessions = selectedGroup?.recentSessions?.slice(0, 3) ?? [];
+  const latestRecentSession = recentSessions[0] ?? null;
   const selectedSeatsAvailable = selectedGroup
     ? Math.max(0, selectedMaxMembers - selectedGroup.memberCount)
     : 0;
@@ -336,6 +337,346 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
 
   return (
     <section className="v11-card px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+      <div className="sm:hidden">
+        <div className="flex items-center justify-between gap-3">
+          <div ref={groupMenuRef} className="relative min-w-0 flex-1">
+            <button
+              type="button"
+              className={`flex max-w-full items-center gap-2 rounded-[10px] pr-2 text-left text-[32px] font-medium leading-none text-[#e8f4f0] transition hover:bg-white/[0.03] ${
+                isOpen ? 'bg-white/[0.03]' : ''
+              }`}
+              aria-expanded={isOpen}
+              onClick={() => {
+                setIsOpen((current) => !current);
+                setIsOverflowOpen(false);
+              }}
+            >
+              <span className="truncate">
+                {selectedGroup?.name ?? labels.noGroups}
+              </span>
+              <ChevronDown
+                className={`h-6 w-6 shrink-0 text-[#8fa7a2] transition ${
+                  isOpen ? 'rotate-180' : ''
+                }`}
+                aria-hidden="true"
+              />
+            </button>
+
+            {isOpen ? (
+              <div className="absolute left-0 z-30 mt-2 w-[min(330px,calc(100vw-40px))] overflow-hidden rounded-[14px] border border-white/[0.09] bg-[#0d332d] p-1.5 shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
+                <p className="px-3 pb-2 pt-2 text-[11px] font-medium uppercase tracking-[0.08em] text-[#6f8984]">
+                  {labels.groupsListTitle}
+                </p>
+                {groups.length > 0 ? (
+                  groups.map((group) => {
+                    const isSelected = selectedGroup?.id === group.id;
+
+                    return (
+                      <button
+                        key={group.id}
+                        type="button"
+                        className={`flex w-full items-center gap-3 rounded-[11px] px-3 py-2.5 text-left transition hover:bg-white/[0.04] ${
+                          isSelected ? 'bg-[#20D9A3]/10' : ''
+                        }`}
+                        onClick={() => {
+                          setSelectedGroupId(group.id);
+                          setIsOpen(false);
+                          setIsOverflowOpen(false);
+                        }}
+                      >
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] border border-white/[0.09] bg-[#22504a] text-[12px] font-semibold text-white">
+                          {getGroupInitials(group.name)}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex min-w-0 items-center gap-2">
+                            {group.hasLiveSession ? (
+                              <span className="live-dot" aria-hidden="true" />
+                            ) : null}
+                            <span className="truncate text-[15px] font-semibold text-[#e8f4f0]">
+                              {group.name}
+                            </span>
+                          </span>
+                          <span className="mt-1 block text-[13px] font-normal text-[#8fa7a2]">
+                            {group.memberCount} {labels.members} ·{' '}
+                            {group.memberCount}/{group.maxMembers ?? 5}{' '}
+                            {labels.seats}
+                          </span>
+                        </span>
+                        {isSelected ? (
+                          <Check
+                            className="h-4 w-4 shrink-0 text-[#20D9A3]"
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <p className="px-3 py-4 text-[14px] font-medium text-[#8fa7a2]">
+                    {labels.noGroups}
+                  </p>
+                )}
+                <a
+                  href={createGroupHref}
+                  className="mt-1 flex items-center gap-2 border-t border-white/[0.045] px-3 py-3 text-[14px] font-medium text-[#20D9A3] transition hover:bg-[#20D9A3]/[0.06]"
+                >
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  {labels.createAnother}
+                </a>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="flex shrink-0 items-center">
+            <MemberAvatarStack members={selectedMembers.slice(0, 3)} />
+            {selectedGroup &&
+            selectedGroup.memberCount > selectedMembers.slice(0, 3).length ? (
+              <span
+                className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#0e2c28] bg-white/[0.06] text-[11px] font-medium text-[#8fa7a2]"
+                style={{ marginLeft: -10 }}
+              >
+                +{selectedGroup.memberCount - selectedMembers.slice(0, 3).length}
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        {selectedGroup ? (
+          <div className="mt-5 space-y-3">
+            <div className="grid grid-cols-[minmax(0,1fr)_64px] gap-2">
+              <div className="grid min-h-[74px] grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-2 rounded-[14px] border border-white/[0.06] bg-white/[0.018] px-3 py-3">
+                <div className="flex min-w-[82px] items-center">
+                  <MemberAvatarStack members={selectedMembers.slice(0, 3)} />
+                </div>
+
+                <a
+                  href={
+                    selectedActiveSession
+                      ? `/${locale}/sessions/${selectedActiveSession.id}`
+                      : (sessionHref ?? `/${locale}/dashboard`)
+                  }
+                  onFocus={() =>
+                    prefetchSession(
+                      selectedActiveSession
+                        ? `/${locale}/sessions/${selectedActiveSession.id}`
+                        : sessionHref,
+                    )
+                  }
+                  onPointerEnter={() =>
+                    prefetchSession(
+                      selectedActiveSession
+                        ? `/${locale}/sessions/${selectedActiveSession.id}`
+                        : sessionHref,
+                    )
+                  }
+                  className="min-w-0"
+                >
+                  <span
+                    className={`block truncate text-[13px] font-medium ${
+                      selectedActiveSession ? 'text-[#20D9A3]' : 'text-[#8fa7a2]'
+                    }`}
+                  >
+                    {selectedActiveSession
+                      ? labels.live
+                      : selectedNextSession
+                        ? labels.nextSession
+                        : labels.noUpcomingSession}
+                  </span>
+                  <span className="mt-0.5 block truncate text-[15px] font-semibold text-[#e8f4f0]">
+                    {selectedActiveSession?.name ??
+                      selectedNextSession?.name ??
+                      labels.noUpcomingSession}
+                  </span>
+                  <span className="mt-0.5 block truncate text-[12px] text-[#8fa7a2]">
+                    {selectedActiveSession
+                      ? formatSessionDate(
+                          selectedActiveSession.started_at ??
+                            selectedActiveSession.scheduled_at,
+                          locale,
+                        )
+                      : selectedNextSession
+                        ? formatSessionDate(selectedNextSession.scheduled_at, locale)
+                        : `${selectedGroup.memberCount} ${labels.members}`}
+                  </span>
+                </a>
+
+                {selectedActiveSession ? (
+                  <a
+                    href={`/${locale}/sessions/${selectedActiveSession.id}`}
+                    className="relative inline-flex h-9 shrink-0 items-center justify-center rounded-[10px] border border-white/[0.08] px-3 text-[12px] font-semibold text-[#e8f4f0]"
+                  >
+                    <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-red-400" />
+                    {labels.joinLiveSession}
+                  </a>
+                ) : null}
+
+                <ChevronDown className="h-6 w-6 shrink-0 text-[#d7e3df]" aria-hidden="true" />
+              </div>
+
+              <div ref={overflowMenuRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOverflowOpen((current) => !current);
+                    setIsOpen(false);
+                  }}
+                  className="flex h-full min-h-[74px] w-full items-center justify-center rounded-[14px] border border-white/[0.06] bg-white/[0.018] text-[#d7e3df] transition hover:border-white/[0.1] hover:bg-white/[0.04]"
+                  aria-expanded={isOverflowOpen}
+                  aria-label={labels.dropdownLabel}
+                >
+                  <MoreHorizontal className="h-6 w-6" aria-hidden="true" />
+                </button>
+                {isOverflowOpen ? (
+                  <div className="absolute right-0 z-30 mt-2 w-[min(270px,calc(100vw-32px))] rounded-[14px] border border-white/[0.09] bg-[#0d332d] p-2 shadow-[0_24px_60px_rgba(0,0,0,0.5)]">
+                    <GroupOverflowItem
+                      icon={<UsersRound className="h-5 w-5" aria-hidden="true" />}
+                      label={labels.manageMembers}
+                      onClick={() => {
+                        setIsOverflowOpen(false);
+                        setActivePanel('members');
+                      }}
+                    />
+                    <GroupOverflowItem
+                      icon={<UserPlus className="h-5 w-5" aria-hidden="true" />}
+                      label={labels.invite}
+                      onClick={() => {
+                        setIsOverflowOpen(false);
+                        if (!canInviteSelectedGroup) {
+                          return;
+                        }
+                        setInviteError(null);
+                        setIsInviteOpen(true);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsOverflowOpen(false);
+                        window.dispatchEvent(
+                          new CustomEvent('activeboard:open-create-session', {
+                            detail: { groupId: selectedGroup.id },
+                          }),
+                        );
+                      }}
+                      className="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-[14px] font-medium text-[#e8f4f0] transition hover:bg-white/[0.04]"
+                    >
+                      <CalendarClock className="h-4 w-4 text-[#8fa7a2]" aria-hidden="true" />
+                      {labels.scheduleSession}
+                    </button>
+                    <GroupOverflowItem
+                      icon={<Bell className="h-5 w-5" aria-hidden="true" />}
+                      label={labels.groupNotifications}
+                      badge={
+                        unreadNotificationCount > 0
+                          ? String(Math.min(unreadNotificationCount, 99))
+                          : undefined
+                      }
+                      onClick={() => {
+                        setIsOverflowOpen(false);
+                        router.push(
+                          `/dashboard/groups/${selectedGroup.id}/notifications` as never,
+                        );
+                      }}
+                    />
+                    <GroupOverflowItem
+                      icon={<LogOut className="h-5 w-5" aria-hidden="true" />}
+                      label={labels.leaveGroup}
+                      onClick={() => {
+                        setIsOverflowOpen(false);
+                        setActivePanel('leave');
+                      }}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={!canStartSelectedGroup}
+              onClick={() => {
+                if (!canStartSelectedGroup) {
+                  return;
+                }
+                window.dispatchEvent(
+                  new CustomEvent('activeboard:open-create-session', {
+                    detail: { groupId: selectedGroup.id },
+                  }),
+                );
+              }}
+              className={`inline-flex h-[46px] w-full items-center justify-center gap-2 rounded-[12px] px-4 text-[15px] font-semibold transition ${
+                canStartSelectedGroup
+                  ? 'bg-[#20D9A3] text-[#062b22] hover:bg-[#2fe9b1]'
+                  : 'cursor-not-allowed bg-white/[0.16] text-[#8fa7a2]'
+              }`}
+            >
+              <CalendarClock className="h-4 w-4" aria-hidden="true" />
+              {labels.startSession}
+            </button>
+
+            <a
+              href={liveGroupsHref}
+              className={`flex min-h-[48px] items-center gap-3 rounded-[13px] border px-3 py-2 transition ${
+                canBrowseLookupLayer
+                  ? 'border-[#20D9A3]/25 bg-[#20D9A3]/[0.07]'
+                  : 'border-amber-300/20 bg-amber-300/[0.055]'
+              }`}
+            >
+              <span
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border ${
+                  canBrowseLookupLayer
+                    ? 'border-[#20D9A3]/25 bg-[#20D9A3]/[0.12] text-[#9FF0CE]'
+                    : 'border-amber-300/20 bg-amber-300/10 text-amber-100'
+                }`}
+              >
+                {canBrowseLookupLayer ? (
+                  <Search className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <Lock className="h-4 w-4" aria-hidden="true" />
+                )}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-[#e8f4f0]">
+                {canBrowseLookupLayer
+                  ? labels.exploreLiveGroupsTitle
+                  : labels.exploreLiveGroupsLockedTitle}
+              </span>
+              <ArrowRight className="h-4 w-4 shrink-0 text-[#9FF0CE]" aria-hidden="true" />
+            </a>
+
+            {latestRecentSession ? (
+              <a
+                href={`/${locale}/sessions/${latestRecentSession.id}`}
+                onFocus={() =>
+                  prefetchSession(`/${locale}/sessions/${latestRecentSession.id}`)
+                }
+                onPointerEnter={() =>
+                  prefetchSession(`/${locale}/sessions/${latestRecentSession.id}`)
+                }
+                className="flex items-center gap-3 rounded-[13px] border border-white/[0.055] bg-white/[0.018] px-3 py-3"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#20D9A3]/12 text-[#9FF0CE]">
+                  <ArrowRight className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[15px] font-semibold text-[#e8f4f0]">
+                    {latestRecentSession.name ?? labels.nextSession}
+                  </span>
+                  <span className="mt-1 block truncate text-[12px] text-[#8fa7a2]">
+                    {latestRecentSession.questionCount ?? 0}{' '}
+                    {labels.questionsUnit} ·{' '}
+                    {formatSessionDate(latestRecentSession.scheduled_at, locale)}
+                  </span>
+                </span>
+                <span className="rounded-full bg-[#20D9A3]/12 px-3 py-1 text-[12px] font-medium text-[#9FF0CE]">
+                  {selectedGroup.hasLiveSession ? labels.live : labels.completion}
+                </span>
+              </a>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="hidden sm:block">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 flex-wrap items-center gap-3 sm:gap-4">
           <div ref={groupMenuRef} className="relative">
@@ -824,6 +1165,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
           </a>
         </footer>
       ) : null}
+      </div>
 
       {selectedGroup && activePanel === 'members' ? (
         <Modal
