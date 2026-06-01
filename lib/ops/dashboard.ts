@@ -1,4 +1,5 @@
 import { APP_EVENTS } from '@/lib/logging/events';
+import { metadataHasSensitiveKeys } from '@/lib/privacy/log-metadata';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import type { Json } from '@/lib/supabase/types';
 
@@ -213,30 +214,9 @@ function buildStatus(errors: number, warnings: number): OpsDashboardRangeData['s
   };
 }
 
-function objectHasSensitiveKey(value: Json | undefined): boolean {
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-
-  if (Array.isArray(value)) {
-    return value.some((item) => objectHasSensitiveKey(item));
-  }
-
-  return Object.entries(value).some(([key, nested]) => {
-    const normalizedKey = key.toLowerCase();
-    return (
-      normalizedKey.includes('email') ||
-      normalizedKey.includes('name') ||
-      normalizedKey.includes('display') ||
-      normalizedKey.includes('avatar') ||
-      objectHasSensitiveKey(nested)
-    );
-  });
-}
-
 function buildPrivacyControls(logs: LogRow[]): OpsDashboardRangeData['privacyControls'] {
   const sensitiveMetadataCount = logs.filter((log) =>
-    objectHasSensitiveKey(log.metadata),
+    metadataHasSensitiveKeys(log.metadata),
   ).length;
   const privateTrackEventCount = logs.filter(
     (log) => log.event_name === APP_EVENTS.personalReflectionSaved,
@@ -261,8 +241,8 @@ function buildPrivacyControls(logs: LogRow[]): OpsDashboardRangeData['privacyCon
       title: 'No direct identifiers',
       detail:
         sensitiveMetadataCount > 0
-          ? `${sensitiveMetadataCount} recent log metadata payloads contain sensitive-looking keys.`
-          : 'Recent log metadata has no email/name/display/avatar keys in the selected scan.',
+          ? `${sensitiveMetadataCount} existing log metadata payloads contain sensitive-looking keys. New logs are sanitized at write time.`
+          : 'Recent log metadata has no sensitive keys in the selected scan.',
       tag: 'Safeguards',
     },
     {
