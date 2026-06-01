@@ -86,42 +86,111 @@ function VolumeChart({
 }: {
   rows: OpsDashboardRangeData['volumeSeries'];
 }) {
-  const maxStack = Math.max(...rows.map((row) => row.founderSignups + row.inviteeSignups), 1);
+  const maxStack = Math.max(
+    ...rows.map((row) => row.founderSignups + row.inviteeSignups),
+    1,
+  );
   const maxLine = Math.max(...rows.map((row) => row.signins), 1);
+  const yMax = Math.max(maxStack, maxLine, 1);
+  const yTicks = [yMax, Math.round(yMax * 0.66), Math.round(yMax * 0.33), 0]
+    .filter((value, index, values) => index === 0 || value !== values[index - 1])
+    .map((value) => Math.max(0, value));
+  const chart = {
+    left: 34,
+    right: 12,
+    top: 16,
+    bottom: 28,
+    width: 620,
+    height: 210,
+  };
+  const innerWidth = chart.width - chart.left - chart.right;
+  const innerHeight = chart.height - chart.top - chart.bottom;
+  const slot = innerWidth / Math.max(rows.length, 1);
+  const barWidth =
+    rows.length <= 8
+      ? Math.min(26, slot * 0.48)
+      : rows.length <= 14
+        ? Math.min(18, slot * 0.42)
+        : Math.min(12, slot * 0.36);
   const linePoints = rows
     .map((row, index) => {
-      const x = 38 + index * (540 / Math.max(rows.length - 1, 1));
-      const y = 175 - (row.signins / maxLine) * 140;
+      const x = chart.left + slot * index + slot / 2;
+      const y = chart.top + innerHeight - (row.signins / yMax) * innerHeight;
       return `${x},${y}`;
     })
     .join(' ');
 
   return (
     <svg className="h-[210px] w-full" viewBox="0 0 620 210" preserveAspectRatio="none">
-      {[0, 1, 2, 3].map((line) => {
-        const y = 20 + line * 48;
-        return <line key={line} x1="30" y1={y} x2="612" y2={y} stroke="#1f272f" strokeWidth="1" />;
+      {yTicks.map((tick) => {
+        const y = chart.top + innerHeight - (tick / yMax) * innerHeight;
+        return (
+          <g key={tick}>
+            <line
+              x1={chart.left}
+              y1={y}
+              x2={chart.width - chart.right}
+              y2={y}
+              stroke="#1f272f"
+              strokeWidth="1"
+            />
+            <text
+              x="3"
+              y={y + 3}
+              fill="#5d6b7a"
+              fontSize="9"
+              fontFamily="monospace"
+            >
+              {tick}
+            </text>
+          </g>
+        );
       })}
       {rows.map((row, index) => {
-        const slot = 540 / Math.max(rows.length, 1);
-        const x = 48 + index * slot;
-        const founderHeight = (row.founderSignups / maxStack) * 140;
-        const inviteeHeight = (row.inviteeSignups / maxStack) * 140;
+        const x = chart.left + slot * index + (slot - barWidth) / 2;
+        const founderHeight = (row.founderSignups / yMax) * innerHeight;
+        const inviteeHeight = (row.inviteeSignups / yMax) * innerHeight;
+        const baseY = chart.top + innerHeight;
         return (
-          <g key={row.label}>
-            <rect x={x} y={176 - founderHeight} width="22" height={founderHeight} fill="#2dd4bf" opacity="0.85" rx="1" />
-            <rect x={x} y={176 - founderHeight - inviteeHeight} width="22" height={inviteeHeight} fill="#6aa9f0" opacity="0.85" rx="1" />
-            <text x={x + 11} y="202" fill="#5d6b7a" fontSize="9" fontFamily="monospace" textAnchor="middle">
-              {row.label}
-            </text>
+          <g key={`${row.label}-${index}`}>
+            <rect
+              x={x}
+              y={baseY - founderHeight}
+              width={barWidth}
+              height={founderHeight}
+              fill="#2dd4bf"
+              opacity="0.85"
+              rx="1"
+            />
+            <rect
+              x={x}
+              y={baseY - founderHeight - inviteeHeight}
+              width={barWidth}
+              height={inviteeHeight}
+              fill="#6aa9f0"
+              opacity="0.85"
+              rx="1"
+            />
+            {row.showLabel ? (
+              <text
+                x={x + barWidth / 2}
+                y="202"
+                fill="#5d6b7a"
+                fontSize="9"
+                fontFamily="monospace"
+                textAnchor="middle"
+              >
+                {row.label}
+              </text>
+            ) : null}
           </g>
         );
       })}
       <polyline fill="none" stroke="#8a98a8" strokeWidth="1.8" strokeDasharray="2 3" points={linePoints} />
       {rows.map((row, index) => {
-        const x = 38 + index * (540 / Math.max(rows.length - 1, 1));
-        const y = 175 - (row.signins / maxLine) * 140;
-        return <circle key={`${row.label}-signin`} cx={x} cy={y} r="2.2" fill="#dde6ee" />;
+        const x = chart.left + slot * index + slot / 2;
+        const y = chart.top + innerHeight - (row.signins / yMax) * innerHeight;
+        return <circle key={`${row.label}-${index}-signin`} cx={x} cy={y} r="2.2" fill="#dde6ee" />;
       })}
     </svg>
   );

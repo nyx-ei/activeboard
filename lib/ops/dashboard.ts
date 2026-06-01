@@ -49,6 +49,7 @@ export type OpsDashboardRangeData = {
   }>;
   volumeSeries: Array<{
     label: string;
+    showLabel: boolean;
     founderSignups: number;
     inviteeSignups: number;
     signins: number;
@@ -169,6 +170,7 @@ function buildVolumeSeries(logs: LogRow[], range: OpsRange, now: Date) {
 
     return {
       label: bucketLabel(bucketStart, range),
+      showLabel: range === '24h' || range === '7d',
       founderSignups: bucketLogs.filter(
         (log) => log.event_name === APP_EVENTS.groupCreated,
       ).length,
