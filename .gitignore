@@ -6,6 +6,7 @@ node_modules
 out
 ActiveBoard_Epics_Stories.md
 Progression.html
+ActiveBoard_Ops_Dashboard.html
 
 .env
 .env.local
