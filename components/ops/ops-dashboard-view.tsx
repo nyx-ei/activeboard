@@ -248,21 +248,32 @@ function pct(value: number, max: number) {
   return max <= 0 ? 0 : Math.round((value / max) * 100);
 }
 
-function PipeItem({ icon, title, detail, tag, review = false }: { icon: string; title: string; detail: string; tag: string; review?: boolean }) {
+function PipeItem({
+  control,
+}: {
+  control: OpsDashboardRangeData['privacyControls'][number];
+}) {
+  const isOk = control.status === 'ok';
+  const isCrit = control.status === 'crit';
+
   return (
     <div className="grid grid-cols-[auto_1fr_auto] items-start gap-3 border-b border-[#1f272f] py-2.5 last:border-b-0">
       <div
         className={`${mono} grid h-[22px] w-[22px] place-items-center rounded-md border text-[11px] font-semibold ${
-          review ? 'border-[#6b561d] bg-[#f4b942]/10 text-[#f4b942]' : 'border-[#155e57] bg-[#2dd4bf]/10 text-[#2dd4bf]'
+          isCrit
+            ? 'border-[#5a2b2a] bg-[#f06560]/10 text-[#f06560]'
+            : isOk
+              ? 'border-[#155e57] bg-[#2dd4bf]/10 text-[#2dd4bf]'
+              : 'border-[#6b561d] bg-[#f4b942]/10 text-[#f4b942]'
         }`}
       >
-        {review ? icon : <Check className="h-3.5 w-3.5" aria-hidden="true" />}
+        {isOk ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : isCrit ? '!' : '?'}
       </div>
       <div>
-        <div className="text-[12.5px] font-medium text-[#dde6ee]">{title}</div>
-        <div className="mt-0.5 text-[11px] leading-5 text-[#8a98a8]">{detail}</div>
+        <div className="text-[12.5px] font-medium text-[#dde6ee]">{control.title}</div>
+        <div className="mt-0.5 text-[11px] leading-5 text-[#8a98a8]">{control.detail}</div>
       </div>
-      <div className={`${mono} mt-0.5 whitespace-nowrap rounded border border-[#27313c] px-1.5 py-0.5 text-[9px] text-[#5d6b7a]`}>{tag}</div>
+      <div className={`${mono} mt-0.5 whitespace-nowrap rounded border border-[#27313c] px-1.5 py-0.5 text-[9px] text-[#5d6b7a]`}>{control.tag}</div>
     </div>
   );
 }
@@ -406,12 +417,9 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
 
           <article className={`${panel} p-4`}>
             <PanelHeader title="PIPEDA posture" src="privacy-by-design" />
-            <PipeItem icon="" title="Aggregate-only display" detail="No individual records on this surface: counts, rates, distributions." tag="Princ. 4" />
-            <PipeItem icon="" title="No direct identifiers" detail="Emails, names, and user IDs are not rendered in this internal view." tag="Safeguards" />
-            <PipeItem icon="" title="Private track excluded" detail="Personal reflections and private notes never enter ops analytics." tag="Limit use" />
-            <PipeItem icon="" title="Role-gated + access logged" detail="Route is authenticated and can be restricted with OPS_DASHBOARD_ALLOWED_EMAILS." tag="Accountab." />
-            <PipeItem icon="!" title="Retention windows" detail="Raw events and rollups should be confirmed against Law 25 and team policy." tag="Retention" review />
-            <PipeItem icon="!" title="Consent basis" detail="Security metrics are legitimate purpose; behavioural analytics need consent review." tag="Consent" review />
+            {rangeData.privacyControls.map((control) => (
+              <PipeItem key={control.id} control={control} />
+            ))}
           </article>
         </section>
 

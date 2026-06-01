@@ -1,5 +1,6 @@
 import { APP_EVENTS } from '@/lib/logging/events';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import type { Json } from '@/lib/supabase/types';
 
 export type OpsRange = '24h' | '7d' | '14d' | '30d';
 
@@ -9,6 +10,7 @@ type LogRow = {
   event_name: string;
   level: 'info' | 'warn' | 'error';
   created_at: string;
+  metadata: Json;
 };
 type StateEventRow = {
   event_type:
@@ -70,6 +72,13 @@ export type OpsDashboardRangeData = {
     label: string;
     count: number;
     tone: 'warn' | 'ok' | 'crit';
+  }>;
+  privacyControls: Array<{
+    id: string;
+    status: 'ok' | 'review' | 'crit';
+    title: string;
+    detail: string;
+    tag: string;
   }>;
 };
 
@@ -202,6 +211,99 @@ function buildStatus(errors: number, warnings: number): OpsDashboardRangeData['s
     label: 'all systems nominal',
     summary: 'No warning or error events in selected window',
   };
+}
+
+function objectHasSensitiveKey(value: Json | undefined): boolean {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  if (Array.isArray(value)) {
+    return value.some((item) => objectHasSensitiveKey(item));
+  }
+
+  return Object.entries(value).some(([key, nested]) => {
+    const normalizedKey = key.toLowerCase();
+    return (
+      normalizedKey.includes('email') ||
+      normalizedKey.includes('name') ||
+      normalizedKey.includes('display') ||
+      normalizedKey.includes('avatar') ||
+      objectHasSensitiveKey(nested)
+    );
+  });
+}
+
+function buildPrivacyControls(logs: LogRow[]): OpsDashboardRangeData['privacyControls'] {
+  const sensitiveMetadataCount = logs.filter((log) =>
+    objectHasSensitiveKey(log.metadata),
+  ).length;
+  const privateTrackEventCount = logs.filter(
+    (log) => log.event_name === APP_EVENTS.personalReflectionSaved,
+  ).length;
+  const allowlistConfigured = Boolean(
+    process.env.OPS_DASHBOARD_ALLOWED_EMAILS?.trim(),
+  );
+  const retentionDays = Number(process.env.OPS_RAW_EVENT_RETENTION_DAYS);
+  const consentMode = process.env.OPS_ANALYTICS_CONSENT_MODE?.trim();
+
+  return [
+    {
+      id: 'aggregate-only',
+      status: 'ok',
+      title: 'Aggregate-only display',
+      detail: 'This surface renders counts, rates, funnels, and distributions only.',
+      tag: 'Princ. 4',
+    },
+    {
+      id: 'no-direct-identifiers',
+      status: sensitiveMetadataCount > 0 ? 'crit' : 'ok',
+      title: 'No direct identifiers',
+      detail:
+        sensitiveMetadataCount > 0
+          ? `${sensitiveMetadataCount} recent log metadata payloads contain sensitive-looking keys.`
+          : 'Recent log metadata has no email/name/display/avatar keys in the selected scan.',
+      tag: 'Safeguards',
+    },
+    {
+      id: 'private-track',
+      status: privateTrackEventCount > 0 ? 'crit' : 'ok',
+      title: 'Private track excluded',
+      detail:
+        privateTrackEventCount > 0
+          ? `${privateTrackEventCount} private reflection events appeared in ops logs.`
+          : 'No personal reflection events are included in the ops analytics window.',
+      tag: 'Limit use',
+    },
+    {
+      id: 'access-control',
+      status: allowlistConfigured ? 'ok' : 'review',
+      title: 'Role-gated + access controlled',
+      detail: allowlistConfigured
+        ? 'OPS_DASHBOARD_ALLOWED_EMAILS is configured for this deployment.'
+        : 'Authenticated users can access Ops until OPS_DASHBOARD_ALLOWED_EMAILS is configured.',
+      tag: 'Accountab.',
+    },
+    {
+      id: 'retention',
+      status: Number.isFinite(retentionDays) && retentionDays > 0 ? 'ok' : 'review',
+      title: 'Retention windows',
+      detail:
+        Number.isFinite(retentionDays) && retentionDays > 0
+          ? `Raw ops event retention is configured for ${retentionDays} days.`
+          : 'Set OPS_RAW_EVENT_RETENTION_DAYS to document the raw event retention window.',
+      tag: 'Retention',
+    },
+    {
+      id: 'consent',
+      status: consentMode ? 'ok' : 'review',
+      title: 'Consent basis',
+      detail: consentMode
+        ? `Analytics consent mode configured: ${consentMode}.`
+        : 'Set OPS_ANALYTICS_CONSENT_MODE after privacy/legal sign-off.',
+      tag: 'Consent',
+    },
+  ];
 }
 
 function buildRangeData({
@@ -401,6 +503,7 @@ function buildRangeData({
       { label: 'Subscribed -> Active', count: subscribedAfter100, tone: 'ok' },
       { label: 'Locked (unpaid)', count: lockedUsers, tone: 'crit' },
     ],
+    privacyControls: buildPrivacyControls(windowLogs),
   };
 }
 
@@ -435,7 +538,7 @@ export async function getOpsDashboardData(): Promise<OpsDashboardData> {
     admin
       .schema('public')
       .from('app_logs')
-      .select('id,event_name,level,created_at')
+      .select('id,event_name,level,created_at,metadata')
       .gte('created_at', thirtyDaysAgo)
       .order('created_at', { ascending: false })
       .limit(2000),
