@@ -1,7 +1,14 @@
-import { ArrowLeft } from 'lucide-react';
+'use client';
+
+import { useMemo, useState } from 'react';
+import { ArrowLeft, Check } from 'lucide-react';
 
 import { Link } from '@/i18n/navigation';
-import type { OpsDashboardData } from '@/lib/ops/dashboard';
+import type {
+  OpsDashboardData,
+  OpsDashboardRangeData,
+  OpsRange,
+} from '@/lib/ops/dashboard';
 
 type OpsDashboardViewProps = {
   backHref: string;
@@ -42,7 +49,7 @@ function Spark({ values, tone }: { values: number[]; tone: 'ok' | 'warn' | 'crit
   );
 }
 
-function KpiCard({ item }: { item: OpsDashboardData['kpis'][number] }) {
+function KpiCard({ item }: { item: OpsDashboardRangeData['kpis'][number] }) {
   return (
     <article className={`${panel} px-[15px] py-3.5`}>
       <div className="mb-2 flex items-center gap-1.5 text-[11px] uppercase tracking-[0.06em] text-[#8a98a8]">
@@ -74,7 +81,11 @@ function PanelHeader({ title, src }: { title: string; src?: string }) {
   );
 }
 
-function VolumeChart({ rows }: { rows: OpsDashboardData['volumeSeries'] }) {
+function VolumeChart({
+  rows,
+}: {
+  rows: OpsDashboardRangeData['volumeSeries'];
+}) {
   const maxStack = Math.max(...rows.map((row) => row.founderSignups + row.inviteeSignups), 1);
   const maxLine = Math.max(...rows.map((row) => row.signins), 1);
   const linePoints = rows
@@ -116,7 +127,11 @@ function VolumeChart({ rows }: { rows: OpsDashboardData['volumeSeries'] }) {
   );
 }
 
-function IncidentLog({ incidents }: { incidents: OpsDashboardData['incidents'] }) {
+function IncidentLog({
+  incidents,
+}: {
+  incidents: OpsDashboardRangeData['incidents'];
+}) {
   return (
     <div className="flex flex-col">
       {incidents.map((incident) => (
@@ -147,7 +162,11 @@ function IncidentLog({ incidents }: { incidents: OpsDashboardData['incidents'] }
   );
 }
 
-function SessionFunnel({ rows }: { rows: OpsDashboardData['sessionFunnel'] }) {
+function SessionFunnel({
+  rows,
+}: {
+  rows: OpsDashboardRangeData['sessionFunnel'];
+}) {
   const max = Math.max(...rows.map((row) => row.count), 1);
 
   return (
@@ -237,7 +256,7 @@ function PipeItem({ icon, title, detail, tag, review = false }: { icon: string; 
           review ? 'border-[#6b561d] bg-[#f4b942]/10 text-[#f4b942]' : 'border-[#155e57] bg-[#2dd4bf]/10 text-[#2dd4bf]'
         }`}
       >
-        {icon}
+        {review ? icon : <Check className="h-3.5 w-3.5" aria-hidden="true" />}
       </div>
       <div>
         <div className="text-[12.5px] font-medium text-[#dde6ee]">{title}</div>
@@ -249,8 +268,40 @@ function PipeItem({ icon, title, detail, tag, review = false }: { icon: string; 
 }
 
 export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
+  const [selectedRange, setSelectedRange] = useState<OpsRange>(
+    data.defaultRange,
+  );
+  const [incidentMode, setIncidentMode] = useState<'all' | 'status'>('all');
+  const rangeData = data.ranges[selectedRange];
+  const rangeEntries = useMemo(
+    () =>
+      (Object.entries(data.ranges) as Array<
+        [OpsRange, OpsDashboardData['ranges'][OpsRange]]
+      >),
+    [data.ranges],
+  );
+  const displayedIncidents =
+    incidentMode === 'status'
+      ? rangeData.status.tone === 'ok'
+        ? rangeData.incidents.slice(0, 1)
+        : rangeData.incidents.filter(
+            (incident) => incident.status === 'monitoring',
+          )
+      : rangeData.incidents;
+
   return (
-    <main className="min-h-screen bg-[#0c1014] bg-[radial-gradient(1200px_600px_at_80%_-10%,rgba(45,212,191,.06),transparent_60%),radial-gradient(900px_500px_at_0%_110%,rgba(106,169,240,.05),transparent_60%)] px-[22px] py-[22px] text-[#dde6ee]">
+    <main data-ops-dashboard className="min-h-screen bg-[#0c1014] bg-[radial-gradient(1200px_600px_at_80%_-10%,rgba(45,212,191,.06),transparent_60%),radial-gradient(900px_500px_at_0%_110%,rgba(106,169,240,.05),transparent_60%)] px-[22px] py-[22px] text-[#dde6ee]">
+      <style jsx global>{`
+        body:has([data-ops-dashboard]) > div > div > header {
+          display: none;
+        }
+        body:has([data-ops-dashboard]) > div,
+        body:has([data-ops-dashboard]) > div > div {
+          max-width: none;
+          padding: 0;
+          gap: 0;
+        }
+      `}</style>
       <div className="mx-auto max-w-[1240px]">
         <div className="mb-4">
           <Link href={backHref} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#27313c] bg-[#141a21] px-3 text-[12px] font-medium text-[#8a98a8] transition hover:border-[#155e57] hover:text-[#2dd4bf]">
@@ -273,22 +324,40 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
             <span className={`${mono} inline-flex items-center gap-2 rounded-full border border-[#155e57] bg-[#141a21] px-3 py-1.5 text-[11px] text-[#2dd4bf]`}>
               <Dot tone="ok" /> PIPEDA - aggregate-only
             </span>
-            <span className={`${mono} inline-flex items-center gap-2 rounded-full border border-[#27313c] bg-[#141a21] px-3 py-1.5 text-[11px] text-[#8a98a8]`}>
-              <Dot tone={data.incidents.some((incident) => incident.status === 'monitoring') ? 'warn' : 'ok'} />
-              {data.incidents.some((incident) => incident.status === 'monitoring') ? 'monitoring active' : 'all systems nominal'}
-            </span>
+            <button
+              type="button"
+              onClick={() =>
+                setIncidentMode((current) =>
+                  current === 'status' ? 'all' : 'status',
+                )
+              }
+              className={`${mono} inline-flex items-center gap-2 rounded-full border border-[#27313c] bg-[#141a21] px-3 py-1.5 text-[11px] text-[#8a98a8] transition hover:border-[#155e57] hover:text-[#2dd4bf]`}
+              title={rangeData.status.summary}
+            >
+              <Dot tone={rangeData.status.tone} />
+              {rangeData.status.label}
+            </button>
             <div className="inline-flex overflow-hidden rounded-lg border border-[#27313c]">
-              {['24H', '7D', '14D', '30D'].map((range) => (
-                <span key={range} className={`${mono} border-r border-[#27313c] px-3 py-1.5 text-[11px] last:border-r-0 ${range === '7D' ? 'bg-[#1a222b] text-[#2dd4bf]' : 'text-[#8a98a8]'}`}>
-                  {range}
-                </span>
+              {rangeEntries.map(([range, item]) => (
+                <button
+                  key={range}
+                  type="button"
+                  onClick={() => setSelectedRange(range)}
+                  className={`${mono} border-r border-[#27313c] px-3 py-1.5 text-[11px] transition last:border-r-0 ${
+                    range === selectedRange
+                      ? 'bg-[#1a222b] text-[#2dd4bf]'
+                      : 'text-[#8a98a8] hover:bg-[#1a222b]/60 hover:text-[#dde6ee]'
+                  }`}
+                >
+                  {item.label}
+                </button>
               ))}
             </div>
           </div>
         </header>
 
         <section className="mb-3.5 grid gap-3.5 lg:grid-cols-5 md:grid-cols-2">
-          {data.kpis.map((item) => <KpiCard key={item.label} item={item} />)}
+          {rangeData.kpis.map((item) => <KpiCard key={item.label} item={item} />)}
         </section>
 
         <section className="mb-3.5 grid gap-3.5 lg:grid-cols-[1.55fr_1fr]">
@@ -301,7 +370,7 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                 <span><i className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm bg-[#5d6b7a]" />Sign-ins</span>
               </div>
             </div>
-            <VolumeChart rows={data.volumeSeries} />
+            <VolumeChart rows={rangeData.volumeSeries} />
             <p className={`${mono} mt-2.5 text-[10px] leading-5 text-[#5d6b7a]`}>
               Sign-ups split by onboarding path. Sign-ins from auth callback events. Counts only; no identifiers leave the auth layer.
             </p>
@@ -309,19 +378,19 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
 
           <article className={`${panel} p-4`}>
             <PanelHeader title="Outages & incidents" src="app_logs" />
-            <IncidentLog incidents={data.incidents} />
+            <IncidentLog incidents={displayedIncidents} />
           </article>
         </section>
 
         <section className={`${panel} mb-3.5 p-4`}>
-          <PanelHeader title="User flow - session funnel & where outages land" src="app events x app_logs - 7d cohort" />
-          <SessionFunnel rows={data.sessionFunnel} />
+          <PanelHeader title="User flow - session funnel & where outages land" src={`app events x app_logs - ${rangeData.label} cohort`} />
+          <SessionFunnel rows={rangeData.sessionFunnel} />
         </section>
 
         <section className="mb-3.5 grid gap-3.5 lg:grid-cols-3">
           <article className={`${panel} p-4`}>
-            <PanelHeader title="Activation funnel" src="auth + sessions - 7d" />
-            <MiniFunnel rows={data.activationFunnel} />
+            <PanelHeader title="Activation funnel" src={`auth + sessions - ${rangeData.label}`} />
+            <MiniFunnel rows={rangeData.activationFunnel} />
             <p className={`${mono} mt-2.5 text-[10px] leading-5 text-[#5d6b7a]`}>
               Founder and invitee paths merge at Group ready. All rows are aggregate counts from application events.
             </p>
@@ -329,7 +398,7 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
 
           <article className={`${panel} p-4`}>
             <PanelHeader title="85 -> 100 -> subscribe" src="questions_answered" />
-            <MiniFunnel rows={data.subscriptionFunnel} tone="warn" />
+            <MiniFunnel rows={rangeData.subscriptionFunnel} tone="warn" />
             <p className={`${mono} mt-2.5 text-[10px] leading-5 text-[#5d6b7a]`}>
               Trial to Active conversion is computed only from aggregate user tier and question counters.
             </p>
@@ -337,10 +406,10 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
 
           <article className={`${panel} p-4`}>
             <PanelHeader title="PIPEDA posture" src="privacy-by-design" />
-            <PipeItem icon="OK" title="Aggregate-only display" detail="No individual records on this surface: counts, rates, distributions." tag="Princ. 4" />
-            <PipeItem icon="OK" title="No direct identifiers" detail="Emails, names, and user IDs are not rendered in this internal view." tag="Safeguards" />
-            <PipeItem icon="OK" title="Private track excluded" detail="Personal reflections and private notes never enter ops analytics." tag="Limit use" />
-            <PipeItem icon="OK" title="Role-gated + access logged" detail="Route is authenticated and can be restricted with OPS_DASHBOARD_ALLOWED_EMAILS." tag="Accountab." />
+            <PipeItem icon="" title="Aggregate-only display" detail="No individual records on this surface: counts, rates, distributions." tag="Princ. 4" />
+            <PipeItem icon="" title="No direct identifiers" detail="Emails, names, and user IDs are not rendered in this internal view." tag="Safeguards" />
+            <PipeItem icon="" title="Private track excluded" detail="Personal reflections and private notes never enter ops analytics." tag="Limit use" />
+            <PipeItem icon="" title="Role-gated + access logged" detail="Route is authenticated and can be restricted with OPS_DASHBOARD_ALLOWED_EMAILS." tag="Accountab." />
             <PipeItem icon="!" title="Retention windows" detail="Raw events and rollups should be confirmed against Law 25 and team policy." tag="Retention" review />
             <PipeItem icon="!" title="Consent basis" detail="Security metrics are legitimate purpose; behavioural analytics need consent review." tag="Consent" review />
           </article>
