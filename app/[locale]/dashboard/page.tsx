@@ -20,6 +20,7 @@ import {
   getDashboardPerformanceData,
   getDashboardSessionsData,
 } from '@/lib/demo/data';
+import { Link } from '@/i18n/navigation';
 
 import {
   cancelDashboardSessionAction,
@@ -38,6 +39,25 @@ type DashboardPageProps = {
     sessionJoinFeedback?: string;
   };
 };
+
+function canAccessOpsDashboard(email: string | undefined) {
+  const allowlist = process.env.OPS_DASHBOARD_ALLOWED_EMAILS;
+
+  if (!allowlist) {
+    return true;
+  }
+
+  const normalizedEmail = email?.trim().toLowerCase();
+  if (!normalizedEmail) {
+    return false;
+  }
+
+  return allowlist
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean)
+    .includes(normalizedEmail);
+}
 
 export default async function DashboardPage({
   params,
@@ -72,6 +92,7 @@ export default async function DashboardPage({
   const trialProgress = getTrialProgressSnapshot(
     billingSnapshot?.questions_answered ?? 0,
   );
+  const canOpenOpsDashboard = canAccessOpsDashboard(user.email);
 
   const liveGroupIds = new Set(
     (sessionsData?.activeSessions ?? []).map((session) => session.group_id),
@@ -395,6 +416,16 @@ export default async function DashboardPage({
       />
 
       <section className="mx-auto w-full max-w-[1440px] space-y-[14px] px-3 py-0 sm:space-y-[18px] sm:px-2">
+        {canOpenOpsDashboard ? (
+          <div className="flex justify-end">
+            <Link
+              href="/ops"
+              className="inline-flex h-9 items-center rounded-[9px] border border-white/[0.07] bg-white/[0.025] px-3 text-[12px] font-semibold text-[#9FF0CE] transition hover:border-[#20D9A3]/35 hover:bg-[#20D9A3]/10"
+            >
+              Ops dashboard
+            </Link>
+          </div>
+        ) : null}
         <DashboardViewShell
           sessionsProps={sessionsProps}
           performanceProps={performanceProps}

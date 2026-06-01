@@ -4,11 +4,14 @@ import type { AppLocale } from '@/i18n/routing';
 import { isFeatureEnabled, type FeatureFlagKey } from '@/lib/features/flags';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import type { Json } from '@/lib/supabase/types';
+import {
+  sanitizeLogMetadataRecord,
+  type LogMetadataInput,
+} from '@/lib/privacy/log-metadata';
 
 type LogLevel = 'info' | 'warn' | 'error';
 
-type LogMetadata = Record<string, Json | undefined>;
+type LogMetadata = LogMetadataInput;
 
 type LogAppEventInput = {
   eventName: string;
@@ -21,14 +24,6 @@ type LogAppEventInput = {
   flagKey?: FeatureFlagKey;
   useAdmin?: boolean;
 };
-
-function sanitizeMetadata(metadata: LogMetadata | undefined): Json {
-  if (!metadata) {
-    return {};
-  }
-
-  return Object.fromEntries(Object.entries(metadata).filter(([, value]) => value !== undefined));
-}
 
 function detectDeviceType(userAgent: string) {
   const normalized = userAgent.toLowerCase();
@@ -105,7 +100,7 @@ export async function logAppEvent({
     user_id: userId,
     group_id: groupId,
     session_id: sessionId,
-    metadata: sanitizeMetadata({ ...requestMetadata, ...metadata }),
+    metadata: sanitizeLogMetadataRecord({ ...requestMetadata, ...metadata }),
   });
 
   if (error && process.env.NODE_ENV !== 'production') {
