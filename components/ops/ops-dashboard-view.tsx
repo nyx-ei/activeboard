@@ -1,10 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   CalendarClock,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   Search,
   UserRoundCheck,
@@ -30,6 +32,7 @@ const panel =
   'rounded-[10px] border border-[#24443a] bg-[#102820]/82 shadow-[inset_0_1px_0_rgba(255,255,255,.035)]';
 const muted = 'text-[#9fb8b0]';
 const mono = 'font-mono tracking-[0.02em]';
+const MEMBER_PAGE_SIZE = 10;
 
 const statusLabels: Record<OpsAdoptionStatus, string> = {
   active: 'Actif',
@@ -120,6 +123,7 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
   const [selectedGroupId, setSelectedGroupId] = useState('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
+  const [memberPage, setMemberPage] = useState(1);
   const rangeData = data.ranges[selectedRange];
   const rangeEntries = Object.entries(data.ranges) as Array<
     [OpsRange, OpsDashboardData['ranges'][OpsRange]]
@@ -148,6 +152,31 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
       );
     });
   }, [rangeData.members, search, selectedGroupId, statusFilter]);
+
+  const memberPageCount = Math.max(
+    1,
+    Math.ceil(filteredMembers.length / MEMBER_PAGE_SIZE),
+  );
+  const safeMemberPage = Math.min(memberPage, memberPageCount);
+  const memberPageStart = (safeMemberPage - 1) * MEMBER_PAGE_SIZE;
+  const paginatedMembers = filteredMembers.slice(
+    memberPageStart,
+    memberPageStart + MEMBER_PAGE_SIZE,
+  );
+  const visibleMemberStart =
+    filteredMembers.length === 0 ? 0 : memberPageStart + 1;
+  const visibleMemberEnd = Math.min(
+    memberPageStart + MEMBER_PAGE_SIZE,
+    filteredMembers.length,
+  );
+
+  useEffect(() => {
+    setMemberPage(1);
+  }, [search, selectedGroupId, selectedRange, statusFilter]);
+
+  useEffect(() => {
+    setMemberPage((current) => Math.min(current, memberPageCount));
+  }, [memberPageCount]);
 
   const focusGroups = rangeData.groups.slice(0, 6);
 
@@ -378,7 +407,7 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#234238]">
-                  {filteredMembers.map((member) => (
+                  {paginatedMembers.map((member) => (
                     <tr key={member.id} className="transition hover:bg-[#123a31]/60">
                       <td className="max-w-[180px] truncate px-4 py-4 text-sm font-bold text-white">
                         {member.groupName}
@@ -423,7 +452,7 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
             </div>
 
             <div className="grid gap-3 p-4 lg:hidden">
-              {filteredMembers.map((member) => (
+              {paginatedMembers.map((member) => (
                 <article key={member.id} className="rounded-lg border border-[#234238] bg-[#0b241f] p-3">
                   <div className="mb-3 flex items-start justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-3">
@@ -450,6 +479,41 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                 </article>
               ))}
             </div>
+
+            {filteredMembers.length > 0 ? (
+              <div className="flex flex-col gap-3 border-t border-[#234238] px-4 py-3 text-sm text-[#9fb8b0] sm:flex-row sm:items-center sm:justify-between">
+                <span>
+                  {visibleMemberStart}-{visibleMemberEnd} sur {filteredMembers.length} membres
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMemberPage((current) => Math.max(1, current - 1))}
+                    disabled={safeMemberPage <= 1}
+                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#24443a] bg-[#0b241f] px-3 font-bold text-[#c9dbd6] transition hover:border-[#27e0b4] hover:text-[#27e0b4] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#24443a] disabled:hover:text-[#c9dbd6]"
+                  >
+                    <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                    Précédent
+                  </button>
+                  <span className={`${mono} min-w-16 text-center text-xs text-[#7fa096]`}>
+                    {safeMemberPage}/{memberPageCount}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setMemberPage((current) =>
+                        Math.min(memberPageCount, current + 1),
+                      )
+                    }
+                    disabled={safeMemberPage >= memberPageCount}
+                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#24443a] bg-[#0b241f] px-3 font-bold text-[#c9dbd6] transition hover:border-[#27e0b4] hover:text-[#27e0b4] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#24443a] disabled:hover:text-[#c9dbd6]"
+                  >
+                    Suivant
+                    <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
             {filteredMembers.length === 0 ? (
               <div className={`border-t border-[#234238] p-6 text-center text-sm ${muted}`}>
