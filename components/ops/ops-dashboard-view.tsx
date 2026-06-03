@@ -120,7 +120,7 @@ function MemberAvatar({ member }: { member: OpsAdoptionMember }) {
 
 export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
   const [selectedRange, setSelectedRange] = useState<OpsRange>(data.defaultRange);
-  const [selectedGroupId, setSelectedGroupId] = useState('all');
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
   const [memberPage, setMemberPage] = useState(1);
@@ -128,14 +128,57 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
   const rangeEntries = Object.entries(data.ranges) as Array<
     [OpsRange, OpsDashboardData['ranges'][OpsRange]]
   >;
+  const selectedGroupSet = useMemo(
+    () => new Set(selectedGroupIds),
+    [selectedGroupIds],
+  );
+  const hasGroupSelection = selectedGroupIds.length > 0;
+  const scopedGroups = useMemo(
+    () =>
+      hasGroupSelection
+        ? rangeData.groups.filter((group) => selectedGroupSet.has(group.id))
+        : rangeData.groups,
+    [hasGroupSelection, rangeData.groups, selectedGroupSet],
+  );
+  const scopedMembers = useMemo(
+    () =>
+      hasGroupSelection
+        ? rangeData.members.filter((member) => selectedGroupSet.has(member.groupId))
+        : rangeData.members,
+    [hasGroupSelection, rangeData.members, selectedGroupSet],
+  );
+  const scopedSummary = useMemo(
+    () => ({
+      groupsCount: scopedGroups.length,
+      membersCount: scopedMembers.length,
+      activeMembersCount: scopedMembers.filter((member) => member.status === 'active')
+        .length,
+      followUpMembersCount: scopedMembers.filter(
+        (member) => member.status === 'follow_up',
+      ).length,
+      inactiveMembersCount: scopedMembers.filter(
+        (member) => member.status === 'inactive',
+      ).length,
+      questionsDone: scopedMembers.reduce(
+        (sum, member) => sum + member.questionsDone,
+        0,
+      ),
+      questionsReviewed: scopedMembers.reduce(
+        (sum, member) => sum + member.questionsReviewed,
+        0,
+      ),
+      scheduledSessions: scopedGroups.reduce(
+        (sum, group) => sum + group.scheduledSessions,
+        0,
+      ),
+    }),
+    [scopedGroups, scopedMembers],
+  );
 
   const filteredMembers = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
 
-    return rangeData.members.filter((member) => {
-      if (selectedGroupId !== 'all' && member.groupId !== selectedGroupId) {
-        return false;
-      }
+    return scopedMembers.filter((member) => {
       if (statusFilter === 'leader' && !member.isLeader) return false;
       if (
         statusFilter !== 'all' &&
@@ -151,7 +194,7 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
         member.groupName.toLowerCase().includes(normalizedSearch)
       );
     });
-  }, [rangeData.members, search, selectedGroupId, statusFilter]);
+  }, [scopedMembers, search, statusFilter]);
 
   const memberPageCount = Math.max(
     1,
@@ -172,13 +215,26 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
 
   useEffect(() => {
     setMemberPage(1);
-  }, [search, selectedGroupId, selectedRange, statusFilter]);
+  }, [search, selectedGroupIds, selectedRange, statusFilter]);
 
   useEffect(() => {
     setMemberPage((current) => Math.min(current, memberPageCount));
   }, [memberPageCount]);
 
-  const focusGroups = rangeData.groups.slice(0, 6);
+  const focusGroups = scopedGroups.slice(0, 6);
+  const selectedGroupLabel = hasGroupSelection
+    ? `${selectedGroupIds.length} groupe${selectedGroupIds.length > 1 ? 's' : ''} sélectionné${
+        selectedGroupIds.length > 1 ? 's' : ''
+      }`
+    : 'Tous les groupes';
+
+  function toggleGroup(groupId: string) {
+    setSelectedGroupIds((current) =>
+      current.includes(groupId)
+        ? current.filter((id) => id !== groupId)
+        : [...current, groupId],
+    );
+  }
 
   return (
     <main
@@ -261,26 +317,26 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
         <section className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <KpiCard
             label="Groupes suivis"
-            value={rangeData.summary.groupsCount}
-            detail={`${rangeData.summary.membersCount} membres au total`}
+            value={scopedSummary.groupsCount}
+            detail={`${scopedSummary.membersCount} membres au total`}
             icon={<UsersRound className="h-5 w-5" aria-hidden="true" />}
           />
           <KpiCard
             label="Membres actifs"
-            value={rangeData.summary.activeMembersCount}
-            detail={`${rangeData.summary.followUpMembersCount} à relancer`}
+            value={scopedSummary.activeMembersCount}
+            detail={`${scopedSummary.followUpMembersCount} à relancer`}
             icon={<UserRoundCheck className="h-5 w-5" aria-hidden="true" />}
           />
           <KpiCard
             label="Questions faites"
-            value={rangeData.summary.questionsDone}
-            detail={`${rangeData.summary.questionsReviewed} questions révisées`}
+            value={scopedSummary.questionsDone}
+            detail={`${scopedSummary.questionsReviewed} questions révisées`}
             icon={<CheckCircle2 className="h-5 w-5" aria-hidden="true" />}
           />
           <KpiCard
             label="Sessions planifiées"
-            value={rangeData.summary.scheduledSessions}
-            detail={`${rangeData.summary.inactiveMembersCount} membres inactifs`}
+            value={scopedSummary.scheduledSessions}
+            detail={`${scopedSummary.inactiveMembersCount} membres inactifs`}
             icon={<CalendarClock className="h-5 w-5" aria-hidden="true" />}
           />
         </section>
@@ -297,9 +353,9 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                   <button
                     key={group.id}
                     type="button"
-                    onClick={() => setSelectedGroupId(group.id)}
+                    onClick={() => toggleGroup(group.id)}
                     className={`rounded-lg border p-3 text-left transition ${
-                      selectedGroupId === group.id
+                      selectedGroupSet.has(group.id)
                         ? 'border-[#27e0b4] bg-[#123a31]'
                         : 'border-[#234238] bg-[#0b241f] hover:border-[#2f6f5f]'
                     }`}
@@ -313,6 +369,11 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                           Leader : {group.leaderNames.join(', ') || 'non défini'}
                         </p>
                       </div>
+                      {selectedGroupSet.has(group.id) ? (
+                        <span className="rounded-full border border-[#27e0b4]/30 bg-[#27e0b4]/10 px-2 py-1 text-[11px] font-black text-[#27e0b4]">
+                          Inclus
+                        </span>
+                      ) : null}
                       {group.followUpCount > 0 ? (
                         <span className="rounded-full border border-amber-300/35 bg-amber-300/12 px-2 py-1 text-xs font-black text-amber-200">
                           {group.followUpCount}
@@ -368,19 +429,48 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                 </div>
               </div>
 
-              <div className="grid gap-3 md:grid-cols-[220px_1fr]">
-                <select
-                  value={selectedGroupId}
-                  onChange={(event) => setSelectedGroupId(event.target.value)}
-                  className="h-11 rounded-lg border border-[#234238] bg-[#0b241f] px-3 text-sm font-bold text-white outline-none transition focus:border-[#27e0b4]"
-                >
-                  <option value="all">Tous les groupes</option>
-                  {rangeData.groups.map((group) => (
-                    <option key={group.id} value={group.id}>
-                      {group.name}
-                    </option>
-                  ))}
-                </select>
+              <div className="grid gap-3 md:grid-cols-[minmax(260px,360px)_1fr]">
+                <div className="rounded-lg border border-[#234238] bg-[#0b241f] p-3">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <span className="text-sm font-black text-white">{selectedGroupLabel}</span>
+                    {hasGroupSelection ? (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedGroupIds([])}
+                        className="text-xs font-black text-[#27e0b4] transition hover:text-white"
+                      >
+                        Tout afficher
+                      </button>
+                    ) : null}
+                  </div>
+                  <div className="ops-scrollbar-hidden flex max-h-[116px] flex-col gap-1 overflow-y-auto pr-1">
+                    {rangeData.groups.map((group) => {
+                      const checked = selectedGroupSet.has(group.id);
+
+                      return (
+                        <label
+                          key={group.id}
+                          className={`flex cursor-pointer items-center gap-2 rounded-md border px-2.5 py-2 text-sm font-bold transition ${
+                            checked
+                              ? 'border-[#27e0b4]/60 bg-[#123a31] text-white'
+                              : 'border-transparent text-[#b9d1cb] hover:border-[#24443a] hover:bg-[#102820]'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleGroup(group.id)}
+                            className="h-4 w-4 accent-[#27e0b4]"
+                          />
+                          <span className="min-w-0 flex-1 truncate">{group.name}</span>
+                          <span className={`${mono} text-xs text-[#7fa096]`}>
+                            {group.membersCount}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
                 <label className="flex h-11 items-center gap-2 rounded-lg border border-[#234238] bg-[#0b241f] px-3 focus-within:border-[#27e0b4]">
                   <Search className="h-4 w-4 text-[#7fa096]" aria-hidden="true" />
                   <input
