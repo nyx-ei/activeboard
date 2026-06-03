@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   CalendarClock,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock3,
@@ -124,6 +125,7 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
   const [memberPage, setMemberPage] = useState(1);
+  const [isGroupPickerOpen, setIsGroupPickerOpen] = useState(false);
   const rangeData = data.ranges[selectedRange];
   const rangeEntries = Object.entries(data.ranges) as Array<
     [OpsRange, OpsDashboardData['ranges'][OpsRange]]
@@ -234,6 +236,11 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
         ? current.filter((id) => id !== groupId)
         : [...current, groupId],
     );
+  }
+
+  function clearGroupSelection() {
+    setSelectedGroupIds([]);
+    setIsGroupPickerOpen(false);
   }
 
   return (
@@ -347,40 +354,42 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
               <h2 className="text-lg font-black text-white">Groupes prioritaires</h2>
               <span className={`${mono} text-xs text-[#7fa096]`}>{rangeData.label}</span>
             </div>
-            <div className="grid gap-3">
+            <div className="ops-scrollbar-hidden grid max-h-[500px] gap-2 overflow-y-auto pr-1">
               {focusGroups.length > 0 ? (
                 focusGroups.map((group) => (
                   <button
                     key={group.id}
                     type="button"
                     onClick={() => toggleGroup(group.id)}
-                    className={`rounded-lg border p-3 text-left transition ${
+                    className={`rounded-lg border px-3 py-2.5 text-left transition ${
                       selectedGroupSet.has(group.id)
                         ? 'border-[#27e0b4] bg-[#123a31]'
                         : 'border-[#234238] bg-[#0b241f] hover:border-[#2f6f5f]'
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="truncate text-base font-black text-white">
+                        <p className="truncate text-sm font-black text-white">
                           {group.name}
                         </p>
                         <p className={`mt-1 truncate text-xs ${muted}`}>
                           Leader : {group.leaderNames.join(', ') || 'non défini'}
                         </p>
                       </div>
-                      {selectedGroupSet.has(group.id) ? (
-                        <span className="rounded-full border border-[#27e0b4]/30 bg-[#27e0b4]/10 px-2 py-1 text-[11px] font-black text-[#27e0b4]">
-                          Inclus
-                        </span>
-                      ) : null}
-                      {group.followUpCount > 0 ? (
-                        <span className="rounded-full border border-amber-300/35 bg-amber-300/12 px-2 py-1 text-xs font-black text-amber-200">
-                          {group.followUpCount}
-                        </span>
-                      ) : null}
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        {selectedGroupSet.has(group.id) ? (
+                          <span className="rounded-full border border-[#27e0b4]/30 bg-[#27e0b4]/10 px-2 py-0.5 text-[10px] font-black text-[#27e0b4]">
+                            Inclus
+                          </span>
+                        ) : null}
+                        {group.followUpCount > 0 ? (
+                          <span className="rounded-full border border-amber-300/35 bg-amber-300/12 px-2 py-0.5 text-[11px] font-black text-amber-200">
+                            {group.followUpCount}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
-                    <div className={`mt-3 grid grid-cols-3 gap-2 text-xs ${muted}`}>
+                    <div className={`mt-2 grid grid-cols-3 gap-2 text-xs ${muted}`}>
                       <span>{group.membersCount} membres</span>
                       <span>{group.questionsDone} Q</span>
                       <span>{groupActivityLabel(group.lastActivityAt)}</span>
@@ -429,21 +438,39 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                 </div>
               </div>
 
-              <div className="grid gap-3 md:grid-cols-[minmax(260px,360px)_1fr]">
-                <div className="rounded-lg border border-[#234238] bg-[#0b241f] p-3">
-                  <div className="mb-2 flex items-center justify-between gap-3">
-                    <span className="text-sm font-black text-white">{selectedGroupLabel}</span>
-                    {hasGroupSelection ? (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedGroupIds([])}
-                        className="text-xs font-black text-[#27e0b4] transition hover:text-white"
-                      >
-                        Tout afficher
-                      </button>
-                    ) : null}
-                  </div>
-                  <div className="ops-scrollbar-hidden flex max-h-[116px] flex-col gap-1 overflow-y-auto pr-1">
+              <div className="grid gap-3 md:grid-cols-[minmax(240px,320px)_1fr]">
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsGroupPickerOpen((current) => !current)}
+                    className="flex h-11 w-full items-center justify-between gap-3 rounded-lg border border-[#234238] bg-[#0b241f] px-3 text-left text-sm font-black text-white outline-none transition hover:border-[#27e0b4]"
+                    aria-expanded={isGroupPickerOpen}
+                  >
+                    <span className="min-w-0 truncate">{selectedGroupLabel}</span>
+                    <ChevronDown
+                      className={`h-4 w-4 shrink-0 text-[#7fa096] transition ${
+                        isGroupPickerOpen ? 'rotate-180' : ''
+                      }`}
+                      aria-hidden="true"
+                    />
+                  </button>
+                  {isGroupPickerOpen ? (
+                    <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-lg border border-[#24443a] bg-[#08201b] p-2 shadow-[0_18px_45px_rgba(0,0,0,.35)]">
+                      <div className="mb-2 flex items-center justify-between gap-3 px-1">
+                        <span className="text-xs font-black uppercase tracking-[0.04em] text-[#7fa096]">
+                          Équipes
+                        </span>
+                        {hasGroupSelection ? (
+                          <button
+                            type="button"
+                            onClick={clearGroupSelection}
+                            className="text-xs font-black text-[#27e0b4] transition hover:text-white"
+                          >
+                            Tout afficher
+                          </button>
+                        ) : null}
+                      </div>
+                      <div className="ops-scrollbar-hidden flex max-h-[260px] flex-col gap-1 overflow-y-auto pr-1">
                     {rangeData.groups.map((group) => {
                       const checked = selectedGroupSet.has(group.id);
 
@@ -469,7 +496,9 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                         </label>
                       );
                     })}
+                      </div>
                   </div>
+                  ) : null}
                 </div>
                 <label className="flex h-11 items-center gap-2 rounded-lg border border-[#234238] bg-[#0b241f] px-3 focus-within:border-[#27e0b4]">
                   <Search className="h-4 w-4 text-[#7fa096]" aria-hidden="true" />
