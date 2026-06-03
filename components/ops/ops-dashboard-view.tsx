@@ -27,13 +27,13 @@ type OpsDashboardViewProps = {
 type StatusFilter = 'all' | OpsAdoptionStatus | 'leader';
 
 const panel =
-  'rounded-[10px] border border-[#234238] bg-[#0f2d26]/88 shadow-[inset_0_1px_0_rgba(255,255,255,.04)]';
+  'rounded-[10px] border border-[#24443a] bg-[#102820]/82 shadow-[inset_0_1px_0_rgba(255,255,255,.035)]';
 const muted = 'text-[#9fb8b0]';
 const mono = 'font-mono tracking-[0.02em]';
 
 const statusLabels: Record<OpsAdoptionStatus, string> = {
   active: 'Actif',
-  follow_up: 'A relancer',
+  follow_up: 'À relancer',
   inactive: 'Inactif',
   new: 'Nouveau',
 };
@@ -81,7 +81,7 @@ function KpiCard({
 }
 
 function formatDate(value: string | null) {
-  if (!value) return 'Aucune activite';
+  if (!value) return 'Aucune activité';
 
   return new Intl.DateTimeFormat('fr', {
     day: '2-digit',
@@ -99,7 +99,7 @@ function formatGeneratedAt(value: string) {
 }
 
 function groupActivityLabel(value: string | null) {
-  if (!value) return 'aucune activite';
+  if (!value) return 'aucune activité';
   const date = new Date(value);
   const deltaDays = Math.floor((Date.now() - date.getTime()) / 86_400_000);
   if (deltaDays <= 0) return "aujourd'hui";
@@ -154,7 +154,7 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
   return (
     <main
       data-ops-dashboard
-      className="min-h-screen bg-[#03110f] bg-[radial-gradient(900px_520px_at_85%_-10%,rgba(39,224,180,.12),transparent_65%),radial-gradient(720px_460px_at_10%_110%,rgba(48,112,96,.22),transparent_65%)] px-4 py-5 text-[#eaf7f3] sm:px-6"
+      className="min-h-screen bg-[#04110f] bg-[radial-gradient(900px_520px_at_85%_-10%,rgba(45,212,191,.08),transparent_66%),radial-gradient(720px_460px_at_10%_110%,rgba(42,98,86,.14),transparent_68%)] px-4 py-5 text-[#eaf7f3] sm:px-6"
     >
       <style jsx global>{`
         body:has([data-ops-dashboard]) > div > div > header {
@@ -166,6 +166,13 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
           padding: 0;
           gap: 0;
         }
+        .ops-scrollbar-hidden {
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        .ops-scrollbar-hidden::-webkit-scrollbar {
+          display: none;
+        }
       `}</style>
 
       <div className="mx-auto max-w-[1320px]">
@@ -175,10 +182,10 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
             className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#234238] bg-[#0f2d26] px-3 text-sm font-bold text-[#b9d1cb] transition hover:border-[#27e0b4] hover:text-[#27e0b4]"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            Retour dashboard
+            Retour au tableau de bord
           </Link>
           <span className={`${mono} text-xs text-[#7fa096]`}>
-            mis a jour {formatGeneratedAt(data.generatedAt)}
+            Mis à jour {formatGeneratedAt(data.generatedAt)}
           </span>
         </div>
 
@@ -190,17 +197,17 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
               </div>
               <div>
                 <p className={`${mono} text-xs uppercase text-[#7fa096]`}>
-                  adoption interne
+                  Tableau de pilotage
                 </p>
                 <h1 className="text-2xl font-black text-white sm:text-3xl">
-                  Pilotage adoption par groupe
+                  Activité des groupes et membres
                 </h1>
               </div>
             </div>
             <p className={`max-w-3xl text-sm leading-6 ${muted}`}>
-              Vue dynamique des groupes, membres, questions, revisions et sessions
-              planifiees pour identifier rapidement qui est actif et qui doit etre
-              relance.
+              Suivi dynamique des groupes, membres, questions, révisions et sessions
+              planifiées pour repérer rapidement les utilisateurs actifs et les
+              membres à relancer.
             </p>
           </div>
 
@@ -232,17 +239,17 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
           <KpiCard
             label="Membres actifs"
             value={rangeData.summary.activeMembersCount}
-            detail={`${rangeData.summary.followUpMembersCount} a relancer`}
+            detail={`${rangeData.summary.followUpMembersCount} à relancer`}
             icon={<UserRoundCheck className="h-5 w-5" aria-hidden="true" />}
           />
           <KpiCard
             label="Questions faites"
             value={rangeData.summary.questionsDone}
-            detail={`${rangeData.summary.questionsReviewed} questions revisees`}
+            detail={`${rangeData.summary.questionsReviewed} questions révisées`}
             icon={<CheckCircle2 className="h-5 w-5" aria-hidden="true" />}
           />
           <KpiCard
-            label="Sessions planifiees"
+            label="Sessions planifiées"
             value={rangeData.summary.scheduledSessions}
             detail={`${rangeData.summary.inactiveMembersCount} membres inactifs`}
             icon={<CalendarClock className="h-5 w-5" aria-hidden="true" />}
@@ -274,7 +281,7 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                           {group.name}
                         </p>
                         <p className={`mt-1 truncate text-xs ${muted}`}>
-                          Leader: {group.leaderNames.join(', ') || 'non defini'}
+                          Leader : {group.leaderNames.join(', ') || 'non défini'}
                         </p>
                       </div>
                       {group.followUpCount > 0 ? (
@@ -292,7 +299,7 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                 ))
               ) : (
                 <p className={`rounded-lg border border-dashed border-[#234238] p-4 text-sm ${muted}`}>
-                  Aucun groupe avec membres pour cette periode.
+                  Aucun groupe avec membres pour cette période.
                 </p>
               )}
             </div>
@@ -302,16 +309,16 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
             <div className="border-b border-[#234238] p-4">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-black text-white">Activite par membre</h2>
+                  <h2 className="text-lg font-black text-white">Activité par membre</h2>
                   <p className={`text-sm ${muted}`}>
-                    {filteredMembers.length} membre{filteredMembers.length > 1 ? 's' : ''} affiche
+                    {filteredMembers.length} membre{filteredMembers.length > 1 ? 's' : ''} affiché
                     {filteredMembers.length > 1 ? 's' : ''}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {[
                     ['all', 'Tous'],
-                    ['follow_up', 'A relancer'],
+                    ['follow_up', 'À relancer'],
                     ['inactive', 'Inactifs'],
                     ['active', 'Actifs'],
                     ['leader', 'Leaders'],
@@ -350,23 +357,23 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                   <input
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Rechercher un membre, email ou groupe"
+                    placeholder="Rechercher un membre, e-mail ou groupe"
                     className="h-full min-w-0 flex-1 bg-transparent text-sm font-semibold text-white outline-none placeholder:text-[#66837a]"
                   />
                 </label>
               </div>
             </div>
 
-            <div className="hidden overflow-x-auto lg:block">
+            <div className="ops-scrollbar-hidden hidden overflow-x-auto lg:block">
               <table className="w-full min-w-[920px] border-collapse text-left">
                 <thead className="bg-[#0b241f] text-xs uppercase text-[#7fa096]">
                   <tr>
                     <th className="px-4 py-3 font-black">Groupe</th>
                     <th className="px-4 py-3 font-black">Nom du membre</th>
-                    <th className="px-4 py-3 font-black">Derniere activite</th>
+                    <th className="px-4 py-3 font-black">Dernière activité</th>
                     <th className="px-4 py-3 text-right font-black">Questions faites</th>
-                    <th className="px-4 py-3 text-right font-black">Questions revisees</th>
-                    <th className="px-4 py-3 text-right font-black">Sessions planifiees</th>
+                    <th className="px-4 py-3 text-right font-black">Questions révisées</th>
+                    <th className="px-4 py-3 text-right font-black">Sessions planifiées</th>
                     <th className="px-4 py-3 font-black">Statut</th>
                   </tr>
                 </thead>
@@ -437,8 +444,8 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                     </span>
                     <span>{member.isLeader ? 'Leader' : 'Membre'}</span>
                     <span>{member.questionsDone} Q faites</span>
-                    <span>{member.questionsReviewed} Q revisees</span>
-                    <span>{member.scheduledSessions} sessions planifiees</span>
+                    <span>{member.questionsReviewed} Q révisées</span>
+                    <span>{member.scheduledSessions} sessions planifiées</span>
                   </div>
                 </article>
               ))}
