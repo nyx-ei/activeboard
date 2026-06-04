@@ -6,6 +6,14 @@ const migration = readFileSync(
   'supabase/migrations/20260504140000_review_snapshot_consistency.sql',
   'utf8',
 );
+const userScopedMigration = readFileSync(
+  'supabase/migrations/20260604120000_user_scoped_review_answers.sql',
+  'utf8',
+);
+const reviewVersionTypeFixMigration = readFileSync(
+  'supabase/migrations/20260604213000_fix_review_snapshot_version_types.sql',
+  'utf8',
+);
 const reviewQuestionRoute = readFileSync(
   'app/api/sessions/[sessionId]/review-question/route.ts',
   'utf8',
@@ -44,4 +52,21 @@ test('review snapshots expose a monotonically increasing review version', () => 
   assert.match(migration, /add column if not exists review_version bigint/);
   assert.match(migration, /review_version = q\.review_version \+ 1/);
   assert.match(migration, /'review_version', q\.review_version/);
+});
+
+test('user-scoped review RPCs keep review version return types aligned with questions.review_version', () => {
+  assert.match(userScopedMigration, /add column if not exists reviewed_at/);
+  assert.match(
+    reviewVersionTypeFixMigration,
+    /drop function if exists public\.activeboard_save_review_snapshot\(uuid, uuid, text\)/,
+  );
+  assert.match(
+    reviewVersionTypeFixMigration,
+    /drop function if exists public\.activeboard_get_review_question_snapshot\(uuid, uuid\)/,
+  );
+  assert.match(
+    reviewVersionTypeFixMigration,
+    /review_version bigint[\s\S]*reviewed_question_count bigint/,
+  );
+  assert.doesNotMatch(reviewVersionTypeFixMigration, /review_version integer/);
 });

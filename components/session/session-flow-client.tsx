@@ -1105,6 +1105,33 @@ export function ReviewAnswerForm({
       () => ({ ok: false }),
     );
 
+    if (shouldAdvance) {
+      setSavedCorrectOption(nextCorrectOption);
+      onSaved?.(nextCorrectOption);
+      setSaveStatus('saved');
+      onAdvance?.(targetQuestionIndex);
+      if (!onAdvance) {
+        router.replace(redirectTo as never);
+      }
+
+      void savePromise.then((result) => {
+        if (result.ok) {
+          return;
+        }
+
+        if (result.redirectTo) {
+          router.replace(result.redirectTo as never);
+          return;
+        }
+
+        router.replace(
+          `/${locale}/sessions/${sessionId}?stage=review&q=${questionIndex}` as never,
+        );
+        window.setTimeout(() => router.refresh(), 0);
+      });
+      return;
+    }
+
     const result = await savePromise;
 
     if (result.ok) {
