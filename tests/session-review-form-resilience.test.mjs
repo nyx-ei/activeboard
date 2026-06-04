@@ -22,33 +22,41 @@ const serverSuccessStart = sessionClient.indexOf(
   'if (result.ok)',
   savePromiseStart,
 );
+const optimisticAdvanceStart = sessionClient.indexOf(
+  'if (shouldAdvance)',
+  savePromiseStart,
+);
+const foregroundAwaitStart = sessionClient.indexOf(
+  'const result = await savePromise;',
+  optimisticAdvanceStart,
+);
 const failureStart = sessionClient.indexOf(
   "setSaveStatus('error')",
   serverSuccessStart,
 );
 
-test('review answer does not lock or advance before server confirmation', () => {
+test('review save-and-next advances immediately but resyncs if server save fails', () => {
   assert.notEqual(reviewFormStart, -1);
   assert.notEqual(saveReviewStart, -1);
   assert.notEqual(savePromiseStart, -1);
+  assert.notEqual(optimisticAdvanceStart, -1);
+  assert.notEqual(foregroundAwaitStart, -1);
   assert.notEqual(serverSuccessStart, -1);
 
-  const optimisticBlock = sessionClient.slice(
-    saveReviewStart,
-    serverSuccessStart,
+  const optimisticAdvanceBlock = sessionClient.slice(
+    optimisticAdvanceStart,
+    foregroundAwaitStart,
   );
   const successBlock = sessionClient.slice(serverSuccessStart, failureStart);
 
-  assert.equal(
-    optimisticBlock.includes('setSavedCorrectOption(nextCorrectOption)'),
-    false,
+  assert.match(
+    optimisticAdvanceBlock,
+    /setSavedCorrectOption\(nextCorrectOption\)/,
   );
-  assert.equal(optimisticBlock.includes('onSaved?.(nextCorrectOption)'), false);
-  assert.equal(
-    optimisticBlock.includes('onAdvance?.(targetQuestionIndex)'),
-    false,
-  );
+  assert.match(optimisticAdvanceBlock, /onSaved\?\.\(nextCorrectOption\)/);
+  assert.match(optimisticAdvanceBlock, /onAdvance\?\.\(targetQuestionIndex\)/);
+  assert.match(optimisticAdvanceBlock, /void savePromise\.then/);
+  assert.match(optimisticAdvanceBlock, /router\.refresh\(\)/);
   assert.match(successBlock, /setSavedCorrectOption\(nextCorrectOption\)/);
   assert.match(successBlock, /onSaved\?\.\(nextCorrectOption\)/);
-  assert.match(successBlock, /onAdvance\?\.\(targetQuestionIndex\)/);
 });
