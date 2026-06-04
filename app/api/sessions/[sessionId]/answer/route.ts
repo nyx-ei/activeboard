@@ -85,7 +85,10 @@ export async function POST(request: Request, { params }: RouteContext) {
     return feedbackTranslations(key);
   };
 
-  const lateSubmitResponse = async (reason: string) =>
+  const lateSubmitResponse = async (
+    reason: string,
+    latestQuestionIndex?: number | null,
+  ) =>
     NextResponse.json(
       {
         ok: false,
@@ -93,6 +96,10 @@ export async function POST(request: Request, { params }: RouteContext) {
         reason,
         retryable: false,
         refetch: true,
+        redirectTo:
+          typeof latestQuestionIndex === 'number'
+            ? `/${locale}/sessions/${sessionId}?q=${latestQuestionIndex}`
+            : undefined,
         message: await getFeedback('answerWindowClosed'),
       },
       { status: 409 },
@@ -218,7 +225,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     supabase
       .schema('public')
       .from('questions')
-      .select('order_index')
+      .select('id, order_index')
       .eq('session_id', sessionId)
       .not('launched_at', 'is', null)
       .order('order_index', { ascending: false })
@@ -246,11 +253,14 @@ export async function POST(request: Request, { params }: RouteContext) {
     questionState.phase !== 'answering' ||
     hasQuestionAdvanced(questionIndex, latestQuestion?.order_index ?? null)
   ) {
-    return lateSubmitResponse('question_advanced');
+    return lateSubmitResponse(
+      'question_advanced',
+      latestQuestion?.order_index ?? null,
+    );
   }
 
   if (!deadlineDecision.accepted) {
-    return lateSubmitResponse(deadlineDecision.reason);
+    return lateSubmitResponse(deadlineDecision.reason, questionIndex);
   }
 
   const saveAnswer = async (

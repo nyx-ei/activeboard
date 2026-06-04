@@ -68,12 +68,25 @@ export async function POST(request: Request, { params }: RouteContext) {
     );
   }
 
-  const { count } = await supabase
+  const { data: sessionQuestions } = await supabase
     .schema('public')
     .from('questions')
-    .select('id', { count: 'exact', head: true })
-    .eq('session_id', sessionId)
-    .not('correct_option', 'is', null);
+    .select('id')
+    .eq('session_id', sessionId);
+
+  const sessionQuestionIds = (sessionQuestions ?? []).map(
+    (question) => question.id,
+  );
+  const { count } =
+    sessionQuestionIds.length > 0
+      ? await supabase
+          .schema('public')
+          .from('answers')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .in('question_id', sessionQuestionIds)
+          .not('review_correct_option', 'is', null)
+      : { count: 0 };
   perf.step('review_count_loaded');
 
   if ((count ?? 0) < session.question_goal) {

@@ -45,15 +45,16 @@ type ReviewSnapshotRow = {
 
 type SaveReviewSnapshotRow = {
   question_id: string;
+  correct_option: string | null;
   review_version: number | null;
-  answer_count: number | null;
+  reviewed_question_count: number | null;
 };
 
 export async function getReviewQuestionSnapshot(
   supabase: SupabaseClient,
   input: {
     sessionId: string;
-    questionIndex: number;
+    questionId: string;
   },
 ) {
   const { data, error } = await (
@@ -62,7 +63,7 @@ export async function getReviewQuestionSnapshot(
         fn: 'activeboard_get_review_question_snapshot',
         args: {
           target_session_id: string;
-          target_question_index: number;
+          target_question_id: string;
         },
       ) => Promise<{
         data: ReviewSnapshotRow[] | null;
@@ -71,7 +72,7 @@ export async function getReviewQuestionSnapshot(
     }
   ).rpc('activeboard_get_review_question_snapshot', {
     target_session_id: input.sessionId,
-    target_question_index: input.questionIndex,
+    target_question_id: input.questionId,
   });
 
   const row = data?.[0] ?? null;

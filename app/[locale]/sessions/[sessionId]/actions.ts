@@ -562,7 +562,7 @@ export async function saveReviewAnswerAction(formData: FormData) {
         question_id: questionId,
         correct_option: correctOption,
         review_version: reviewResult.review_version,
-        answer_count: reviewResult.answer_count,
+        reviewed_question_count: reviewResult.reviewed_question_count,
         source: 'review_flow',
       },
     }),
@@ -593,13 +593,22 @@ export async function finishReviewSessionAction(formData: FormData) {
   const { data: questions } = await supabase
     .schema('public')
     .from('questions')
-    .select('id, correct_option')
+    .select('id')
     .eq('session_id', sessionId);
 
-  const completeReviewCount = (questions ?? []).filter(
-    (question) => question.correct_option,
-  ).length;
-  if (completeReviewCount < session.question_goal) {
+  const questionIds = (questions ?? []).map((question) => question.id);
+  const { count: completeReviewCount } =
+    questionIds.length > 0
+      ? await supabase
+          .schema('public')
+          .from('answers')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .in('question_id', questionIds)
+          .not('review_correct_option', 'is', null)
+      : { count: 0 };
+
+  if ((completeReviewCount ?? 0) < session.question_goal) {
     redirect(
       withFeedback(
         `/${locale}/sessions/${sessionId}?stage=review`,
@@ -1156,7 +1165,7 @@ export async function revealAnswerAction(formData: FormData) {
         question_id: questionId,
         correct_option: correctOption,
         review_version: reviewResult.review_version,
-        answer_count: reviewResult.answer_count,
+        reviewed_question_count: reviewResult.reviewed_question_count,
       },
     }),
   ]);
