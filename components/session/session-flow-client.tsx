@@ -1081,8 +1081,6 @@ export function ReviewAnswerForm({
     const redirectTo = `/${locale}/sessions/${sessionId}?stage=review&q=${targetQuestionIndex}`;
     setSubmissionError(null);
     setSaveStatus('saving');
-    setSavedCorrectOption(nextCorrectOption);
-    onSaved?.(nextCorrectOption);
 
     const savePromise = enqueueSessionSave<{
       ok?: boolean;
@@ -1107,19 +1105,18 @@ export function ReviewAnswerForm({
       () => ({ ok: false }),
     );
 
-    if (shouldAdvance) {
-      onAdvance?.(targetQuestionIndex);
-      if (!onAdvance) {
-        router.replace(redirectTo as never);
-      }
-      void savePromise;
-      return;
-    }
-
     const result = await savePromise;
 
     if (result.ok) {
+      setSavedCorrectOption(nextCorrectOption);
+      onSaved?.(nextCorrectOption);
       setSaveStatus('saved');
+      if (shouldAdvance) {
+        onAdvance?.(targetQuestionIndex);
+        if (!onAdvance) {
+          router.replace(redirectTo as never);
+        }
+      }
       return;
     }
 
@@ -1129,7 +1126,6 @@ export function ReviewAnswerForm({
     }
 
     setSavedCorrectOption(initialCorrectOption ?? '');
-    onSaved?.((initialCorrectOption ?? '') as AnswerOption);
     setSaveStatus('error');
     setSubmissionError(result.message ?? labels.savePending);
   }
