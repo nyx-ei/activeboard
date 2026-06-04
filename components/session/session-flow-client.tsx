@@ -492,17 +492,11 @@ export function SessionAnswerForm({
 
       setSubmissionError(null);
       setSaveStatus('saving');
-      onSubmissionStateChange?.(false);
+      onSubmissionStateChange?.(true);
 
       if (!optimisticPersistedRef.current) {
         optimisticPersistedRef.current = true;
         setOptimisticAnswer(resolvedSelectedOption);
-        onAnswerPersisted?.(
-          resolvedSelectedOption,
-          resolvedConfidence,
-          questionId,
-          questionIndex,
-        );
       }
 
       const savePromise = enqueueSessionSave<SubmitAnswerResponse>(
@@ -535,19 +529,27 @@ export function SessionAnswerForm({
           questionIndex,
         );
         activeSubmitPromiseRef.current = null;
+        onSubmissionStateChange?.(false);
         return;
       }
 
       if (result.redirectTo) {
         activeSubmitPromiseRef.current = null;
+        onSubmissionStateChange?.(false);
         router.replace(result.redirectTo as never);
         return;
       }
 
       activeSubmitPromiseRef.current = null;
       if (result.refetch) {
+        setOptimisticAnswer(null);
+        optimisticPersistedRef.current = false;
+        onSubmissionStateChange?.(false);
         router.refresh();
       }
+      setOptimisticAnswer(null);
+      optimisticPersistedRef.current = false;
+      onSubmissionStateChange?.(false);
       setSaveStatus('error');
       setSubmissionError(result.message ?? labels.submitPending);
     },
