@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   CalendarClock,
@@ -120,6 +120,7 @@ function MemberAvatar({ member }: { member: OpsAdoptionMember }) {
 }
 
 export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
+  const groupPickerRef = useRef<HTMLDivElement | null>(null);
   const [selectedRange, setSelectedRange] = useState<OpsRange>(data.defaultRange);
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -222,6 +223,33 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
   useEffect(() => {
     setMemberPage((current) => Math.min(current, memberPageCount));
   }, [memberPageCount]);
+
+  useEffect(() => {
+    if (!isGroupPickerOpen) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+
+      if (!groupPickerRef.current?.contains(target)) {
+        setIsGroupPickerOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsGroupPickerOpen(false);
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isGroupPickerOpen]);
 
   const focusGroups = scopedGroups.slice(0, 6);
   const selectedGroupLabel = hasGroupSelection
@@ -439,7 +467,7 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
               </div>
 
               <div className="grid gap-3 md:grid-cols-[minmax(240px,320px)_1fr]">
-                <div className="relative">
+                <div ref={groupPickerRef} className="relative">
                   <button
                     type="button"
                     onClick={() => setIsGroupPickerOpen((current) => !current)}
