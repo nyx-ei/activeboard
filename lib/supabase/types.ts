@@ -24,6 +24,8 @@ type AnswersRow = {
   id: string;
   is_correct: boolean | null;
   question_id: string;
+  review_correct_option: string | null;
+  reviewed_at: string | null;
   selected_option: string | null;
   user_id: string;
 };
@@ -37,6 +39,8 @@ type AnswersInsert = {
   id?: string;
   is_correct?: boolean | null;
   question_id: string;
+  review_correct_option?: string | null;
+  reviewed_at?: string | null;
   selected_option?: string | null;
   user_id: string;
 };
@@ -50,6 +54,8 @@ type AnswersUpdate = {
   id?: string;
   is_correct?: boolean | null;
   question_id?: string;
+  review_correct_option?: string | null;
+  reviewed_at?: string | null;
   selected_option?: string | null;
   user_id?: string;
 };
@@ -931,7 +937,7 @@ export type Database = {
       activeboard_get_review_question_snapshot: {
         Args: {
           target_session_id: string;
-          target_question_index: number;
+          target_question_id: string;
         };
         Returns: {
           question: Json;
@@ -949,8 +955,9 @@ export type Database = {
         };
         Returns: {
           question_id: string;
+          correct_option: string;
           review_version: number;
-          answer_count: number;
+          reviewed_question_count: number;
         }[];
       };
       activeboard_save_session_answer_concurrent: {

@@ -6,7 +6,7 @@ import {
   getSessionAccessSnapshot,
   loadSessionRuntimeAccess,
 } from '@/lib/session/flow';
-import { computeAnswerDistribution } from '@/lib/demo/distribution';
+import { getReviewQuestionSnapshot } from '@/lib/session/review-consistency';
 
 type RouteContext = {
   params: { sessionId: string };
@@ -51,71 +51,51 @@ export async function GET(request: Request, { params }: RouteContext) {
   if (!session) {
     return NextResponse.json({ ok: false }, { status: 403 });
   }
-  const memberCount = Math.max(access.member_count ?? 1, 1);
-
   const clampedQuestionIndex = Math.max(
     0,
     Math.min(questionIndex, Math.max(session.question_goal - 1, 0)),
   );
 
-  const [{ data: question }, { count: reviewedQuestionCount }] =
-    await Promise.all([
-      supabase
-        .schema('public')
-        .from('questions')
-        .select(
-          'id, body, options, order_index, phase, launched_at, answer_deadline_at, correct_option, review_version',
-        )
-        .eq('session_id', sessionId)
-        .eq('order_index', clampedQuestionIndex)
-        .maybeSingle(),
-      supabase
-        .schema('public')
-        .from('questions')
-        .select('id', { count: 'exact', head: true })
-        .eq('session_id', sessionId)
-        .not('correct_option', 'is', null),
-    ]);
+  const { data: question } = await supabase
+    .schema('public')
+    .from('questions')
+    .select(
+      'id, body, options, order_index, phase, launched_at, answer_deadline_at, correct_option, review_version',
+    )
+    .eq('session_id', sessionId)
+    .eq('order_index', clampedQuestionIndex)
+    .maybeSingle();
   perf.step('review_snapshot_loaded');
 
   if (!question?.id) {
     return NextResponse.json({ ok: false }, { status: 404 });
   }
 
-  const { data: answers } = await supabase
-    .schema('public')
-    .from('answers')
-    .select(
-      'answer_state, selected_option, confidence, is_correct, answered_at, user_id',
-    )
-    .eq('question_id', question.id);
+  const { snapshot, error: snapshotError } = await getReviewQuestionSnapshot(
+    supabase,
+    {
+      sessionId,
+      questionId: question.id,
+    },
+  );
   perf.step('review_answers_loaded');
 
-  const questionAnswers = answers ?? [];
-  const ownAnswer =
-    questionAnswers.find((answer) => answer.user_id === user.id) ?? null;
-  const distribution = computeAnswerDistribution(questionAnswers, memberCount);
+  if (snapshotError || !snapshot) {
+    return NextResponse.json({ ok: false }, { status: 500 });
+  }
 
   perf.done({
-    questionId: question.id,
-    questionIndex: question.order_index,
-    reviewVersion: question.review_version ?? 0,
+    questionId: snapshot.question.id,
+    questionIndex: snapshot.question.order_index,
+    reviewVersion: snapshot.reviewVersion,
   });
 
   return NextResponse.json({
     ok: true,
-    question,
-    distribution,
-    ownAnswer: ownAnswer
-      ? {
-          answer_state: ownAnswer.answer_state,
-          selected_option: ownAnswer.selected_option,
-          confidence: ownAnswer.confidence,
-          is_correct: ownAnswer.is_correct,
-          answered_at: ownAnswer.answered_at,
-        }
-      : null,
-    reviewedQuestionCount: reviewedQuestionCount ?? 0,
-    reviewVersion: question.review_version ?? 0,
+    question: snapshot.question,
+    distribution: snapshot.distribution,
+    ownAnswer: snapshot.ownAnswer,
+    reviewedQuestionCount: snapshot.reviewedQuestionCount,
+    reviewVersion: snapshot.reviewVersion,
   });
 }

@@ -9,6 +9,7 @@ import {
   getSessionAccessSnapshot,
   loadSessionRuntimeAccess,
 } from '@/lib/session/flow';
+import { recordSessionStateEvent } from '@/lib/session/state-events';
 
 type RouteContext = {
   params: { sessionId: string };
@@ -123,6 +124,12 @@ export async function POST(request: Request, { params }: RouteContext) {
       .from('sessions')
       .update({ status: 'incomplete' })
       .eq('id', sessionId);
+    await recordSessionStateEvent(supabase, {
+      sessionId,
+      groupId: session.group_id,
+      actorId: user.id,
+      eventType: 'session_completed',
+    }).catch(() => undefined);
     perf.step('session_marked_incomplete');
     perf.done({ mode: 'complete' });
 
@@ -141,6 +148,14 @@ export async function POST(request: Request, { params }: RouteContext) {
       session,
     );
     perf.step('next_question_ready');
+    await recordSessionStateEvent(supabase, {
+      sessionId,
+      groupId: session.group_id,
+      questionId: nextQuestion.id,
+      actorId: user.id,
+      eventType: 'question_advanced',
+    }).catch(() => undefined);
+    perf.step('state_event_recorded');
     perf.done({ mode: 'next', nextIndex });
 
     return NextResponse.json({

@@ -185,7 +185,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     correctOption,
     targetQuestionIndex,
     reviewVersion: reviewResult.review_version,
-    answerCount: reviewResult.answer_count,
+    reviewedQuestionCount: reviewResult.reviewed_question_count,
   });
 
   return NextResponse.json({
@@ -194,5 +194,6 @@ export async function POST(request: Request, { params }: RouteContext) {
     correctOption,
     targetQuestionIndex,
     reviewVersion: reviewResult.review_version,
+    reviewedQuestionCount: reviewResult.reviewed_question_count,
   });
 }

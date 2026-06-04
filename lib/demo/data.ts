@@ -2166,98 +2166,61 @@ export const getSessionPageData = cache(
             ),
           )
         : null;
-      const [
-        currentQuestionResult,
-        firstPendingQuestionResult,
-        reviewedQuestionsResult,
-        answeredCountResult,
-      ] = await Promise.all([
-        requestedReviewIndex !== null
-          ? supabase
-              .schema('public')
-              .from('questions')
-              .select(
-                'id, body, options, order_index, phase, launched_at, answer_deadline_at, correct_option, asked_by',
-              )
-              .eq('session_id', sessionId)
-              .eq('order_index', requestedReviewIndex)
-              .maybeSingle()
-          : Promise.resolve({
-              data: null as {
-                id: string;
-                body: string | null;
-                options: unknown;
-                order_index: number;
-                phase: string | null;
-                launched_at: string | null;
-                answer_deadline_at: string | null;
-                correct_option: string | null;
-                asked_by: string | null;
-              } | null,
-            }),
-        requestedReviewIndex === null
-          ? supabase
-              .schema('public')
-              .from('questions')
-              .select(
-                'id, body, options, order_index, phase, launched_at, answer_deadline_at, correct_option, asked_by',
-              )
-              .eq('session_id', sessionId)
-              .is('correct_option', null)
-              .order('order_index', { ascending: true })
-              .limit(1)
-              .maybeSingle()
-          : Promise.resolve({
-              data: null as {
-                id: string;
-                body: string | null;
-                options: unknown;
-                order_index: number;
-                phase: string | null;
-                launched_at: string | null;
-                answer_deadline_at: string | null;
-                correct_option: string | null;
-                asked_by: string | null;
-              } | null,
-            }),
+      const [reviewQuestionsResult, answeredCountResult] = await Promise.all([
         supabase
           .schema('public')
           .from('questions')
-          .select('id', { count: 'exact', head: true })
+          .select(
+            'id, body, options, order_index, phase, launched_at, answer_deadline_at, correct_option, asked_by',
+          )
           .eq('session_id', sessionId)
-          .not('correct_option', 'is', null),
+          .order('order_index', { ascending: true }),
         answeredCountPromise,
       ]);
 
-      const firstPendingReviewQuestion = firstPendingQuestionResult.data;
+      const reviewQuestions = reviewQuestionsResult.data ?? [];
+      const reviewQuestionIds = reviewQuestions.map((question) => question.id);
+      const currentUserReviewAnswers =
+        reviewQuestionIds.length > 0
+          ? ((
+              await supabase
+                .schema('public')
+                .from('answers')
+                .select('question_id, review_correct_option')
+                .eq('user_id', user.id)
+                .in('question_id', reviewQuestionIds)
+            ).data ?? [])
+          : [];
+      const currentUserReviewByQuestion = new Map(
+        currentUserReviewAnswers.map((answer) => [
+          answer.question_id,
+          answer.review_correct_option,
+        ]),
+      );
+      const firstPendingReviewQuestion = reviewQuestions.find(
+        (question) => !currentUserReviewByQuestion.get(question.id),
+      );
       const resolvedReviewIndex = hasExplicitQuestionIndex
         ? (requestedReviewIndex ?? 0)
         : (firstPendingReviewQuestion?.order_index ?? 0);
       let currentReviewQuestion =
-        currentQuestionResult.data ?? firstPendingReviewQuestion ?? null;
+        (requestedReviewIndex !== null
+          ? (reviewQuestions.find(
+              (question) => question.order_index === requestedReviewIndex,
+            ) ?? null)
+          : firstPendingReviewQuestion) ?? null;
 
-      if (!currentReviewQuestion && requestedReviewIndex === null) {
-        currentReviewQuestion =
-          (
-            await supabase
-              .schema('public')
-              .from('questions')
-              .select(
-                'id, body, options, order_index, phase, launched_at, answer_deadline_at, correct_option, asked_by',
-              )
-              .eq('session_id', sessionId)
-              .order('order_index', { ascending: true })
-              .limit(1)
-              .maybeSingle()
-          ).data ?? null;
+      if (!currentReviewQuestion) {
+        currentReviewQuestion = reviewQuestions[0] ?? null;
       }
+
       const currentQuestionAnswers = currentReviewQuestion
         ? ((
             await supabase
               .schema('public')
               .from('answers')
               .select(
-                'id, question_id, user_id, answer_state, selected_option, confidence, is_correct, answered_at',
+                'id, question_id, user_id, answer_state, selected_option, confidence, is_correct, answered_at, review_correct_option',
               )
               .eq('question_id', currentReviewQuestion.id)
           ).data ?? [])
@@ -2272,11 +2235,26 @@ export const getSessionPageData = cache(
         membership,
         members,
         answeredCount: answeredCountResult.data?.answered_question_count ?? 0,
-        reviewedQuestionCount: reviewedQuestionsResult.count ?? 0,
+        reviewedQuestionCount: currentUserReviewAnswers.filter(
+          (answer) => answer.review_correct_option,
+        ).length,
         resolvedQuestionIndex: resolvedReviewIndex,
         questionGoal: session.question_goal ?? 10,
-        questions: currentReviewQuestion ? [currentReviewQuestion] : [],
-        currentQuestion: currentReviewQuestion,
+        questions: currentReviewQuestion
+          ? [
+              {
+                ...currentReviewQuestion,
+                correct_option:
+                  currentUserAnswer?.review_correct_option ?? null,
+              },
+            ]
+          : [],
+        currentQuestion: currentReviewQuestion
+          ? {
+              ...currentReviewQuestion,
+              correct_option: currentUserAnswer?.review_correct_option ?? null,
+            }
+          : null,
         currentQuestionSubmittedCount: currentQuestionAnswers.length,
         currentUserAnswer: currentUserAnswer
           ? {
