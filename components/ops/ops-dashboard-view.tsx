@@ -59,6 +59,32 @@ function StatusPill({ status }: { status: OpsAdoptionStatus }) {
   );
 }
 
+function PaymentPill({ member }: { member: OpsAdoptionMember }) {
+  const overFreeLimitWithoutPayment =
+    !member.hasPayment && member.totalQuestionsAnswered >= 100;
+  const detail = [
+    member.hasPayment ? 'Paiement: Y' : 'Paiement: N',
+    `${member.totalQuestionsAnswered} Q au total`,
+    `abonnement: ${member.subscriptionStatus}`,
+    `tier: ${member.userTier}`,
+  ].join(' · ');
+
+  return (
+    <span
+      title={detail}
+      className={`inline-flex min-w-12 justify-center rounded-full border px-2.5 py-1 text-xs font-black ${
+        member.hasPayment
+          ? 'bg-emerald-400/12 border-emerald-300/35 text-emerald-200'
+          : overFreeLimitWithoutPayment
+            ? 'bg-red-400/12 border-red-300/40 text-red-200'
+            : 'border-[#34584f] bg-[#0b241f] text-[#b9d1cb]'
+      }`}
+    >
+      {member.hasPayment ? 'Y' : 'N'}
+    </span>
+  );
+}
+
 function KpiCard({
   label,
   value,
@@ -121,7 +147,9 @@ function MemberAvatar({ member }: { member: OpsAdoptionMember }) {
 
 export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
   const groupPickerRef = useRef<HTMLDivElement | null>(null);
-  const [selectedRange, setSelectedRange] = useState<OpsRange>(data.defaultRange);
+  const [selectedRange, setSelectedRange] = useState<OpsRange>(
+    data.defaultRange,
+  );
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
@@ -146,7 +174,9 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
   const scopedMembers = useMemo(
     () =>
       hasGroupSelection
-        ? rangeData.members.filter((member) => selectedGroupSet.has(member.groupId))
+        ? rangeData.members.filter((member) =>
+            selectedGroupSet.has(member.groupId),
+          )
         : rangeData.members,
     [hasGroupSelection, rangeData.members, selectedGroupSet],
   );
@@ -154,8 +184,9 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
     () => ({
       groupsCount: scopedGroups.length,
       membersCount: scopedMembers.length,
-      activeMembersCount: scopedMembers.filter((member) => member.status === 'active')
-        .length,
+      activeMembersCount: scopedMembers.filter(
+        (member) => member.status === 'active',
+      ).length,
       followUpMembersCount: scopedMembers.filter(
         (member) => member.status === 'follow_up',
       ).length,
@@ -325,9 +356,9 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
               </div>
             </div>
             <p className={`max-w-3xl text-sm leading-6 ${muted}`}>
-              Suivi dynamique des groupes, membres, questions, révisions et sessions
-              planifiées pour repérer rapidement les utilisateurs actifs et les
-              membres à relancer.
+              Suivi dynamique des groupes, membres, questions, révisions et
+              sessions planifiées pour repérer rapidement les utilisateurs
+              actifs et les membres à relancer.
             </p>
           </div>
 
@@ -379,8 +410,12 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
         <section className="mb-5 grid gap-4 xl:grid-cols-[360px_1fr]">
           <aside className={`${panel} p-4`}>
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-black text-white">Groupes prioritaires</h2>
-              <span className={`${mono} text-xs text-[#7fa096]`}>{rangeData.label}</span>
+              <h2 className="text-lg font-black text-white">
+                Groupes prioritaires
+              </h2>
+              <span className={`${mono} text-xs text-[#7fa096]`}>
+                {rangeData.label}
+              </span>
             </div>
             <div className="ops-scrollbar-hidden grid max-h-[500px] gap-2 overflow-y-auto pr-1">
               {focusGroups.length > 0 ? (
@@ -401,7 +436,8 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                           {group.name}
                         </p>
                         <p className={`mt-1 truncate text-xs ${muted}`}>
-                          Leader : {group.leaderNames.join(', ') || 'non défini'}
+                          Leader :{' '}
+                          {group.leaderNames.join(', ') || 'non défini'}
                         </p>
                       </div>
                       <div className="flex shrink-0 items-center gap-1.5">
@@ -411,13 +447,15 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                           </span>
                         ) : null}
                         {group.followUpCount > 0 ? (
-                          <span className="rounded-full border border-amber-300/35 bg-amber-300/12 px-2 py-0.5 text-[11px] font-black text-amber-200">
+                          <span className="bg-amber-300/12 rounded-full border border-amber-300/35 px-2 py-0.5 text-[11px] font-black text-amber-200">
                             {group.followUpCount}
                           </span>
                         ) : null}
                       </div>
                     </div>
-                    <div className={`mt-2 grid grid-cols-3 gap-2 text-xs ${muted}`}>
+                    <div
+                      className={`mt-2 grid grid-cols-3 gap-2 text-xs ${muted}`}
+                    >
                       <span>{group.membersCount} membres</span>
                       <span>{group.questionsDone} Q</span>
                       <span>{groupActivityLabel(group.lastActivityAt)}</span>
@@ -425,7 +463,9 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                   </button>
                 ))
               ) : (
-                <p className={`rounded-lg border border-dashed border-[#234238] p-4 text-sm ${muted}`}>
+                <p
+                  className={`rounded-lg border border-dashed border-[#234238] p-4 text-sm ${muted}`}
+                >
                   Aucun groupe avec membres pour cette période.
                 </p>
               )}
@@ -436,9 +476,12 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
             <div className="border-b border-[#234238] p-4">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-black text-white">Activité par membre</h2>
+                  <h2 className="text-lg font-black text-white">
+                    Activité par membre
+                  </h2>
                   <p className={`text-sm ${muted}`}>
-                    {filteredMembers.length} membre{filteredMembers.length > 1 ? 's' : ''} affiché
+                    {filteredMembers.length} membre
+                    {filteredMembers.length > 1 ? 's' : ''} affiché
                     {filteredMembers.length > 1 ? 's' : ''}
                   </p>
                 </div>
@@ -474,7 +517,9 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                     className="flex h-11 w-full items-center justify-between gap-3 rounded-lg border border-[#234238] bg-[#0b241f] px-3 text-left text-sm font-black text-white outline-none transition hover:border-[#27e0b4]"
                     aria-expanded={isGroupPickerOpen}
                   >
-                    <span className="min-w-0 truncate">{selectedGroupLabel}</span>
+                    <span className="min-w-0 truncate">
+                      {selectedGroupLabel}
+                    </span>
                     <ChevronDown
                       className={`h-4 w-4 shrink-0 text-[#7fa096] transition ${
                         isGroupPickerOpen ? 'rotate-180' : ''
@@ -499,37 +544,44 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                         ) : null}
                       </div>
                       <div className="ops-scrollbar-hidden flex max-h-[260px] flex-col gap-1 overflow-y-auto pr-1">
-                    {rangeData.groups.map((group) => {
-                      const checked = selectedGroupSet.has(group.id);
+                        {rangeData.groups.map((group) => {
+                          const checked = selectedGroupSet.has(group.id);
 
-                      return (
-                        <label
-                          key={group.id}
-                          className={`flex cursor-pointer items-center gap-2 rounded-md border px-2.5 py-2 text-sm font-bold transition ${
-                            checked
-                              ? 'border-[#27e0b4]/60 bg-[#123a31] text-white'
-                              : 'border-transparent text-[#b9d1cb] hover:border-[#24443a] hover:bg-[#102820]'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleGroup(group.id)}
-                            className="h-4 w-4 accent-[#27e0b4]"
-                          />
-                          <span className="min-w-0 flex-1 truncate">{group.name}</span>
-                          <span className={`${mono} text-xs text-[#7fa096]`}>
-                            {group.membersCount}
-                          </span>
-                        </label>
-                      );
-                    })}
+                          return (
+                            <label
+                              key={group.id}
+                              className={`flex cursor-pointer items-center gap-2 rounded-md border px-2.5 py-2 text-sm font-bold transition ${
+                                checked
+                                  ? 'border-[#27e0b4]/60 bg-[#123a31] text-white'
+                                  : 'border-transparent text-[#b9d1cb] hover:border-[#24443a] hover:bg-[#102820]'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleGroup(group.id)}
+                                className="h-4 w-4 accent-[#27e0b4]"
+                              />
+                              <span className="min-w-0 flex-1 truncate">
+                                {group.name}
+                              </span>
+                              <span
+                                className={`${mono} text-xs text-[#7fa096]`}
+                              >
+                                {group.membersCount}
+                              </span>
+                            </label>
+                          );
+                        })}
                       </div>
-                  </div>
+                    </div>
                   ) : null}
                 </div>
                 <label className="flex h-11 items-center gap-2 rounded-lg border border-[#234238] bg-[#0b241f] px-3 focus-within:border-[#27e0b4]">
-                  <Search className="h-4 w-4 text-[#7fa096]" aria-hidden="true" />
+                  <Search
+                    className="h-4 w-4 text-[#7fa096]"
+                    aria-hidden="true"
+                  />
                   <input
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
@@ -541,21 +593,33 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
             </div>
 
             <div className="ops-scrollbar-hidden hidden overflow-x-auto lg:block">
-              <table className="w-full min-w-[920px] border-collapse text-left">
+              <table className="w-full min-w-[1040px] border-collapse text-left">
                 <thead className="bg-[#0b241f] text-xs uppercase text-[#7fa096]">
                   <tr>
                     <th className="px-4 py-3 font-black">Groupe</th>
                     <th className="px-4 py-3 font-black">Nom du membre</th>
                     <th className="px-4 py-3 font-black">Dernière activité</th>
-                    <th className="px-4 py-3 text-right font-black">Questions faites</th>
-                    <th className="px-4 py-3 text-right font-black">Questions révisées</th>
-                    <th className="px-4 py-3 text-right font-black">Sessions planifiées</th>
+                    <th className="px-4 py-3 text-right font-black">
+                      Questions faites
+                    </th>
+                    <th className="px-4 py-3 text-right font-black">
+                      Questions révisées
+                    </th>
+                    <th className="px-4 py-3 text-right font-black">
+                      Sessions planifiées
+                    </th>
+                    <th className="px-4 py-3 text-center font-black">
+                      Paiement
+                    </th>
                     <th className="px-4 py-3 font-black">Statut</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#234238]">
                   {paginatedMembers.map((member) => (
-                    <tr key={member.id} className="transition hover:bg-[#123a31]/60">
+                    <tr
+                      key={member.id}
+                      className="transition hover:bg-[#123a31]/60"
+                    >
                       <td className="max-w-[180px] truncate px-4 py-4 text-sm font-bold text-white">
                         {member.groupName}
                       </td>
@@ -573,21 +637,32 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                                 </span>
                               ) : null}
                             </div>
-                            <p className={`truncate text-xs ${muted}`}>{member.email}</p>
+                            <p className={`truncate text-xs ${muted}`}>
+                              {member.email}
+                            </p>
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-4 text-sm font-semibold text-[#c9dbd6]">
                         {formatDate(member.lastActivityAt)}
                       </td>
-                      <td className={`${mono} px-4 py-4 text-right text-sm font-black text-white`}>
+                      <td
+                        className={`${mono} px-4 py-4 text-right text-sm font-black text-white`}
+                      >
                         {member.questionsDone}
                       </td>
-                      <td className={`${mono} px-4 py-4 text-right text-sm font-black text-white`}>
+                      <td
+                        className={`${mono} px-4 py-4 text-right text-sm font-black text-white`}
+                      >
                         {member.questionsReviewed}
                       </td>
-                      <td className={`${mono} px-4 py-4 text-right text-sm font-black text-white`}>
+                      <td
+                        className={`${mono} px-4 py-4 text-right text-sm font-black text-white`}
+                      >
                         {member.scheduledSessions}
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <PaymentPill member={member} />
                       </td>
                       <td className="px-4 py-4">
                         <StatusPill status={member.status} />
@@ -600,7 +675,10 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
 
             <div className="grid gap-3 p-4 lg:hidden">
               {paginatedMembers.map((member) => (
-                <article key={member.id} className="rounded-lg border border-[#234238] bg-[#0b241f] p-3">
+                <article
+                  key={member.id}
+                  className="rounded-lg border border-[#234238] bg-[#0b241f] p-3"
+                >
                   <div className="mb-3 flex items-start justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-3">
                       <MemberAvatar member={member} />
@@ -608,7 +686,9 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                         <p className="truncate text-base font-black text-white">
                           {member.memberName}
                         </p>
-                        <p className={`truncate text-xs ${muted}`}>{member.groupName}</p>
+                        <p className={`truncate text-xs ${muted}`}>
+                          {member.groupName}
+                        </p>
                       </div>
                     </div>
                     <StatusPill status={member.status} />
@@ -622,6 +702,9 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                     <span>{member.questionsDone} Q faites</span>
                     <span>{member.questionsReviewed} Q révisées</span>
                     <span>{member.scheduledSessions} sessions planifiées</span>
+                    <span className="flex items-center gap-2">
+                      Paiement <PaymentPill member={member} />
+                    </span>
                   </div>
                 </article>
               ))}
@@ -630,19 +713,24 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
             {filteredMembers.length > 0 ? (
               <div className="flex flex-col gap-3 border-t border-[#234238] px-4 py-3 text-sm text-[#9fb8b0] sm:flex-row sm:items-center sm:justify-between">
                 <span>
-                  {visibleMemberStart}-{visibleMemberEnd} sur {filteredMembers.length} membres
+                  {visibleMemberStart}-{visibleMemberEnd} sur{' '}
+                  {filteredMembers.length} membres
                 </span>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setMemberPage((current) => Math.max(1, current - 1))}
+                    onClick={() =>
+                      setMemberPage((current) => Math.max(1, current - 1))
+                    }
                     disabled={safeMemberPage <= 1}
                     className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#24443a] bg-[#0b241f] px-3 font-bold text-[#c9dbd6] transition hover:border-[#27e0b4] hover:text-[#27e0b4] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[#24443a] disabled:hover:text-[#c9dbd6]"
                   >
                     <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                     Précédent
                   </button>
-                  <span className={`${mono} min-w-16 text-center text-xs text-[#7fa096]`}>
+                  <span
+                    className={`${mono} min-w-16 text-center text-xs text-[#7fa096]`}
+                  >
                     {safeMemberPage}/{memberPageCount}
                   </span>
                   <button
@@ -663,7 +751,9 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
             ) : null}
 
             {filteredMembers.length === 0 ? (
-              <div className={`border-t border-[#234238] p-6 text-center text-sm ${muted}`}>
+              <div
+                className={`border-t border-[#234238] p-6 text-center text-sm ${muted}`}
+              >
                 Aucun membre ne correspond aux filtres actuels.
               </div>
             ) : null}
