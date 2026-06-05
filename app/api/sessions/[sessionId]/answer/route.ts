@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { getTranslations } from 'next-intl/server';
 
 import type { AppLocale } from '@/i18n/routing';
+import {
+  getUserAccessState,
+  hasUserTierCapability,
+} from '@/lib/billing/gating';
 import { isConfidenceLevel } from '@/lib/demo/confidence';
 import { scheduleDashboardProfileAnalyticsRefresh } from '@/lib/demo/profile-analytics';
 import { APP_EVENTS } from '@/lib/logging/events';
@@ -261,6 +265,21 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   if (!deadlineDecision.accepted) {
     return lateSubmitResponse(deadlineDecision.reason, questionIndex);
+  }
+
+  if (mode === 'submit' && existingAnswer?.answer_state !== 'submitted') {
+    const accessState = await getUserAccessState(user.id);
+    perf.step('billing_access_loaded');
+
+    if (!hasUserTierCapability(accessState, 'canJoinSessions')) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: await getFeedback('upgradeRequiredToJoinSession'),
+        },
+        { status: 403 },
+      );
+    }
   }
 
   const saveAnswer = async (

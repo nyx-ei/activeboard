@@ -20,6 +20,10 @@ export type OpsAdoptionMember = {
   questionsDone: number;
   questionsReviewed: number;
   scheduledSessions: number;
+  totalQuestionsAnswered: number;
+  hasPayment: boolean;
+  subscriptionStatus: string;
+  userTier: string;
   status: OpsAdoptionStatus;
 };
 
@@ -75,6 +79,11 @@ type UserRow = {
   display_name: string | null;
   email: string;
   created_at: string;
+  questions_answered: number;
+  has_valid_payment_method: boolean;
+  subscription_status: string;
+  user_tier: string;
+  stripe_default_payment_method_id: string | null;
 };
 
 type SessionRow = {
@@ -147,6 +156,16 @@ function maxIso(values: Array<string | null | undefined>) {
   return dates.reduce((latest, value) => (value > latest ? value : latest));
 }
 
+function hasUserPayment(user: UserRow) {
+  return (
+    user.has_valid_payment_method ||
+    Boolean(user.stripe_default_payment_method_id) ||
+    user.subscription_status === 'active' ||
+    user.subscription_status === 'trialing' ||
+    user.user_tier === 'active'
+  );
+}
+
 function buildStatus({
   joinedAt,
   lastActivityAt,
@@ -161,7 +180,9 @@ function buildStatus({
   now: Date;
 }): OpsAdoptionStatus {
   const joinedMs = new Date(joinedAt).getTime();
-  const lastActivityMs = lastActivityAt ? new Date(lastActivityAt).getTime() : 0;
+  const lastActivityMs = lastActivityAt
+    ? new Date(lastActivityAt).getTime()
+    : 0;
   const ageDays = (now.getTime() - joinedMs) / 86_400_000;
   const idleDays = lastActivityMs
     ? (now.getTime() - lastActivityMs) / 86_400_000
@@ -221,7 +242,9 @@ async function getOpsSourceData() {
       const result = await admin
         .schema('public')
         .from('users')
-        .select('id,display_name,email,created_at')
+        .select(
+          'id,display_name,email,created_at,questions_answered,has_valid_payment_method,subscription_status,user_tier,stripe_default_payment_method_id',
+        )
         .in('id', ids);
       return (result.data ?? []) as UserRow[];
     }),
@@ -293,14 +316,22 @@ function buildRangeData({
   questions,
   answers,
   stateEvents,
-}: Awaited<ReturnType<typeof getOpsSourceData>> & { range: OpsRange }): OpsDashboardRangeData {
+}: Awaited<ReturnType<typeof getOpsSourceData>> & {
+  range: OpsRange;
+}): OpsDashboardRangeData {
   const start = rangeStart(range, now);
   const userById = new Map(users.map((user) => [user.id, user]));
   const groupById = new Map(groups.map((group) => [group.id, group]));
-  const sessionsById = new Map(sessions.map((session) => [session.id, session]));
-  const questionById = new Map(questions.map((question) => [question.id, question]));
+  const sessionsById = new Map(
+    sessions.map((session) => [session.id, session]),
+  );
+  const questionById = new Map(
+    questions.map((question) => [question.id, question]),
+  );
   const futureScheduledSessions = sessions.filter(
-    (session) => session.status === 'scheduled' && session.scheduled_at >= now.toISOString(),
+    (session) =>
+      session.status === 'scheduled' &&
+      session.scheduled_at >= now.toISOString(),
   );
 
   const memberStats = new Map<
@@ -338,7 +369,11 @@ function buildRangeData({
     stats.questionsDone += 1;
     stats.answerDates.push(answer.answered_at);
 
-    if (question.correct_option || question.phase === 'review' || question.phase === 'closed') {
+    if (
+      question.correct_option ||
+      question.phase === 'review' ||
+      question.phase === 'closed'
+    ) {
       stats.questionsReviewed += 1;
     }
   }
@@ -361,15 +396,15 @@ function buildRangeData({
       const group = groupById.get(membership.group_id);
       if (!user || !group) return null;
 
-      const stats =
-        memberStats.get(`${membership.group_id}:${membership.user_id}`) ??
-        {
-          questionsDone: 0,
-          questionsReviewed: 0,
-          answerDates: [],
-          eventDates: [],
-          activityDates: [],
-        };
+      const stats = memberStats.get(
+        `${membership.group_id}:${membership.user_id}`,
+      ) ?? {
+        questionsDone: 0,
+        questionsReviewed: 0,
+        answerDates: [],
+        eventDates: [],
+        activityDates: [],
+      };
       const groupScheduledSessions = futureScheduledSessions.filter(
         (session) => session.group_id === membership.group_id,
       ).length;
@@ -379,12 +414,15 @@ function buildRangeData({
             session.group_id === membership.group_id &&
             session.leader_id === membership.user_id,
         )
-        .map((session) => maxIso([session.started_at, session.ended_at, session.scheduled_at]));
+        .map((session) =>
+          maxIso([session.started_at, session.ended_at, session.scheduled_at]),
+        );
       const lastActivityAt = maxIso([
         ...stats.activityDates,
         ...leaderActivity,
       ]);
-      const memberName = user.display_name?.trim() || user.email.split('@')[0] || 'ActiveBoard';
+      const memberName =
+        user.display_name?.trim() || user.email.split('@')[0] || 'ActiveBoard';
       const status = buildStatus({
         joinedAt: membership.joined_at,
         lastActivityAt,
@@ -407,6 +445,10 @@ function buildRangeData({
         questionsDone: stats.questionsDone,
         questionsReviewed: stats.questionsReviewed,
         scheduledSessions: groupScheduledSessions,
+        totalQuestionsAnswered: user.questions_answered ?? 0,
+        hasPayment: hasUserPayment(user),
+        subscriptionStatus: user.subscription_status ?? 'none',
+        userTier: user.user_tier ?? 'trial',
         status,
       };
     })
@@ -414,8 +456,12 @@ function buildRangeData({
 
   const groupsView = groups
     .map((group) => {
-      const groupMembers = members.filter((member) => member.groupId === group.id);
-      const lastActivityAt = maxIso(groupMembers.map((member) => member.lastActivityAt));
+      const groupMembers = members.filter(
+        (member) => member.groupId === group.id,
+      );
+      const lastActivityAt = maxIso(
+        groupMembers.map((member) => member.lastActivityAt),
+      );
 
       return {
         id: group.id,
@@ -427,13 +473,18 @@ function buildRangeData({
         scheduledSessions: futureScheduledSessions.filter(
           (session) => session.group_id === group.id,
         ).length,
-        questionsDone: groupMembers.reduce((sum, member) => sum + member.questionsDone, 0),
+        questionsDone: groupMembers.reduce(
+          (sum, member) => sum + member.questionsDone,
+          0,
+        ),
         questionsReviewed: groupMembers.reduce(
           (sum, member) => sum + member.questionsReviewed,
           0,
         ),
         lastActivityAt,
-        followUpCount: groupMembers.filter((member) => member.status === 'follow_up').length,
+        followUpCount: groupMembers.filter(
+          (member) => member.status === 'follow_up',
+        ).length,
       };
     })
     .filter((group) => group.membersCount > 0)
@@ -441,7 +492,9 @@ function buildRangeData({
       if (second.followUpCount !== first.followUpCount) {
         return second.followUpCount - first.followUpCount;
       }
-      return (second.lastActivityAt ?? '').localeCompare(first.lastActivityAt ?? '');
+      return (second.lastActivityAt ?? '').localeCompare(
+        first.lastActivityAt ?? '',
+      );
     });
 
   return {
@@ -449,11 +502,22 @@ function buildRangeData({
     summary: {
       groupsCount: groupsView.length,
       membersCount: members.length,
-      activeMembersCount: members.filter((member) => member.status === 'active').length,
-      followUpMembersCount: members.filter((member) => member.status === 'follow_up').length,
-      inactiveMembersCount: members.filter((member) => member.status === 'inactive').length,
-      questionsDone: members.reduce((sum, member) => sum + member.questionsDone, 0),
-      questionsReviewed: members.reduce((sum, member) => sum + member.questionsReviewed, 0),
+      activeMembersCount: members.filter((member) => member.status === 'active')
+        .length,
+      followUpMembersCount: members.filter(
+        (member) => member.status === 'follow_up',
+      ).length,
+      inactiveMembersCount: members.filter(
+        (member) => member.status === 'inactive',
+      ).length,
+      questionsDone: members.reduce(
+        (sum, member) => sum + member.questionsDone,
+        0,
+      ),
+      questionsReviewed: members.reduce(
+        (sum, member) => sum + member.questionsReviewed,
+        0,
+      ),
       scheduledSessions: futureScheduledSessions.length,
     },
     groups: groupsView,
@@ -464,9 +528,13 @@ function buildRangeData({
         new: 2,
         active: 3,
       };
-      const statusDelta = statusWeight[first.status] - statusWeight[second.status];
+      const statusDelta =
+        statusWeight[first.status] - statusWeight[second.status];
       if (statusDelta !== 0) return statusDelta;
-      return first.groupName.localeCompare(second.groupName) || first.memberName.localeCompare(second.memberName);
+      return (
+        first.groupName.localeCompare(second.groupName) ||
+        first.memberName.localeCompare(second.memberName)
+      );
     }),
   };
 }
