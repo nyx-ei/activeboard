@@ -19,7 +19,7 @@ const recentRuntimeResponses = new Map<
   string,
   { payload: RuntimePayload; expiresAt: number }
 >();
-const RECENT_RESPONSE_TTL_MS = 500;
+const RECENT_RESPONSE_TTL_MS = 1500;
 
 export async function fetchSessionRuntime(
   url: string,

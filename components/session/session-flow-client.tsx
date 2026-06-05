@@ -4,7 +4,7 @@ import { Check, Clock, Users } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { invalidateDashboardPayloadCache } from '@/components/dashboard/dashboard-data-cache';
+import { markDashboardPayloadStale } from '@/components/dashboard/dashboard-data-cache';
 import {
   getCertaintyCorrectnessStatus,
   getCertaintyCorrectnessTone,
@@ -153,10 +153,8 @@ async function postQueuedSave<TPayload>(
 
       if (response.ok && payload.ok !== false) {
         forgetPendingSave(request.key);
-        invalidateDashboardPayloadCache();
-        window.dispatchEvent(
-          new CustomEvent('activeboard:dashboard-invalidate'),
-        );
+        markDashboardPayloadStale('sessions');
+        markDashboardPayloadStale('performance');
         const elapsedMs = Math.round(performance.now() - startedAt);
         console.info(`[perf] sessionSave:${request.key}:done ${elapsedMs}ms`);
         return { ok: true, payload, elapsedMs };
@@ -481,7 +479,8 @@ export function SessionAnswerForm({
             ? normalizedCustomOption
             : selectedOption;
       const resolvedConfidence = mode === 'timeout' ? null : confidence || null;
-      const requestKey = `answer:${sessionId}:${questionId}:${resolvedSelectedOption}:${resolvedConfidence ?? 'none'}:${mode}`;
+      const scopedQuestionKey = questionId ?? `q-${questionIndex}`;
+      const requestKey = `answer:${sessionId}:${scopedQuestionKey}:${resolvedSelectedOption}:${resolvedConfidence ?? 'none'}:${mode}`;
 
       if (
         mode === 'submit' &&

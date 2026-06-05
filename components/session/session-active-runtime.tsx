@@ -65,9 +65,11 @@ type SessionActiveRuntimeProps = {
   advanceAction: ServerAction;
 };
 
-const BASE_POLL_INTERVAL_MS = 5000;
-const ANSWERED_POLL_INTERVAL_MS = 7000;
-const READY_POLL_INTERVAL_MS = 2500;
+const BASE_POLL_INTERVAL_MS = 10_000;
+const ANSWERED_POLL_INTERVAL_MS = 15_000;
+const READY_POLL_INTERVAL_MS = 5_000;
+const REALTIME_RECOVERY_POLL_INTERVAL_MS = 30_000;
+const REALTIME_SYNC_JITTER_MS = 900;
 
 const SessionStateRealtimeSync = dynamic(
   () =>
@@ -125,6 +127,8 @@ export function SessionActiveRuntime({
   const currentAnswerQuestionIndexRef = useRef<number | null>(
     initialAnswer ? questionIndex : null,
   );
+  const lastRealtimeSyncAtRef = useRef(0);
+  const realtimeSyncTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     setRuntimeQuestionId(questionId);
@@ -191,6 +195,13 @@ export function SessionActiveRuntime({
     let timeoutId: number | null = null;
 
     const getPollDelay = () => {
+      const realtimeRecentlySynced =
+        Date.now() - lastRealtimeSyncAtRef.current <
+        REALTIME_RECOVERY_POLL_INTERVAL_MS;
+      if (realtimeRecentlySynced) {
+        return REALTIME_RECOVERY_POLL_INTERVAL_MS;
+      }
+
       if (submittedCountRef.current >= Math.max(memberCountRef.current, 1)) {
         return READY_POLL_INTERVAL_MS;
       }
@@ -285,7 +296,14 @@ export function SessionActiveRuntime({
     const handleSessionStateSync = (event: Event) => {
       const detail = (event as CustomEvent<{ sessionId?: string }>).detail;
       if (detail?.sessionId === sessionId) {
-        void syncRuntime();
+        lastRealtimeSyncAtRef.current = Date.now();
+        if (realtimeSyncTimeoutRef.current !== null) {
+          window.clearTimeout(realtimeSyncTimeoutRef.current);
+        }
+        realtimeSyncTimeoutRef.current = window.setTimeout(() => {
+          realtimeSyncTimeoutRef.current = null;
+          void syncRuntime();
+        }, Math.floor(Math.random() * REALTIME_SYNC_JITTER_MS));
       }
     };
 
@@ -306,6 +324,10 @@ export function SessionActiveRuntime({
       );
       if (timeoutId !== null) {
         window.clearTimeout(timeoutId);
+      }
+      if (realtimeSyncTimeoutRef.current !== null) {
+        window.clearTimeout(realtimeSyncTimeoutRef.current);
+        realtimeSyncTimeoutRef.current = null;
       }
     };
   }, [
