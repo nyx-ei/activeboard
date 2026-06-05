@@ -1,13 +1,20 @@
 import { NextResponse } from 'next/server';
 
 import { createPerfTracker } from '@/lib/observability/perf';
-import {
-  getCurrentAuthUser,
-  loadSessionRuntimeAccess,
-} from '@/lib/session/flow';
+import { getCurrentAuthUser } from '@/lib/session/flow';
 
 type RouteContext = {
   params: { sessionId: string };
+};
+type SessionRuntimeSnapshot = {
+  ok: boolean | null;
+  session_status: string | null;
+  question_id: string | null;
+  question_index: number | null;
+  question_phase: string | null;
+  answer_deadline_at: string | null;
+  submitted_count: number | null;
+  member_count: number | null;
 };
 
 export async function GET(request: Request, { params }: RouteContext) {
@@ -39,81 +46,45 @@ export async function GET(request: Request, { params }: RouteContext) {
     },
   });
 
-  const access = await loadSessionRuntimeAccess(supabase, sessionId, user.id);
-  perf.step('session_loaded');
+  const { data: runtimeRows, error: runtimeError } = await (
+    supabase.schema('public') as unknown as {
+      rpc: (
+        fn: 'activeboard_get_session_runtime',
+        args: {
+          target_session_id: string;
+          target_question_id: string | null;
+        },
+      ) => Promise<{
+        data: SessionRuntimeSnapshot[] | null;
+        error: { message?: string } | null;
+      }>;
+    }
+  ).rpc('activeboard_get_session_runtime', {
+    target_session_id: sessionId,
+    target_question_id: questionId,
+  });
+  perf.step('runtime_snapshot_loaded');
 
-  if (!access?.session_id || !access.status) {
+  const runtime = runtimeRows?.[0] ?? null;
+  if (runtimeError || !runtime?.ok || !runtime.session_status) {
     return NextResponse.json({ ok: false }, { status: 404 });
   }
   perf.step('membership_loaded');
-
-  if (questionId) {
-    const [{ data: question }, { count: submittedCount }] = await Promise.all([
-      supabase
-        .schema('public')
-        .from('questions')
-        .select('id, phase, answer_deadline_at, order_index')
-        .eq('id', questionId)
-        .eq('session_id', sessionId)
-        .maybeSingle(),
-      supabase
-        .schema('public')
-        .from('answers')
-        .select('id', { count: 'exact', head: true })
-        .eq('question_id', questionId),
-    ]);
-    perf.step('question_and_counts_loaded');
-    perf.done({
-      mode: 'question',
-      questionFound: Boolean(question?.id),
-      submittedCount: submittedCount ?? 0,
-      memberCount: access.member_count ?? 0,
-    });
-
-    return NextResponse.json({
-      ok: true,
-      sessionStatus: access.status,
-      questionId: question?.id ?? null,
-      questionIndex: question?.order_index ?? null,
-      questionPhase: question?.phase ?? null,
-      answerDeadlineAt: question?.answer_deadline_at ?? null,
-      submittedCount: submittedCount ?? 0,
-      memberCount: access.member_count ?? 0,
-    });
-  }
-
-  const { data: question } = await supabase
-    .schema('public')
-    .from('questions')
-    .select('id, phase, answer_deadline_at, order_index')
-    .eq('session_id', sessionId)
-    .not('launched_at', 'is', null)
-    .order('order_index', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const { count: submittedCount } = question?.id
-    ? await supabase
-        .schema('public')
-        .from('answers')
-        .select('id', { count: 'exact', head: true })
-        .eq('question_id', question.id)
-    : { count: 0 };
-  perf.step('latest_question_and_counts_loaded');
   perf.done({
-    mode: 'latest',
-    questionFound: Boolean(question?.id),
-    submittedCount: submittedCount ?? 0,
-    memberCount: access.member_count ?? 0,
+    mode: questionId ? 'question' : 'latest',
+    questionFound: Boolean(runtime.question_id),
+    submittedCount: runtime.submitted_count ?? 0,
+    memberCount: runtime.member_count ?? 0,
   });
 
   return NextResponse.json({
     ok: true,
-    sessionStatus: access.status,
-    questionId: question?.id ?? null,
-    questionIndex: question?.order_index ?? null,
-    questionPhase: question?.phase ?? null,
-    answerDeadlineAt: question?.answer_deadline_at ?? null,
-    submittedCount: submittedCount ?? 0,
-    memberCount: access.member_count ?? 0,
+    sessionStatus: runtime.session_status,
+    questionId: runtime.question_id ?? null,
+    questionIndex: runtime.question_index ?? null,
+    questionPhase: runtime.question_phase ?? null,
+    answerDeadlineAt: runtime.answer_deadline_at ?? null,
+    submittedCount: runtime.submitted_count ?? 0,
+    memberCount: runtime.member_count ?? 0,
   });
 }
