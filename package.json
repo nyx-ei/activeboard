@@ -16,6 +16,7 @@
     "format:check": "prettier --check .",
     "test:review-consistency": "node --test tests/review-snapshot-consistency.test.mjs",
     "test:concurrency": "node --test tests/concurrency-safeguards.test.mjs",
+    "test:runtime": "node --test tests/session-runtime-snapshot.test.mjs",
     "test:api:skipped-answer": "node --test scripts/skipped-answer-state.test.mjs",
     "test:api:deadline": "node --test scripts/session-deadline-policy.test.mjs",
     "test:e2e": "playwright test",
