@@ -12,7 +12,8 @@ type SessionStageRefreshProps = {
   expectedQuestionId?: string | null;
 };
 
-const POLL_INTERVAL_MS = 15000;
+const POLL_INTERVAL_MS = 30_000;
+const REALTIME_SYNC_JITTER_MS = 900;
 
 const SessionStateRealtimeSync = dynamic(
   () =>
@@ -29,6 +30,7 @@ export function SessionStageRefresh({
 }: SessionStageRefreshProps) {
   const router = useRouter();
   const refreshInFlightRef = useRef(false);
+  const realtimeSyncTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,7 +99,13 @@ export function SessionStageRefresh({
     const handleSessionStateSync = (event: Event) => {
       const detail = (event as CustomEvent<{ sessionId?: string }>).detail;
       if (detail?.sessionId === sessionId) {
-        void syncStage();
+        if (realtimeSyncTimeoutRef.current !== null) {
+          window.clearTimeout(realtimeSyncTimeoutRef.current);
+        }
+        realtimeSyncTimeoutRef.current = window.setTimeout(() => {
+          realtimeSyncTimeoutRef.current = null;
+          void syncStage();
+        }, Math.floor(Math.random() * REALTIME_SYNC_JITTER_MS));
       }
     };
     const handlePause = () => {
@@ -127,6 +135,10 @@ export function SessionStageRefresh({
       window.removeEventListener('activeboard:session-starting', handlePause);
       if (intervalId !== null) {
         window.clearInterval(intervalId);
+      }
+      if (realtimeSyncTimeoutRef.current !== null) {
+        window.clearTimeout(realtimeSyncTimeoutRef.current);
+        realtimeSyncTimeoutRef.current = null;
       }
     };
   }, [expectedQuestionId, expectedStatus, router, sessionId]);

@@ -4,7 +4,6 @@ import { getTranslations } from 'next-intl/server';
 import type { AppLocale } from '@/i18n/routing';
 import { createPerfTracker } from '@/lib/observability/perf';
 import {
-  ensureQuestion,
   getCurrentAuthUser,
   getSessionAccessSnapshot,
   loadSessionRuntimeAccess,
@@ -18,6 +17,14 @@ type RouteContext = {
 type AdvancePayload = {
   locale?: string;
   questionIndex?: number;
+};
+type AdvanceSessionQuestionResult = {
+  ok: boolean | null;
+  code: string | null;
+  question_id: string | null;
+  question_index: number | null;
+  answer_deadline_at: string | null;
+  session_status: string | null;
 };
 
 export async function POST(request: Request, { params }: RouteContext) {
@@ -117,52 +124,103 @@ export async function POST(request: Request, { params }: RouteContext) {
     );
   }
 
-  const nextIndex = questionIndex + 1;
-  if (nextIndex >= session.question_goal) {
-    await supabase
-      .schema('public')
-      .from('sessions')
-      .update({ status: 'incomplete' })
-      .eq('id', sessionId);
-    await recordSessionStateEvent(supabase, {
-      sessionId,
-      groupId: session.group_id,
-      actorId: user.id,
-      eventType: 'session_completed',
-    }).catch(() => undefined);
-    perf.step('session_marked_incomplete');
-    perf.done({ mode: 'complete' });
-
-    return NextResponse.json({
-      ok: true,
-      redirectTo: `/${locale}/sessions/${sessionId}?stage=complete`,
-    });
-  }
-
   try {
-    const nextQuestion = await ensureQuestion(
-      supabase,
-      sessionId,
-      nextIndex,
-      user.id,
-      session,
-    );
-    perf.step('next_question_ready');
+    const { data: advanceRows, error: advanceError } = await (
+      supabase.schema('public') as unknown as {
+        rpc: (
+          fn: 'activeboard_advance_session_question',
+          args: {
+            target_session_id: string;
+            actor_user_id: string;
+            current_question_index: number;
+          },
+        ) => Promise<{
+          data: AdvanceSessionQuestionResult[] | null;
+          error: { message?: string } | null;
+        }>;
+      }
+    ).rpc('activeboard_advance_session_question', {
+      target_session_id: sessionId,
+      actor_user_id: user.id,
+      current_question_index: questionIndex,
+    });
+
+    if (advanceError) {
+      throw new Error(advanceError.message ?? 'advance_failed');
+    }
+
+    const advanceResult = advanceRows?.[0] ?? null;
+    if (!advanceResult?.ok) {
+      const feedbackKey =
+        advanceResult?.code === 'captainOnlyAction'
+          ? 'captainOnlyAction'
+          : advanceResult?.code === 'notAuthorized'
+            ? 'notAuthorized'
+            : 'actionFailed';
+      return NextResponse.json(
+        { ok: false, message: await getFeedback(feedbackKey) },
+        {
+          status:
+            advanceResult?.code === 'captainOnlyAction' ||
+            advanceResult?.code === 'notAuthorized'
+              ? 403
+              : 400,
+        },
+      );
+    }
+
+    perf.step('advance_rpc_completed');
+
+    if (advanceResult.code === 'sessionCompleted') {
+      await recordSessionStateEvent(supabase, {
+        sessionId,
+        groupId: session.group_id,
+        actorId: user.id,
+        eventType: 'session_completed',
+        payload: {
+          eventType: 'session_completed',
+          actorId: user.id,
+          questionIndex,
+        },
+      }).catch(() => undefined);
+      perf.step('state_event_recorded');
+      perf.done({ mode: 'complete' });
+
+      return NextResponse.json({
+        ok: true,
+        redirectTo: `/${locale}/sessions/${sessionId}?stage=complete`,
+      });
+    }
+
+    const nextQuestionId = advanceResult.question_id;
+    const nextIndex = advanceResult.question_index;
+    if (!nextQuestionId || typeof nextIndex !== 'number') {
+      throw new Error('advance_missing_question');
+    }
+
     await recordSessionStateEvent(supabase, {
       sessionId,
       groupId: session.group_id,
-      questionId: nextQuestion.id,
+      questionId: nextQuestionId,
       actorId: user.id,
       eventType: 'question_advanced',
+      payload: {
+        eventType: 'question_advanced',
+        actorId: user.id,
+        questionId: nextQuestionId,
+        questionIndex: nextIndex,
+        answerDeadlineAt: advanceResult.answer_deadline_at,
+        href: `/${locale}/sessions/${sessionId}?q=${nextIndex}`,
+      },
     }).catch(() => undefined);
     perf.step('state_event_recorded');
     perf.done({ mode: 'next', nextIndex });
 
     return NextResponse.json({
       ok: true,
-      questionId: nextQuestion.id,
+      questionId: nextQuestionId,
       questionIndex: nextIndex,
-      answerDeadlineAt: nextQuestion.answerDeadlineAt,
+      answerDeadlineAt: advanceResult.answer_deadline_at,
       redirectTo: `/${locale}/sessions/${sessionId}?q=${nextIndex}`,
     });
   } catch {

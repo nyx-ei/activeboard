@@ -62,8 +62,9 @@ type DashboardPayloadByView = {
   performance: DashboardPerformancePayload;
 };
 
-const LIVE_SESSION_REVALIDATION_INTERVAL_MS = 15_000;
-const PERFORMANCE_REVALIDATION_INTERVAL_MS = 30_000;
+const LIVE_SESSION_REVALIDATION_INTERVAL_MS = 20_000;
+const PERFORMANCE_REVALIDATION_INTERVAL_MS = 90_000;
+const VISIBLE_REVALIDATION_MIN_INTERVAL_MS = 30_000;
 
 export function DashboardViewShell({
   sessionsProps,
@@ -213,7 +214,10 @@ export function DashboardViewShell({
         return;
       }
       const now = Date.now();
-      if (now - lastVisibleRevalidationRef.current < 10_000) {
+      if (
+        now - lastVisibleRevalidationRef.current <
+        VISIBLE_REVALIDATION_MIN_INTERVAL_MS
+      ) {
         return;
       }
 

@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { SessionSupabaseClient } from '@/lib/session/flow';
+import type { Json } from '@/lib/supabase/types';
 
 export type SessionStateEventType =
   | 'answer_submitted'
@@ -16,6 +17,7 @@ export async function recordSessionStateEvent(
     questionId?: string | null;
     actorId: string;
     eventType: SessionStateEventType;
+    payload?: Json;
   },
 ) {
   await supabase
@@ -27,5 +29,6 @@ export async function recordSessionStateEvent(
       question_id: input.questionId ?? null,
       actor_id: input.actorId,
       event_type: input.eventType,
+      payload: input.payload ?? {},
     });
 }

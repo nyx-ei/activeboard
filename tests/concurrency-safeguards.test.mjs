@@ -15,6 +15,14 @@ const sessionClient = readFileSync(
   'utf8',
 );
 const captainTransfer = readFileSync('lib/session/captain-transfer.ts', 'utf8');
+const atomicAdvanceMigration = readFileSync(
+  'supabase/migrations/20260605150000_atomic_session_advance_rpc.sql',
+  'utf8',
+);
+const advanceRoute = readFileSync(
+  'app/api/sessions/[sessionId]/advance/route.ts',
+  'utf8',
+);
 
 test('captain transfer uses expected leader conditional update', () => {
   assert.match(
@@ -49,4 +57,21 @@ test('timeout writes cannot overwrite an existing manual submit', () => {
     migration,
     /excluded\.answer_request_mode = 'timeout'\s+and public\.answers\.answer_request_mode = 'submit'/,
   );
+});
+
+test('question advance is handled by an atomic session RPC', () => {
+  assert.match(
+    atomicAdvanceMigration,
+    /create or replace function public\.activeboard_advance_session_question/,
+  );
+  assert.match(atomicAdvanceMigration, /for update of s/);
+  assert.match(
+    atomicAdvanceMigration,
+    /on conflict \(session_id, order_index\)/,
+  );
+  assert.match(
+    advanceRoute,
+    /rpc\('activeboard_advance_session_question'/,
+  );
+  assert.doesNotMatch(advanceRoute, /ensureQuestion\(/);
 });

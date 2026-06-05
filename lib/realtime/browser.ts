@@ -9,7 +9,7 @@ type RealtimeTable = {
   filter?: string;
 };
 
-type RealtimeCallback = () => void;
+type RealtimeCallback = (payload?: unknown) => void;
 type RealtimeStatusCallback = (status: string) => void;
 
 type RegistryEntry = {
@@ -42,7 +42,7 @@ function getRegistryKey(channelName: string, tables: RealtimeTable[]) {
 function wireChannelSubscriptions(
   channel: RealtimeChannel,
   tables: RealtimeTable[],
-  notify: () => void,
+  notify: (payload?: unknown) => void,
 ) {
   for (const table of tables) {
     channel.on(
@@ -112,9 +112,9 @@ export function registerRealtimeSubscription({
   if (onStatus) {
     statusCallbacks.add(onStatus);
   }
-  const notify = () => {
+  const notify = (payload?: unknown) => {
     for (const callback of callbacks) {
-      callback();
+      callback(payload);
     }
   };
 

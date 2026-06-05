@@ -19,6 +19,7 @@ type ServerAction = (formData: FormData) => void | Promise<void>;
 type SessionStartRuntimeProps = {
   locale: string;
   sessionId: string;
+  currentUserId: string;
   sessionTitle: string;
   sessionShareCode: string;
   sessionShareLabel: string;
@@ -77,6 +78,7 @@ const OptimisticSessionActiveRuntime = dynamic(
 export function SessionStartRuntime({
   locale,
   sessionId,
+  currentUserId,
   sessionTitle,
   sessionShareCode,
   sessionShareLabel,
@@ -105,6 +107,7 @@ export function SessionStartRuntime({
         advanceAction={advanceAction}
         locale={locale}
         sessionId={sessionId}
+        currentUserId={currentUserId}
         sessionShareCode={sessionShareCode}
         questionId={activeQuestion.questionId}
         questionIndex={0}

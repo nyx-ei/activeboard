@@ -423,6 +423,7 @@ type SessionStateEventsRow = {
     | 'session_completed';
   group_id: string;
   id: string;
+  payload: Json;
   question_id: string | null;
   session_id: string;
 };
@@ -437,6 +438,7 @@ type SessionStateEventsInsert = {
     | 'session_completed';
   group_id: string;
   id?: string;
+  payload?: Json;
   question_id?: string | null;
   session_id: string;
 };
@@ -451,6 +453,7 @@ type SessionStateEventsUpdate = {
     | 'session_completed';
   group_id?: string;
   id?: string;
+  payload?: Json;
   question_id?: string | null;
   session_id?: string;
 };
