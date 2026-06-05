@@ -9,10 +9,10 @@ type SessionStateRealtimeSyncProps = {
   sessionId: string;
 };
 
-function dispatchSessionStateSync(sessionId: string) {
+function dispatchSessionStateSync(sessionId: string, payload?: unknown) {
   window.dispatchEvent(
     new CustomEvent('activeboard:session-state-sync', {
-      detail: { sessionId },
+      detail: { sessionId, payload },
     }),
   );
 }
@@ -36,8 +36,8 @@ export function SessionStateRealtimeSync({
           filter: `id=eq.${sessionId}`,
         },
       ],
-      onEvent: () => {
-        dispatchSessionStateSync(sessionId);
+      onEvent: (payload) => {
+        dispatchSessionStateSync(sessionId, payload);
       },
       onStatus: (status) => {
         if (status === 'SUBSCRIBED') {

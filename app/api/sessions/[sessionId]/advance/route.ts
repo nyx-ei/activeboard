@@ -129,6 +129,11 @@ export async function POST(request: Request, { params }: RouteContext) {
       groupId: session.group_id,
       actorId: user.id,
       eventType: 'session_completed',
+      payload: {
+        eventType: 'session_completed',
+        actorId: user.id,
+        questionIndex,
+      },
     }).catch(() => undefined);
     perf.step('session_marked_incomplete');
     perf.done({ mode: 'complete' });
@@ -154,6 +159,14 @@ export async function POST(request: Request, { params }: RouteContext) {
       questionId: nextQuestion.id,
       actorId: user.id,
       eventType: 'question_advanced',
+      payload: {
+        eventType: 'question_advanced',
+        actorId: user.id,
+        questionId: nextQuestion.id,
+        questionIndex: nextIndex,
+        answerDeadlineAt: nextQuestion.answerDeadlineAt,
+        href: `/${locale}/sessions/${sessionId}?q=${nextIndex}`,
+      },
     }).catch(() => undefined);
     perf.step('state_event_recorded');
     perf.done({ mode: 'next', nextIndex });

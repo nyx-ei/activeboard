@@ -330,6 +330,13 @@ export async function POST(request: Request, { params }: RouteContext) {
       questionId: ensuredQuestion.id,
       actorId: user.id,
       eventType: 'answer_timed_out',
+      payload: {
+        eventType: 'answer_timed_out',
+        actorId: user.id,
+        questionId: ensuredQuestion.id,
+        questionIndex,
+        answerState: savedAnswer?.answer_state ?? 'skipped',
+      },
     }).catch(() => undefined);
     perf.step('state_event_recorded');
     scheduleDashboardProfileAnalyticsRefresh();
@@ -392,6 +399,13 @@ export async function POST(request: Request, { params }: RouteContext) {
     questionId: ensuredQuestion.id,
     actorId: user.id,
     eventType: 'answer_submitted',
+    payload: {
+      eventType: 'answer_submitted',
+      actorId: user.id,
+      questionId: ensuredQuestion.id,
+      questionIndex,
+      answerState: savedAnswer?.answer_state ?? 'submitted',
+    },
   }).catch(() => undefined);
   perf.step('state_event_recorded');
 

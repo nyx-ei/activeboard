@@ -148,6 +148,7 @@ export default async function SessionPage({
           advanceAction={advanceSessionStepAction}
           locale={locale}
           sessionId={params.sessionId}
+          currentUserId={user.id}
           sessionTitle={data.session.name ?? data.group.name}
           sessionShareCode={data.session.share_code}
           sessionShareLabel={t('shareCodeLabel', {
@@ -337,6 +338,7 @@ export default async function SessionPage({
         advanceAction={advanceSessionStepAction}
         locale={locale}
         sessionId={params.sessionId}
+        currentUserId={user.id}
         sessionShareCode={data.session.share_code}
         questionId={question.id}
         questionIndex={currentIndex}

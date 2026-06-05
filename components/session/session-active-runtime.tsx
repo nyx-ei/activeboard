@@ -21,10 +21,31 @@ import { Link } from '@/i18n/navigation';
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
 
 type ServerAction = (formData: FormData) => void | Promise<void>;
+type SessionStateRealtimePayload = {
+  eventType?:
+    | 'answer_submitted'
+    | 'answer_timed_out'
+    | 'question_advanced'
+    | 'session_completed';
+  actorId?: string | null;
+  questionId?: string | null;
+  questionIndex?: number | null;
+  answerDeadlineAt?: string | null;
+  href?: string | null;
+};
+type SessionStateRealtimeEvent = {
+  sessionId?: string;
+  payload?: {
+    new?: {
+      payload?: SessionStateRealtimePayload | null;
+    } | null;
+  };
+};
 
 type SessionActiveRuntimeProps = {
   sessionId: string;
   sessionShareCode: string;
+  currentUserId: string;
   questionId: string;
   questionIndex: number;
   questionGoal: number;
@@ -82,6 +103,7 @@ const SessionStateRealtimeSync = dynamic(
 export function SessionActiveRuntime({
   sessionId,
   sessionShareCode,
+  currentUserId,
   questionId,
   questionIndex,
   questionGoal,
@@ -129,6 +151,7 @@ export function SessionActiveRuntime({
   );
   const lastRealtimeSyncAtRef = useRef(0);
   const realtimeSyncTimeoutRef = useRef<number | null>(null);
+  const locallyCountedActorIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     setRuntimeQuestionId(questionId);
@@ -150,6 +173,7 @@ export function SessionActiveRuntime({
     currentAnswerQuestionIndexRef.current = initialAnswer
       ? questionIndex
       : null;
+    locallyCountedActorIdsRef.current = new Set();
   }, [
     initialAnswer,
     initialAnswerDeadlineAt,
@@ -293,17 +317,97 @@ export function SessionActiveRuntime({
       void syncRuntime();
       startPolling();
     };
+    const scheduleRuntimeSync = () => {
+      if (realtimeSyncTimeoutRef.current !== null) {
+        window.clearTimeout(realtimeSyncTimeoutRef.current);
+      }
+      realtimeSyncTimeoutRef.current = window.setTimeout(() => {
+        realtimeSyncTimeoutRef.current = null;
+        void syncRuntime();
+      }, Math.floor(Math.random() * REALTIME_SYNC_JITTER_MS));
+    };
     const handleSessionStateSync = (event: Event) => {
-      const detail = (event as CustomEvent<{ sessionId?: string }>).detail;
+      const detail = (event as CustomEvent<SessionStateRealtimeEvent>).detail;
       if (detail?.sessionId === sessionId) {
         lastRealtimeSyncAtRef.current = Date.now();
-        if (realtimeSyncTimeoutRef.current !== null) {
-          window.clearTimeout(realtimeSyncTimeoutRef.current);
+
+        const eventPayload = detail.payload?.new?.payload;
+        const eventType = eventPayload?.eventType;
+        if (!eventType) {
+          scheduleRuntimeSync();
+          return;
         }
-        realtimeSyncTimeoutRef.current = window.setTimeout(() => {
-          realtimeSyncTimeoutRef.current = null;
-          void syncRuntime();
-        }, Math.floor(Math.random() * REALTIME_SYNC_JITTER_MS));
+
+        if (eventType === 'session_completed') {
+          setShowCompletion(true);
+          setIsSubmitting(false);
+          window.history.replaceState(
+            null,
+            '',
+            `/${locale}/sessions/${sessionId}?stage=complete`,
+          );
+          return;
+        }
+
+        if (eventType === 'question_advanced') {
+          if (
+            typeof eventPayload.questionIndex === 'number' &&
+            eventPayload.questionIndex !== runtimeQuestionIndexRef.current &&
+            eventPayload.questionId
+          ) {
+            setRuntimeQuestionId(eventPayload.questionId);
+            setRuntimeQuestionIndex(eventPayload.questionIndex);
+            setAnswerDeadlineAt(eventPayload.answerDeadlineAt ?? null);
+            setSubmittedCount(0);
+            submittedCountRef.current = 0;
+            setCurrentAnswer(null);
+            setCurrentConfidence(null);
+            currentAnswerRef.current = null;
+            currentAnswerQuestionIndexRef.current = null;
+            answeredLocallyRef.current = false;
+            locallyCountedActorIdsRef.current = new Set();
+            refreshInFlightRef.current = false;
+            setIsSubmitting(false);
+            window.history.replaceState(
+              null,
+              '',
+              eventPayload.href ??
+                `/${locale}/sessions/${sessionId}?q=${eventPayload.questionIndex}`,
+            );
+          }
+          return;
+        }
+
+        const isCurrentQuestionEvent =
+          (eventPayload.questionId &&
+            eventPayload.questionId === runtimeQuestionIdRef.current) ||
+          (typeof eventPayload.questionIndex === 'number' &&
+            eventPayload.questionIndex === runtimeQuestionIndexRef.current);
+        if (
+          (eventType === 'answer_submitted' ||
+            eventType === 'answer_timed_out') &&
+          isCurrentQuestionEvent
+        ) {
+          const actorId = eventPayload.actorId;
+          if (
+            actorId &&
+            actorId !== currentUserId &&
+            !locallyCountedActorIdsRef.current.has(actorId)
+          ) {
+            locallyCountedActorIdsRef.current.add(actorId);
+            setSubmittedCount((current) => {
+              const nextCount = Math.min(
+                Math.max(memberCountRef.current, 1),
+                current + 1,
+              );
+              submittedCountRef.current = nextCount;
+              return nextCount;
+            });
+          }
+          return;
+        }
+
+        scheduleRuntimeSync();
       }
     };
 
@@ -331,7 +435,9 @@ export function SessionActiveRuntime({
       }
     };
   }, [
+    currentUserId,
     isSubmitting,
+    locale,
     router,
     runtimeQuestionId,
     runtimeQuestionIndex,
