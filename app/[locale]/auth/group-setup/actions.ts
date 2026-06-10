@@ -321,6 +321,7 @@ export async function completeLandingGroupSetupAction(
 
       if ((insertedInvites ?? []).length > 0) {
         const inviteIds = insertedInvites ?? [];
+        const inviteIdsByGroupInviteId = new Map<string, string>();
 
         await admin
           .schema('public')
@@ -330,6 +331,22 @@ export async function completeLandingGroupSetupAction(
             'group_invite_id',
             inviteIds.map((invite) => invite.id),
           );
+
+        const { data: unifiedInvitations } = await admin
+          .schema('public')
+          .from('invitations')
+          .select('id, group_invite_id')
+          .in(
+            'group_invite_id',
+            inviteIds.map((invite) => invite.id),
+          );
+
+        for (const invitation of unifiedInvitations ?? []) {
+          inviteIdsByGroupInviteId.set(
+            invitation.group_invite_id,
+            invitation.id,
+          );
+        }
 
         if (hasEmailEnv()) {
           const sendResults = await Promise.all(
@@ -345,7 +362,9 @@ export async function completeLandingGroupSetupAction(
 
               const result = await sendGroupInviteEmail({
                 locale: studyLanguage,
-                inviteId: insertedInvite.id,
+                inviteId:
+                  inviteIdsByGroupInviteId.get(insertedInvite.id) ??
+                  insertedInvite.id,
                 groupId: groupId!,
                 groupName,
                 inviteCode,
