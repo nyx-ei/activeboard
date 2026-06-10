@@ -59,6 +59,7 @@ export type DashboardGroupZoneSession = {
   question_goal: number;
   answeredQuestionCount?: number;
   questionCount?: number;
+  currentQuestionNumber?: number;
   leaderInitials?: string;
   completionPercent?: number;
   accuracyPercent?: number | null;
@@ -1504,7 +1505,13 @@ function getLiveSessionProgress(session: DashboardGroupZoneSession) {
   );
   const current = Math.min(
     total,
-    Math.max(1, session.questionCount ?? session.answeredQuestionCount ?? 1),
+    Math.max(
+      1,
+      session.currentQuestionNumber ??
+        session.questionCount ??
+        session.answeredQuestionCount ??
+        1,
+    ),
   );
 
   return {
@@ -1519,7 +1526,7 @@ function getLiveGroupsSignature(groups: DashboardGroupZoneGroup[]) {
     .filter((group) => group.hasLiveSession && group.activeSession)
     .map((group) => {
       const session = group.activeSession;
-      return `${group.id}:${session?.id ?? ''}:${session?.started_at ?? session?.scheduled_at ?? ''}`;
+      return `${group.id}:${session?.id ?? ''}:${session?.started_at ?? session?.scheduled_at ?? ''}:${session?.currentQuestionNumber ?? ''}`;
     })
     .sort()
     .join('|');
