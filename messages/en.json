@@ -620,6 +620,8 @@
     "trialProgressDescription": "{remaining} questions remaining before billing is required.",
     "trialProgressWarning": "{remaining} questions remaining. Subscribe now to avoid an interruption at 100.",
     "trialProgressComplete": "You have reached 100 answered questions. Billing is now required to keep joining or starting sessions.",
+    "quotaExpiredDashboardTitle": "Your free question limit is reached",
+    "quotaExpiredDashboardCta": "Activate billing",
     "heatmapTitle": "Activity heatmap",
     "heatmapAvailableAfterSessions": "The daily chart will be available after your next sessions.",
     "heatmapDescription": "Your answered-question intensity over the last 12 weeks.",

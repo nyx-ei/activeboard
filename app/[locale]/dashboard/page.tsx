@@ -92,6 +92,8 @@ export default async function DashboardPage({
   const trialProgress = getTrialProgressSnapshot(
     billingSnapshot?.questions_answered ?? 0,
   );
+  const shouldShowQuotaExpiredBanner =
+    trialProgress.isComplete && (!canJoinSessions || !canCreateSession);
   const canOpenOpsDashboard = canAccessOpsDashboard(user.email);
 
   const liveGroupIds = new Set(
@@ -425,6 +427,39 @@ export default async function DashboardPage({
               Ops dashboard
             </Link>
           </div>
+        ) : null}
+        {shouldShowQuotaExpiredBanner ? (
+          <section className="rounded-[18px] border border-amber-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.16),rgba(32,217,163,0.07))] px-4 py-4 shadow-[0_18px_60px_rgba(0,0,0,0.28)] sm:px-6 sm:py-5">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="min-w-0">
+                <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.12em] text-amber-200">
+                  <span
+                    className="h-2 w-2 rounded-full bg-amber-300 shadow-[0_0_14px_rgba(252,211,77,0.55)]"
+                    aria-hidden="true"
+                  />
+                  {t('trialProgressTitle')}
+                </div>
+                <h1 className="mt-3 text-2xl font-extrabold tracking-[-0.03em] text-white sm:text-3xl">
+                  {t('quotaExpiredDashboardTitle')}
+                </h1>
+                <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-[#b7cbc6] sm:text-base">
+                  {feedbackT('upgradeRequiredToJoinSession')}
+                </p>
+                <p className="mt-2 text-sm text-[#8fa7a2]">
+                  {t('trialProgressSummary', {
+                    current: trialProgress.current,
+                    total: trialProgress.total,
+                  })}
+                </p>
+              </div>
+              <Link
+                href="/billing"
+                className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-[12px] bg-[#20D9A3] px-5 text-sm font-extrabold text-[#062b22] shadow-[0_16px_32px_rgba(32,217,163,0.18)] transition hover:bg-[#2fe9b1] sm:px-6"
+              >
+                {t('quotaExpiredDashboardCta')}
+              </Link>
+            </div>
+          </section>
         ) : null}
         <DashboardViewShell
           sessionsProps={sessionsProps}

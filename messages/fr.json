@@ -618,6 +618,8 @@
                       "trialProgressDescription":  "{remaining} questions restantes avant facturation obligatoire.",
                       "trialProgressWarning":  "{remaining} questions restantes. Abonne-toi maintenant pour éviter un blocage à 100.",
                       "trialProgressComplete":  "Tu as atteint 100 questions répondues. La facturation est maintenant nécessaire pour continuer les sessions.",
+                      "quotaExpiredDashboardTitle":  "Ta limite de questions gratuites est atteinte",
+                      "quotaExpiredDashboardCta":  "Activer la facturation",
                       "heatmapTitle":  "Heatmap d'activité",
                       "heatmapAvailableAfterSessions":  "Le graphique par jour sera disponible après vos prochaines sessions.",
                       "heatmapDescription":  "Intensité de tes questions répondues sur les 12 dernières semaines.",
