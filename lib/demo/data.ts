@@ -38,6 +38,7 @@ type DashboardSession = {
   question_goal: number;
   answeredQuestionCount?: number;
   questionCount?: number;
+  currentQuestionNumber?: number;
   leaderInitials?: string;
   completionPercent?: number;
   accuracyPercent?: number | null;
@@ -299,6 +300,11 @@ type DashboardRecentAnswerRow = {
 type DashboardRecentQuestionRow = {
   id: string | null;
   session_id: string | null;
+};
+
+type DashboardLiveQuestionRow = {
+  session_id: string | null;
+  order_index: number | null;
 };
 
 const TRIAL_WARNING_THRESHOLD = 85;
@@ -1098,6 +1104,61 @@ async function getDashboardCore(userId: string) {
       new Date(right.scheduled_at).getTime() -
       new Date(left.scheduled_at).getTime(),
   );
+
+  const activeSessionIds = [
+    ...new Set(
+      sessions
+        .filter((session) => session.status === 'active')
+        .map((session) => session.id),
+    ),
+  ];
+  const activeQuestionRows =
+    activeSessionIds.length > 0
+      ? (
+          await Promise.all(
+            chunkArray(activeSessionIds, 200).map((ids) =>
+              supabaseAdmin
+                .schema('public')
+                .from('questions')
+                .select('session_id, order_index')
+                .in('session_id', ids)
+                .not('launched_at', 'is', null),
+            ),
+          )
+        ).flatMap((result) => result.data ?? [])
+      : [];
+  const currentQuestionNumberBySession = new Map<string, number>();
+  for (const question of activeQuestionRows as DashboardLiveQuestionRow[]) {
+    if (
+      !question.session_id ||
+      typeof question.order_index !== 'number' ||
+      question.order_index < 0
+    ) {
+      continue;
+    }
+
+    const current =
+      currentQuestionNumberBySession.get(question.session_id) ?? 0;
+    currentQuestionNumberBySession.set(
+      question.session_id,
+      Math.max(current, question.order_index + 1),
+    );
+  }
+  for (const session of sessions) {
+    if (session.status !== 'active') {
+      continue;
+    }
+
+    session.currentQuestionNumber = Math.min(
+      Math.max(
+        1,
+        currentQuestionNumberBySession.get(session.id) ??
+          session.questionCount ??
+          1,
+      ),
+      Math.max(session.question_goal, 1),
+    );
+  }
 
   const now = Date.now();
   const recentByGroup = new Map<string, DashboardSession[]>();
