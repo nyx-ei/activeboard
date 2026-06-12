@@ -14,6 +14,7 @@ export type CreateSessionModalLabels = {
   groupName: string;
   sessionName: string;
   sessionNamePlaceholder: string;
+  scheduledAt: string;
   questionCount: string;
   timerMode: string;
   perQuestionMode: string;
@@ -44,6 +45,9 @@ export function CreateSessionModal({
 }) {
   const [name, setName] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState(initialGroupId);
+  const [scheduledAt, setScheduledAt] = useState(() =>
+    getDefaultScheduledAtInputValue(),
+  );
   const [questionGoal, setQuestionGoal] = useState('10');
   const [timerMode, setTimerMode] = useState<'per_question' | 'global'>(
     'per_question',
@@ -51,6 +55,7 @@ export function CreateSessionModal({
   const [timerSeconds, setTimerSeconds] = useState('90');
   const [isCreating, setIsCreating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const minScheduledAt = getMinScheduledAtInputValue();
 
   const updateTimerMode = (value: 'per_question' | 'global') => {
     setTimerMode(value);
@@ -69,6 +74,7 @@ export function CreateSessionModal({
     Boolean(selectedGroupId) &&
     memberCount >= 2 &&
     name.trim().length > 0 &&
+    isValidScheduledAtInput(scheduledAt) &&
     Number(questionGoal) > 0 &&
     Number(timerSeconds) > 0;
 
@@ -124,6 +130,7 @@ export function CreateSessionModal({
               returnTo: formData.get('returnTo'),
               groupId: formData.get('groupId'),
               sessionName: formData.get('sessionName'),
+              scheduledAt: formData.get('scheduledAt'),
               questionGoal: Number(formData.get('questionGoal')),
               timerMode: formData.get('timerMode'),
               timerSeconds: Number(formData.get('timerSeconds')),
@@ -228,6 +235,20 @@ export function CreateSessionModal({
 
         <label className="block">
           <span className="text-sm font-bold text-slate-300">
+            {labels.scheduledAt}
+          </span>
+          <input
+            name="scheduledAt"
+            type="datetime-local"
+            min={minScheduledAt}
+            value={scheduledAt}
+            onChange={(event) => setScheduledAt(event.target.value)}
+            className="field mt-2 h-10 rounded-[7px] px-3 py-2 text-sm"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-bold text-slate-300">
             {labels.questionCount}
           </span>
           <input
@@ -314,5 +335,48 @@ export function CreateSessionModal({
         </SubmitButton>
       </form>
     </Modal>
+  );
+}
+
+function getDefaultScheduledAtInputValue() {
+  const next = new Date();
+  next.setMinutes(next.getMinutes() + 60);
+  next.setSeconds(0, 0);
+  const roundedMinutes = Math.ceil(next.getMinutes() / 15) * 15;
+  if (roundedMinutes >= 60) {
+    next.setHours(next.getHours() + 1);
+    next.setMinutes(0);
+  } else {
+    next.setMinutes(roundedMinutes);
+  }
+
+  return formatDateTimeLocalValue(next);
+}
+
+function getMinScheduledAtInputValue() {
+  const now = new Date();
+  now.setSeconds(0, 0);
+
+  return formatDateTimeLocalValue(now);
+}
+
+function formatDateTimeLocalValue(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, '0');
+
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+    date.getDate(),
+  )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function isValidScheduledAtInput(value: string) {
+  if (!value) {
+    return false;
+  }
+
+  const scheduledAt = new Date(value);
+
+  return (
+    Number.isFinite(scheduledAt.getTime()) &&
+    scheduledAt.getTime() >= Date.now() - 5 * 60 * 1000
   );
 }

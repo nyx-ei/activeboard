@@ -367,6 +367,7 @@ function DashboardSessionActionHost({
         groupName: labels.groupName,
         sessionName: labels.sessionName,
         sessionNamePlaceholder: labels.sessionNamePlaceholder,
+        scheduledAt: labels.scheduledAt,
         questionCount: labels.questionCount,
         timerMode: labels.timerMode,
         perQuestionMode: labels.perQuestionMode,

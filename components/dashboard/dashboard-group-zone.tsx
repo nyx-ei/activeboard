@@ -111,8 +111,6 @@ export type DashboardGroupZoneProps = {
     openSession: string;
     joinLiveSession: string;
     timerLabel: string;
-    recentSessions: string;
-    viewAllSessions: string;
     captain: string;
     questionsUnit: string;
     completion: string;
@@ -198,8 +196,6 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   const activeProgress = selectedActiveSession
     ? getLiveSessionProgress(selectedActiveSession)
     : null;
-  const recentSessions = selectedGroup?.recentSessions?.slice(0, 3) ?? [];
-  const latestRecentSession = recentSessions[0] ?? null;
   const mobileJoinLabel = getCompactJoinLabel(labels.joinLiveSession);
   const mobileLiveGroupsLabel = getCompactLiveGroupsLabel(
     canBrowseLookupLayer
@@ -746,35 +742,6 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
               <ArrowRight className="h-4 w-4 shrink-0 text-[#9FF0CE]" aria-hidden="true" />
             </a>
 
-            {latestRecentSession ? (
-              <a
-                href={`/${locale}/sessions/${latestRecentSession.id}`}
-                onFocus={() =>
-                  prefetchSession(`/${locale}/sessions/${latestRecentSession.id}`)
-                }
-                onPointerEnter={() =>
-                  prefetchSession(`/${locale}/sessions/${latestRecentSession.id}`)
-                }
-                className="flex items-center gap-3 rounded-[13px] border border-white/[0.055] bg-white/[0.018] px-3 py-3"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#20D9A3]/12 text-[#9FF0CE]">
-                  <ArrowRight className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[15px] font-semibold text-[#e8f4f0]">
-                    {latestRecentSession.name ?? labels.nextSession}
-                  </span>
-                  <span className="mt-1 block truncate text-[12px] text-[#8fa7a2]">
-                    {latestRecentSession.questionCount ?? 0} Q
-                    ·{' '}
-                    {formatSessionDate(latestRecentSession.scheduled_at, locale)}
-                  </span>
-                </span>
-                <span className="rounded-full bg-[#20D9A3]/12 px-3 py-1 text-[12px] font-medium text-[#9FF0CE]">
-                  {selectedGroup.hasLiveSession ? labels.live : labels.completion}
-                </span>
-              </a>
-            ) : null}
           </div>
         ) : null}
       </div>
@@ -1203,71 +1170,6 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
         </span>
       </a>
 
-      {selectedGroup && recentSessions.length > 0 ? (
-        <footer className="mt-[22px] border-t border-white/[0.055] pt-[18px]">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h3 className="text-[13px] font-medium uppercase tracking-[0.12em] text-[#8fa7a2]">
-              {labels.recentSessions}
-            </h3>
-          </div>
-          <div className="grid gap-2.5 lg:grid-cols-3">
-            {recentSessions.map((session) => (
-              <a
-                key={session.id}
-                href={`/${locale}/sessions/${session.id}`}
-                onFocus={() =>
-                  prefetchSession(`/${locale}/sessions/${session.id}`)
-                }
-                onPointerEnter={() =>
-                  prefetchSession(`/${locale}/sessions/${session.id}`)
-                }
-                className="rounded-[12px] border border-white/[0.045] bg-white/[0.018] px-4 py-3 transition hover:border-white/[0.09] hover:bg-white/[0.035]"
-              >
-                <span className="flex min-w-0 items-start justify-between gap-3">
-                  <span className="min-w-0">
-                    <span className="block truncate text-[14px] font-medium tracking-[-0.01em] text-[#e8f4f0]">
-                      {session.name ?? labels.nextSession}
-                    </span>
-                    <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] text-[#8fa7a2]">
-                      <span>
-                        {labels.captain} {session.leaderInitials ?? 'AB'}
-                      </span>
-                      <span className="text-[#345049]">·</span>
-                      <span>
-                        {session.questionCount ?? 0} {labels.questionsUnit}
-                      </span>
-                    </span>
-                  </span>
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#20D9A3]/20 bg-[#20D9A3]/10 text-[11px] font-semibold text-[#9FF0CE]">
-                    {session.leaderInitials ?? 'AB'}
-                  </span>
-                </span>
-                <span className="mt-3 grid grid-cols-2 gap-2">
-                  <MetricPill
-                    label={labels.completion}
-                    value={`${session.completionPercent ?? 0}%`}
-                  />
-                  <MetricPill
-                    label={labels.accuracy}
-                    value={
-                      session.accuracyPercent === null ||
-                      session.accuracyPercent === undefined
-                        ? labels.noData
-                        : `${session.accuracyPercent}%`
-                    }
-                  />
-                </span>
-              </a>
-            ))}
-          </div>
-          <a
-            href={`/${locale}/dashboard`}
-            className="mt-3 inline-flex text-[13px] font-medium text-[#20D9A3] transition hover:text-[#9FF0CE]"
-          >
-            {labels.viewAllSessions}
-          </a>
-        </footer>
-      ) : null}
       </div>
 
       {selectedGroup && activePanel === 'members' ? (
@@ -1839,17 +1741,6 @@ function PanelStat({ label, value }: { label: string; value: string }) {
         {label}
       </span>
       <span className="mt-1 block text-[22px] font-semibold leading-none text-[#20D9A3]">
-        {value}
-      </span>
-    </span>
-  );
-}
-
-function MetricPill({ label, value }: { label: string; value: string }) {
-  return (
-    <span className="rounded-[9px] border border-white/[0.04] bg-[#061c19] px-3 py-2">
-      <span className="block truncate text-[11px] text-[#5f7b75]">{label}</span>
-      <span className="mt-0.5 block truncate text-[13px] font-semibold text-[#e8f4f0]">
         {value}
       </span>
     </span>
