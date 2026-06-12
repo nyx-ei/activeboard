@@ -181,7 +181,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       sessionId: fastResult.session_id,
-      redirectTo: `/${locale}/sessions/${fastResult.session_id}`,
+      redirectTo: groupDashboardPath(locale, groupId),
       calendarInvitesDispatchUrl: `/api/sessions/${fastResult.session_id}/calendar-invites`,
       message: getStaticSessionScheduledFeedback(locale),
       reused: Boolean(fastResult.reused),
@@ -271,7 +271,7 @@ export async function POST(request: Request) {
   if (existingResult.data?.id) {
     return NextResponse.json({
       ok: true,
-      redirectTo: `/${locale}/sessions/${existingResult.data.id}`,
+      redirectTo: groupDashboardPath(locale, groupId),
       calendarInvitesDispatchUrl: `/api/sessions/${existingResult.data.id}/calendar-invites`,
       message: getStaticSessionScheduledFeedback(locale),
       reused: true,
@@ -350,7 +350,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ok: true,
     sessionId: createdSession.id,
-    redirectTo: `/${locale}/sessions/${createdSession.id}`,
+    redirectTo: groupDashboardPath(locale, groupId),
     calendarInvitesDispatchUrl: `/api/sessions/${createdSession.id}/calendar-invites`,
     message: getStaticSessionScheduledFeedback(locale),
   });
