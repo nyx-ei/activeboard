@@ -289,6 +289,15 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
 
   useEffect(() => {
     const liveSignature = getLiveGroupsSignature(groups);
+    const requestedGroupExists = Boolean(
+      initialGroupId && groups.some((group) => group.id === initialGroupId),
+    );
+
+    if (requestedGroupExists) {
+      liveSignatureRef.current = liveSignature;
+      return;
+    }
+
     const mostRecentLiveGroupId = getMostRecentLiveGroupId(groups);
 
     if (!mostRecentLiveGroupId) {
@@ -304,7 +313,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
     }
 
     liveSignatureRef.current = liveSignature;
-  }, [groups, selectedGroupId]);
+  }, [groups, initialGroupId, selectedGroupId]);
 
   useEffect(() => {
     if (sessionHref) {
