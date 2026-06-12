@@ -838,7 +838,7 @@ export async function createDashboardSessionAction(formData: FormData) {
   if (existingOpenSession) {
     redirect(
       withFeedback(
-        `/${locale}/sessions/${existingOpenSession.id}`,
+        sessionsPath,
         'success',
         await getFeedback('sessionScheduled'),
       ),
@@ -916,7 +916,7 @@ export async function createDashboardSessionAction(formData: FormData) {
 
   redirect(
     withFeedback(
-      `/${locale}/sessions/${createdSession.id}`,
+      sessionsPath,
       'success',
       await getFeedback('sessionScheduled'),
     ),
