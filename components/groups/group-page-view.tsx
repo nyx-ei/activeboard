@@ -126,6 +126,7 @@ type GroupPageViewProps = {
     createSessionPending: string;
     sessionName: string;
     sessionNamePlaceholder: string;
+    scheduledAt: string;
     questionCount: string;
     timerMode: string;
     perQuestionMode: string;
@@ -857,6 +858,7 @@ export function GroupPageView({
             groupName: labels.groupName,
             sessionName: labels.sessionName,
             sessionNamePlaceholder: labels.sessionNamePlaceholder,
+            scheduledAt: labels.scheduledAt,
             questionCount: labels.questionCount,
             timerMode: labels.timerMode,
             perQuestionMode: labels.perQuestionMode,

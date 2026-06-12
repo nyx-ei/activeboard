@@ -45,6 +45,22 @@ function groupDashboardPath(locale: AppLocale, groupId: string) {
   return `/${locale}/dashboard?groupId=${encodeURIComponent(groupId)}`;
 }
 
+function parseScheduledAt(value: string | undefined) {
+  if (!value) {
+    return new Date();
+  }
+
+  const date = new Date(value);
+  if (
+    !Number.isFinite(date.getTime()) ||
+    date.getTime() < Date.now() - 5 * 60 * 1000
+  ) {
+    return null;
+  }
+
+  return date;
+}
+
 function getInviteAcceptedRedirect(
   locale: AppLocale,
   verification: InviteAdmissionSuccess,
@@ -725,6 +741,9 @@ export async function createDashboardSessionAction(formData: FormData) {
   const sessionName = (
     (formData.get('sessionName') as string | null) ?? ''
   ).trim();
+  const scheduledAt = parseScheduledAt(
+    (formData.get('scheduledAt') as string | null) ?? undefined,
+  );
   const questionGoal = Number(formData.get('questionGoal'));
   const timerMode =
     formData.get('timerMode') === 'global' ? 'global' : 'per_question';
@@ -746,6 +765,7 @@ export async function createDashboardSessionAction(formData: FormData) {
   if (
     !groupId ||
     !sessionName ||
+    !scheduledAt ||
     !Number.isFinite(questionGoal) ||
     questionGoal < 1 ||
     !Number.isFinite(timerSeconds) ||
@@ -825,15 +845,13 @@ export async function createDashboardSessionAction(formData: FormData) {
     );
   }
 
-  const scheduledAt = new Date().toISOString();
-
   const { data: createdSession, error } = await supabase
     .schema('public')
     .from('sessions')
     .insert({
       group_id: groupId,
       name: sessionName,
-      scheduled_at: scheduledAt,
+      scheduled_at: scheduledAt.toISOString(),
       timer_mode: timerMode,
       timer_seconds: timerSeconds,
       question_goal: Math.min(Math.round(questionGoal), 500),
@@ -878,6 +896,7 @@ export async function createDashboardSessionAction(formData: FormData) {
         question_goal: questionGoal,
         timer_seconds: timerSeconds,
         timer_mode: timerMode,
+        scheduled_at: scheduledAt.toISOString(),
         share_code: createdSession.share_code,
       },
     }),

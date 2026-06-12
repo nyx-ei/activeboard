@@ -115,6 +115,7 @@ export type DashboardSessionsViewProps = {
     groupName: string;
     sessionName: string;
     sessionNamePlaceholder: string;
+    scheduledAt: string;
     questionCount: string;
     timerMode: string;
     perQuestionMode: string;
@@ -426,6 +427,7 @@ export const DashboardSessionsView = memo(function DashboardSessionsView({
             groupName: labels.groupName,
             sessionName: labels.sessionName,
             sessionNamePlaceholder: labels.sessionNamePlaceholder,
+            scheduledAt: labels.scheduledAt,
             questionCount: labels.questionCount,
             timerMode: labels.timerMode,
             perQuestionMode: labels.perQuestionMode,

@@ -17,6 +17,7 @@ type CreateSessionPayload = {
   groupId?: string;
   returnTo?: string;
   sessionName?: string;
+  scheduledAt?: string;
   questionGoal?: number;
   timerMode?: 'per_question' | 'global';
   timerSeconds?: number;
@@ -69,6 +70,7 @@ export async function POST(request: Request) {
   const groupId = body?.groupId ?? '';
   const returnTo = body?.returnTo ?? '';
   const sessionName = body?.sessionName?.trim() ?? '';
+  const scheduledAt = parseScheduledAt(body?.scheduledAt);
   const questionGoal = Number(body?.questionGoal);
   const timerMode = body?.timerMode === 'global' ? 'global' : 'per_question';
   const timerSeconds = Number(body?.timerSeconds);
@@ -96,6 +98,7 @@ export async function POST(request: Request) {
   if (
     !groupId ||
     !sessionName ||
+    !scheduledAt ||
     !Number.isFinite(questionGoal) ||
     questionGoal < 1 ||
     !Number.isFinite(timerSeconds) ||
@@ -114,10 +117,11 @@ export async function POST(request: Request) {
   const { data: fastRows, error: fastError } = await (
     supabase.schema('public') as unknown as {
       rpc: (
-        fn: 'activeboard_create_session_self_fast',
+        fn: 'activeboard_create_session_self_fast_v2',
         args: {
           target_group_id: string;
           session_name: string;
+          target_scheduled_at: string;
           target_question_goal: number;
           target_timer_mode: string;
           target_timer_seconds: number;
@@ -127,9 +131,10 @@ export async function POST(request: Request) {
         error: { code?: string; message?: string } | null;
       }>;
     }
-  ).rpc('activeboard_create_session_self_fast', {
+  ).rpc('activeboard_create_session_self_fast_v2', {
     target_group_id: groupId,
     session_name: sessionName,
+    target_scheduled_at: scheduledAt.toISOString(),
     target_question_goal: Math.min(Math.round(questionGoal), 500),
     target_timer_mode: timerMode,
     target_timer_seconds: timerSeconds,
@@ -186,7 +191,7 @@ export async function POST(request: Request) {
   if (fastError) {
     perf.step(`fast_rpc_unavailable:${fastError.code ?? 'unknown'}`);
     console.warn(
-      'activeboard_create_session_self_fast failed; using fallback',
+      'activeboard_create_session_self_fast_v2 failed; using fallback',
       {
         code: fastError.code,
         message: fastError.message,
@@ -279,7 +284,7 @@ export async function POST(request: Request) {
     .insert({
       group_id: groupId,
       name: sessionName,
-      scheduled_at: new Date().toISOString(),
+      scheduled_at: scheduledAt.toISOString(),
       timer_mode: timerMode,
       timer_seconds: timerSeconds,
       question_goal: Math.min(Math.round(questionGoal), 500),
@@ -316,6 +321,7 @@ export async function POST(request: Request) {
         question_goal: questionGoal,
         timer_seconds: timerSeconds,
         timer_mode: timerMode,
+        scheduled_at: scheduledAt.toISOString(),
         share_code: createdSession.share_code,
       },
     }),
@@ -348,4 +354,20 @@ export async function POST(request: Request) {
     calendarInvitesDispatchUrl: `/api/sessions/${createdSession.id}/calendar-invites`,
     message: getStaticSessionScheduledFeedback(locale),
   });
+}
+
+function parseScheduledAt(value: string | undefined) {
+  if (!value) {
+    return new Date();
+  }
+
+  const date = new Date(value);
+  if (
+    !Number.isFinite(date.getTime()) ||
+    date.getTime() < Date.now() - 5 * 60 * 1000
+  ) {
+    return null;
+  }
+
+  return date;
 }
