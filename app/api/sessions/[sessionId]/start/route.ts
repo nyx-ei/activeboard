@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import { getTranslations } from 'next-intl/server';
 
 import type { AppLocale } from '@/i18n/routing';
-import { getUserTierCapabilities } from '@/lib/billing/user-tier';
+import { deriveUserTier, getUserTierCapabilities } from '@/lib/billing/user-tier';
 import { createGroupNotifications } from '@/lib/notifications/in-app';
 import { createPerfTracker } from '@/lib/observability/perf';
+import { getAppPolicySettings } from '@/lib/policy/app-policy';
 import { createInitialQuestionFast } from '@/lib/session/flow';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -69,6 +70,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   perf.setContext({ locale });
   const supabase = createSupabaseServerClient();
+  const policy = await getAppPolicySettings();
   const { data: fastRows, error: fastError } = await (
     supabase.schema('public') as unknown as {
       rpc: (
@@ -157,12 +159,12 @@ export async function POST(request: Request, { params }: RouteContext) {
       )
       .eq('id', sessionId)
       .maybeSingle(),
-    admin
-      .schema('public')
-      .from('users')
-      .select('user_tier')
-      .eq('id', user.id)
-      .maybeSingle(),
+      admin
+        .schema('public')
+        .from('users')
+        .select('questions_answered, has_valid_payment_method, subscription_status')
+        .eq('id', user.id)
+        .maybeSingle(),
   ]);
   perf.step('session_and_tier_loaded');
 
@@ -197,7 +199,15 @@ export async function POST(request: Request, { params }: RouteContext) {
     );
   }
 
-  const userTier = userTierResult.data?.user_tier ?? 'locked';
+  const userTier = userTierResult.data
+    ? deriveUserTier({
+        questionsAnswered: userTierResult.data.questions_answered ?? 0,
+        hasValidPaymentMethod:
+          userTierResult.data.has_valid_payment_method ?? false,
+        subscriptionStatus: userTierResult.data.subscription_status ?? 'none',
+        policy,
+      })
+    : 'locked';
   if (!getUserTierCapabilities(userTier).canJoinSessions) {
     return NextResponse.json(
       { ok: false, message: await getFeedback('upgradeRequiredToJoinSession') },
