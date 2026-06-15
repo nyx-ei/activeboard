@@ -7,6 +7,7 @@ import type { DashboardPerformanceViewProps } from '@/components/dashboard/dashb
 import type { DashboardProgressStateZoneProps } from '@/components/dashboard/dashboard-progress-state-zone';
 import type { DashboardSessionsViewProps } from '@/components/dashboard/dashboard-sessions-view';
 import type { AppLocale } from '@/i18n/routing';
+import { canAccessAdminConsole } from '@/lib/admin/access';
 import { requireUser } from '@/lib/auth';
 import {
   getTrialProgressSnapshot,
@@ -91,10 +92,12 @@ export default async function DashboardPage({
   );
   const trialProgress = getTrialProgressSnapshot(
     billingSnapshot?.questions_answered ?? 0,
+    accessState.policy,
   );
   const shouldShowQuotaExpiredBanner =
     trialProgress.isComplete && (!canJoinSessions || !canCreateSession);
   const canOpenOpsDashboard = canAccessOpsDashboard(user.email);
+  const canOpenAdminConsole = canAccessAdminConsole(user.email);
 
   const liveGroupIds = new Set(
     (sessionsData?.activeSessions ?? []).map((session) => session.group_id),
@@ -118,6 +121,17 @@ export default async function DashboardPage({
     trialProgress,
     canJoinSessions,
     canCreateSession,
+    sessionPolicy: {
+      defaultQuestionGoal: accessState.policy.defaultQuestionGoal,
+      maxQuestionGoal: accessState.policy.maxQuestionGoal,
+      perQuestionTimerDefaultSeconds:
+        accessState.policy.perQuestionTimerDefaultSeconds,
+      globalTimerDefaultSeconds:
+        accessState.policy.globalTimerDefaultSeconds,
+      maxTimerSeconds: accessState.policy.maxTimerSeconds,
+      minimumGroupMembersToStart:
+        accessState.policy.minimumGroupMembersToStart,
+    },
     cancelSessionAction: cancelDashboardSessionAction,
     joinSessionAction: joinSessionByCodeAction,
     createSessionAction: createDashboardSessionAction,
@@ -417,14 +431,24 @@ export default async function DashboardPage({
       />
 
       <section className="mx-auto w-full max-w-[1440px] space-y-[14px] px-3 py-0 sm:space-y-[18px] sm:px-2">
-        {canOpenOpsDashboard ? (
-          <div className="flex justify-end">
+        {canOpenOpsDashboard || canOpenAdminConsole ? (
+          <div className="flex justify-end gap-2">
+            {canOpenAdminConsole ? (
+              <Link
+                href="/admin"
+                className="inline-flex h-9 items-center rounded-[9px] border border-[#20D9A3]/25 bg-[#20D9A3]/10 px-3 text-[12px] font-semibold text-[#9FF0CE] transition hover:border-[#20D9A3]/45 hover:bg-[#20D9A3]/15"
+              >
+                Admin console
+              </Link>
+            ) : null}
+            {canOpenOpsDashboard ? (
             <Link
               href="/ops"
               className="inline-flex h-9 items-center rounded-[9px] border border-white/[0.07] bg-white/[0.025] px-3 text-[12px] font-semibold text-[#9FF0CE] transition hover:border-[#20D9A3]/35 hover:bg-[#20D9A3]/10"
             >
               Ops dashboard
             </Link>
+            ) : null}
           </div>
         ) : null}
         {shouldShowQuotaExpiredBanner ? (

@@ -2,6 +2,10 @@ import { cache } from 'react';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/supabase/types';
+import {
+  DEFAULT_APP_POLICY_SETTINGS,
+  type AppPolicySettings,
+} from '@/lib/policy/defaults';
 
 export const USER_TIERS = {
   trial: 'trial',
@@ -55,16 +59,18 @@ export function deriveUserTier({
   questionsAnswered,
   hasValidPaymentMethod,
   subscriptionStatus,
+  policy = DEFAULT_APP_POLICY_SETTINGS,
 }: {
   questionsAnswered: number;
   hasValidPaymentMethod: boolean;
   subscriptionStatus: SubscriptionStatus;
+  policy?: Pick<AppPolicySettings, 'trialQuestionLimit'>;
 }): UserTier {
   if (subscriptionStatus === SUBSCRIPTION_STATUSES.active || subscriptionStatus === SUBSCRIPTION_STATUSES.trialing) {
     return USER_TIERS.active;
   }
 
-  if (questionsAnswered < TRIAL_QUESTION_LIMIT) {
+  if (questionsAnswered < policy.trialQuestionLimit) {
     return USER_TIERS.trial;
   }
 
@@ -95,14 +101,22 @@ export function getUserTierCapabilities(userTier: UserTier) {
   };
 }
 
-export function getTrialProgressSnapshot(questionsAnswered: number): TrialProgressSnapshot {
+export function getTrialProgressSnapshot(
+  questionsAnswered: number,
+  policy: Pick<
+    AppPolicySettings,
+    'trialQuestionLimit' | 'trialWarningThreshold'
+  > = DEFAULT_APP_POLICY_SETTINGS,
+): TrialProgressSnapshot {
   return {
-    current: Math.min(questionsAnswered, TRIAL_QUESTION_LIMIT),
-    total: TRIAL_QUESTION_LIMIT,
-    remaining: Math.max(TRIAL_QUESTION_LIMIT - questionsAnswered, 0),
-    warningThreshold: TRIAL_WARNING_THRESHOLD,
-    showWarning: questionsAnswered >= TRIAL_WARNING_THRESHOLD && questionsAnswered < TRIAL_QUESTION_LIMIT,
-    isComplete: questionsAnswered >= TRIAL_QUESTION_LIMIT,
+    current: Math.min(questionsAnswered, policy.trialQuestionLimit),
+    total: policy.trialQuestionLimit,
+    remaining: Math.max(policy.trialQuestionLimit - questionsAnswered, 0),
+    warningThreshold: policy.trialWarningThreshold,
+    showWarning:
+      questionsAnswered >= policy.trialWarningThreshold &&
+      questionsAnswered < policy.trialQuestionLimit,
+    isComplete: questionsAnswered >= policy.trialQuestionLimit,
   };
 }
 

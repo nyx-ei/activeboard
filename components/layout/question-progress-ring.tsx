@@ -3,6 +3,7 @@ import { TRIAL_QUESTION_LIMIT } from '@/lib/billing/user-tier';
 
 type QuestionProgressRingProps = {
   answeredCount: number;
+  totalCount?: number;
   label: string;
 };
 
@@ -40,16 +41,15 @@ function getProgressTone(remainingCount: number) {
 
 export function QuestionProgressRing({
   answeredCount,
+  totalCount = TRIAL_QUESTION_LIMIT,
   label,
 }: QuestionProgressRingProps) {
   const clampedAnsweredCount = Math.max(0, answeredCount);
-  const remainingCount = Math.max(
-    TRIAL_QUESTION_LIMIT - clampedAnsweredCount,
-    0,
-  );
+  const total = Math.max(1, totalCount);
+  const remainingCount = Math.max(total - clampedAnsweredCount, 0);
   const progress = Math.min(
     100,
-    Math.round((remainingCount / TRIAL_QUESTION_LIMIT) * 100),
+    Math.round((remainingCount / total) * 100),
   );
   const tone = getProgressTone(remainingCount);
 

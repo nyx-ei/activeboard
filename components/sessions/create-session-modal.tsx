@@ -6,6 +6,10 @@ import { Clock } from 'lucide-react';
 import { Modal, ModalTitle } from '@/components/ui/modal';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { markDashboardPayloadStale } from '@/components/dashboard/dashboard-data-cache';
+import {
+  DEFAULT_SESSION_CREATION_POLICY,
+  type SessionCreationPolicy,
+} from '@/lib/policy/defaults';
 
 export type CreateSessionModalLabels = {
   newSession: string;
@@ -33,6 +37,7 @@ export function CreateSessionModal({
   canCreateSession,
   action,
   labels,
+  sessionPolicy = DEFAULT_SESSION_CREATION_POLICY,
   onClose,
 }: {
   locale: string;
@@ -41,6 +46,7 @@ export function CreateSessionModal({
   canCreateSession: boolean;
   action: (formData: FormData) => void | Promise<void>;
   labels: CreateSessionModalLabels;
+  sessionPolicy?: SessionCreationPolicy;
   onClose: () => void;
 }) {
   const [name, setName] = useState('');
@@ -48,18 +54,28 @@ export function CreateSessionModal({
   const [scheduledAt, setScheduledAt] = useState(() =>
     getDefaultScheduledAtInputValue(),
   );
-  const [questionGoal, setQuestionGoal] = useState('10');
+  const [questionGoal, setQuestionGoal] = useState(
+    String(sessionPolicy.defaultQuestionGoal),
+  );
   const [timerMode, setTimerMode] = useState<'per_question' | 'global'>(
     'per_question',
   );
-  const [timerSeconds, setTimerSeconds] = useState('90');
+  const [timerSeconds, setTimerSeconds] = useState(
+    String(sessionPolicy.perQuestionTimerDefaultSeconds),
+  );
   const [isCreating, setIsCreating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const minScheduledAt = getMinScheduledAtInputValue();
 
   const updateTimerMode = (value: 'per_question' | 'global') => {
     setTimerMode(value);
-    setTimerSeconds(value === 'global' ? '600' : '90');
+    setTimerSeconds(
+      String(
+        value === 'global'
+          ? sessionPolicy.globalTimerDefaultSeconds
+          : sessionPolicy.perQuestionTimerDefaultSeconds,
+      ),
+    );
   };
 
   const selectedGroup =
@@ -72,11 +88,13 @@ export function CreateSessionModal({
   const isValid =
     canCreateSession &&
     Boolean(selectedGroupId) &&
-    memberCount >= 2 &&
+    memberCount >= sessionPolicy.minimumGroupMembersToStart &&
     name.trim().length > 0 &&
     isValidScheduledAtInput(scheduledAt) &&
     Number(questionGoal) > 0 &&
-    Number(timerSeconds) > 0;
+    Number(questionGoal) <= sessionPolicy.maxQuestionGoal &&
+    Number(timerSeconds) > 0 &&
+    Number(timerSeconds) <= sessionPolicy.maxTimerSeconds;
 
   return (
     <Modal
@@ -255,7 +273,7 @@ export function CreateSessionModal({
             name="questionGoal"
             type="number"
             min="1"
-            max="500"
+            max={sessionPolicy.maxQuestionGoal}
             value={questionGoal}
             onChange={(event) => setQuestionGoal(event.target.value)}
             className="field mt-2 h-10 rounded-[7px] px-3 py-2 text-sm"
@@ -310,7 +328,7 @@ export function CreateSessionModal({
             name="timerSeconds"
             type="number"
             min="1"
-            max="3600"
+            max={sessionPolicy.maxTimerSeconds}
             value={timerSeconds}
             onChange={(event) => setTimerSeconds(event.target.value)}
             className="field mt-2 h-10 rounded-[7px] px-3 py-2 text-sm"

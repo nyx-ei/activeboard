@@ -9,6 +9,7 @@ import { logAppEvent } from '@/lib/logging/logger';
 import { sendSessionCalendarInvites } from '@/lib/notifications/calendar-invites';
 import { createGroupNotifications } from '@/lib/notifications/in-app';
 import { createPerfTracker } from '@/lib/observability/perf';
+import { getAppPolicySettings } from '@/lib/policy/app-policy';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -74,6 +75,7 @@ export async function POST(request: Request) {
   const questionGoal = Number(body?.questionGoal);
   const timerMode = body?.timerMode === 'global' ? 'global' : 'per_question';
   const timerSeconds = Number(body?.timerSeconds);
+  const policy = await getAppPolicySettings();
   const sessionsPath =
     groupId && returnTo === groupDashboardPath(locale, groupId)
       ? returnTo
@@ -101,9 +103,10 @@ export async function POST(request: Request) {
     !scheduledAt ||
     !Number.isFinite(questionGoal) ||
     questionGoal < 1 ||
+    questionGoal > policy.maxQuestionGoal ||
     !Number.isFinite(timerSeconds) ||
     timerSeconds < 1 ||
-    timerSeconds > 3600
+    timerSeconds > policy.maxTimerSeconds
   ) {
     return NextResponse.json(
       { ok: false, message: await getFeedback('missingFields') },
@@ -135,7 +138,7 @@ export async function POST(request: Request) {
     target_group_id: groupId,
     session_name: sessionName,
     target_scheduled_at: scheduledAt.toISOString(),
-    target_question_goal: Math.min(Math.round(questionGoal), 500),
+    target_question_goal: Math.min(Math.round(questionGoal), policy.maxQuestionGoal),
     target_timer_mode: timerMode,
     target_timer_seconds: timerSeconds,
   });
@@ -261,7 +264,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (groupMembers.length < 2) {
+  if (groupMembers.length < policy.minimumGroupMembersToStart) {
     return NextResponse.json(
       { ok: false, message: await getFeedback('minimumMembersRequired') },
       { status: 400 },
@@ -287,7 +290,7 @@ export async function POST(request: Request) {
       scheduled_at: scheduledAt.toISOString(),
       timer_mode: timerMode,
       timer_seconds: timerSeconds,
-      question_goal: Math.min(Math.round(questionGoal), 500),
+      question_goal: Math.min(Math.round(questionGoal), policy.maxQuestionGoal),
       created_by: user.id,
       leader_id: user.id,
       status: 'scheduled',

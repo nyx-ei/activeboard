@@ -306,6 +306,7 @@ function DashboardSessionActionHost({
   groups,
   canCreateSession,
   createSessionAction,
+  sessionPolicy,
   labels,
 }: DashboardSessionsViewProps) {
   const [isCreateSessionOpen, setIsCreateSessionOpen] = useState(false);
@@ -360,6 +361,7 @@ function DashboardSessionActionHost({
       initialGroupId={initialGroupId}
       canCreateSession={canCreateSession}
       action={createSessionAction}
+      sessionPolicy={sessionPolicy}
       labels={{
         newSession: labels.newSession,
         createSession: labels.createSession,

@@ -3,9 +3,10 @@ import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
-import { getUserBillingSnapshot, TRIAL_QUESTION_LIMIT } from '@/lib/billing/user-tier';
+import { getUserBillingSnapshot } from '@/lib/billing/user-tier';
 import { hasStripeEnv } from '@/lib/env';
 import { isFeatureEnabled } from '@/lib/features/flags';
+import { getAppPolicySettings } from '@/lib/policy/app-policy';
 import { getBillingPlans } from '@/lib/stripe/pricing';
 import { getUnlimitedPaymentLink } from '@/lib/stripe/payment-links';
 
@@ -23,8 +24,11 @@ export default async function BillingPage({ params }: BillingPageProps) {
   const locale = params.locale as AppLocale;
   const user = await requireUser(locale);
   const t = await getTranslations('Billing');
-  const snapshot = await getUserBillingSnapshot(user.id);
-  const billingEnabled = await isFeatureEnabled('canUseStripeBilling');
+  const [snapshot, billingEnabled, policy] = await Promise.all([
+    getUserBillingSnapshot(user.id),
+    isFeatureEnabled('canUseStripeBilling'),
+    getAppPolicySettings(),
+  ]);
   const stripeConfigured = hasStripeEnv();
   const plans = stripeConfigured ? await getBillingPlans(locale) : [];
 
@@ -32,8 +36,8 @@ export default async function BillingPage({ params }: BillingPageProps) {
     return null;
   }
 
-  const questionProgress = Math.min(snapshot.questions_answered, TRIAL_QUESTION_LIMIT);
-  const progressPercentage = Math.min(100, Math.round((questionProgress / TRIAL_QUESTION_LIMIT) * 100));
+  const questionProgress = Math.min(snapshot.questions_answered, policy.trialQuestionLimit);
+  const progressPercentage = Math.min(100, Math.round((questionProgress / policy.trialQuestionLimit) * 100));
   const primaryPlan = plans.find((plan) => plan.highlight) ?? plans[0] ?? null;
   const monthlyPrice = locale === 'fr' ? '15$' : '$15';
   const billingReady = Boolean(billingEnabled && stripeConfigured && primaryPlan);
@@ -58,7 +62,7 @@ export default async function BillingPage({ params }: BillingPageProps) {
             <div className="flex items-center justify-between gap-4">
               <p className="text-sm font-semibold text-slate-300">{t('answersUsed')}</p>
               <p className="text-sm font-extrabold text-white">
-                {questionProgress} / {TRIAL_QUESTION_LIMIT}
+                {questionProgress} / {policy.trialQuestionLimit}
               </p>
             </div>
             <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-[#233049]">
