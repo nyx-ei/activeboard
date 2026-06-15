@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getTranslations } from 'next-intl/server';
 
 import type { AppLocale } from '@/i18n/routing';
-import { getUserTierCapabilities } from '@/lib/billing/user-tier';
+import { deriveUserTier, getUserTierCapabilities } from '@/lib/billing/user-tier';
 import { hasEmailEnv } from '@/lib/env';
 import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
@@ -221,7 +221,7 @@ export async function POST(request: Request) {
       admin
         .schema('public')
         .from('users')
-        .select('user_tier')
+        .select('questions_answered, has_valid_payment_method, subscription_status')
         .eq('id', user.id)
         .maybeSingle(),
       admin
@@ -253,7 +253,15 @@ export async function POST(request: Request) {
     );
   }
 
-  const userTier = userTierResult.data?.user_tier ?? 'locked';
+  const userTier = userTierResult.data
+    ? deriveUserTier({
+        questionsAnswered: userTierResult.data.questions_answered ?? 0,
+        hasValidPaymentMethod:
+          userTierResult.data.has_valid_payment_method ?? false,
+        subscriptionStatus: userTierResult.data.subscription_status ?? 'none',
+        policy,
+      })
+    : 'locked';
   if (!getUserTierCapabilities(userTier).canCreateSession) {
     return NextResponse.json(
       {

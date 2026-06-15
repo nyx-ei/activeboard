@@ -2,6 +2,7 @@ import { unstable_noStore as noStore } from 'next/cache';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { ArrowLeft } from 'lucide-react';
 
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
@@ -43,8 +44,9 @@ export default async function AdminPolicyPage({
           <div className="min-w-0">
             <Link
               href="/dashboard"
-              className="text-sm font-semibold text-[#9fb8b2] transition hover:text-white"
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#234238] bg-[#0f2d26] px-3 text-sm font-bold text-[#b9d1cb] transition hover:border-[#27e0b4] hover:text-[#27e0b4]"
             >
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               {copy.back}
             </Link>
             <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
@@ -80,7 +82,7 @@ export default async function AdminPolicyPage({
               </div>
               <button
                 type="submit"
-                className="inline-flex h-11 items-center justify-center rounded-[10px] bg-[#20D9A3] px-5 text-sm font-extrabold text-[#062b22] transition hover:bg-[#2fe9b1]"
+                className="inline-flex h-11 items-center justify-center rounded-[10px] bg-[#20D9A3] px-5 text-sm font-extrabold text-[#062b22] shadow-[0_14px_32px_rgba(32,217,163,0.18)] transition hover:bg-[#2fe9b1]"
               >
                 {copy.save}
               </button>
@@ -346,38 +348,38 @@ function TextField({
 function getCopy(locale: AppLocale) {
   if (locale === 'fr') {
     return {
-      back: 'Retour au dashboard',
-      title: 'Console administration',
+      back: 'Retour au tableau de bord',
+      title: "Console d'administration",
       description:
-        'Modifie les regles produit qui pilotent les quotas, les limites de session et les conditions d acces.',
-      secured: 'Acces admin',
-      saved: 'Parametres enregistres.',
+        "Modifie les règles produit qui pilotent les quotas, les limites de session et les conditions d'accès.",
+      secured: 'Accès administrateur',
+      saved: 'Paramètres enregistrés.',
       save: 'Enregistrer',
       policyMatrix: 'Matrice produit',
-      accessRules: 'Regles d acces',
+      accessRules: "Règles d'accès",
       userStatus: 'Statut utilisateur',
-      sessionLimit: 'Limite session',
-      unlockCondition: 'Condition de deblocage',
-      newTrialUser: 'Nouvel utilisateur trial',
-      consistentTrialUser: 'Utilisateur trial regulier',
+      sessionLimit: 'Limite de session',
+      unlockCondition: 'Condition de déblocage',
+      newTrialUser: "Nouvel utilisateur d'essai",
+      consistentTrialUser: "Utilisateur d'essai régulier",
       paidUser: 'Utilisateur payant',
-      highRiskUser: 'Utilisateur a risque',
-      sessionsToComplete: 'Sessions a completer',
-      questionLimit: 'Limite questions',
-      fullAccess: 'Acces complet',
+      highRiskUser: 'Utilisateur à risque',
+      sessionsToComplete: 'Sessions à compléter',
+      questionLimit: 'Limite de questions',
+      fullAccess: 'Accès complet',
       freeTrial: 'Essai gratuit',
       freeQuestionLimit: 'Questions gratuites',
-      warningThreshold: 'Seuil avertissement',
-      sessionDefaults: 'Creation de session',
-      defaultQuestions: 'Questions par defaut',
+      warningThreshold: "Seuil d'avertissement",
+      sessionDefaults: 'Création de session',
+      defaultQuestions: 'Questions par défaut',
       maxQuestions: 'Questions max',
       minimumMembers: 'Membres minimum',
-      timersAndCompletion: 'Timers et completion',
+      timersAndCompletion: 'Timers et complétion',
       perQuestionTimer: 'Timer par question',
       globalTimer: 'Timer global',
       maxTimer: 'Timer max',
-      completionMin: 'Min completion',
-      completionMax: 'Max completion',
+      completionMin: 'Complétion min',
+      completionMax: 'Complétion max',
     };
   }
 

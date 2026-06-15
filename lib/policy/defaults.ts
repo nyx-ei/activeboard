@@ -39,13 +39,13 @@ export const DEFAULT_APP_POLICY_SETTINGS: AppPolicySettings = {
   completionMinMembers: 2,
   completionMaxMembers: 5,
   consistentTrialUnlockConditionEn: 'Maintain review completion',
-  consistentTrialUnlockConditionFr: 'Maintenir la revision',
+  consistentTrialUnlockConditionFr: 'Maintenir la révision',
   paidUnlockConditionEn: 'Immediate access',
-  paidUnlockConditionFr: 'Acces immediat',
+  paidUnlockConditionFr: 'Accès immédiat',
   highRiskSessionLimitEn: 'Suggested smaller sessions',
-  highRiskSessionLimitFr: 'Sessions plus courtes suggerees',
+  highRiskSessionLimitFr: 'Sessions plus courtes suggérées',
   highRiskConditionEn: 'Low completion or poor consistency',
-  highRiskConditionFr: 'Faible completion ou faible regularite',
+  highRiskConditionFr: 'Faible complétion ou faible régularité',
 };
 
 export type SessionCreationPolicy = Pick<
