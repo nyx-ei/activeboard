@@ -11,6 +11,7 @@ import { createStripeServerClient } from '@/lib/stripe/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { withFeedback } from '@/lib/utils';
 import { deriveUserTier } from '@/lib/billing/user-tier';
+import { getAppPolicySettings } from '@/lib/policy/app-policy';
 
 type RouteContext = {
   params: {
@@ -94,16 +95,20 @@ export async function GET(request: Request, { params }: RouteContext) {
     },
   });
 
-  const { data: userBilling } = await supabase
-    .schema('public')
-    .from('users')
-    .select('questions_answered')
-    .eq('id', user.id)
-    .maybeSingle();
+  const [{ data: userBilling }, policy] = await Promise.all([
+    supabase
+      .schema('public')
+      .from('users')
+      .select('questions_answered')
+      .eq('id', user.id)
+      .maybeSingle(),
+    getAppPolicySettings(),
+  ]);
   const nextUserTier = deriveUserTier({
     questionsAnswered: userBilling?.questions_answered ?? 0,
     hasValidPaymentMethod: true,
     subscriptionStatus: 'none',
+    policy,
   });
 
   await supabase

@@ -10,6 +10,7 @@ import {
   type SessionCardLabels,
   type SessionListItem,
 } from '@/components/sessions/session-card';
+import type { SessionCreationPolicy } from '@/lib/policy/defaults';
 
 const CANCELLED_SESSION_STORAGE_KEY = 'activeboard:cancelled-session-ids';
 
@@ -104,6 +105,7 @@ export type DashboardSessionsViewProps = {
   };
   canJoinSessions: boolean;
   canCreateSession: boolean;
+  sessionPolicy?: SessionCreationPolicy;
   cancelSessionAction: (formData: FormData) => void | Promise<void>;
   joinSessionAction: (formData: FormData) => void | Promise<void>;
   createSessionAction: (formData: FormData) => void | Promise<void>;
@@ -150,6 +152,7 @@ export const DashboardSessionsView = memo(function DashboardSessionsView({
   trialProgress,
   canJoinSessions,
   canCreateSession,
+  sessionPolicy,
   joinSessionAction,
   createSessionAction,
   labels,
@@ -420,6 +423,7 @@ export const DashboardSessionsView = memo(function DashboardSessionsView({
           initialGroupId={initialGroupId}
           canCreateSession={canCreateSession}
           action={createSessionAction}
+          sessionPolicy={sessionPolicy}
           labels={{
             newSession: labels.newSession,
             createSession: labels.createSession,

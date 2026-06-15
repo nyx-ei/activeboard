@@ -4,15 +4,19 @@ import { logAppEvent } from '@/lib/logging/logger';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { sendEmail } from '@/lib/email/mailersend';
 import { renderPlainTextEmail, renderTransactionalEmail } from '@/lib/email/templates';
-
-const TRIAL_WARNING_THRESHOLD = 85;
-const TRIAL_QUESTION_LIMIT = 100;
+import { getAppPolicySettingsForAdmin } from '@/lib/policy/app-policy';
 
 function normalizeLocale(locale: string | null | undefined): 'en' | 'fr' {
   return locale === 'fr' ? 'fr' : 'en';
 }
 
-function buildTrialWarningCopy(args: { locale: 'en' | 'fr'; memberName: string; remaining: number }) {
+function buildTrialWarningCopy(args: {
+  locale: 'en' | 'fr';
+  memberName: string;
+  remaining: number;
+  warningThreshold: number;
+  questionLimit: number;
+}) {
   if (args.locale === 'fr') {
     return {
       subject: 'ActiveBoard : plus que 15 questions avant facturation',
@@ -21,7 +25,7 @@ function buildTrialWarningCopy(args: { locale: 'en' | 'fr'; memberName: string; 
         preheader: 'Il ne reste presque plus de questions gratuites.',
         intro: [
           `Bonjour ${args.memberName},`,
-          `Tu as atteint ${TRIAL_WARNING_THRESHOLD} questions répondues sur ${TRIAL_QUESTION_LIMIT}.`,
+          `Tu as atteint ${args.warningThreshold} questions répondues sur ${args.questionLimit}.`,
           `Il te reste ${args.remaining} questions gratuites avant que la facturation devienne obligatoire pour continuer les sessions.`,
         ],
         action: { label: 'Voir la facturation', url: `${getAppUrl()}/fr/billing` },
@@ -32,7 +36,7 @@ function buildTrialWarningCopy(args: { locale: 'en' | 'fr'; memberName: string; 
         preheader: 'Il ne reste presque plus de questions gratuites.',
         intro: [
           `Bonjour ${args.memberName},`,
-          `Tu as atteint ${TRIAL_WARNING_THRESHOLD} questions répondues sur ${TRIAL_QUESTION_LIMIT}.`,
+          `Tu as atteint ${args.warningThreshold} questions répondues sur ${args.questionLimit}.`,
           `Il te reste ${args.remaining} questions gratuites avant que la facturation devienne obligatoire pour continuer les sessions.`,
         ],
         action: { label: 'Voir la facturation', url: `${getAppUrl()}/fr/billing` },
@@ -48,7 +52,7 @@ function buildTrialWarningCopy(args: { locale: 'en' | 'fr'; memberName: string; 
       preheader: 'You are almost out of free questions.',
       intro: [
         `Hi ${args.memberName},`,
-        `You have reached ${TRIAL_WARNING_THRESHOLD} answered questions out of ${TRIAL_QUESTION_LIMIT}.`,
+        `You have reached ${args.warningThreshold} answered questions out of ${args.questionLimit}.`,
         `You have ${args.remaining} free questions left before billing is required to keep joining or starting sessions.`,
       ],
       action: { label: 'View billing', url: `${getAppUrl()}/en/billing` },
@@ -59,7 +63,7 @@ function buildTrialWarningCopy(args: { locale: 'en' | 'fr'; memberName: string; 
       preheader: 'You are almost out of free questions.',
       intro: [
         `Hi ${args.memberName},`,
-        `You have reached ${TRIAL_WARNING_THRESHOLD} answered questions out of ${TRIAL_QUESTION_LIMIT}.`,
+        `You have reached ${args.warningThreshold} answered questions out of ${args.questionLimit}.`,
         `You have ${args.remaining} free questions left before billing is required to keep joining or starting sessions.`,
       ],
       action: { label: 'View billing', url: `${getAppUrl()}/en/billing` },
@@ -74,6 +78,7 @@ export async function sendTrialWarningEmailIfNeeded(userId: string) {
   }
 
   const supabase = createSupabaseAdminClient();
+  const policy = await getAppPolicySettingsForAdmin();
   const { data: user } = await supabase
     .schema('public')
     .from('users')
@@ -85,7 +90,7 @@ export async function sendTrialWarningEmailIfNeeded(userId: string) {
     return { sent: false as const, skipped: true as const, reason: 'missing_email' };
   }
 
-  if (user.questions_answered < TRIAL_WARNING_THRESHOLD || user.questions_answered >= TRIAL_QUESTION_LIMIT) {
+  if (user.questions_answered < policy.trialWarningThreshold || user.questions_answered >= policy.trialQuestionLimit) {
     return { sent: false as const, skipped: true as const, reason: 'outside_threshold' };
   }
 
@@ -102,12 +107,14 @@ export async function sendTrialWarningEmailIfNeeded(userId: string) {
     return { sent: false as const, skipped: true as const, reason: 'already_sent' };
   }
 
-  const remaining = Math.max(TRIAL_QUESTION_LIMIT - user.questions_answered, 0);
+  const remaining = Math.max(policy.trialQuestionLimit - user.questions_answered, 0);
   const locale = normalizeLocale(user.locale);
   const copy = buildTrialWarningCopy({
     locale,
     memberName: user.display_name ?? user.email,
     remaining,
+    warningThreshold: policy.trialWarningThreshold,
+    questionLimit: policy.trialQuestionLimit,
   });
 
   try {
@@ -159,12 +166,13 @@ export async function dispatchDueTrialWarningEmails(limit = 100) {
   }
 
   const supabase = createSupabaseAdminClient();
+  const policy = await getAppPolicySettingsForAdmin();
   const { data: users, error } = await supabase
     .schema('public')
     .from('users')
     .select('id')
-    .gte('questions_answered', TRIAL_WARNING_THRESHOLD)
-    .lt('questions_answered', TRIAL_QUESTION_LIMIT)
+    .gte('questions_answered', policy.trialWarningThreshold)
+    .lt('questions_answered', policy.trialQuestionLimit)
     .limit(limit);
 
   if (error) {
