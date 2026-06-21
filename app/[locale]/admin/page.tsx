@@ -7,14 +7,23 @@ import { ArrowLeft } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 import { canAccessAdminConsole } from '@/lib/admin/access';
+import { getAdminMatchmakerData } from '@/lib/admin/matchmaker';
 import { requireUser } from '@/lib/auth';
 import { getAppPolicySettingsForAdmin } from '@/lib/policy/app-policy';
 
-import { updateAdminPolicySettingsAction } from './actions';
+import {
+  composeAdminMatchmakerGroupAction,
+  updateAdminPolicySettingsAction,
+} from './actions';
 
 type AdminPolicyPageProps = {
   params: { locale: string };
-  searchParams: { saved?: string };
+  searchParams: {
+    saved?: string;
+    matchmaker?: string;
+    matchGroup?: string;
+    userSearch?: string;
+  };
 };
 
 export const dynamic = 'force-dynamic';
@@ -34,8 +43,28 @@ export default async function AdminPolicyPage({
     notFound();
   }
 
-  const policy = await getAppPolicySettingsForAdmin();
+  const [policy, matchmakerData] = await Promise.all([
+    getAppPolicySettingsForAdmin(),
+    getAdminMatchmakerData(searchParams.userSearch, searchParams.matchGroup),
+  ]);
   const copy = getCopy(locale);
+  const userById = new Map(
+    matchmakerData.users.map((matchmakerUser) => [
+      matchmakerUser.id,
+      matchmakerUser,
+    ]),
+  );
+  const selectedGroup =
+    matchmakerData.groups.find(
+      (group) => group.id === searchParams.matchGroup,
+    ) ?? null;
+  const selectedGroupMemberIds = new Set(
+    selectedGroup?.members.map((member) => member.userId) ?? [],
+  );
+  const selectedLeaderId =
+    selectedGroup?.members.find((member) => member.isFounder)?.userId ??
+    selectedGroup?.createdBy ??
+    '';
 
   return (
     <main className="flex flex-1 flex-col bg-[#00100f]">
@@ -66,6 +95,193 @@ export default async function AdminPolicyPage({
             {copy.saved}
           </div>
         ) : null}
+
+        {searchParams.matchmaker ? (
+          <div className="rounded-[12px] border border-[#20D9A3]/25 bg-[#20D9A3]/10 px-4 py-3 text-sm font-bold text-[#9FF0CE]">
+            {getMatchmakerFeedback(copy, searchParams.matchmaker)}
+          </div>
+        ) : null}
+
+        <section
+          id="matchmaker"
+          className="grid gap-4 rounded-[18px] border border-white/[0.08] bg-[#08231f] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.25)] sm:p-5 lg:grid-cols-[minmax(0,1fr)_360px]"
+        >
+          <div className="min-w-0 space-y-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#20D9A3]">
+                  {copy.matchmakerEyebrow}
+                </p>
+                <h2 className="mt-1 text-xl font-extrabold text-white">
+                  {copy.matchmakerTitle}
+                </h2>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-[#9fb8b2]">
+                  {copy.matchmakerDescription}
+                </p>
+              </div>
+              {selectedGroup ? (
+                <Link
+                  href="/admin#matchmaker"
+                  className="inline-flex h-10 items-center justify-center rounded-[10px] border border-white/[0.08] px-4 text-sm font-extrabold text-[#b9d1cb] transition hover:border-[#20D9A3]/60 hover:text-[#20D9A3]"
+                >
+                  {copy.newGroup}
+                </Link>
+              ) : null}
+            </div>
+
+            <form
+              action={composeAdminMatchmakerGroupAction}
+              className="space-y-4 rounded-[14px] border border-white/[0.08] bg-[#001b18] p-4"
+            >
+              <input type="hidden" name="locale" value={locale} />
+              <input type="hidden" name="groupId" value={selectedGroup?.id ?? ''} />
+
+              <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_120px_150px]">
+                <TextField
+                  name="groupName"
+                  label={copy.groupName}
+                  value={selectedGroup?.name ?? ''}
+                />
+                <NumberField
+                  name="maxMembers"
+                  label={copy.capacity}
+                  value={selectedGroup?.maxMembers ?? 5}
+                />
+                <label className="block">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8fa7a2]">
+                    {copy.difficulty}
+                  </span>
+                  <select
+                    name="difficultyLevel"
+                    defaultValue={selectedGroup?.difficultyLevel ?? 'medium'}
+                    className="mt-1 h-10 w-full rounded-[8px] border border-white/[0.08] bg-[#001b18] px-3 text-sm font-bold text-white outline-none transition focus:border-[#20D9A3]/70"
+                  >
+                    <option value="low">{copy.difficultyLow}</option>
+                    <option value="medium">{copy.difficultyMedium}</option>
+                    <option value="high">{copy.difficultyHigh}</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className="flex flex-col gap-2 rounded-[12px] border border-white/[0.08] bg-white/[0.03] p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-extrabold text-white">
+                    {copy.members}
+                  </p>
+                  <p className="text-xs font-semibold text-[#8fa7a2]">
+                    {copy.membersHint}
+                  </p>
+                </div>
+                <div className="text-xs font-bold text-[#9fb8b2]">
+                  {matchmakerData.users.length} {copy.usersShown}
+                </div>
+              </div>
+
+              <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1 [scrollbar-width:thin]">
+                {matchmakerData.users.map((matchmakerUser) => {
+                  const isSelected = selectedGroupMemberIds.has(matchmakerUser.id);
+                  const isLeader = selectedLeaderId === matchmakerUser.id;
+
+                  return (
+                    <label
+                      key={matchmakerUser.id}
+                      className="grid gap-3 rounded-[12px] border border-white/[0.08] bg-[#08231f] p-3 text-sm transition hover:border-[#20D9A3]/45 sm:grid-cols-[minmax(0,1fr)_90px_96px] sm:items-center"
+                    >
+                      <span className="flex min-w-0 items-center gap-3">
+                        <input
+                          name="memberUserIds"
+                          type="checkbox"
+                          value={matchmakerUser.id}
+                          defaultChecked={isSelected}
+                          className="h-5 w-5 rounded border-white/[0.2] accent-[#20D9A3]"
+                        />
+                        <UserAvatar user={matchmakerUser} />
+                        <span className="min-w-0">
+                          <span className="block truncate font-extrabold text-white">
+                            {matchmakerUser.displayName ?? copy.unnamedUser}
+                          </span>
+                          <span className="block truncate text-xs font-semibold text-[#8fa7a2]">
+                            {matchmakerUser.email}
+                          </span>
+                        </span>
+                      </span>
+                      <span className="text-xs font-bold text-[#9fb8b2]">
+                        {matchmakerUser.questionsAnswered} Q
+                      </span>
+                      <span className="inline-flex items-center gap-2 text-xs font-extrabold text-[#b9d1cb]">
+                        <input
+                          name="leaderUserId"
+                          type="radio"
+                          value={matchmakerUser.id}
+                          defaultChecked={isLeader}
+                          className="h-4 w-4 accent-[#20D9A3]"
+                        />
+                        {copy.leader}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+
+              <button
+                type="submit"
+                className="inline-flex h-11 w-full items-center justify-center rounded-[10px] bg-[#20D9A3] px-5 text-sm font-extrabold text-[#062b22] shadow-[0_14px_32px_rgba(32,217,163,0.18)] transition hover:bg-[#2fe9b1] sm:w-auto"
+              >
+                {selectedGroup ? copy.updateGroup : copy.createGroup}
+              </button>
+            </form>
+          </div>
+
+          <aside className="min-w-0 space-y-3">
+            <form
+              action={`/${locale}/admin#matchmaker`}
+              className="rounded-[14px] border border-white/[0.08] bg-[#001b18] p-3"
+            >
+              <label className="block">
+                <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#8fa7a2]">
+                  {copy.searchUsers}
+                </span>
+                <input
+                  name="userSearch"
+                  defaultValue={searchParams.userSearch ?? ''}
+                  placeholder={copy.searchPlaceholder}
+                  className="mt-1 h-10 w-full rounded-[8px] border border-white/[0.08] bg-[#08231f] px-3 text-sm font-bold text-white outline-none transition placeholder:text-[#6f8580] focus:border-[#20D9A3]/70"
+                />
+              </label>
+            </form>
+
+            <div className="rounded-[14px] border border-white/[0.08] bg-[#001b18] p-3">
+              <h3 className="text-sm font-extrabold text-white">
+                {copy.currentGroups}
+              </h3>
+              <div className="mt-3 max-h-[500px] space-y-2 overflow-y-auto pr-1 [scrollbar-width:thin]">
+                {matchmakerData.groups.map((group) => (
+                  <Link
+                    key={group.id}
+                    href={`/admin?matchGroup=${group.id}#matchmaker`}
+                    className={`block rounded-[12px] border p-3 transition ${
+                      selectedGroup?.id === group.id
+                        ? 'border-[#20D9A3]/80 bg-[#20D9A3]/10'
+                        : 'border-white/[0.08] bg-[#08231f] hover:border-[#20D9A3]/45'
+                    }`}
+                  >
+                    <span className="block truncate text-sm font-extrabold text-white">
+                      {group.name}
+                    </span>
+                    <span className="mt-1 block text-xs font-bold text-[#9fb8b2]">
+                      {group.members.length}/{group.maxMembers} ·{' '}
+                      {copy.leader}:{' '}
+                      {userById.get(
+                        group.members.find((member) => member.isFounder)
+                          ?.userId ?? '',
+                      )?.displayName ?? copy.notSet}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </aside>
+        </section>
 
         <form action={updateAdminPolicySettingsAction} className="space-y-5">
           <input type="hidden" name="locale" value={locale} />
@@ -345,6 +561,57 @@ function TextField({
   );
 }
 
+function UserAvatar({
+  user,
+}: {
+  user: { displayName: string | null; avatarUrl: string | null; email: string };
+}) {
+  const label = user.displayName ?? user.email;
+  const initials = label
+    .split(/\s|@/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('');
+
+  if (user.avatarUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={user.avatarUrl}
+        alt=""
+        className="h-9 w-9 shrink-0 rounded-full border border-[#20D9A3]/25 object-cover"
+      />
+    );
+  }
+
+  return (
+    <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#20D9A3]/25 bg-[#12483d] text-xs font-extrabold text-[#9FF0CE]">
+      {initials || 'U'}
+    </span>
+  );
+}
+
+function getMatchmakerFeedback(
+  copy: ReturnType<typeof getCopy>,
+  value: string,
+) {
+  switch (value) {
+    case '1':
+      return copy.matchmakerSaved;
+    case 'missing':
+      return copy.matchmakerMissing;
+    case 'too-many':
+      return copy.matchmakerTooMany;
+    case 'invalid-user':
+      return copy.matchmakerInvalidUser;
+    case 'active-session':
+      return copy.matchmakerActiveSession;
+    default:
+      return copy.matchmakerSaved;
+  }
+}
+
 function getCopy(locale: AppLocale) {
   if (locale === 'fr') {
     return {
@@ -380,6 +647,35 @@ function getCopy(locale: AppLocale) {
       maxTimer: 'Timer max',
       completionMin: 'Complétion min',
       completionMax: 'Complétion max',
+      matchmakerEyebrow: 'Match-maker',
+      matchmakerTitle: 'Composition des groupes',
+      matchmakerDescription:
+        'Crée ou ajuste les groupes depuis la console administrateur. Choisis les membres, puis désigne le leader du groupe.',
+      newGroup: 'Nouveau groupe',
+      groupName: 'Nom du groupe',
+      capacity: 'Capacité',
+      difficulty: 'Niveau',
+      difficultyLow: 'Faible',
+      difficultyMedium: 'Moyen',
+      difficultyHigh: 'Élevé',
+      members: 'Membres',
+      membersHint:
+        'Le leader est automatiquement inclus dans le groupe. Maximum 6 membres.',
+      usersShown: 'utilisateurs affichés',
+      leader: 'Leader',
+      unnamedUser: 'Utilisateur sans nom',
+      createGroup: 'Créer le groupe',
+      updateGroup: 'Mettre à jour le groupe',
+      searchUsers: 'Rechercher',
+      searchPlaceholder: 'Nom ou e-mail',
+      currentGroups: 'Groupes actuels',
+      notSet: 'non défini',
+      matchmakerSaved: 'Composition du groupe enregistrée.',
+      matchmakerMissing: 'Ajoute un nom, au moins un membre et un leader.',
+      matchmakerTooMany: 'Un groupe ne peut pas dépasser 6 membres.',
+      matchmakerInvalidUser: 'Un utilisateur sélectionné est introuvable.',
+      matchmakerActiveSession:
+        'Impossible de modifier ce groupe pendant une session active.',
     };
   }
 
@@ -416,5 +712,34 @@ function getCopy(locale: AppLocale) {
     maxTimer: 'Max timer',
     completionMin: 'Completion min',
     completionMax: 'Completion max',
+    matchmakerEyebrow: 'Match-maker',
+    matchmakerTitle: 'Group composition',
+    matchmakerDescription:
+      'Create or adjust groups from the admin console. Choose members, then assign the group leader.',
+    newGroup: 'New group',
+    groupName: 'Group name',
+    capacity: 'Capacity',
+    difficulty: 'Level',
+    difficultyLow: 'Low',
+    difficultyMedium: 'Medium',
+    difficultyHigh: 'High',
+    members: 'Members',
+    membersHint:
+      'The leader is automatically included in the group. Maximum 6 members.',
+    usersShown: 'users shown',
+    leader: 'Leader',
+    unnamedUser: 'Unnamed user',
+    createGroup: 'Create group',
+    updateGroup: 'Update group',
+    searchUsers: 'Search',
+    searchPlaceholder: 'Name or email',
+    currentGroups: 'Current groups',
+    notSet: 'not set',
+    matchmakerSaved: 'Group composition saved.',
+    matchmakerMissing: 'Add a name, at least one member, and a leader.',
+    matchmakerTooMany: 'A group cannot exceed 6 members.',
+    matchmakerInvalidUser: 'One selected user could not be found.',
+    matchmakerActiveSession:
+      'This group cannot be changed during an active session.',
   };
 }
