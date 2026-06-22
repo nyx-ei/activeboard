@@ -77,6 +77,10 @@ export type DashboardGroupZoneProps = {
   createGroupHref: string;
   liveGroupsHref: string;
   canBrowseLookupLayer: boolean;
+  calibrationStats: {
+    trueMasteryPercent: number;
+    falseConfidencePercent: number;
+  };
   labels: {
     title: string;
     subtitle: string;
@@ -116,6 +120,8 @@ export type DashboardGroupZoneProps = {
     questionsUnit: string;
     completion: string;
     accuracy: string;
+    trueMastery: string;
+    falseConfidence: string;
     noData: string;
     invite: string;
     inviteTitle: string;
@@ -151,6 +157,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   createGroupHref,
   liveGroupsHref,
   canBrowseLookupLayer,
+  calibrationStats,
   labels,
 }: DashboardGroupZoneProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -222,6 +229,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
     !selectedGroup.hasLiveSession &&
     !shouldShowMemberPrompt,
   );
+  const canOpenSessionPlanner = Boolean(selectedGroup);
   const normalizedInviteEmail = inviteEmail.trim().toLowerCase();
 
   function prefetchSession(href: string | null) {
@@ -373,7 +381,8 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
           selectedActiveSession={selectedActiveSession}
           selectedNextSession={selectedNextSession}
           sessionHref={sessionHref}
-          canOpenSessionPlanner={Boolean(selectedGroup)}
+          canOpenSessionPlanner={canOpenSessionPlanner}
+          calibrationStats={calibrationStats}
           labels={labels}
         />
       </div>
@@ -1000,7 +1009,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
             </div>
           ) : null}
 
-          {canStartSelectedGroup && selectedGroup ? (
+          {canOpenSessionPlanner && selectedGroup ? (
             <button
               type="button"
               onClick={() => {
@@ -1449,6 +1458,7 @@ function MobileSessionFirstDashboardZone({
   selectedNextSession,
   sessionHref,
   canOpenSessionPlanner,
+  calibrationStats,
   labels,
 }: {
   locale: string;
@@ -1458,6 +1468,7 @@ function MobileSessionFirstDashboardZone({
   selectedNextSession: DashboardGroupZoneSession | null;
   sessionHref: string | null;
   canOpenSessionPlanner: boolean;
+  calibrationStats: DashboardGroupZoneProps['calibrationStats'];
   labels: DashboardGroupZoneProps['labels'];
 }) {
   const primarySession = selectedActiveSession ?? selectedNextSession;
@@ -1496,18 +1507,18 @@ function MobileSessionFirstDashboardZone({
         <div className="mt-3 grid grid-cols-2 divide-x divide-white/[0.06]">
           <div className="pr-3 text-center">
             <p className="text-[25px] font-semibold leading-none text-[#20D9A3]">
-              {primarySession?.accuracyPercent ?? 0}%
+              {calibrationStats.trueMasteryPercent}%
             </p>
             <p className="mt-1 text-[11px] text-[#8fa7a2]">
-              {labels.accuracy}
+              {labels.trueMastery}
             </p>
           </div>
           <div className="pl-3 text-center">
             <p className="text-[25px] font-semibold leading-none text-[#9FF0CE]">
-              {primarySession?.completionPercent ?? 0}%
+              {calibrationStats.falseConfidencePercent}%
             </p>
             <p className="mt-1 text-[11px] text-[#8fa7a2]">
-              {labels.completion}
+              {labels.falseConfidence}
             </p>
           </div>
         </div>
