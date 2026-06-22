@@ -12,6 +12,7 @@ import { createPerfTracker } from '@/lib/observability/perf';
 import { getAppPolicySettings } from '@/lib/policy/app-policy';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { generateInviteCode } from '@/lib/utils';
 
 type CreateSessionPayload = {
   locale?: string;
@@ -22,6 +23,7 @@ type CreateSessionPayload = {
   questionGoal?: number;
   timerMode?: 'per_question' | 'global';
   timerSeconds?: number;
+  participantUserIds?: unknown;
 };
 
 function groupDashboardPath(locale: AppLocale, groupId: string) {
@@ -69,6 +71,7 @@ export async function POST(request: Request) {
     .catch(() => null)) as CreateSessionPayload | null;
   const locale = (body?.locale === 'fr' ? 'fr' : 'en') as AppLocale;
   const groupId = body?.groupId ?? '';
+  const participantUserIds = parseParticipantUserIds(body?.participantUserIds);
   const returnTo = body?.returnTo ?? '';
   const sessionName = body?.sessionName?.trim() ?? '';
   const scheduledAt = parseScheduledAt(body?.scheduledAt);
@@ -98,7 +101,7 @@ export async function POST(request: Request) {
   };
 
   if (
-    !groupId ||
+    (!groupId && participantUserIds.length === 0) ||
     !sessionName ||
     !scheduledAt ||
     !Number.isFinite(questionGoal) ||
@@ -114,9 +117,212 @@ export async function POST(request: Request) {
     );
   }
 
+  const supabase = createSupabaseServerClient();
+
+  if (participantUserIds.length > 0) {
+    const admin = createSupabaseAdminClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    perf.step('auth_loaded');
+
+    if (!user) {
+      return NextResponse.json(
+        { ok: false, redirectTo: `/${locale}/auth/login` },
+        { status: 401 },
+      );
+    }
+
+    const memberUserIds = [
+      ...new Set([user.id, ...participantUserIds].filter(Boolean)),
+    ];
+    perf.setContext({ userId: user.id, locale });
+
+    if (memberUserIds.length < policy.minimumGroupMembersToStart) {
+      return NextResponse.json(
+        { ok: false, message: await getFeedback('minimumMembersRequired') },
+        { status: 400 },
+      );
+    }
+
+    const [userTierResult, usersResult] = await Promise.all([
+      admin
+        .schema('public')
+        .from('users')
+        .select('questions_answered, has_valid_payment_method, subscription_status')
+        .eq('id', user.id)
+        .maybeSingle(),
+      admin
+        .schema('public')
+        .from('users')
+        .select('id')
+        .in('id', memberUserIds),
+    ]);
+    perf.step('session_first_guards_loaded');
+
+    const userTier = userTierResult.data
+      ? deriveUserTier({
+          questionsAnswered: userTierResult.data.questions_answered ?? 0,
+          hasValidPaymentMethod:
+            userTierResult.data.has_valid_payment_method ?? false,
+          subscriptionStatus: userTierResult.data.subscription_status ?? 'none',
+          policy,
+        })
+      : 'locked';
+    if (!getUserTierCapabilities(userTier).canCreateSession) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: await getFeedback('upgradeRequiredToScheduleSession'),
+        },
+        { status: 403 },
+      );
+    }
+
+    if ((usersResult.data ?? []).length !== memberUserIds.length) {
+      return NextResponse.json(
+        { ok: false, message: await getFeedback('actionFailed') },
+        { status: 400 },
+      );
+    }
+
+    const inviteCode = await createUniqueInviteCode(admin);
+    const { data: createdGroup, error: groupError } = await admin
+      .schema('public')
+      .from('groups')
+      .insert({
+        name: sessionName,
+        invite_code: inviteCode,
+        created_by: user.id,
+        difficulty_level: 'medium',
+        group_kind: 'session_test',
+        max_members: Math.max(
+          memberUserIds.length,
+          policy.minimumGroupMembersToStart,
+        ),
+      })
+      .select('id')
+      .single();
+
+    if (groupError || !createdGroup?.id) {
+      return NextResponse.json(
+        { ok: false, message: await getFeedback('actionFailed') },
+        { status: 500 },
+      );
+    }
+    perf.step('session_first_group_created');
+
+    const { error: membersError } = await admin
+      .schema('public')
+      .from('group_members')
+      .upsert(
+        memberUserIds.map((memberUserId) => ({
+          group_id: createdGroup.id,
+          user_id: memberUserId,
+          is_founder: memberUserId === user.id,
+        })),
+        { onConflict: 'group_id,user_id' },
+      );
+
+    if (membersError) {
+      return NextResponse.json(
+        { ok: false, message: await getFeedback('actionFailed') },
+        { status: 500 },
+      );
+    }
+    perf.step('session_first_members_saved');
+
+    const { data: createdSession, error: sessionError } = await admin
+      .schema('public')
+      .from('sessions')
+      .insert({
+        group_id: createdGroup.id,
+        name: sessionName,
+        scheduled_at: scheduledAt.toISOString(),
+        timer_mode: timerMode,
+        timer_seconds: timerSeconds,
+        question_goal: Math.min(
+          Math.round(questionGoal),
+          policy.maxQuestionGoal,
+        ),
+        created_by: user.id,
+        leader_id: user.id,
+        status: 'scheduled',
+      })
+      .select(
+        'id, group_id, name, scheduled_at, share_code, meeting_link, timer_seconds',
+      )
+      .single();
+
+    if (sessionError || !createdSession) {
+      return NextResponse.json(
+        { ok: false, message: await getFeedback('actionFailed') },
+        { status: 500 },
+      );
+    }
+    perf.step('session_first_session_created');
+
+    void admin
+      .schema('public')
+      .from('groups')
+      .update({ last_session_id: createdSession.id })
+      .eq('id', createdGroup.id);
+
+    void Promise.allSettled([
+      logAppEvent({
+        eventName: APP_EVENTS.sessionScheduled,
+        locale,
+        userId: user.id,
+        groupId: createdGroup.id,
+        sessionId: createdSession.id,
+        metadata: {
+          source: 'session_first_dashboard_modal',
+          session_name: sessionName,
+          participant_count: memberUserIds.length,
+          question_goal: questionGoal,
+          timer_seconds: timerSeconds,
+          timer_mode: timerMode,
+          scheduled_at: scheduledAt.toISOString(),
+          share_code: createdSession.share_code,
+        },
+      }),
+      hasEmailEnv()
+        ? sendSessionCalendarInvites(createdSession).catch((inviteError) => {
+            console.error('sendSessionCalendarInvites failed', {
+              sessionId: createdSession.id,
+              groupId: createdGroup.id,
+              error:
+                inviteError instanceof Error
+                  ? inviteError.message
+                  : 'Unknown calendar invite error',
+            });
+          })
+        : Promise.resolve(),
+      notifySessionScheduled({
+        groupId: createdGroup.id,
+        sessionId: createdSession.id,
+        sessionName,
+        actorUserId: user.id,
+      }),
+    ]);
+
+    perf.done({
+      sessionId: createdSession.id,
+      groupId: createdGroup.id,
+      sessionFirst: true,
+    });
+
+    return NextResponse.json({
+      ok: true,
+      sessionId: createdSession.id,
+      redirectTo: groupDashboardPath(locale, createdGroup.id),
+      calendarInvitesDispatchUrl: `/api/sessions/${createdSession.id}/calendar-invites`,
+      message: getStaticSessionScheduledFeedback(locale),
+    });
+  }
+
   perf.setContext({ groupId, locale });
 
-  const supabase = createSupabaseServerClient();
   const { data: fastRows, error: fastError } = await (
     supabase.schema('public') as unknown as {
       rpc: (
@@ -381,4 +587,42 @@ function parseScheduledAt(value: string | undefined) {
   }
 
   return date;
+}
+
+function parseParticipantUserIds(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return [
+    ...new Set(
+      value
+        .map((item) => (typeof item === 'string' ? item.trim() : ''))
+        .filter((item) =>
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+            item,
+          ),
+        ),
+    ),
+  ];
+}
+
+async function createUniqueInviteCode(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const candidate = generateInviteCode();
+    const { data: existing } = await admin
+      .schema('public')
+      .from('groups')
+      .select('id')
+      .eq('invite_code', candidate)
+      .maybeSingle();
+
+    if (!existing) {
+      return candidate;
+    }
+  }
+
+  throw new Error('Unable to generate a unique invite code');
 }
