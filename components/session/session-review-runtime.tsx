@@ -58,6 +58,7 @@ type ReviewDistribution = {
 type SessionReviewRuntimeProps = {
   locale: string;
   sessionId: string;
+  groupId: string;
   sessionTitle: string;
   questionGoal: number;
   initialQuestionIndex: number;
@@ -93,6 +94,19 @@ const REVIEW_DISTRIBUTION_OPTIONS: Array<AnswerOption | '?' | 'skipped'> = [
   'skipped',
 ];
 
+function formatSignedReviewTime(seconds: number) {
+  const sign = seconds < 0 ? '-' : '';
+  const safeSeconds = Math.abs(seconds);
+  const minutes = Math.floor(safeSeconds / 60)
+    .toString()
+    .padStart(2, '0');
+  const remainingSeconds = Math.floor(safeSeconds % 60)
+    .toString()
+    .padStart(2, '0');
+
+  return `${sign}${minutes}:${remainingSeconds}`;
+}
+
 function getDistributionCount(
   distribution: ReviewDistribution,
   option: AnswerOption | '?' | 'skipped',
@@ -104,6 +118,7 @@ function getDistributionCount(
 export function SessionReviewRuntime({
   locale,
   sessionId,
+  groupId,
   sessionTitle,
   questionGoal,
   initialQuestionIndex,
@@ -126,6 +141,8 @@ export function SessionReviewRuntime({
     },
   });
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
+  const reviewTimerSeconds = Math.max(60, questionGoal * 180);
+  const [reviewElapsedSeconds, setReviewElapsedSeconds] = useState(0);
   const currentPayload = cache[currentIndex];
   const currentQuestion = currentPayload?.question ?? initialQuestion;
   const distribution = currentPayload?.distribution ?? initialDistribution;
@@ -133,6 +150,8 @@ export function SessionReviewRuntime({
   const isLastQuestion = currentIndex >= questionGoal - 1;
   const isFirstQuestion = currentIndex <= 0;
   const canFinish = reviewedQuestionCount >= questionGoal;
+  const reviewRemainingSeconds = reviewTimerSeconds - reviewElapsedSeconds;
+  const isReviewOvertime = reviewRemainingSeconds < 0;
 
   const loadQuestion = useCallback(
     async (targetIndex: number, makeCurrent: boolean, force = false) => {
@@ -202,6 +221,17 @@ export function SessionReviewRuntime({
     },
     [cache, locale, questionGoal, sessionId],
   );
+
+  useEffect(() => {
+    const startedAt = Date.now();
+    const intervalId = window.setInterval(() => {
+      setReviewElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, []);
 
   useEffect(() => {
     void loadQuestion(currentIndex + 1, false);
@@ -332,6 +362,19 @@ export function SessionReviewRuntime({
           )}
         </div>
 
+        <div
+          className={`flex items-center justify-between rounded-[10px] border px-3 py-2 text-xs font-bold sm:text-sm ${
+            isReviewOvertime
+              ? 'border-amber-300/30 bg-amber-300/10 text-amber-200'
+              : 'border-brand/20 bg-brand/10 text-[#9FF0CE]'
+          }`}
+        >
+          <span>{locale === 'fr' ? 'Temps de revue' : 'Review time'}</span>
+          <span className="font-mono text-sm sm:text-base">
+            {formatSignedReviewTime(reviewRemainingSeconds)}
+          </span>
+        </div>
+
         <section className="surface-mockup p-3 sm:p-5">
           <div className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4 text-brand" aria-hidden="true" />
@@ -417,6 +460,8 @@ export function SessionReviewRuntime({
           <SessionFinishReviewButton
             locale={locale}
             sessionId={sessionId}
+            groupId={groupId}
+            questionGoal={questionGoal}
             label={labels.finishSession}
             pendingLabel={labels.finishSessionPending}
           />

@@ -24,6 +24,7 @@ type ReviewPayload = {
   nextQuestionIndex?: number;
   advanceAfterSave?: boolean;
   correctOption?: string | null;
+  reviewDurationSeconds?: number;
 };
 
 export async function POST(request: Request, { params }: RouteContext) {
@@ -35,6 +36,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   const nextQuestionIndex = Number(body?.nextQuestionIndex);
   const advanceAfterSave = body?.advanceAfterSave === true;
   const correctOption = body?.correctOption?.toUpperCase() ?? '';
+  const reviewDurationSeconds = Number(body?.reviewDurationSeconds);
   const perf = createPerfTracker(
     `saveReviewAnswerRoute:${sessionId}:${questionIndex}`,
   );
@@ -156,6 +158,22 @@ export async function POST(request: Request, { params }: RouteContext) {
     );
   }
   perf.step('review_updates_saved');
+  if (Number.isFinite(reviewDurationSeconds) && reviewDurationSeconds > 0) {
+    void (
+      supabase.schema('public') as unknown as {
+        rpc: (
+          fn: 'activeboard_record_review_duration',
+          args: {
+            target_user_id: string;
+            duration_seconds: number;
+          },
+        ) => Promise<unknown>;
+      }
+    ).rpc('activeboard_record_review_duration', {
+      target_user_id: user.id,
+      duration_seconds: Math.min(3600, Math.max(1, Math.round(reviewDurationSeconds))),
+    });
+  }
   void logAppEvent({
     eventName: APP_EVENTS.answerRevealed,
     locale,

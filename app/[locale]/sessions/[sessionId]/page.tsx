@@ -257,6 +257,7 @@ export default async function SessionPage({
         <SessionReviewRuntime
           locale={locale}
           sessionId={params.sessionId}
+          groupId={data.group.id}
           sessionTitle={data.session.name ?? data.group.name}
           questionGoal={questionGoal}
           initialQuestionIndex={currentIndex}

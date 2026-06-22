@@ -366,6 +366,19 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   return (
     <section className="v11-card px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
       <div className="sm:hidden">
+        <MobileSessionFirstDashboardZone
+          locale={locale}
+          selectedGroup={selectedGroup}
+          selectedMembers={selectedMembers}
+          selectedActiveSession={selectedActiveSession}
+          selectedNextSession={selectedNextSession}
+          sessionHref={sessionHref}
+          canStartSelectedGroup={canStartSelectedGroup}
+          labels={labels}
+        />
+      </div>
+
+      <div className="hidden sm:block">
         <div className="flex items-center justify-between gap-3">
           <div ref={groupMenuRef} className="relative min-w-0 flex-1">
             <button
@@ -1427,6 +1440,187 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
     </section>
   );
 });
+
+function MobileSessionFirstDashboardZone({
+  locale,
+  selectedGroup,
+  selectedMembers,
+  selectedActiveSession,
+  selectedNextSession,
+  sessionHref,
+  canStartSelectedGroup,
+  labels,
+}: {
+  locale: string;
+  selectedGroup: DashboardGroupZoneGroup | null;
+  selectedMembers: DashboardGroupZoneGroup['membersPreview'];
+  selectedActiveSession: DashboardGroupZoneSession | null;
+  selectedNextSession: DashboardGroupZoneSession | null;
+  sessionHref: string | null;
+  canStartSelectedGroup: boolean;
+  labels: DashboardGroupZoneProps['labels'];
+}) {
+  const primarySession = selectedActiveSession ?? selectedNextSession;
+  const secondarySession =
+    selectedNextSession && selectedNextSession.id !== primarySession?.id
+      ? selectedNextSession
+      : (selectedGroup?.recentSessions ?? []).find(
+          (session) => session.id !== primarySession?.id,
+        );
+  const primaryHref = primarySession
+    ? `/${locale}/sessions/${primarySession.id}`
+    : (sessionHref ?? `/${locale}/dashboard`);
+
+  if (!selectedGroup) {
+    return (
+      <div className="rounded-[16px] border border-dashed border-white/[0.08] px-4 py-5 text-sm font-semibold text-[#8fa7a2]">
+        {labels.noGroups}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <section className="rounded-[15px] border border-white/[0.045] bg-[#071a18]/75 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[13px] font-semibold text-[#d7e3df]">
+            {locale === 'fr' ? 'Score de calibration' : 'Calibration score'}
+          </h2>
+          <a
+            href={`/${locale}/dashboard/progression`}
+            className="text-[11px] font-semibold text-[#20D9A3]"
+          >
+            {locale === 'fr' ? 'Voir plus' : 'View more'}
+          </a>
+        </div>
+        <div className="mt-3 grid grid-cols-2 divide-x divide-white/[0.06]">
+          <div className="pr-3 text-center">
+            <p className="text-[25px] font-semibold leading-none text-[#20D9A3]">
+              {primarySession?.accuracyPercent ?? 0}%
+            </p>
+            <p className="mt-1 text-[11px] text-[#8fa7a2]">
+              {labels.accuracy}
+            </p>
+          </div>
+          <div className="pl-3 text-center">
+            <p className="text-[25px] font-semibold leading-none text-[#9FF0CE]">
+              {primarySession?.completionPercent ?? 0}%
+            </p>
+            <p className="mt-1 text-[11px] text-[#8fa7a2]">
+              {labels.completion}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="relative rounded-[18px] border border-white/[0.045] bg-[#0b2a25] px-4 pb-5 pt-4 shadow-[0_18px_60px_rgba(0,0,0,0.2)]">
+        <h2 className="truncate text-[15px] font-semibold leading-none text-[#d7e3df]">
+          {selectedGroup.name}
+        </h2>
+
+        <div className="mt-3 space-y-2.5 pr-[58px]">
+          <a
+            href={primaryHref}
+            className="grid min-h-[58px] grid-cols-[96px_minmax(0,1fr)_44px] items-center gap-2 rounded-[13px] border border-white/[0.055] bg-white/[0.018] px-2 py-2"
+          >
+            <span className="flex min-w-0 items-center">
+              <CompactAvatarStack members={selectedMembers?.slice(0, 3)} />
+            </span>
+            <span className="min-w-0">
+              <span
+                className={`block truncate text-[12px] font-semibold ${
+                  selectedActiveSession ? 'text-[#20D9A3]' : 'text-[#8fa7a2]'
+                }`}
+              >
+                {selectedActiveSession ? labels.live : labels.nextSession}
+              </span>
+              <span className="block truncate text-[13px] font-semibold text-[#e8f4f0]">
+                {primarySession?.name ?? labels.noUpcomingSession}
+              </span>
+              <span className="block truncate text-[10px] text-[#8fa7a2]">
+                {primarySession
+                  ? getCompactSessionMeta(primarySession)
+                  : `${selectedGroup.memberCount} ${labels.members}`}
+              </span>
+            </span>
+            <span className="flex flex-col items-center justify-center">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#20D9A3] text-[#062b22]">
+                <Play className="h-4 w-4 fill-current" aria-hidden="true" />
+              </span>
+              <span className="mt-0.5 text-[10px] font-semibold text-[#20D9A3]">
+                {selectedActiveSession ? getCompactJoinLabel(labels.joinLiveSession) : 'Start'}
+              </span>
+            </span>
+          </a>
+
+          <button
+            type="button"
+            disabled={!canStartSelectedGroup}
+            onClick={() => {
+              if (!canStartSelectedGroup) return;
+              window.dispatchEvent(
+                new CustomEvent('activeboard:open-create-session', {
+                  detail: { groupId: selectedGroup.id },
+                }),
+              );
+            }}
+            className="grid min-h-[58px] w-full grid-cols-[96px_minmax(0,1fr)_68px] items-center gap-2 rounded-[13px] border border-white/[0.035] bg-white/[0.012] px-2 py-2 text-left transition disabled:opacity-70"
+          >
+            <span className="flex items-center gap-1">
+              <PlaceholderAvatar />
+              <PlaceholderAvatar />
+              <PlaceholderAvatar />
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-[13px] font-semibold text-[#e8f4f0]">
+                {secondarySession?.name ?? labels.scheduleSession}
+              </span>
+              <span className="block truncate text-[10px] text-[#8fa7a2]">
+                {secondarySession
+                  ? `${secondarySession.question_goal}Q · ${secondarySession.timer_seconds}sec`
+                  : `20Q · ${labels.timerLabel.replace('{seconds}', '90')}`}
+              </span>
+            </span>
+            <span className="truncate text-right text-[10px] font-semibold text-[#8fa7a2]">
+              {secondarySession
+                ? formatSessionDate(secondarySession.scheduled_at, locale)
+                : labels.scheduledFor.replace('{date}', '')}
+            </span>
+          </button>
+        </div>
+
+        <button
+          type="button"
+          disabled={!canStartSelectedGroup}
+          onClick={() => {
+            if (!canStartSelectedGroup) return;
+            window.dispatchEvent(
+              new CustomEvent('activeboard:open-create-session', {
+                detail: { groupId: selectedGroup.id },
+              }),
+            );
+          }}
+          className={`absolute bottom-4 right-4 flex h-[52px] w-[52px] items-center justify-center rounded-full border text-[#9FF0CE] shadow-[0_18px_44px_rgba(0,0,0,0.35)] transition ${
+            canStartSelectedGroup
+              ? 'border-[#20D9A3]/30 bg-[#0d3a34] hover:bg-[#114940]'
+              : 'cursor-not-allowed border-white/[0.06] bg-white/[0.04] text-[#5f7b75]'
+          }`}
+          aria-label={labels.startSession}
+        >
+          <Plus className="h-7 w-7" aria-hidden="true" />
+        </button>
+      </section>
+    </div>
+  );
+}
+
+function PlaceholderAvatar() {
+  return (
+    <span className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[#0e2c28] bg-white/[0.045] text-[#8fa7a2]">
+      <UsersRound className="h-3.5 w-3.5" aria-hidden="true" />
+    </span>
+  );
+}
 
 function MobileSessionList({
   locale,
