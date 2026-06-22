@@ -58,6 +58,7 @@ type ReviewDistribution = {
 type SessionReviewRuntimeProps = {
   locale: string;
   sessionId: string;
+  groupId: string;
   sessionTitle: string;
   questionGoal: number;
   initialQuestionIndex: number;
@@ -117,6 +118,7 @@ function getDistributionCount(
 export function SessionReviewRuntime({
   locale,
   sessionId,
+  groupId,
   sessionTitle,
   questionGoal,
   initialQuestionIndex,
@@ -458,6 +460,8 @@ export function SessionReviewRuntime({
           <SessionFinishReviewButton
             locale={locale}
             sessionId={sessionId}
+            groupId={groupId}
+            questionGoal={questionGoal}
             label={labels.finishSession}
             pendingLabel={labels.finishSessionPending}
           />

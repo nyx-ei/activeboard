@@ -96,6 +96,31 @@ export async function POST(request: Request, { params }: RouteContext) {
     );
   }
 
+  const { data: plannedNextSession } = await supabase
+    .schema('public')
+    .from('sessions')
+    .select('id')
+    .eq('group_id', session.group_id)
+    .eq('status', 'scheduled')
+    .neq('id', sessionId)
+    .gte('scheduled_at', new Date().toISOString())
+    .limit(1)
+    .maybeSingle();
+  perf.step('next_session_loaded');
+
+  if (!plannedNextSession?.id) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          locale === 'fr'
+            ? 'Planifie la prochaine session avant de terminer.'
+            : 'Schedule the next session before finishing.',
+      },
+      { status: 409 },
+    );
+  }
+
   await supabase
     .schema('public')
     .from('sessions')

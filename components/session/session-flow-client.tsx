@@ -1000,6 +1000,7 @@ export function ReviewAnswerForm({
   >(initialCorrectOption ?? '');
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const reviewQuestionStartedAtRef = useRef(Date.now());
   const isPending = saveStatus === 'saving';
   const isReviewed = Boolean(savedCorrectOption);
   const canSubmit =
@@ -1038,6 +1039,7 @@ export function ReviewAnswerForm({
     setSavedCorrectOption(initialCorrectOption ?? '');
     setSaveStatus('idle');
     setSubmissionError(null);
+    reviewQuestionStartedAtRef.current = Date.now();
   }, [initialCorrectOption, questionId]);
 
   useEffect(() => {
@@ -1099,6 +1101,10 @@ export function ReviewAnswerForm({
           nextQuestionIndex,
           advanceAfterSave: shouldAdvance,
           correctOption: nextCorrectOption,
+          reviewDurationSeconds: Math.max(
+            1,
+            Math.round((Date.now() - reviewQuestionStartedAtRef.current) / 1000),
+          ),
         },
       },
       () => ({ ok: false }),
