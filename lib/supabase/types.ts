@@ -205,33 +205,42 @@ type GroupsRow = {
   created_at: string;
   created_by: string | null;
   difficulty_level: 'low' | 'medium' | 'high';
+  group_kind: 'manual' | 'session_test' | 'solidified';
   id: string;
   invite_code: string;
+  last_session_id: string | null;
   max_members: number;
   meeting_link: string | null;
   name: string;
+  solidified_at: string | null;
 };
 
 type GroupsInsert = {
   created_at?: string;
   created_by?: string | null;
   difficulty_level?: 'low' | 'medium' | 'high';
+  group_kind?: 'manual' | 'session_test' | 'solidified';
   id?: string;
   invite_code: string;
+  last_session_id?: string | null;
   max_members?: number;
   meeting_link?: string | null;
   name: string;
+  solidified_at?: string | null;
 };
 
 type GroupsUpdate = {
   created_at?: string;
   created_by?: string | null;
   difficulty_level?: 'low' | 'medium' | 'high';
+  group_kind?: 'manual' | 'session_test' | 'solidified';
   id?: string;
   invite_code?: string;
+  last_session_id?: string | null;
   max_members?: number;
   meeting_link?: string | null;
   name?: string;
+  solidified_at?: string | null;
 };
 
 type GroupInvitesRow = {
@@ -532,7 +541,9 @@ type SessionsRow = {
   leader_id: string | null;
   meeting_link: string | null;
   name: string | null;
+  planned_from_session_id: string | null;
   question_goal: number;
+  review_timer_seconds: number;
   scheduled_at: string;
   share_code: string;
   started_at: string | null;
@@ -549,7 +560,9 @@ type SessionsInsert = {
   leader_id?: string | null;
   meeting_link?: string | null;
   name?: string | null;
+  planned_from_session_id?: string | null;
   question_goal?: number;
+  review_timer_seconds?: number;
   scheduled_at: string;
   share_code?: string;
   started_at?: string | null;
@@ -566,7 +579,9 @@ type SessionsUpdate = {
   leader_id?: string | null;
   meeting_link?: string | null;
   name?: string | null;
+  planned_from_session_id?: string | null;
   question_goal?: number;
+  review_timer_seconds?: number;
   scheduled_at?: string;
   share_code?: string;
   started_at?: string | null;
