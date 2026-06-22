@@ -336,6 +336,12 @@ export default async function DashboardPage({
       falseConfidenceDescription: t('zoneQuadrantFalseConfidenceDescription'),
     },
   } satisfies DashboardProgressStateZoneProps;
+  const trueMasteryQuadrant = performanceData.progressQuadrants.find(
+    (quadrant) => quadrant.key === 'trueMastery',
+  );
+  const falseConfidenceQuadrant = performanceData.progressQuadrants.find(
+    (quadrant) => quadrant.key === 'falseConfidence',
+  );
   const groupZoneProps = {
     locale,
     groups: dashboardGroups,
@@ -345,6 +351,10 @@ export default async function DashboardPage({
       ? `/${locale}/lookup`
       : `/${locale}/billing`,
     canBrowseLookupLayer,
+    calibrationStats: {
+      trueMasteryPercent: trueMasteryQuadrant?.percentage ?? 0,
+      falseConfidencePercent: falseConfidenceQuadrant?.percentage ?? 0,
+    },
     labels: {
       title: t('zoneGroupTitle'),
       subtitle: t('zoneGroupSubtitle'),
@@ -388,6 +398,8 @@ export default async function DashboardPage({
       questionsUnit: t('questionsUnit'),
       completion: t('completion'),
       accuracy: t('accuracy'),
+      trueMastery: t('zoneQuadrantTrueMastery'),
+      falseConfidence: t('zoneQuadrantFalseConfidence'),
       noData: t('noData'),
       invite: t('inviteTeammateOpen'),
       inviteTitle: t('inviteTeammateModalTitle'),

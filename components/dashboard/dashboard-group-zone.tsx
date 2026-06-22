@@ -77,6 +77,10 @@ export type DashboardGroupZoneProps = {
   createGroupHref: string;
   liveGroupsHref: string;
   canBrowseLookupLayer: boolean;
+  calibrationStats: {
+    trueMasteryPercent: number;
+    falseConfidencePercent: number;
+  };
   labels: {
     title: string;
     subtitle: string;
@@ -116,6 +120,8 @@ export type DashboardGroupZoneProps = {
     questionsUnit: string;
     completion: string;
     accuracy: string;
+    trueMastery: string;
+    falseConfidence: string;
     noData: string;
     invite: string;
     inviteTitle: string;
@@ -151,6 +157,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   createGroupHref,
   liveGroupsHref,
   canBrowseLookupLayer,
+  calibrationStats,
   labels,
 }: DashboardGroupZoneProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -222,6 +229,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
     !selectedGroup.hasLiveSession &&
     !shouldShowMemberPrompt,
   );
+  const canOpenSessionPlanner = Boolean(selectedGroup);
   const normalizedInviteEmail = inviteEmail.trim().toLowerCase();
 
   function prefetchSession(href: string | null) {
@@ -373,7 +381,8 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
           selectedActiveSession={selectedActiveSession}
           selectedNextSession={selectedNextSession}
           sessionHref={sessionHref}
-          canStartSelectedGroup={canStartSelectedGroup}
+          canOpenSessionPlanner={canOpenSessionPlanner}
+          calibrationStats={calibrationStats}
           labels={labels}
         />
       </div>
@@ -1000,7 +1009,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
             </div>
           ) : null}
 
-          {canStartSelectedGroup && selectedGroup ? (
+          {canOpenSessionPlanner && selectedGroup ? (
             <button
               type="button"
               onClick={() => {
@@ -1448,7 +1457,8 @@ function MobileSessionFirstDashboardZone({
   selectedActiveSession,
   selectedNextSession,
   sessionHref,
-  canStartSelectedGroup,
+  canOpenSessionPlanner,
+  calibrationStats,
   labels,
 }: {
   locale: string;
@@ -1457,7 +1467,8 @@ function MobileSessionFirstDashboardZone({
   selectedActiveSession: DashboardGroupZoneSession | null;
   selectedNextSession: DashboardGroupZoneSession | null;
   sessionHref: string | null;
-  canStartSelectedGroup: boolean;
+  canOpenSessionPlanner: boolean;
+  calibrationStats: DashboardGroupZoneProps['calibrationStats'];
   labels: DashboardGroupZoneProps['labels'];
 }) {
   const primarySession = selectedActiveSession ?? selectedNextSession;
@@ -1496,18 +1507,18 @@ function MobileSessionFirstDashboardZone({
         <div className="mt-3 grid grid-cols-2 divide-x divide-white/[0.06]">
           <div className="pr-3 text-center">
             <p className="text-[25px] font-semibold leading-none text-[#20D9A3]">
-              {primarySession?.accuracyPercent ?? 0}%
+              {calibrationStats.trueMasteryPercent}%
             </p>
             <p className="mt-1 text-[11px] text-[#8fa7a2]">
-              {labels.accuracy}
+              {labels.trueMastery}
             </p>
           </div>
           <div className="pl-3 text-center">
             <p className="text-[25px] font-semibold leading-none text-[#9FF0CE]">
-              {primarySession?.completionPercent ?? 0}%
+              {calibrationStats.falseConfidencePercent}%
             </p>
             <p className="mt-1 text-[11px] text-[#8fa7a2]">
-              {labels.completion}
+              {labels.falseConfidence}
             </p>
           </div>
         </div>
@@ -1518,53 +1529,43 @@ function MobileSessionFirstDashboardZone({
           {selectedGroup.name}
         </h2>
 
-        <div className="mt-3 space-y-2.5 pr-[58px]">
+        <div className="mt-3 space-y-2.5">
           <a
             href={primaryHref}
-            className="grid min-h-[58px] grid-cols-[96px_minmax(0,1fr)_44px] items-center gap-2 rounded-[13px] border border-white/[0.055] bg-white/[0.018] px-2 py-2"
+            className="grid min-h-[58px] grid-cols-[104px_minmax(0,1fr)_42px] items-center gap-2 rounded-[13px] border border-white/[0.055] bg-white/[0.018] px-2.5 py-2"
           >
             <span className="flex min-w-0 items-center">
               <CompactAvatarStack members={selectedMembers?.slice(0, 3)} />
             </span>
             <span className="min-w-0">
-              <span
-                className={`block truncate text-[12px] font-semibold ${
-                  selectedActiveSession ? 'text-[#20D9A3]' : 'text-[#8fa7a2]'
-                }`}
-              >
-                {selectedActiveSession ? labels.live : labels.nextSession}
-              </span>
               <span className="block truncate text-[13px] font-semibold text-[#e8f4f0]">
                 {primarySession?.name ?? labels.noUpcomingSession}
               </span>
-              <span className="block truncate text-[10px] text-[#8fa7a2]">
+              <span className="mt-0.5 block truncate text-[10px] text-[#8fa7a2]">
                 {primarySession
                   ? getCompactSessionMeta(primarySession)
                   : `${selectedGroup.memberCount} ${labels.members}`}
               </span>
             </span>
             <span className="flex flex-col items-center justify-center">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#20D9A3] text-[#062b22]">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#20D9A3] text-[#062b22] shadow-[0_0_18px_rgba(32,217,163,0.25)]">
                 <Play className="h-4 w-4 fill-current" aria-hidden="true" />
-              </span>
-              <span className="mt-0.5 text-[10px] font-semibold text-[#20D9A3]">
-                {selectedActiveSession ? getCompactJoinLabel(labels.joinLiveSession) : 'Start'}
               </span>
             </span>
           </a>
 
           <button
             type="button"
-            disabled={!canStartSelectedGroup}
+            disabled={!canOpenSessionPlanner}
             onClick={() => {
-              if (!canStartSelectedGroup) return;
+              if (!canOpenSessionPlanner) return;
               window.dispatchEvent(
                 new CustomEvent('activeboard:open-create-session', {
                   detail: { groupId: selectedGroup.id },
                 }),
               );
             }}
-            className="grid min-h-[58px] w-full grid-cols-[96px_minmax(0,1fr)_68px] items-center gap-2 rounded-[13px] border border-white/[0.035] bg-white/[0.012] px-2 py-2 text-left transition disabled:opacity-70"
+            className="grid min-h-[58px] w-full grid-cols-[104px_minmax(0,1fr)_72px] items-center gap-2 rounded-[13px] border border-white/[0.035] bg-white/[0.012] px-2.5 py-2 pr-12 text-left transition disabled:opacity-70"
           >
             <span className="flex items-center gap-1">
               <PlaceholderAvatar />
@@ -1591,9 +1592,9 @@ function MobileSessionFirstDashboardZone({
 
         <button
           type="button"
-          disabled={!canStartSelectedGroup}
+          disabled={!canOpenSessionPlanner}
           onClick={() => {
-            if (!canStartSelectedGroup) return;
+            if (!canOpenSessionPlanner) return;
             window.dispatchEvent(
               new CustomEvent('activeboard:open-create-session', {
                 detail: { groupId: selectedGroup.id },
@@ -1601,7 +1602,7 @@ function MobileSessionFirstDashboardZone({
             );
           }}
           className={`absolute bottom-4 right-4 flex h-[52px] w-[52px] items-center justify-center rounded-full border text-[#9FF0CE] shadow-[0_18px_44px_rgba(0,0,0,0.35)] transition ${
-            canStartSelectedGroup
+            canOpenSessionPlanner
               ? 'border-[#20D9A3]/30 bg-[#0d3a34] hover:bg-[#114940]'
               : 'cursor-not-allowed border-white/[0.06] bg-white/[0.04] text-[#5f7b75]'
           }`}
