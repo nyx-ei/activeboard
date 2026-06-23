@@ -143,7 +143,8 @@ export function SessionReviewRuntime({
     },
   });
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
-  const reviewTimerSeconds = Math.max(60, questionGoal * 180);
+  const reviewTimerSeconds =
+    timerMode === 'per_question' ? 180 : Math.max(60, questionGoal * 180);
   const [reviewElapsedSeconds, setReviewElapsedSeconds] = useState(0);
   const currentPayload = cache[currentIndex];
   const currentQuestion = currentPayload?.question ?? initialQuestion;
