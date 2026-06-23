@@ -12,6 +12,7 @@ import {
   loadSessionRuntimeAccess,
 } from '@/lib/session/flow';
 import { saveReviewSnapshot } from '@/lib/session/review-consistency';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { ANSWER_OPTIONS } from '@/lib/types/demo';
 
 type RouteContext = {
@@ -173,6 +174,12 @@ export async function POST(request: Request, { params }: RouteContext) {
     ).rpc('activeboard_record_review_duration', {
       target_user_id: user.id,
       duration_seconds: Math.min(3600, Math.max(1, Math.round(reviewDurationSeconds))),
+    }).catch((error) => {
+      console.error('[session-review] failed to record review duration', {
+        sessionId,
+        questionIndex,
+        error,
+      });
     });
   }
   void logAppEvent({
@@ -186,6 +193,12 @@ export async function POST(request: Request, { params }: RouteContext) {
       correct_option: correctOption,
       source: 'review_flow',
     },
+  }).catch((error) => {
+    console.error('[session-review] failed to log review event', {
+      sessionId,
+      questionIndex,
+      error,
+    });
   });
   perf.step('deferred_side_effects_started');
 
@@ -202,13 +215,28 @@ export async function POST(request: Request, { params }: RouteContext) {
     session.timer_mode === 'per_question' &&
     targetQuestionIndex !== questionIndex
   ) {
-    await ensureQuestion(
-      supabase,
-      sessionId,
-      targetQuestionIndex,
-      user.id,
-      session,
-    );
+    try {
+      const admin = createSupabaseAdminClient();
+      await ensureQuestion(
+        admin,
+        sessionId,
+        targetQuestionIndex,
+        user.id,
+        session,
+      );
+    } catch (error) {
+      console.error('[session-review] failed to prepare next question', {
+        sessionId,
+        questionIndex,
+        targetQuestionIndex,
+        error,
+      });
+      return NextResponse.json(
+        { ok: false, message: await getFeedback('actionFailed') },
+        { status: 500 },
+      );
+    }
+
     const answerHref = `/${locale}/sessions/${sessionId}?q=${targetQuestionIndex}`;
 
     perf.step('next_question_created');

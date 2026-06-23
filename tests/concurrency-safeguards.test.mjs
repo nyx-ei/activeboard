@@ -23,6 +23,10 @@ const advanceRoute = readFileSync(
   'app/api/sessions/[sessionId]/advance/route.ts',
   'utf8',
 );
+const reviewAnswerRoute = readFileSync(
+  'app/api/sessions/[sessionId]/review-answer/route.ts',
+  'utf8',
+);
 
 test('captain transfer uses expected leader conditional update', () => {
   assert.match(
@@ -74,4 +78,11 @@ test('question advance is handled by an atomic session RPC', () => {
     /rpc\('activeboard_advance_session_question'/,
   );
   assert.doesNotMatch(advanceRoute, /ensureQuestion\(/);
+});
+
+test('per-question review prepares the next question through server privileges', () => {
+  assert.match(reviewAnswerRoute, /saveReviewSnapshot\(/);
+  assert.match(reviewAnswerRoute, /session\.timer_mode === 'per_question'/);
+  assert.match(reviewAnswerRoute, /createSupabaseAdminClient\(\)/);
+  assert.match(reviewAnswerRoute, /ensureQuestion\(\s*admin,/);
 });
