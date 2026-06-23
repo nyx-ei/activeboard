@@ -8,8 +8,8 @@ import { createPerfTracker } from '@/lib/observability/perf';
 import {
   getCurrentAuthUser,
   getSessionAccessSnapshot,
-  ensureQuestion,
   loadSessionRuntimeAccess,
+  precreateQuestionShell,
 } from '@/lib/session/flow';
 import { saveReviewSnapshot } from '@/lib/session/review-consistency';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
@@ -217,12 +217,11 @@ export async function POST(request: Request, { params }: RouteContext) {
   ) {
     try {
       const admin = createSupabaseAdminClient();
-      await ensureQuestion(
+      await precreateQuestionShell(
         admin,
         sessionId,
         targetQuestionIndex,
         user.id,
-        session,
       );
     } catch (error) {
       console.error('[session-review] failed to prepare next question', {
@@ -239,7 +238,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
     const answerHref = `/${locale}/sessions/${sessionId}?q=${targetQuestionIndex}`;
 
-    perf.step('next_question_created');
+    perf.step('next_question_shell_created');
     perf.done({
       questionId,
       correctOption,

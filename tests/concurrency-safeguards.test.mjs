@@ -84,5 +84,6 @@ test('per-question review prepares the next question through server privileges',
   assert.match(reviewAnswerRoute, /saveReviewSnapshot\(/);
   assert.match(reviewAnswerRoute, /session\.timer_mode === 'per_question'/);
   assert.match(reviewAnswerRoute, /createSupabaseAdminClient\(\)/);
-  assert.match(reviewAnswerRoute, /ensureQuestion\(\s*admin,/);
+  assert.match(reviewAnswerRoute, /precreateQuestionShell\(\s*admin,/);
+  assert.doesNotMatch(reviewAnswerRoute, /ensureQuestion\(\s*admin,/);
 });
