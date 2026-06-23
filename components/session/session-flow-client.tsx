@@ -961,6 +961,7 @@ export function ReviewAnswerForm({
   questionIndex,
   nextQuestionIndex,
   isLastQuestion,
+  timerMode,
   initialCorrectOption,
   participantAnswer,
   participantConfidence,
@@ -974,6 +975,7 @@ export function ReviewAnswerForm({
   questionIndex: number;
   nextQuestionIndex: number;
   isLastQuestion: boolean;
+  timerMode: 'per_question' | 'global';
   initialCorrectOption?: AnswerOption | null;
   participantAnswer?: string | null;
   participantConfidence?: ConfidenceLevel | null;
@@ -1076,10 +1078,15 @@ export function ReviewAnswerForm({
 
     const nextCorrectOption = correctOption as AnswerOption;
     const shouldAdvance = !isLastQuestion;
+    const shouldAdvanceReview = shouldAdvance && timerMode === 'global';
+    const shouldAdvanceToNextQuestion =
+      shouldAdvance && timerMode === 'per_question';
     const targetQuestionIndex = shouldAdvance
       ? nextQuestionIndex
       : questionIndex;
-    const redirectTo = `/${locale}/sessions/${sessionId}?stage=review&q=${targetQuestionIndex}`;
+    const redirectTo = shouldAdvanceToNextQuestion
+      ? `/${locale}/sessions/${sessionId}?q=${targetQuestionIndex}`
+      : `/${locale}/sessions/${sessionId}?stage=review&q=${targetQuestionIndex}`;
     setSubmissionError(null);
     setSaveStatus('saving');
 
@@ -1099,7 +1106,7 @@ export function ReviewAnswerForm({
           questionId,
           questionIndex,
           nextQuestionIndex,
-          advanceAfterSave: shouldAdvance,
+          advanceAfterSave: shouldAdvanceReview,
           correctOption: nextCorrectOption,
           reviewDurationSeconds: Math.max(
             1,
@@ -1114,9 +1121,13 @@ export function ReviewAnswerForm({
       setSavedCorrectOption(nextCorrectOption);
       onSaved?.(nextCorrectOption);
       setSaveStatus('saved');
-      onAdvance?.(targetQuestionIndex);
-      if (!onAdvance) {
+      if (shouldAdvanceReview && onAdvance) {
+        onAdvance(targetQuestionIndex);
+      } else {
         router.replace(redirectTo as never);
+        if (shouldAdvanceToNextQuestion) {
+          window.setTimeout(() => router.refresh(), 0);
+        }
       }
 
       void savePromise.then((result) => {

@@ -109,11 +109,13 @@ export default async function SessionPage({
     null;
   const answeredCount = data.answeredCount;
   const memberCount = Math.max(data.members.length, 1);
+  const isPerQuestionMode = data.session.timer_mode === 'per_question';
   const shouldShowCompletion =
     searchParams.stage === 'complete' ||
     (data.session.status === 'completed' && searchParams.stage !== 'review') ||
     (data.session.status === 'incomplete' && searchParams.stage !== 'review') ||
     (data.session.status === 'active' &&
+      !isPerQuestionMode &&
       answeredCount >= questionGoal &&
       searchParams.stage !== 'review');
   const isReview = searchParams.stage === 'review';
@@ -150,7 +152,6 @@ export default async function SessionPage({
           sessionId={params.sessionId}
           currentUserId={user.id}
           sessionTitle={data.session.name ?? data.group.name}
-          sessionShareCode={data.session.share_code}
           sessionShareLabel={t('shareCodeLabel', {
             code: data.session.share_code,
           })}
@@ -260,6 +261,7 @@ export default async function SessionPage({
           groupId={data.group.id}
           sessionTitle={data.session.name ?? data.group.name}
           questionGoal={questionGoal}
+          timerMode={data.session.timer_mode}
           initialQuestionIndex={currentIndex}
           initialReviewedQuestionCount={reviewedQuestionCount}
           initialQuestion={reviewQuestion}
@@ -340,7 +342,6 @@ export default async function SessionPage({
         locale={locale}
         sessionId={params.sessionId}
         currentUserId={user.id}
-        sessionShareCode={data.session.share_code}
         questionId={question.id}
         questionIndex={currentIndex}
         questionGoal={questionGoal}

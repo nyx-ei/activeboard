@@ -44,7 +44,6 @@ type SessionStateRealtimeEvent = {
 
 type SessionActiveRuntimeProps = {
   sessionId: string;
-  sessionShareCode: string;
   currentUserId: string;
   questionId: string;
   questionIndex: number;
@@ -102,7 +101,6 @@ const SessionStateRealtimeSync = dynamic(
 
 export function SessionActiveRuntime({
   sessionId,
-  sessionShareCode,
   currentUserId,
   questionId,
   questionIndex,
@@ -152,6 +150,7 @@ export function SessionActiveRuntime({
   const lastRealtimeSyncAtRef = useRef(0);
   const realtimeSyncTimeoutRef = useRef<number | null>(null);
   const locallyCountedActorIdsRef = useRef<Set<string>>(new Set());
+  const reviewRedirectedRef = useRef(false);
 
   useEffect(() => {
     setRuntimeQuestionId(questionId);
@@ -174,6 +173,7 @@ export function SessionActiveRuntime({
       ? questionIndex
       : null;
     locallyCountedActorIdsRef.current = new Set();
+    reviewRedirectedRef.current = false;
   }, [
     initialAnswer,
     initialAnswerDeadlineAt,
@@ -203,6 +203,35 @@ export function SessionActiveRuntime({
   useEffect(() => {
     runtimeQuestionIndexRef.current = runtimeQuestionIndex;
   }, [runtimeQuestionIndex]);
+
+  useEffect(() => {
+    if (
+      timerMode !== 'per_question' ||
+      showCompletion ||
+      reviewRedirectedRef.current
+    ) {
+      return;
+    }
+
+    const expectedAnswers = Math.max(memberCount, 1);
+    if (submittedCount < expectedAnswers) {
+      return;
+    }
+
+    reviewRedirectedRef.current = true;
+    const reviewHref = `/${locale}/sessions/${sessionId}?stage=review&q=${runtimeQuestionIndex}`;
+    window.history.replaceState(null, '', reviewHref);
+    router.refresh();
+  }, [
+    locale,
+    memberCount,
+    router,
+    runtimeQuestionIndex,
+    sessionId,
+    showCompletion,
+    submittedCount,
+    timerMode,
+  ]);
 
   const getOptimisticDeadline = () => {
     const now = Date.now();
@@ -490,10 +519,7 @@ export function SessionActiveRuntime({
             confirmLabels={labels.quitConfirm}
           />
           <div className="min-w-0 flex-1 text-center">
-            <p className="truncate text-sm font-extrabold uppercase tracking-[0.18em] text-white sm:text-base">
-              {sessionShareCode}
-            </p>
-            <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-2">
               <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
                 {labels.questionUpper} {runtimeQuestionIndex + 1}/{questionGoal}
               </span>
