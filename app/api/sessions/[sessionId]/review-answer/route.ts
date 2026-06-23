@@ -8,6 +8,7 @@ import { createPerfTracker } from '@/lib/observability/perf';
 import {
   getCurrentAuthUser,
   getSessionAccessSnapshot,
+  ensureQuestion,
   loadSessionRuntimeAccess,
 } from '@/lib/session/flow';
 import { saveReviewSnapshot } from '@/lib/session/review-consistency';
@@ -195,6 +196,40 @@ export async function POST(request: Request, { params }: RouteContext) {
           Math.min(nextQuestionIndex, Math.max(session.question_goal - 1, 0)),
         )
       : questionIndex;
+
+  if (
+    advanceAfterSave &&
+    session.timer_mode === 'per_question' &&
+    targetQuestionIndex !== questionIndex
+  ) {
+    await ensureQuestion(
+      supabase,
+      sessionId,
+      targetQuestionIndex,
+      user.id,
+      session,
+    );
+    const answerHref = `/${locale}/sessions/${sessionId}?q=${targetQuestionIndex}`;
+
+    perf.step('next_question_created');
+    perf.done({
+      questionId,
+      correctOption,
+      targetQuestionIndex,
+      reviewVersion: reviewResult.review_version,
+      reviewedQuestionCount: reviewResult.reviewed_question_count,
+      mode: 'next_question',
+    });
+
+    return NextResponse.json({
+      ok: true,
+      redirectTo: answerHref,
+      correctOption,
+      targetQuestionIndex,
+      reviewVersion: reviewResult.review_version,
+      reviewedQuestionCount: reviewResult.reviewed_question_count,
+    });
+  }
 
   const redirectTo = `/${locale}/sessions/${sessionId}?stage=review&q=${targetQuestionIndex}`;
   perf.step('response_prepared');

@@ -606,6 +606,12 @@ export function SessionAnswerForm({
         .json()
         .catch(() => ({}))) as AdvanceQuestionResponse;
 
+      if (payload.redirectTo?.includes('stage=review')) {
+        setAdvanceStatus('saved');
+        router.replace(payload.redirectTo as never);
+        return;
+      }
+
       if (
         payload.redirectTo &&
         typeof payload.questionId === 'string' &&
@@ -1106,7 +1112,7 @@ export function ReviewAnswerForm({
           questionId,
           questionIndex,
           nextQuestionIndex,
-          advanceAfterSave: shouldAdvanceReview,
+          advanceAfterSave: shouldAdvance,
           correctOption: nextCorrectOption,
           reviewDurationSeconds: Math.max(
             1,
@@ -1117,6 +1123,29 @@ export function ReviewAnswerForm({
       () => ({ ok: false }),
     );
 
+    if (shouldAdvanceToNextQuestion) {
+      const result = await savePromise;
+
+      if (result.ok) {
+        setSavedCorrectOption(nextCorrectOption);
+        onSaved?.(nextCorrectOption);
+        setSaveStatus('saved');
+        router.replace((result.payload.redirectTo ?? redirectTo) as never);
+        window.setTimeout(() => router.refresh(), 0);
+        return;
+      }
+
+      if (result.redirectTo) {
+        router.replace(result.redirectTo as never);
+        return;
+      }
+
+      setSavedCorrectOption(initialCorrectOption ?? '');
+      setSaveStatus('error');
+      setSubmissionError(result.message ?? labels.savePending);
+      return;
+    }
+
     if (shouldAdvance) {
       setSavedCorrectOption(nextCorrectOption);
       onSaved?.(nextCorrectOption);
@@ -1125,9 +1154,6 @@ export function ReviewAnswerForm({
         onAdvance(targetQuestionIndex);
       } else {
         router.replace(redirectTo as never);
-        if (shouldAdvanceToNextQuestion) {
-          window.setTimeout(() => router.refresh(), 0);
-        }
       }
 
       void savePromise.then((result) => {

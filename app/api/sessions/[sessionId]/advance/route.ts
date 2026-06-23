@@ -125,6 +125,59 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   try {
+    if (session.timer_mode === 'per_question') {
+      const { data: currentQuestion, error: currentQuestionError } =
+        await supabase
+          .schema('public')
+          .from('questions')
+          .select('id, phase')
+          .eq('session_id', sessionId)
+          .eq('order_index', questionIndex)
+          .maybeSingle();
+
+      if (currentQuestionError || !currentQuestion?.id) {
+        throw new Error(
+          currentQuestionError?.message ?? 'current_question_missing',
+        );
+      }
+
+      const { error: reviewPhaseError } = await supabase
+        .schema('public')
+        .from('questions')
+        .update({ phase: 'review' })
+        .eq('id', currentQuestion.id)
+        .neq('phase', 'closed');
+
+      if (reviewPhaseError) {
+        throw new Error(reviewPhaseError.message ?? 'review_phase_failed');
+      }
+
+      const reviewHref = `/${locale}/sessions/${sessionId}?stage=review&q=${questionIndex}`;
+      await recordSessionStateEvent(supabase, {
+        sessionId,
+        groupId: session.group_id,
+        questionId: currentQuestion.id,
+        actorId: user.id,
+        eventType: 'question_advanced',
+        payload: {
+          eventType: 'question_review_started',
+          actorId: user.id,
+          questionId: currentQuestion.id,
+          questionIndex,
+          href: reviewHref,
+        },
+      }).catch(() => undefined);
+      perf.step('review_state_event_recorded');
+      perf.done({ mode: 'review', questionIndex });
+
+      return NextResponse.json({
+        ok: true,
+        questionId: currentQuestion.id,
+        questionIndex,
+        redirectTo: reviewHref,
+      });
+    }
+
     const { data: advanceRows, error: advanceError } = await (
       supabase.schema('public') as unknown as {
         rpc: (

@@ -26,6 +26,7 @@ type SessionStateRealtimePayload = {
     | 'answer_submitted'
     | 'answer_timed_out'
     | 'question_advanced'
+    | 'question_review_started'
     | 'session_completed';
   actorId?: string | null;
   questionId?: string | null;
@@ -378,6 +379,23 @@ export function SessionActiveRuntime({
           return;
         }
 
+        if (eventType === 'question_review_started') {
+          if (
+            typeof eventPayload.questionIndex === 'number' &&
+            eventPayload.questionIndex === runtimeQuestionIndexRef.current &&
+            eventPayload.questionId === runtimeQuestionIdRef.current
+          ) {
+            window.history.replaceState(
+              null,
+              '',
+              eventPayload.href ??
+                `/${locale}/sessions/${sessionId}?stage=review&q=${eventPayload.questionIndex}`,
+            );
+            router.refresh();
+          }
+          return;
+        }
+
         if (eventType === 'question_advanced') {
           if (
             typeof eventPayload.questionIndex === 'number' &&
@@ -603,6 +621,10 @@ export function SessionActiveRuntime({
             setIsSubmitting(false);
           }}
           onQuestionAdvanceRequested={() => {
+            if (timerMode === 'per_question') {
+              return;
+            }
+
             const nextIndex = runtimeQuestionIndex + 1;
             if (nextIndex >= questionGoal) {
               setShowCompletion(true);
