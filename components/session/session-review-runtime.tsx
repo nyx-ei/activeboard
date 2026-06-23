@@ -61,6 +61,7 @@ type SessionReviewRuntimeProps = {
   groupId: string;
   sessionTitle: string;
   questionGoal: number;
+  timerMode: 'per_question' | 'global';
   initialQuestionIndex: number;
   initialReviewedQuestionCount: number;
   initialQuestion: ReviewQuestion;
@@ -121,6 +122,7 @@ export function SessionReviewRuntime({
   groupId,
   sessionTitle,
   questionGoal,
+  timerMode,
   initialQuestionIndex,
   initialReviewedQuestionCount,
   initialQuestion,
@@ -433,6 +435,7 @@ export function SessionReviewRuntime({
               participantConfidence={
                 myReviewAnswer?.confidence as ConfidenceLevel | null | undefined
               }
+              timerMode={timerMode}
               onSaved={markCurrentQuestionSaved}
               onAdvance={moveToQuestion}
               labels={{

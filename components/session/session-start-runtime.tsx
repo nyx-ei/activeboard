@@ -21,7 +21,6 @@ type SessionStartRuntimeProps = {
   sessionId: string;
   currentUserId: string;
   sessionTitle: string;
-  sessionShareCode: string;
   sessionShareLabel: string;
   timerLabel: string;
   timerMode: 'per_question' | 'global';
@@ -80,7 +79,6 @@ export function SessionStartRuntime({
   sessionId,
   currentUserId,
   sessionTitle,
-  sessionShareCode,
   sessionShareLabel,
   timerLabel,
   timerMode,
@@ -108,7 +106,6 @@ export function SessionStartRuntime({
         locale={locale}
         sessionId={sessionId}
         currentUserId={currentUserId}
-        sessionShareCode={sessionShareCode}
         questionId={activeQuestion.questionId}
         questionIndex={0}
         questionGoal={questionGoal}

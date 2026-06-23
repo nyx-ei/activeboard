@@ -118,6 +118,7 @@ export function CreateSessionModal({
     ? `/${locale}/dashboard?groupId=${encodeURIComponent(selectedGroup.id)}`
     : `/${locale}/dashboard`;
   const participantCopy = getParticipantCopy(locale);
+  const timerModeCopy = getTimerModeCopy(locale);
 
   const isValid =
     canCreateSession &&
@@ -424,14 +425,24 @@ export function CreateSessionModal({
           <span className="text-sm font-bold text-slate-300">
             {labels.timerMode}
           </span>
-          <div className="mt-2 grid grid-cols-2 gap-2">
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
             {[
-              ['per_question', labels.perQuestionMode],
-              ['global', labels.globalMode],
-            ].map(([value, label]) => (
+              [
+                'per_question',
+                labels.perQuestionMode,
+                timerModeCopy.perQuestionTitle,
+                timerModeCopy.perQuestionDescription,
+              ],
+              [
+                'global',
+                labels.globalMode,
+                timerModeCopy.globalTitle,
+                timerModeCopy.globalDescription,
+              ],
+            ].map(([value, label, title, description]) => (
               <label
                 key={value}
-                className={`flex h-10 cursor-pointer items-center justify-center gap-2 rounded-[7px] border text-sm font-bold transition ${
+                className={`flex cursor-pointer gap-3 rounded-[10px] border p-3 text-left transition ${
                   timerMode === value
                     ? 'border-brand bg-brand text-[#06120e]'
                     : 'hover:border-brand/50 border-white/[0.08] bg-white/[0.035] text-slate-300'
@@ -448,14 +459,31 @@ export function CreateSessionModal({
                   className="sr-only"
                 />
                 <Clock
-                  className="h-4 w-4"
+                  className="mt-0.5 h-4 w-4 shrink-0"
                   aria-hidden="true"
                   strokeWidth={1.8}
                 />
-                {label}
+                <span className="min-w-0">
+                  <span className="block text-sm font-extrabold">{title}</span>
+                  <span
+                    className={`mt-1 block text-xs font-semibold leading-5 ${
+                      timerMode === value ? 'text-[#06382d]' : 'text-slate-500'
+                    }`}
+                  >
+                    {description}
+                  </span>
+                  <span className="mt-2 block text-[11px] font-bold uppercase tracking-[0.12em] opacity-80">
+                    {label}
+                  </span>
+                </span>
               </label>
             ))}
           </div>
+          <p className="mt-2 rounded-[8px] border border-white/[0.06] bg-white/[0.025] px-3 py-2 text-xs font-semibold leading-5 text-slate-400">
+            {timerMode === 'per_question'
+              ? timerModeCopy.perQuestionHint
+              : timerModeCopy.globalHint}
+          </p>
         </div>
 
         <label className="block">
@@ -605,5 +633,35 @@ function getParticipantCopy(locale: string) {
     selected: '{count} selected',
     search: 'Search a member',
     empty: 'No member available',
+  };
+}
+
+function getTimerModeCopy(locale: string) {
+  if (locale === 'fr') {
+    return {
+      perQuestionTitle: 'Question puis révision',
+      perQuestionDescription:
+        'Chaque question est corrigée juste après les réponses.',
+      perQuestionHint:
+        'Idéal pour une séance guidée : réponse, correction immédiate, puis question suivante.',
+      globalTitle: 'Mode examen',
+      globalDescription:
+        'Toute la série est faite avant la révision depuis la première question.',
+      globalHint:
+        'Idéal pour simuler un examen : toutes les questions d’abord, puis la révision complète.',
+    };
+  }
+
+  return {
+    perQuestionTitle: 'Question then review',
+    perQuestionDescription:
+      'Each question is reviewed right after answers are submitted.',
+    perQuestionHint:
+      'Best for guided practice: answer, immediate review, then the next question.',
+    globalTitle: 'Exam mode',
+    globalDescription:
+      'The full set is answered first, then reviewed from question one.',
+    globalHint:
+      'Best for exam simulation: all questions first, then one complete review pass.',
   };
 }
