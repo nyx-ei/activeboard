@@ -1525,7 +1525,11 @@ function MobileSessionFirstDashboardZone({
           {selectedGroup.name}
         </h2>
 
-        <div className="mt-3 space-y-2.5 sm:mt-4 sm:pr-[72px]">
+        <div
+          className={`mt-3 space-y-2.5 sm:mt-4 sm:pr-[72px] ${
+            secondarySession ? '' : 'pb-[66px] sm:pb-0'
+          }`}
+        >
           <a
             href={primaryHref}
             className="grid min-h-[58px] grid-cols-[104px_minmax(0,1fr)_42px] items-center gap-2 rounded-[13px] border border-white/[0.055] bg-white/[0.018] px-2.5 py-2 sm:min-h-[76px] sm:grid-cols-[132px_minmax(0,1fr)_56px] sm:px-4 sm:py-3"
