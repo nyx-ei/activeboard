@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Check, Clock, Search, UsersRound } from 'lucide-react';
+import { Check, Clock, HelpCircle, Search, UsersRound } from 'lucide-react';
 
 import { Modal, ModalTitle } from '@/components/ui/modal';
 import { SubmitButton } from '@/components/ui/submit-button';
@@ -73,6 +73,9 @@ export function CreateSessionModal({
   const [timerSeconds, setTimerSeconds] = useState(
     String(sessionPolicy.perQuestionTimerDefaultSeconds),
   );
+  const [timerHelpMode, setTimerHelpMode] = useState<
+    'per_question' | 'global' | null
+  >(null);
   const [isCreating, setIsCreating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const minScheduledAt = getMinScheduledAtInputValue();
@@ -422,68 +425,103 @@ export function CreateSessionModal({
         </label>
 
         <div>
-          <span className="text-sm font-bold text-slate-300">
-            {labels.timerMode}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-slate-300">
+              {labels.timerMode}
+            </span>
+            {timerHelpMode ? (
+              <button
+                type="button"
+                onClick={() => setTimerHelpMode(null)}
+                className="text-xs font-bold text-brand transition hover:text-[#9FF0CE]"
+              >
+                {locale === 'fr' ? 'Fermer' : 'Close'}
+              </button>
+            ) : null}
+          </div>
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             {[
               [
                 'per_question',
                 labels.perQuestionMode,
                 timerModeCopy.perQuestionTitle,
-                timerModeCopy.perQuestionDescription,
               ],
               [
                 'global',
                 labels.globalMode,
                 timerModeCopy.globalTitle,
-                timerModeCopy.globalDescription,
               ],
-            ].map(([value, label, title, description]) => (
-              <label
+            ].map(([value, label, title]) => (
+              <div
                 key={value}
-                className={`flex cursor-pointer gap-3 rounded-[10px] border p-3 text-left transition ${
+                className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-[10px] border px-3 py-2 text-left transition ${
                   timerMode === value
                     ? 'border-brand bg-brand text-[#06120e]'
                     : 'hover:border-brand/50 border-white/[0.08] bg-white/[0.035] text-slate-300'
                 }`}
               >
-                <input
-                  type="radio"
-                  name="timerMode"
-                  value={value}
-                  checked={timerMode === value}
-                  onChange={() =>
-                    updateTimerMode(value as 'per_question' | 'global')
+                <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
+                  <input
+                    type="radio"
+                    name="timerMode"
+                    value={value}
+                    checked={timerMode === value}
+                    onChange={() =>
+                      updateTimerMode(value as 'per_question' | 'global')
+                    }
+                    className="sr-only"
+                  />
+                  <Clock
+                    className="h-4 w-4 shrink-0"
+                    aria-hidden="true"
+                    strokeWidth={1.8}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-extrabold">
+                      {title}
+                    </span>
+                    <span className="mt-0.5 block text-[10px] font-bold uppercase tracking-[0.12em] opacity-75">
+                      {label}
+                    </span>
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setTimerHelpMode(
+                      timerHelpMode === value
+                        ? null
+                        : (value as 'per_question' | 'global'),
+                    );
+                  }}
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition ${
+                    timerMode === value
+                      ? 'bg-[#06382d]/10 text-[#06382d]'
+                      : 'bg-white/[0.04] text-slate-500 hover:text-white'
+                  }`}
+                  aria-label={
+                    locale === 'fr'
+                      ? `Aide ${title}`
+                      : `Help ${title}`
                   }
-                  className="sr-only"
-                />
-                <Clock
-                  className="mt-0.5 h-4 w-4 shrink-0"
-                  aria-hidden="true"
-                  strokeWidth={1.8}
-                />
-                <span className="min-w-0">
-                  <span className="block text-sm font-extrabold">{title}</span>
-                  <span
-                    className={`mt-1 block text-xs font-semibold leading-5 ${
-                      timerMode === value ? 'text-[#06382d]' : 'text-slate-500'
-                    }`}
-                  >
-                    {description}
-                  </span>
-                  <span className="mt-2 block text-[11px] font-bold uppercase tracking-[0.12em] opacity-80">
-                    {label}
-                  </span>
-                </span>
-              </label>
+                >
+                  <HelpCircle className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
             ))}
           </div>
-          <p className="mt-2 rounded-[8px] border border-white/[0.06] bg-white/[0.025] px-3 py-2 text-xs font-semibold leading-5 text-slate-400">
-            {timerMode === 'per_question'
-              ? timerModeCopy.perQuestionHint
-              : timerModeCopy.globalHint}
-          </p>
+          {timerHelpMode ? (
+            <div
+              role="dialog"
+              aria-modal="false"
+              className="mt-2 rounded-[10px] border border-brand/25 bg-[#071512] px-3 py-2 text-xs font-semibold leading-5 text-slate-300 shadow-[0_18px_50px_rgba(0,0,0,0.35)]"
+            >
+              {timerHelpMode === 'per_question'
+                ? timerModeCopy.perQuestionHint
+                : timerModeCopy.globalHint}
+            </div>
+          ) : null}
         </div>
 
         <label className="block">

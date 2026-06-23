@@ -1473,11 +1473,7 @@ function MobileSessionFirstDashboardZone({
 }) {
   const primarySession = selectedActiveSession ?? selectedNextSession;
   const secondarySession =
-    selectedNextSession && selectedNextSession.id !== primarySession?.id
-      ? selectedNextSession
-      : (selectedGroup?.recentSessions ?? []).find(
-          (session) => session.id !== primarySession?.id,
-        );
+    selectedActiveSession && selectedNextSession ? selectedNextSession : null;
   const primaryHref = primarySession
     ? `/${locale}/sessions/${primarySession.id}`
     : (sessionHref ?? `/${locale}/dashboard`);
@@ -1554,18 +1550,10 @@ function MobileSessionFirstDashboardZone({
             </span>
           </a>
 
-          <button
-            type="button"
-            disabled={!canOpenSessionPlanner}
-            onClick={() => {
-              if (!canOpenSessionPlanner) return;
-              window.dispatchEvent(
-                new CustomEvent('activeboard:open-create-session', {
-                  detail: { groupId: selectedGroup.id },
-                }),
-              );
-            }}
-            className="grid min-h-[58px] w-full grid-cols-[104px_minmax(0,1fr)_72px] items-center gap-2 rounded-[13px] border border-white/[0.035] bg-white/[0.012] px-2.5 py-2 pr-12 text-left transition disabled:opacity-70 sm:min-h-[76px] sm:grid-cols-[132px_minmax(0,1fr)_150px] sm:px-4 sm:py-3 sm:pr-4"
+          {secondarySession ? (
+          <a
+            href={`/${locale}/sessions/${secondarySession.id}`}
+            className="grid min-h-[58px] w-full grid-cols-[104px_minmax(0,1fr)_72px] items-center gap-2 rounded-[13px] border border-white/[0.035] bg-white/[0.012] px-2.5 py-2 pr-12 text-left transition hover:border-white/[0.08] hover:bg-white/[0.025] sm:min-h-[76px] sm:grid-cols-[132px_minmax(0,1fr)_150px] sm:px-4 sm:py-3 sm:pr-4"
           >
             <span className="flex items-center gap-1">
               <PlaceholderAvatar />
@@ -1574,7 +1562,7 @@ function MobileSessionFirstDashboardZone({
             </span>
             <span className="min-w-0">
               <span className="block truncate text-[13px] font-semibold text-[#e8f4f0] sm:text-[17px]">
-                {secondarySession?.name ?? labels.scheduleSession}
+                {secondarySession.name ?? labels.nextSession}
               </span>
               <span className="block truncate text-[10px] text-[#8fa7a2] sm:text-[13px]">
                 {secondarySession
@@ -1587,7 +1575,8 @@ function MobileSessionFirstDashboardZone({
                 ? formatSessionDate(secondarySession.scheduled_at, locale)
                 : labels.scheduledFor.replace('{date}', '')}
             </span>
-          </button>
+          </a>
+          ) : null}
         </div>
 
         <button
