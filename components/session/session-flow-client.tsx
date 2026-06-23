@@ -1042,6 +1042,28 @@ export function ReviewAnswerForm({
     ? `${normalizedParticipantAnswer} ${isCorrect ? '✓' : '×'} → ${correctOption}`
     : '';
 
+  const nextQuestionHref = `/${locale}/sessions/${sessionId}?q=${nextQuestionIndex}`;
+
+  const navigateToQuestionWithFallback = useCallback(
+    (href: string) => {
+      router.replace(href as never);
+
+      window.setTimeout(() => {
+        const targetUrl = new URL(href, window.location.origin);
+        const currentUrl = `${window.location.pathname}${window.location.search}`;
+        const expectedUrl = `${targetUrl.pathname}${targetUrl.search}`;
+
+        if (currentUrl !== expectedUrl) {
+          window.location.assign(targetUrl.toString());
+          return;
+        }
+
+        router.refresh();
+      }, 600);
+    },
+    [router],
+  );
+
   useEffect(() => {
     setCorrectOption(initialCorrectOption ?? '');
     setSavedCorrectOption(initialCorrectOption ?? '');
@@ -1130,8 +1152,7 @@ export function ReviewAnswerForm({
         setSavedCorrectOption(nextCorrectOption);
         onSaved?.(nextCorrectOption);
         setSaveStatus('saved');
-        router.replace((result.payload.redirectTo ?? redirectTo) as never);
-        window.setTimeout(() => router.refresh(), 0);
+        navigateToQuestionWithFallback(result.payload.redirectTo ?? redirectTo);
         return;
       }
 
@@ -1246,9 +1267,20 @@ export function ReviewAnswerForm({
         </section>
       ) : null}
       {isReviewed ? (
-        <p className="text-center text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-          {labels.reviewLocked}
-        </p>
+        <div className="space-y-2">
+          {timerMode === 'per_question' && !isLastQuestion ? (
+            <button
+              type="button"
+              className="button-primary h-9 w-full rounded-[7px] py-2 text-sm sm:h-10"
+              onClick={() => navigateToQuestionWithFallback(nextQuestionHref)}
+            >
+              {labels.saveAndNext}
+            </button>
+          ) : null}
+          <p className="text-center text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+            {labels.reviewLocked}
+          </p>
+        </div>
       ) : (
         <button
           type="button"

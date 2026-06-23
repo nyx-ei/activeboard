@@ -16,6 +16,7 @@ import {
   getAvailabilitySlotCount,
   normalizeAvailabilityGrid,
 } from '@/lib/schedule/availability';
+import { ensureQuestion } from '@/lib/session/flow';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import {
   type DimensionOfCare,
@@ -2361,6 +2362,42 @@ export const getSessionPageData = cache(
               .maybeSingle()
           ).data ?? null)
         : null;
+
+    if (
+      requestedQuestionIndex !== null &&
+      session.status === 'active' &&
+      session.timer_mode === 'per_question' &&
+      (!currentQuestion ||
+        currentQuestion.phase === 'draft' ||
+        !currentQuestion.answer_deadline_at)
+    ) {
+      try {
+        const ensuredQuestion = await ensureQuestion(
+          supabase,
+          sessionId,
+          requestedQuestionIndex,
+          user.id,
+          session,
+        );
+        currentQuestion =
+          ((
+            await supabase
+              .schema('public')
+              .from('questions')
+              .select(
+                'id, body, options, order_index, phase, launched_at, answer_deadline_at',
+              )
+              .eq('id', ensuredQuestion.id)
+              .maybeSingle()
+          ).data ?? currentQuestion) ?? null;
+      } catch (error) {
+        console.error('[session-data] failed to activate requested question', {
+          sessionId,
+          requestedQuestionIndex,
+          error,
+        });
+      }
+    }
 
     if (!currentQuestion) {
       currentQuestion =
