@@ -236,15 +236,21 @@ export async function ensureQuestion(
   const { data: created, error } = await supabase
     .schema('public')
     .from('questions')
-    .insert({
-      session_id: sessionId,
-      asked_by: userId,
-      options: ANSWER_OPTIONS,
-      order_index: orderIndex,
-      phase: 'answering',
-      launched_at: now.toISOString(),
-      answer_deadline_at: answerDeadlineAt.toISOString(),
-    })
+    .upsert(
+      {
+        session_id: sessionId,
+        asked_by: userId,
+        options: ANSWER_OPTIONS,
+        order_index: orderIndex,
+        phase: 'answering',
+        launched_at: now.toISOString(),
+        answer_deadline_at: answerDeadlineAt.toISOString(),
+      },
+      {
+        onConflict: 'session_id,order_index',
+        ignoreDuplicates: false,
+      },
+    )
     .select('id, answer_deadline_at')
     .single();
 
