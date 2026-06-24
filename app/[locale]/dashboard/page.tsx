@@ -4,7 +4,6 @@ import { FeedbackBanner } from '@/components/app/feedback-banner';
 import type { DashboardGroupZoneProps } from '@/components/dashboard/dashboard-group-zone';
 import { DashboardViewShell } from '@/components/dashboard/dashboard-view-shell';
 import type { DashboardPerformanceViewProps } from '@/components/dashboard/dashboard-performance-view';
-import type { DashboardProgressStateZoneProps } from '@/components/dashboard/dashboard-progress-state-zone';
 import type { DashboardSessionsViewProps } from '@/components/dashboard/dashboard-sessions-view';
 import type { AppLocale } from '@/i18n/routing';
 import { canAccessAdminConsole } from '@/lib/admin/access';
@@ -313,29 +312,6 @@ export default async function DashboardPage({
       ],
     },
   };
-  const progressStateProps = {
-    quadrants: performanceData.progressQuadrants,
-    detailsHref: `/${locale}/dashboard/progression`,
-    labels: {
-      title: t('zoneProgressStateTitle'),
-      subtitle: t('zoneProgressStateSubtitle'),
-      viewDetails: t('zoneViewDetails'),
-      noData: t('noData'),
-      answers: t('zoneProgressStateAnswers'),
-      trendUp: t('zoneProgressStateTrendUp', { value: '{value}' }),
-      trendDown: t('zoneProgressStateTrendDown', { value: '{value}' }),
-      trendFlat: t('zoneProgressStateTrendFlat'),
-      trendUnavailable: t('zoneProgressStateTrendUnavailable'),
-      trueMastery: t('zoneQuadrantTrueMastery'),
-      trueMasteryDescription: t('zoneQuadrantTrueMasteryDescription'),
-      fragileKnowledge: t('zoneQuadrantFragileKnowledge'),
-      fragileKnowledgeDescription: t('zoneQuadrantFragileKnowledgeDescription'),
-      consciousGap: t('zoneQuadrantConsciousGap'),
-      consciousGapDescription: t('zoneQuadrantConsciousGapDescription'),
-      falseConfidence: t('zoneQuadrantFalseConfidence'),
-      falseConfidenceDescription: t('zoneQuadrantFalseConfidenceDescription'),
-    },
-  } satisfies DashboardProgressStateZoneProps;
   const trueMasteryQuadrant = performanceData.progressQuadrants.find(
     (quadrant) => quadrant.key === 'trueMastery',
   );
@@ -500,7 +476,6 @@ export default async function DashboardPage({
           sessionsProps={sessionsProps}
           performanceProps={performanceProps}
           sprintActivityProps={sprintActivityProps}
-          progressStateProps={progressStateProps}
           groupZoneProps={groupZoneProps}
         />
       </section>

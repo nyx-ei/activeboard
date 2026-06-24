@@ -12,10 +12,6 @@ import {
   type DashboardSprintActivityZoneProps,
 } from '@/components/dashboard/dashboard-sprint-activity-zone';
 import {
-  DashboardProgressStateZone,
-  type DashboardProgressStateZoneProps,
-} from '@/components/dashboard/dashboard-progress-state-zone';
-import {
   fetchDashboardPayload,
   consumeDashboardPayloadStale,
   invalidateDashboardPayloadCache,
@@ -30,7 +26,6 @@ type DashboardViewShellProps = {
   sessionsProps: DashboardSessionsViewProps;
   performanceProps: DashboardPerformanceViewProps;
   sprintActivityProps: DashboardSprintActivityZoneProps;
-  progressStateProps: DashboardProgressStateZoneProps;
   groupZoneProps: DashboardGroupZoneProps;
 };
 type DashboardSessionsPayload = {
@@ -54,7 +49,6 @@ type DashboardPerformancePayload = {
     confidenceCalibration?: DashboardPerformanceViewProps['confidenceCalibration'];
   };
   sessionConfidenceBreakdown?: DashboardPerformanceViewProps['sessionConfidenceBreakdown'];
-  progressQuadrants?: DashboardProgressStateZoneProps['quadrants'];
   progressQuadrantQuestions?: DashboardPerformanceViewProps['progressQuadrantQuestions'];
 };
 type DashboardPayloadByView = {
@@ -70,15 +64,12 @@ export function DashboardViewShell({
   sessionsProps,
   performanceProps,
   sprintActivityProps,
-  progressStateProps,
   groupZoneProps,
 }: DashboardViewShellProps) {
   const [resolvedSessionsProps, setResolvedSessionsProps] =
     useState(sessionsProps);
   const [resolvedSprintActivityProps, setResolvedSprintActivityProps] =
     useState(sprintActivityProps);
-  const [resolvedProgressStateProps, setResolvedProgressStateProps] =
-    useState(progressStateProps);
   const [resolvedGroupZoneProps, setResolvedGroupZoneProps] =
     useState(groupZoneProps);
   const lastVisibleRevalidationRef = useRef(0);
@@ -113,10 +104,6 @@ export function DashboardViewShell({
           trueMastery: performancePayload.metrics?.successRate ?? null,
           heatmap: performancePayload.profileAnalytics?.heatmap ?? [],
         }));
-        setResolvedProgressStateProps((current) => ({
-          ...current,
-          quadrants: performancePayload.progressQuadrants ?? [],
-        }));
       }
     },
     [],
@@ -125,7 +112,6 @@ export function DashboardViewShell({
   useEffect(() => {
     setResolvedSessionsProps(sessionsProps);
     setResolvedSprintActivityProps(sprintActivityProps);
-    setResolvedProgressStateProps(progressStateProps);
     setResolvedGroupZoneProps(groupZoneProps);
     seedDashboardPayload<DashboardPayloadByView, 'sessions'>('sessions', {
       ok: true,
@@ -148,13 +134,11 @@ export function DashboardViewShell({
         confidenceCalibration: performanceProps.confidenceCalibration,
       },
       sessionConfidenceBreakdown: performanceProps.sessionConfidenceBreakdown,
-      progressQuadrants: progressStateProps.quadrants,
       progressQuadrantQuestions: performanceProps.progressQuadrantQuestions,
     });
   }, [
     groupZoneProps,
     performanceProps,
-    progressStateProps,
     sessionsProps,
     sprintActivityProps,
   ]);
@@ -292,9 +276,6 @@ export function DashboardViewShell({
   return (
     <div className="space-y-5">
       <DashboardSprintActivityZone {...resolvedSprintActivityProps} />
-      <div className="hidden md:block">
-        <DashboardProgressStateZone {...resolvedProgressStateProps} />
-      </div>
       <DashboardGroupZone {...resolvedGroupZoneProps} />
       <DashboardSessionActionHost {...resolvedSessionsProps} />
     </div>
