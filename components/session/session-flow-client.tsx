@@ -1042,8 +1042,6 @@ export function ReviewAnswerForm({
     ? `${normalizedParticipantAnswer} ${isCorrect ? '✓' : '×'} → ${correctOption}`
     : '';
 
-  const nextQuestionHref = `/${locale}/sessions/${sessionId}?q=${nextQuestionIndex}`;
-
   const navigateToQuestionWithFallback = useCallback(
     (href: string) => {
       router.replace(href as never);
@@ -1146,24 +1144,26 @@ export function ReviewAnswerForm({
     );
 
     if (shouldAdvanceToNextQuestion) {
-      const result = await savePromise;
+      setSavedCorrectOption(nextCorrectOption);
+      onSaved?.(nextCorrectOption);
+      setSaveStatus('saved');
+      navigateToQuestionWithFallback(redirectTo);
 
-      if (result.ok) {
-        setSavedCorrectOption(nextCorrectOption);
-        onSaved?.(nextCorrectOption);
-        setSaveStatus('saved');
-        navigateToQuestionWithFallback(result.payload.redirectTo ?? redirectTo);
-        return;
-      }
+      void savePromise.then((result) => {
+        if (result.ok) {
+          return;
+        }
 
-      if (result.redirectTo) {
-        router.replace(result.redirectTo as never);
-        return;
-      }
+        if (result.redirectTo) {
+          router.replace(result.redirectTo as never);
+          return;
+        }
 
-      setSavedCorrectOption(initialCorrectOption ?? '');
-      setSaveStatus('error');
-      setSubmissionError(result.message ?? labels.savePending);
+        router.replace(
+          `/${locale}/sessions/${sessionId}?stage=review&q=${questionIndex}` as never,
+        );
+        window.setTimeout(() => router.refresh(), 0);
+      });
       return;
     }
 
@@ -1267,20 +1267,9 @@ export function ReviewAnswerForm({
         </section>
       ) : null}
       {isReviewed ? (
-        <div className="space-y-2">
-          {timerMode === 'per_question' && !isLastQuestion ? (
-            <button
-              type="button"
-              className="button-primary h-9 w-full rounded-[7px] py-2 text-sm sm:h-10"
-              onClick={() => navigateToQuestionWithFallback(nextQuestionHref)}
-            >
-              {labels.saveAndNext}
-            </button>
-          ) : null}
-          <p className="text-center text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-            {labels.reviewLocked}
-          </p>
-        </div>
+        <p className="text-center text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+          {labels.reviewLocked}
+        </p>
       ) : (
         <button
           type="button"
