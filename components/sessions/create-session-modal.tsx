@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Check, Clock, HelpCircle, Search, UsersRound } from 'lucide-react';
 
 import { Modal, ModalTitle } from '@/components/ui/modal';
@@ -58,6 +58,7 @@ export function CreateSessionModal({
   sessionPolicy?: SessionCreationPolicy;
   onClose: () => void;
 }) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [name, setName] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState(initialGroupId);
   const [participantSearch, setParticipantSearch] = useState('');
@@ -138,14 +139,16 @@ export function CreateSessionModal({
       open
       onClose={onClose}
       backdropLabel={labels.close}
+      initialFocusRef={closeButtonRef}
       mobileSheet
-      contentClassName="max-h-[90vh] w-full max-w-[478px] overflow-y-auto rounded-t-[18px] bg-[#111827] p-4 shadow-2xl ring-1 ring-white/[0.08] [scrollbar-width:none] sm:rounded-[14px] sm:p-6 [&::-webkit-scrollbar]:hidden"
+      contentClassName="max-h-[90vh] w-full max-w-[478px] overscroll-contain overflow-y-auto rounded-t-[18px] bg-[#111827] p-4 shadow-2xl ring-1 ring-white/[0.08] [scrollbar-width:none] sm:rounded-[14px] sm:p-6 [&::-webkit-scrollbar]:hidden"
     >
       <div className="flex items-center justify-between">
         <ModalTitle className="text-lg font-extrabold text-white">
           {labels.newSession}
         </ModalTitle>
         <button
+          ref={closeButtonRef}
           type="button"
           onClick={onClose}
           className="rounded-md p-1 text-slate-400 hover:text-white"
@@ -405,7 +408,7 @@ export function CreateSessionModal({
             min={minScheduledAt}
             value={scheduledAt}
             onChange={(event) => setScheduledAt(event.target.value)}
-            className="field mt-2 h-10 rounded-[7px] px-3 py-2 text-sm"
+            className="field mt-2 h-10 min-w-0 rounded-[7px] px-3 py-2 text-sm [color-scheme:dark]"
           />
         </label>
 

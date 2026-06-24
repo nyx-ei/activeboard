@@ -1,5 +1,6 @@
 'use client';
 
+import { CalendarClock } from 'lucide-react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -125,26 +126,38 @@ export function SessionFinishReviewButton({
   return (
     <div>
       {isPlannerOpen ? (
-        <div className="mb-3 rounded-[10px] border border-brand/20 bg-brand/10 p-3">
+        <div className="mb-3 overflow-hidden rounded-[10px] border border-white/70 bg-[#071512]/85 p-3 ring-1 ring-brand/15">
           <p className="text-sm font-extrabold text-white">
             {locale === 'fr'
               ? 'Planifie la prochaine session avant de quitter'
               : 'Schedule the next session before leaving'}
           </p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_180px]">
+          <div className="mt-3 grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(190px,0.72fr)]">
             <input
               value={sessionName}
               onChange={(event) => setSessionName(event.target.value)}
-              className="field h-10 rounded-[7px] px-3 text-sm"
+              className="field h-10 min-w-0 rounded-[7px] px-3 text-sm"
               placeholder={locale === 'fr' ? 'Nom de la session' : 'Session name'}
             />
-            <input
-              type="datetime-local"
-              value={scheduledAt}
-              min={getMinDateTimeLocalValue()}
-              onChange={(event) => setScheduledAt(event.target.value)}
-              className="field h-10 rounded-[7px] px-3 text-sm"
-            />
+            <label className="field flex h-10 min-w-0 items-center gap-2 rounded-[7px] px-3">
+              <CalendarClock
+                className="h-4 w-4 shrink-0 text-brand"
+                aria-hidden="true"
+                strokeWidth={1.8}
+              />
+              <input
+                type="datetime-local"
+                value={scheduledAt}
+                min={getMinDateTimeLocalValue()}
+                onChange={(event) => setScheduledAt(event.target.value)}
+                className="min-w-0 flex-1 bg-transparent text-sm outline-none [color-scheme:dark]"
+                aria-label={
+                  locale === 'fr'
+                    ? 'Date de la prochaine session'
+                    : 'Next session date'
+                }
+              />
+            </label>
           </div>
           <button
             type="button"

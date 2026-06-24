@@ -1011,9 +1011,12 @@ export function ReviewAnswerForm({
   const reviewQuestionStartedAtRef = useRef(Date.now());
   const isPending = saveStatus === 'saving';
   const isReviewed = Boolean(savedCorrectOption);
+  const isValidCorrectOption = ANSWER_OPTIONS.includes(
+    correctOption as AnswerOption,
+  );
   const canSubmit =
     !isReviewed &&
-    Boolean(correctOption) &&
+    isValidCorrectOption &&
     correctOption !== savedCorrectOption;
   const hasCorrectOption = Boolean(correctOption);
   const normalizedParticipantAnswer = participantAnswer?.toUpperCase() ?? '?';
@@ -1041,8 +1044,6 @@ export function ReviewAnswerForm({
   const reviewTrace = hasCorrectOption
     ? `${normalizedParticipantAnswer} ${isCorrect ? '✓' : '×'} → ${correctOption}`
     : '';
-
-  const nextQuestionHref = `/${locale}/sessions/${sessionId}?q=${nextQuestionIndex}`;
 
   const navigateToQuestionWithFallback = useCallback(
     (href: string) => {
@@ -1146,24 +1147,26 @@ export function ReviewAnswerForm({
     );
 
     if (shouldAdvanceToNextQuestion) {
-      const result = await savePromise;
+      setSavedCorrectOption(nextCorrectOption);
+      onSaved?.(nextCorrectOption);
+      setSaveStatus('saved');
+      navigateToQuestionWithFallback(redirectTo);
 
-      if (result.ok) {
-        setSavedCorrectOption(nextCorrectOption);
-        onSaved?.(nextCorrectOption);
-        setSaveStatus('saved');
-        navigateToQuestionWithFallback(result.payload.redirectTo ?? redirectTo);
-        return;
-      }
+      void savePromise.then((result) => {
+        if (result.ok) {
+          return;
+        }
 
-      if (result.redirectTo) {
-        router.replace(result.redirectTo as never);
-        return;
-      }
+        if (result.redirectTo) {
+          router.replace(result.redirectTo as never);
+          return;
+        }
 
-      setSavedCorrectOption(initialCorrectOption ?? '');
-      setSaveStatus('error');
-      setSubmissionError(result.message ?? labels.savePending);
+        router.replace(
+          `/${locale}/sessions/${sessionId}?stage=review&q=${questionIndex}` as never,
+        );
+        window.setTimeout(() => router.refresh(), 0);
+      });
       return;
     }
 
@@ -1226,13 +1229,13 @@ export function ReviewAnswerForm({
         {labels.correctAnswer}
       </p>
       <div className="grid grid-cols-3 gap-1.5 min-[420px]:grid-cols-6 sm:gap-2">
-        {[...ANSWER_OPTIONS, '?'].map((option) => (
+        {ANSWER_OPTIONS.map((option) => (
           <button
             key={option}
             type="button"
             onClick={() => {
-              if (!isReviewed && option !== '?') {
-                setCorrectOption(option as AnswerOption);
+              if (!isReviewed) {
+                setCorrectOption(option);
               }
             }}
             className={`h-9 w-full rounded-[7px] border text-sm font-extrabold transition sm:h-11 sm:text-base ${
@@ -1267,20 +1270,9 @@ export function ReviewAnswerForm({
         </section>
       ) : null}
       {isReviewed ? (
-        <div className="space-y-2">
-          {timerMode === 'per_question' && !isLastQuestion ? (
-            <button
-              type="button"
-              className="button-primary h-9 w-full rounded-[7px] py-2 text-sm sm:h-10"
-              onClick={() => navigateToQuestionWithFallback(nextQuestionHref)}
-            >
-              {labels.saveAndNext}
-            </button>
-          ) : null}
-          <p className="text-center text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-            {labels.reviewLocked}
-          </p>
-        </div>
+        <p className="text-center text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+          {labels.reviewLocked}
+        </p>
       ) : (
         <button
           type="button"
