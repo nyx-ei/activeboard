@@ -29,6 +29,155 @@ type ReviewPayload = {
   reviewDurationSeconds?: number;
 };
 
+type ReviewSaveResult = {
+  question_id: string;
+  correct_option: string | null;
+  review_version: number | null;
+  reviewed_question_count: number | null;
+};
+
+type ReviewSaveError = { message?: string } | null;
+
+async function saveReviewSnapshotWithAdmin(input: {
+  sessionId: string;
+  questionId: string;
+  userId: string;
+  correctOption: string;
+}): Promise<{
+  result: ReviewSaveResult | null;
+  error: ReviewSaveError;
+}> {
+  const admin = createSupabaseAdminClient();
+  const now = new Date().toISOString();
+
+  const { data: question, error: questionLoadError } = await admin
+    .schema('public')
+    .from('questions')
+    .select('id, review_version')
+    .eq('id', input.questionId)
+    .eq('session_id', input.sessionId)
+    .maybeSingle();
+
+  if (questionLoadError || !question) {
+    return {
+      result: null,
+      error: questionLoadError ?? { message: 'question_not_found' },
+    };
+  }
+
+  const reviewVersion = Number(question.review_version ?? 0) + 1;
+  const { error: questionUpdateError } = await admin
+    .schema('public')
+    .from('questions')
+    .update({
+      correct_option: input.correctOption,
+      phase: 'review',
+      review_version: reviewVersion,
+    })
+    .eq('id', input.questionId)
+    .eq('session_id', input.sessionId);
+
+  if (questionUpdateError) {
+    return { result: null, error: questionUpdateError };
+  }
+
+  const { data: answer, error: answerLoadError } = await admin
+    .schema('public')
+    .from('answers')
+    .select('id, answer_state, selected_option')
+    .eq('question_id', input.questionId)
+    .eq('user_id', input.userId)
+    .maybeSingle();
+
+  if (answerLoadError) {
+    return { result: null, error: answerLoadError };
+  }
+
+  const submittedAnswer =
+    answer?.answer_state === 'submitted' && answer.selected_option
+      ? answer.selected_option.toUpperCase()
+      : null;
+  const isCorrect = submittedAnswer
+    ? submittedAnswer === input.correctOption
+    : null;
+
+  if (answer?.id) {
+    const { error: answerUpdateError } = await admin
+      .schema('public')
+      .from('answers')
+      .update({
+        review_correct_option: input.correctOption,
+        reviewed_at: now,
+        is_correct: isCorrect,
+      })
+      .eq('id', answer.id);
+
+    if (answerUpdateError) {
+      return { result: null, error: answerUpdateError };
+    }
+  } else {
+    const { error: answerInsertError } = await admin
+      .schema('public')
+      .from('answers')
+      .insert({
+        question_id: input.questionId,
+        user_id: input.userId,
+        answer_state: 'skipped',
+        answer_request_mode: 'timeout',
+        answer_request_sequence: 0,
+        selected_option: null,
+        confidence: null,
+        answered_at: now,
+        review_correct_option: input.correctOption,
+        reviewed_at: now,
+        is_correct: null,
+      });
+
+    if (answerInsertError) {
+      return { result: null, error: answerInsertError };
+    }
+  }
+
+  const { data: sessionQuestions, error: questionsError } = await admin
+    .schema('public')
+    .from('questions')
+    .select('id')
+    .eq('session_id', input.sessionId);
+
+  if (questionsError) {
+    return { result: null, error: questionsError };
+  }
+
+  const questionIds = sessionQuestions?.map((row) => row.id) ?? [];
+  let reviewedQuestionCount = 0;
+
+  if (questionIds.length > 0) {
+    const { count, error: countError } = await admin
+      .schema('public')
+      .from('answers')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', input.userId)
+      .not('review_correct_option', 'is', null)
+      .in('question_id', questionIds);
+
+    if (countError) {
+      return { result: null, error: countError };
+    }
+
+    reviewedQuestionCount = count ?? 0;
+  }
+
+  return {
+    error: null,
+    result: {
+      question_id: input.questionId,
+      correct_option: input.correctOption,
+      review_version: reviewVersion,
+      reviewed_question_count: reviewedQuestionCount,
+    },
+  };
+}
+
 export async function POST(request: Request, { params }: RouteContext) {
   const sessionId = params.sessionId;
   const body = (await request.json().catch(() => null)) as ReviewPayload | null;
@@ -136,7 +285,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
   perf.step('session_validated');
 
-  const { result: reviewResult, error: reviewError } = await saveReviewSnapshot(
+  let { result: reviewResult, error: reviewError } = await saveReviewSnapshot(
     supabase,
     {
       sessionId,
@@ -144,7 +293,26 @@ export async function POST(request: Request, { params }: RouteContext) {
       correctOption,
     },
   );
-  perf.step('review_snapshot_saved');
+
+  if (reviewError) {
+    console.error('[session-review] RPC review save failed, using fallback', {
+      sessionId,
+      questionId,
+      questionIndex,
+      error: reviewError,
+    });
+    const fallback = await saveReviewSnapshotWithAdmin({
+      sessionId,
+      questionId,
+      userId: user.id,
+      correctOption,
+    });
+    reviewResult = fallback.result;
+    reviewError = fallback.error;
+    perf.step('review_snapshot_admin_fallback_saved');
+  } else {
+    perf.step('review_snapshot_saved');
+  }
 
   if (reviewError) {
     return NextResponse.json(

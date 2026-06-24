@@ -1011,9 +1011,12 @@ export function ReviewAnswerForm({
   const reviewQuestionStartedAtRef = useRef(Date.now());
   const isPending = saveStatus === 'saving';
   const isReviewed = Boolean(savedCorrectOption);
+  const isValidCorrectOption = ANSWER_OPTIONS.includes(
+    correctOption as AnswerOption,
+  );
   const canSubmit =
     !isReviewed &&
-    Boolean(correctOption) &&
+    isValidCorrectOption &&
     correctOption !== savedCorrectOption;
   const hasCorrectOption = Boolean(correctOption);
   const normalizedParticipantAnswer = participantAnswer?.toUpperCase() ?? '?';
@@ -1226,13 +1229,13 @@ export function ReviewAnswerForm({
         {labels.correctAnswer}
       </p>
       <div className="grid grid-cols-3 gap-1.5 min-[420px]:grid-cols-6 sm:gap-2">
-        {[...ANSWER_OPTIONS, '?'].map((option) => (
+        {ANSWER_OPTIONS.map((option) => (
           <button
             key={option}
             type="button"
             onClick={() => {
-              if (!isReviewed && option !== '?') {
-                setCorrectOption(option as AnswerOption);
+              if (!isReviewed) {
+                setCorrectOption(option);
               }
             }}
             className={`h-9 w-full rounded-[7px] border text-sm font-extrabold transition sm:h-11 sm:text-base ${

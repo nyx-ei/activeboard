@@ -45,7 +45,13 @@ test('review reveal saves question and answer correctness through one RPC', () =
     /set is_correct = upper\(coalesce\(a\.selected_option, ''\)\) = normalized_correct_option/,
   );
   assert.match(reviewAnswerRoute, /saveReviewSnapshot/);
-  assert.doesNotMatch(reviewAnswerRoute, /\.from\('answers'\)/);
+  assert.match(reviewAnswerRoute, /RPC review save failed, using fallback/);
+  assert.match(reviewAnswerRoute, /saveReviewSnapshotWithAdmin/);
+  assert.match(reviewAnswerRoute, /answer_state: 'skipped'/);
+  assert.ok(
+    reviewAnswerRoute.indexOf('saveReviewSnapshot(') <
+      reviewAnswerRoute.indexOf('saveReviewSnapshotWithAdmin({'),
+  );
 });
 
 test('review snapshots expose a monotonically increasing review version', () => {

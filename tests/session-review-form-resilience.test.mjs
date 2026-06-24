@@ -42,6 +42,10 @@ const failureStart = sessionClient.indexOf(
   "setSaveStatus('error')",
   serverSuccessStart,
 );
+const correctAnswerOptionsStart = sessionClient.indexOf(
+  'ANSWER_OPTIONS.map((option) =>',
+  reviewFormStart,
+);
 
 test('review save-and-next advances immediately but resyncs if server save fails', () => {
   assert.notEqual(reviewFormStart, -1);
@@ -81,4 +85,14 @@ test('review save-and-next advances immediately but resyncs if server save fails
   assert.match(optimisticAdvanceBlock, /router\.refresh\(\)/);
   assert.match(successBlock, /setSavedCorrectOption\(nextCorrectOption\)/);
   assert.match(successBlock, /onSaved\?\.\(nextCorrectOption\)/);
+});
+
+test('review correction choices exclude ignored answer placeholder', () => {
+  assert.notEqual(reviewFormStart, -1);
+  assert.notEqual(correctAnswerOptionsStart, -1);
+
+  const reviewForm = sessionClient.slice(reviewFormStart);
+
+  assert.match(reviewForm, /ANSWER_OPTIONS\.map\(\(option\) =>/);
+  assert.doesNotMatch(reviewForm, /\[\.\.\.ANSWER_OPTIONS,\s*'\?'\]\.map/);
 });
