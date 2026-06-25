@@ -150,7 +150,7 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [questionBanks, setQuestionBanks] = useState<string[]>(initialProfile?.questionBanks.length ? initialProfile.questionBanks : ['cmc_prep']);
   const [groupName, setGroupName] = useState('');
-  const [memberEmails, setMemberEmails] = useState(['']);
+  const [memberEmails, setMemberEmails] = useState(['', '', '']);
   const [slots, setSlots] = useState<ScheduleSlot[]>([createSlot(0)]);
   const [inviteCode, setInviteCode] = useState('');
   const [createdGroupId, setCreatedGroupId] = useState<string | null>(null);
