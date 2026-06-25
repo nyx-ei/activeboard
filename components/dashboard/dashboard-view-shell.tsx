@@ -56,9 +56,10 @@ type DashboardPayloadByView = {
   performance: DashboardPerformancePayload;
 };
 
-const LIVE_SESSION_REVALIDATION_INTERVAL_MS = 20_000;
-const PERFORMANCE_REVALIDATION_INTERVAL_MS = 90_000;
-const VISIBLE_REVALIDATION_MIN_INTERVAL_MS = 30_000;
+const LIVE_SESSION_REVALIDATION_INTERVAL_MS = 45_000;
+const IDLE_SESSION_REVALIDATION_INTERVAL_MS = 180_000;
+const PERFORMANCE_REVALIDATION_INTERVAL_MS = 300_000;
+const VISIBLE_REVALIDATION_MIN_INTERVAL_MS = 120_000;
 
 export function DashboardViewShell({
   sessionsProps,
@@ -73,6 +74,10 @@ export function DashboardViewShell({
   const [resolvedGroupZoneProps, setResolvedGroupZoneProps] =
     useState(groupZoneProps);
   const lastVisibleRevalidationRef = useRef(0);
+  const hasLiveSessions = useMemo(
+    () => resolvedSessionsProps.groups.some((group) => group.hasLiveSession),
+    [resolvedSessionsProps.groups],
+  );
 
   const applyPayload = useCallback(
     <TView extends DashboardView>(
@@ -228,6 +233,9 @@ export function DashboardViewShell({
 
   useEffect(() => {
     let cancelled = false;
+    const intervalMs = hasLiveSessions
+      ? LIVE_SESSION_REVALIDATION_INTERVAL_MS
+      : IDLE_SESSION_REVALIDATION_INTERVAL_MS;
 
     const intervalId = window.setInterval(() => {
       if (cancelled || document.visibilityState === 'hidden') {
@@ -241,13 +249,13 @@ export function DashboardViewShell({
           applyPayload('sessions', payload);
         }
       });
-    }, LIVE_SESSION_REVALIDATION_INTERVAL_MS);
+    }, intervalMs);
 
     return () => {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [applyPayload]);
+  }, [applyPayload, hasLiveSessions]);
 
   useEffect(() => {
     let cancelled = false;
