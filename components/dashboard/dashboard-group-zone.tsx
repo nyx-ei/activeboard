@@ -1532,25 +1532,41 @@ function MobileSessionFirstDashboardZone({
         >
           <a
             href={primaryHref}
-            className="grid min-h-[58px] grid-cols-[104px_minmax(0,1fr)_42px] items-center gap-2 rounded-[13px] border border-white/[0.055] bg-white/[0.018] px-2.5 py-2 sm:min-h-[76px] sm:grid-cols-[132px_minmax(0,1fr)_56px] sm:px-4 sm:py-3"
+            className="grid min-h-[58px] grid-cols-[104px_minmax(0,1fr)_42px] items-center gap-2 rounded-[13px] border border-white/[0.055] bg-white/[0.018] px-2.5 py-2 transition hover:border-[#20D9A3]/25 hover:bg-white/[0.028] sm:min-h-[76px] sm:grid-cols-[132px_minmax(0,1fr)_56px] sm:px-4 sm:py-3"
           >
             <span className="flex min-w-0 items-center">
               <CompactAvatarStack members={selectedMembers?.slice(0, 3)} />
             </span>
             <span className="min-w-0">
+              {primarySession ? (
+                <span
+                  className={`mb-0.5 block truncate text-[10px] font-semibold sm:text-[12px] ${
+                    primarySession.status === 'active'
+                      ? 'text-[#20D9A3]'
+                      : 'text-[#8fa7a2]'
+                  }`}
+                >
+                  {getSessionStatusLabel(primarySession, locale, labels)}
+                </span>
+              ) : null}
               <span className="block truncate text-[13px] font-semibold text-[#e8f4f0] sm:text-[17px]">
                 {primarySession?.name ?? labels.noUpcomingSession}
               </span>
               <span className="mt-0.5 block truncate text-[10px] text-[#8fa7a2] sm:text-[13px]">
                 {primarySession
-                  ? getCompactSessionMeta(primarySession)
+                  ? getDashboardSessionMeta(primarySession)
                   : `${selectedGroup.memberCount} ${labels.members}`}
               </span>
             </span>
             <span className="flex flex-col items-center justify-center">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#20D9A3] text-[#062b22] shadow-[0_0_18px_rgba(32,217,163,0.25)] sm:h-11 sm:w-11">
-                <Play className="h-4 w-4 fill-current sm:h-5 sm:w-5" aria-hidden="true" />
-              </span>
+              {primarySession ? (
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#20D9A3] text-[#062b22] shadow-[0_0_18px_rgba(32,217,163,0.25)] sm:h-11 sm:w-11">
+                  <Play
+                    className="h-4 w-4 fill-current sm:h-5 sm:w-5"
+                    aria-hidden="true"
+                  />
+                </span>
+              ) : null}
             </span>
           </a>
 
@@ -1565,19 +1581,27 @@ function MobileSessionFirstDashboardZone({
               <PlaceholderAvatar />
             </span>
             <span className="min-w-0">
+              <span className="mb-0.5 block truncate text-[10px] font-semibold text-[#8fa7a2] sm:text-[12px]">
+                {getSessionStatusLabel(secondarySession, locale, labels)}
+              </span>
               <span className="block truncate text-[13px] font-semibold text-[#e8f4f0] sm:text-[17px]">
                 {secondarySession.name ?? labels.nextSession}
               </span>
-              <span className="block truncate text-[10px] text-[#8fa7a2] sm:text-[13px]">
+              <span className="hidden">
                 {secondarySession
                   ? `${secondarySession.question_goal}Q · ${secondarySession.timer_seconds}sec`
                   : `20Q · ${labels.timerLabel.replace('{seconds}', '90')}`}
               </span>
             </span>
-            <span className="truncate text-right text-[10px] font-semibold text-[#8fa7a2] sm:text-[13px]">
-              {secondarySession
-                ? formatSessionDate(secondarySession.scheduled_at, locale)
-                : labels.scheduledFor.replace('{date}', '')}
+            <span className="min-w-0 text-right text-[10px] font-semibold text-[#8fa7a2] sm:text-[13px]">
+              <span className="block truncate text-[#9fb5b0]">
+                {secondarySession
+                  ? formatSessionDate(secondarySession.scheduled_at, locale)
+                  : labels.scheduledFor.replace('{date}', '')}
+              </span>
+              <span className="mt-0.5 block truncate text-[10px] font-medium text-[#6f8984] sm:text-[12px]">
+                {getPlannedDashboardSessionMeta(secondarySession, labels)}
+              </span>
             </span>
           </a>
           ) : null}
@@ -1711,6 +1735,46 @@ function formatShortDate(value: string, locale: string) {
     month: 'short',
     day: 'numeric',
   }).format(new Date(value));
+}
+
+function getDashboardSessionMeta(session: DashboardGroupZoneSession) {
+  return [
+    `${session.answeredQuestionCount ?? 0}/${session.question_goal} Q`,
+    `${session.timer_seconds} sec`,
+  ].join(' · ');
+}
+
+function getPlannedDashboardSessionMeta(
+  session: DashboardGroupZoneSession | null,
+  labels: DashboardGroupZoneProps['labels'],
+) {
+  if (!session) {
+    return `20Q · ${labels.timerLabel.replace('{seconds}', '90')}`;
+  }
+
+  return [`${session.question_goal}Q`, `${session.timer_seconds}sec`].join(
+    ' · ',
+  );
+}
+
+function getSessionStatusLabel(
+  session: DashboardGroupZoneSession,
+  locale: string,
+  labels: DashboardGroupZoneProps['labels'],
+) {
+  if (session.status === 'active') {
+    return labels.live;
+  }
+
+  if (session.status === 'completed') {
+    return locale === 'fr' ? 'Terminée' : 'Completed';
+  }
+
+  if (session.status === 'incomplete') {
+    return locale === 'fr' ? 'À reprendre' : 'Resume';
+  }
+
+  return locale === 'fr' ? 'Programmée' : 'Scheduled';
 }
 
 function getCompactSessionMeta(session: DashboardGroupZoneSession) {

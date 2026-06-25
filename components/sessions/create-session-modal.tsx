@@ -121,8 +121,8 @@ export function CreateSessionModal({
   const returnTo = selectedGroup
     ? `/${locale}/dashboard?groupId=${encodeURIComponent(selectedGroup.id)}`
     : `/${locale}/dashboard`;
-  const participantCopy = getParticipantCopy(locale);
-  const timerModeCopy = getTimerModeCopy(locale);
+  const participantCopy = getCleanParticipantCopy(locale);
+  const timerModeCopy = getCleanTimerModeCopy(locale);
 
   const isValid =
     canCreateSession &&
@@ -657,7 +657,7 @@ function getParticipantCandidates(
   );
 }
 
-function getParticipantCopy(locale: string) {
+function getCleanParticipantCopy(locale: string) {
   if (locale === 'fr') {
     return {
       poolLabel: 'Pool de départ',
@@ -677,7 +677,57 @@ function getParticipantCopy(locale: string) {
   };
 }
 
-function getTimerModeCopy(locale: string) {
+function getCleanTimerModeCopy(locale: string) {
+  if (locale === 'fr') {
+    return {
+      perQuestionTitle: 'Question puis révision',
+      perQuestionDescription:
+        'Chaque question est corrigée juste après les réponses.',
+      perQuestionHint:
+        'Idéal pour une séance guidée : réponse, correction immédiate, puis question suivante.',
+      globalTitle: 'Mode examen',
+      globalDescription:
+        'Toute la série est faite avant la révision depuis la première question.',
+      globalHint:
+        "Idéal pour simuler un examen : toutes les questions d'abord, puis la révision complète.",
+    };
+  }
+
+  return {
+    perQuestionTitle: 'Question then review',
+    perQuestionDescription:
+      'Each question is reviewed right after answers are submitted.',
+    perQuestionHint:
+      'Best for guided practice: answer, immediate review, then the next question.',
+    globalTitle: 'Exam mode',
+    globalDescription:
+      'The full set is answered first, then reviewed from question one.',
+    globalHint:
+      'Best for exam simulation: all questions first, then one complete review pass.',
+  };
+}
+
+export function getParticipantCopy(locale: string) {
+  if (locale === 'fr') {
+    return {
+      poolLabel: 'Pool de départ',
+      participants: 'Participants de la session',
+      selected: '{count} sélectionnés',
+      search: 'Rechercher un membre',
+      empty: 'Aucun membre disponible',
+    };
+  }
+
+  return {
+    poolLabel: 'Starting pool',
+    participants: 'Session participants',
+    selected: '{count} selected',
+    search: 'Search a member',
+    empty: 'No member available',
+  };
+}
+
+export function getTimerModeCopy(locale: string) {
   if (locale === 'fr') {
     return {
       perQuestionTitle: 'Question puis révision',

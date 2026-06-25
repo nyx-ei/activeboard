@@ -126,20 +126,27 @@ export function SessionFinishReviewButton({
   return (
     <div>
       {isPlannerOpen ? (
-        <div className="mb-3 overflow-hidden rounded-[10px] border border-white/70 bg-[#071512]/85 p-3 ring-1 ring-brand/15">
-          <p className="text-sm font-extrabold text-white">
+        <div className="mb-3 overflow-hidden rounded-[14px] border border-white/60 bg-[#071512]/85 p-3 ring-1 ring-brand/15 sm:p-4">
+          <p className="text-sm font-extrabold text-white sm:text-base">
             {locale === 'fr'
               ? 'Planifie la prochaine session avant de quitter'
               : 'Schedule the next session before leaving'}
           </p>
-          <div className="mt-3 grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(190px,0.72fr)]">
-            <input
-              value={sessionName}
-              onChange={(event) => setSessionName(event.target.value)}
-              className="field h-10 min-w-0 rounded-[7px] px-3 text-sm"
-              placeholder={locale === 'fr' ? 'Nom de la session' : 'Session name'}
-            />
-            <label className="field flex h-10 min-w-0 items-center gap-2 rounded-[7px] px-3">
+          <div className="mt-3 grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(210px,0.78fr)]">
+            <label className="min-w-0">
+              <span className="sr-only">
+                {locale === 'fr' ? 'Nom de la session' : 'Session name'}
+              </span>
+              <input
+                value={sessionName}
+                onChange={(event) => setSessionName(event.target.value)}
+                className="field h-11 min-w-0 rounded-[9px] px-3 text-sm"
+                placeholder={
+                  locale === 'fr' ? 'Prochaine session' : 'Next session'
+                }
+              />
+            </label>
+            <label className="field flex h-11 min-w-0 items-center gap-2 rounded-[9px] px-3">
               <CalendarClock
                 className="h-4 w-4 shrink-0 text-brand"
                 aria-hidden="true"
@@ -150,7 +157,7 @@ export function SessionFinishReviewButton({
                 value={scheduledAt}
                 min={getMinDateTimeLocalValue()}
                 onChange={(event) => setScheduledAt(event.target.value)}
-                className="min-w-0 flex-1 bg-transparent text-sm outline-none [color-scheme:dark]"
+                className="min-w-0 flex-1 bg-transparent text-xs outline-none [color-scheme:dark] sm:text-sm"
                 aria-label={
                   locale === 'fr'
                     ? 'Date de la prochaine session'
@@ -163,7 +170,7 @@ export function SessionFinishReviewButton({
             type="button"
             disabled={isFinishing || !sessionName.trim() || !scheduledAt}
             onClick={() => void planNextAndFinish()}
-            className="mt-3 h-10 w-full rounded-[7px] bg-brand text-sm font-extrabold text-[#06120e] disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-3 h-11 w-full rounded-[9px] bg-brand text-sm font-extrabold text-[#06120e] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isFinishing
               ? pendingLabel
