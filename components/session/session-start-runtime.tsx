@@ -1,6 +1,6 @@
 'use client';
 
-import { Play } from 'lucide-react';
+import { CalendarClock, Play, UsersRound } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -149,21 +149,65 @@ export function SessionStartRuntime({
   return (
     <>
       <SessionStageRefresh sessionId={sessionId} expectedStatus="scheduled" />
-      <div className="flex flex-1 items-center justify-center px-4">
-        <section className="flex w-full max-w-md flex-col items-center text-center">
-          <div className="bg-brand/10 flex h-16 w-16 items-center justify-center rounded-full text-brand">
-            <Play className="ml-1 h-8 w-8" aria-hidden="true" />
+      <div className="flex flex-1 items-center justify-center px-4 py-6">
+        <section className="w-full max-w-[560px] rounded-[22px] border border-white/[0.06] bg-[#0b2a25] p-4 shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:p-6">
+          <div className="flex items-center justify-between gap-3">
+            <SessionDashboardBackButton
+              locale={locale}
+              label={labels.quitSession}
+              variant="text"
+              sessionId={sessionId}
+              confirmLabels={labels.quitConfirm}
+            />
+            <p className="min-w-0 truncate rounded-full border border-white/[0.08] bg-white/[0.025] px-3 py-1 text-xs font-bold text-[#8fa7a2]">
+              {sessionShareLabel}
+            </p>
           </div>
-          <h1 className="mt-8 text-2xl font-extrabold text-white">
-            {sessionTitle}
-          </h1>
-          <p className="mt-3 text-lg font-medium text-slate-400">
-            {questionGoal} {labels.questionsUnit} | {timerLabel}
-          </p>
-          <p className="mt-4 text-sm font-bold text-slate-500">
-            {sessionShareLabel}
-          </p>
-          <div className="mt-7 flex items-center justify-center gap-3">
+
+          <div className="mt-6 rounded-[16px] border border-white/[0.055] bg-[#061916]/70 p-4 sm:p-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] bg-brand/10 text-brand">
+                <Play className="ml-0.5 h-6 w-6 fill-current" aria-hidden="true" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="truncate text-2xl font-extrabold tracking-[-0.03em] text-white">
+                  {sessionTitle}
+                </h1>
+                <p className="mt-1 text-sm font-semibold text-[#8fa7a2]">
+                  {questionGoal} {labels.questionsUnit} | {timerLabel}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <div className="rounded-[13px] border border-white/[0.055] bg-white/[0.018] px-3 py-3">
+                <UsersRound className="h-4 w-4 text-brand" aria-hidden="true" />
+                <p className="mt-2 text-xl font-extrabold text-white">
+                  {memberCount}
+                </p>
+                <p className="text-xs font-semibold text-[#8fa7a2]">
+                  {locale === 'fr' ? 'Participants' : 'Participants'}
+                </p>
+              </div>
+              <div className="rounded-[13px] border border-white/[0.055] bg-white/[0.018] px-3 py-3">
+                <CalendarClock className="h-4 w-4 text-brand" aria-hidden="true" />
+                <p className="mt-2 text-xl font-extrabold text-white">
+                  {timerMode === 'global'
+                    ? locale === 'fr'
+                      ? 'Mode examen'
+                      : 'Exam mode'
+                    : locale === 'fr'
+                      ? 'Par question'
+                      : 'Per question'}
+                </p>
+                <p className="text-xs font-semibold text-[#8fa7a2]">
+                  {timerLabel}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
             <button
               type="button"
               disabled={isStarting}
@@ -247,12 +291,9 @@ export function SessionStartRuntime({
                     setIsStarting(false);
                   });
               }}
-              className="button-primary rounded-[7px] px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-70"
+              className="button-primary min-h-12 flex-1 rounded-[13px] px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-70"
               aria-busy={isStarting}
             >
-              <span className="mr-2" aria-hidden="true">
-                {'>'}
-              </span>
               {isStarting ? labels.startSessionPending : labels.startSession}
             </button>
             {canInviteTeammate ? (
@@ -269,13 +310,6 @@ export function SessionStartRuntime({
               {errorMessage}
             </p>
           ) : null}
-          <SessionDashboardBackButton
-            locale={locale}
-            label={labels.quitSession}
-            variant="text"
-            sessionId={sessionId}
-            confirmLabels={labels.quitConfirm}
-          />
         </section>
       </div>
     </>

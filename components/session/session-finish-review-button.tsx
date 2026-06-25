@@ -28,7 +28,7 @@ export function SessionFinishReviewButton({
     getDefaultNextSessionValue(),
   );
   const [sessionName, setSessionName] = useState(
-    locale === 'fr' ? 'Prochaine session' : 'Next session',
+    locale === 'fr' ? 'Session suivante' : 'Next session',
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -129,8 +129,8 @@ export function SessionFinishReviewButton({
         <div className="mb-3 overflow-hidden rounded-[14px] border border-white/60 bg-[#071512]/85 p-3 ring-1 ring-brand/15 sm:p-4">
           <p className="text-sm font-extrabold text-white sm:text-base">
             {locale === 'fr'
-              ? 'Planifie la prochaine session avant de quitter'
-              : 'Schedule the next session before leaving'}
+              ? 'Planifie la prochaine session'
+              : 'Schedule the next session'}
           </p>
           <div className="mt-3 grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(210px,0.78fr)]">
             <label className="min-w-0">
@@ -142,7 +142,7 @@ export function SessionFinishReviewButton({
                 onChange={(event) => setSessionName(event.target.value)}
                 className="field h-11 min-w-0 rounded-[9px] px-3 text-sm"
                 placeholder={
-                  locale === 'fr' ? 'Prochaine session' : 'Next session'
+                  locale === 'fr' ? 'Session suivante' : 'Next session'
                 }
               />
             </label>
@@ -175,8 +175,8 @@ export function SessionFinishReviewButton({
             {isFinishing
               ? pendingLabel
               : locale === 'fr'
-                ? 'Planifier et terminer'
-                : 'Schedule and finish'}
+                ? 'Planifier puis sauvegarder'
+                : 'Schedule and save'}
           </button>
         </div>
       ) : null}
@@ -191,8 +191,13 @@ export function SessionFinishReviewButton({
         }}
         className="hover:bg-brand/10 h-10 w-full rounded-[7px] border border-brand bg-transparent text-sm font-extrabold text-brand disabled:cursor-not-allowed disabled:opacity-70"
         aria-busy={isFinishing}
+        aria-label={label}
       >
-        {isFinishing ? pendingLabel : label}
+        {isFinishing
+          ? pendingLabel
+          : locale === 'fr'
+            ? "Sauvegarder le progrès du jour"
+            : "Save today's progress"}
       </button>
       {errorMessage ? (
         <p className="mt-3 text-center text-sm font-semibold text-rose-300">

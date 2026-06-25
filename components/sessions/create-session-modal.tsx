@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Clock, HelpCircle, Search, UsersRound } from 'lucide-react';
 
 import { Modal, ModalTitle } from '@/components/ui/modal';
@@ -60,6 +60,7 @@ export function CreateSessionModal({
 }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [name, setName] = useState('');
+  const [hasEditedName, setHasEditedName] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState(initialGroupId);
   const [participantSearch, setParticipantSearch] = useState('');
   const [scheduledAt, setScheduledAt] = useState(() =>
@@ -123,6 +124,14 @@ export function CreateSessionModal({
     : `/${locale}/dashboard`;
   const participantCopy = getCleanParticipantCopy(locale);
   const timerModeCopy = getCleanTimerModeCopy(locale);
+
+  useEffect(() => {
+    if (hasEditedName || !selectedGroup) {
+      return;
+    }
+
+    setName(getDefaultSessionName(selectedGroup.name));
+  }, [hasEditedName, selectedGroup]);
 
   const isValid =
     canCreateSession &&
@@ -391,7 +400,10 @@ export function CreateSessionModal({
           <input
             name="sessionName"
             value={name}
-            onChange={(event) => setName(event.target.value)}
+            onChange={(event) => {
+              setHasEditedName(true);
+              setName(event.target.value);
+            }}
             placeholder={labels.sessionNamePlaceholder}
             className="field mt-2 h-10 rounded-[7px] px-3 py-2 text-sm"
             autoComplete="off"
@@ -563,6 +575,16 @@ export function CreateSessionModal({
       </form>
     </Modal>
   );
+}
+
+function getDefaultSessionName(groupName: string) {
+  const cleanName = groupName.trim();
+
+  if (!cleanName) {
+    return 'Session';
+  }
+
+  return cleanName.length > 38 ? cleanName.slice(0, 38).trim() : cleanName;
 }
 
 function getDefaultScheduledAtInputValue() {

@@ -14,13 +14,16 @@ import {
   Bell,
   CalendarClock,
   Check,
+  CheckCircle2,
   ChevronDown,
+  ClipboardCheck,
   Lock,
   LogOut,
   Mail,
   MoreHorizontal,
   Play,
   Plus,
+  Radio,
   Search,
   Send,
   UserPlus,
@@ -193,9 +196,7 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   );
   const selectedMembers = selectedGroup?.membersPreview ?? [];
   const selectedMaxMembers = selectedGroup?.maxMembers ?? 5;
-  const selectedActiveSession = selectedGroup?.hasLiveSession
-    ? (selectedGroup.activeSession ?? null)
-    : null;
+  const selectedActiveSession = selectedGroup?.activeSession ?? null;
   const selectedNextSession = selectedGroup?.nextSession ?? null;
   const selectedSession = selectedActiveSession ?? selectedNextSession;
   const sessionHref = selectedSession
@@ -214,6 +215,11 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
   const selectedSeatsAvailable = selectedGroup
     ? Math.max(0, selectedMaxMembers - selectedGroup.memberCount)
     : 0;
+  const hasUnfinishedSession = Boolean(
+    selectedActiveSession &&
+      (selectedActiveSession.status === 'active' ||
+        selectedActiveSession.status === 'incomplete'),
+  );
   const canInviteSelectedGroup = Boolean(
     selectedGroup && selectedSeatsAvailable > 0,
   );
@@ -221,12 +227,12 @@ export const DashboardGroupZone = memo(function DashboardGroupZone({
     selectedGroup &&
     selectedGroup.memberCount < 2 &&
     selectedSeatsAvailable > 0 &&
-    !selectedGroup.hasLiveSession,
+    !hasUnfinishedSession,
   );
   const canStartSelectedGroup = Boolean(
     selectedGroup &&
     selectedGroup.memberCount >= 2 &&
-    !selectedGroup.hasLiveSession &&
+    !hasUnfinishedSession &&
     !shouldShowMemberPrompt,
   );
   const canOpenSessionPlanner = Boolean(selectedGroup);
@@ -1471,12 +1477,20 @@ function MobileSessionFirstDashboardZone({
   calibrationStats: DashboardGroupZoneProps['calibrationStats'];
   labels: DashboardGroupZoneProps['labels'];
 }) {
-  const primarySession = selectedActiveSession ?? selectedNextSession;
+  const latestCompletedSession =
+    selectedGroup?.recentSessions?.find(
+      (session) => session.status === 'completed',
+    ) ?? null;
+  const primarySession =
+    selectedActiveSession ?? selectedNextSession ?? latestCompletedSession;
   const secondarySession =
     selectedActiveSession && selectedNextSession ? selectedNextSession : null;
   const primaryHref = primarySession
     ? `/${locale}/sessions/${primarySession.id}`
     : (sessionHref ?? `/${locale}/dashboard`);
+  const primaryAction = primarySession
+    ? getSessionDashboardAction(primarySession, Boolean(selectedNextSession))
+    : null;
 
   if (!selectedGroup) {
     return (
@@ -1487,7 +1501,7 @@ function MobileSessionFirstDashboardZone({
   }
 
   return (
-    <div className="space-y-3 sm:space-y-4">
+    <div className="mx-auto max-w-[760px] space-y-3 sm:space-y-4">
       <section className="rounded-[15px] border border-white/[0.045] bg-[#071a18]/75 px-4 py-3 sm:px-6 sm:py-5">
         <div className="flex items-center justify-between">
           <h2 className="text-[13px] font-semibold text-[#d7e3df] sm:text-[16px]">
@@ -1532,7 +1546,7 @@ function MobileSessionFirstDashboardZone({
         >
           <a
             href={primaryHref}
-            className="grid min-h-[58px] grid-cols-[104px_minmax(0,1fr)_42px] items-center gap-2 rounded-[13px] border border-white/[0.055] bg-white/[0.018] px-2.5 py-2 transition hover:border-[#20D9A3]/25 hover:bg-white/[0.028] sm:min-h-[76px] sm:grid-cols-[132px_minmax(0,1fr)_56px] sm:px-4 sm:py-3"
+            className="grid min-h-[66px] grid-cols-[96px_minmax(0,1fr)_64px] items-center gap-2 rounded-[13px] border border-white/[0.055] bg-white/[0.018] px-2.5 py-2 transition hover:border-[#20D9A3]/25 hover:bg-white/[0.028] sm:min-h-[76px] sm:grid-cols-[132px_minmax(0,1fr)_72px] sm:px-4 sm:py-3"
           >
             <span className="flex min-w-0 items-center">
               <CompactAvatarStack members={selectedMembers?.slice(0, 3)} />
@@ -1559,13 +1573,20 @@ function MobileSessionFirstDashboardZone({
               </span>
             </span>
             <span className="flex flex-col items-center justify-center">
-              {primarySession ? (
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#20D9A3] text-[#062b22] shadow-[0_0_18px_rgba(32,217,163,0.25)] sm:h-11 sm:w-11">
-                  <Play
-                    className="h-4 w-4 fill-current sm:h-5 sm:w-5"
-                    aria-hidden="true"
-                  />
-                </span>
+              {primaryAction ? (
+                <>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#20D9A3] text-[#062b22] shadow-[0_0_18px_rgba(32,217,163,0.25)] sm:h-11 sm:w-11">
+                    <primaryAction.Icon
+                      className={`h-4 w-4 sm:h-5 sm:w-5 ${
+                        primaryAction.fill ? 'fill-current' : ''
+                      }`}
+                      aria-hidden="true"
+                    />
+                  </span>
+                  <span className="mt-1 max-w-[64px] break-words text-center text-[9px] font-semibold leading-[1.05] text-[#9FF0CE] sm:max-w-[72px] sm:text-[11px]">
+                    {primaryAction.label}
+                  </span>
+                </>
               ) : null}
             </span>
           </a>
@@ -1775,6 +1796,55 @@ function getSessionStatusLabel(
   }
 
   return locale === 'fr' ? 'Programmée' : 'Scheduled';
+}
+
+function getSessionDashboardAction(
+  session: DashboardGroupZoneSession,
+  hasNextSession: boolean,
+) {
+  if (session.status === 'active') {
+    return {
+      label: 'Live',
+      Icon: Radio,
+      fill: false,
+    };
+  }
+
+  if (session.status === 'incomplete') {
+    return {
+      label: 'Revision',
+      Icon: ClipboardCheck,
+      fill: false,
+    };
+  }
+
+  if (session.status === 'completed') {
+    return hasNextSession
+      ? {
+          label: 'Ended',
+          Icon: CheckCircle2,
+          fill: false,
+        }
+      : {
+          label: 'Plan next session',
+          Icon: CalendarClock,
+          fill: false,
+        };
+  }
+
+  if (session.status === 'cancelled') {
+    return {
+      label: 'Ended',
+      Icon: CheckCircle2,
+      fill: false,
+    };
+  }
+
+  return {
+    label: 'Start',
+    Icon: Play,
+    fill: true,
+  };
 }
 
 function getCompactSessionMeta(session: DashboardGroupZoneSession) {

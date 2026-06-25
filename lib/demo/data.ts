@@ -1293,11 +1293,26 @@ async function getDashboardCore(userId: string) {
         : null;
   }
 
-  const activeByGroup = new Map(
-    sessions
-      .filter((session) => session.status === 'active')
-      .map((session) => [session.group_id, session]),
-  );
+  const activeByGroup = new Map<string, DashboardSession>();
+  for (const session of [...sessions]
+    .filter(
+      (candidate) =>
+        candidate.status === 'active' || candidate.status === 'incomplete',
+    )
+    .sort((left, right) => {
+      if (left.status !== right.status) {
+        return left.status === 'active' ? -1 : 1;
+      }
+
+      return (
+        new Date(right.scheduled_at).getTime() -
+        new Date(left.scheduled_at).getTime()
+      );
+    })) {
+    if (!activeByGroup.has(session.group_id)) {
+      activeByGroup.set(session.group_id, session);
+    }
+  }
   const scheduledByGroup = new Map<string, DashboardSession>();
   for (const session of [...sessions]
     .filter((candidate) => candidate.status === 'scheduled')
