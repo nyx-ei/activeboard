@@ -7,6 +7,7 @@ out
 ActiveBoard_Epics_Stories.md
 Progression.html
 ActiveBoard_Ops_Dashboard.html
+ActiveBoard Dashboard _Offline_EN.html
 
 .env
 .env.local
@@ -27,6 +28,7 @@ playwright-report/
 test-results/
 e2e/.auth/
 e2e/reports/*.json
+supabase/.temp/
 
 .DS_Store
 Thumbs.db

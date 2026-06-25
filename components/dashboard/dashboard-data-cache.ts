@@ -12,7 +12,7 @@ type CacheMap<TPayloadByView extends Record<DashboardView, unknown>> = {
   [TView in DashboardView]: CacheEntry<TPayloadByView[TView]>;
 };
 
-const DASHBOARD_DATA_TTL_MS = 5_000;
+const DASHBOARD_DATA_TTL_MS = 30_000;
 const DASHBOARD_STALE_STORAGE_KEY = 'activeboard:dashboard-stale-views';
 
 const dashboardPayloadCache = {

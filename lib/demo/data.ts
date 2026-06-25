@@ -309,9 +309,9 @@ type DashboardLiveQuestionRow = {
 };
 
 const TRIAL_WARNING_THRESHOLD = 85;
-const DASHBOARD_SESSION_LIMIT = 50;
+const DASHBOARD_SESSION_LIMIT = 30;
 const DASHBOARD_CONFIDENCE_SESSION_LIMIT = 8;
-const GROUP_SESSION_LIMIT = 50;
+const GROUP_SESSION_LIMIT = 30;
 
 function getInitials(value: string) {
   return (
@@ -788,6 +788,42 @@ function buildProgressQuadrants(
     quadrants,
     quadrantQuestions,
   };
+}
+
+function buildProgressQuadrantSummary(
+  answers: Array<Pick<ProgressQuadrantAnswerRow, 'confidence' | 'is_correct'>>,
+  answeredCount: number,
+): ProgressQuadrantItem[] {
+  const currentSprintSize =
+    answeredCount > 0 ? answeredCount % 100 || Math.min(100, answeredCount) : 0;
+  const currentSprintAnswers = answers.slice(0, currentSprintSize);
+  const keys: ProgressQuadrantKey[] = [
+    'trueMastery',
+    'fragileKnowledge',
+    'consciousGap',
+    'falseConfidence',
+  ];
+  const counts = new Map<ProgressQuadrantKey, number>(
+    keys.map((key) => [key, 0]),
+  );
+
+  for (const answer of currentSprintAnswers) {
+    const key = getProgressQuadrantKey(answer.confidence, answer.is_correct);
+    if (key) {
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+  }
+
+  const total = currentSprintAnswers.length;
+  return keys.map((key) => {
+    const count = counts.get(key) ?? 0;
+    return {
+      key,
+      percentage: total > 0 ? Math.round((count / total) * 100) : 0,
+      count,
+      trend: null,
+    };
+  });
 }
 
 async function getUserSchedule(userId: string) {
@@ -1543,6 +1579,106 @@ export const getDashboardPerformanceData = cache(async (userId: string) => {
     progressQuadrantQuestions: progressState.quadrantQuestions,
   };
 });
+
+export const getDashboardPerformanceSummaryData = cache(
+  async (userId: string) => {
+    const perf = createPerfTracker(
+      `getDashboardPerformanceSummaryData:${userId}`,
+      {
+        userId,
+        minDurationMs: 250,
+        metadata: {
+          trace_group: 'dashboard',
+          trace_kind: 'performance_summary',
+        },
+      },
+    );
+    const supabase = createSupabaseServerClient();
+    const completedSessionsCountPromise = getCompletedSessionsCount(userId);
+    const metricsPromise = supabase
+      .schema('public')
+      .from('dashboard_user_answer_metrics')
+      .select(
+        'answered_count, correct_count, incorrect_count, average_confidence_score',
+      )
+      .eq('user_id', userId)
+      .maybeSingle();
+    const profileAnalyticsPromise = supabase
+      .schema('public')
+      .from('dashboard_user_profile_analytics')
+      .select('heatmap_data')
+      .eq('user_id', userId)
+      .maybeSingle();
+    const progressQuadrantAnswersPromise = supabase
+      .schema('public')
+      .from('answers')
+      .select('confidence, is_correct, answered_at')
+      .eq('user_id', userId)
+      .eq('answer_state', 'submitted')
+      .not('confidence', 'is', null)
+      .not('is_correct', 'is', null)
+      .order('answered_at', { ascending: false })
+      .limit(100);
+
+    const [
+      completedSessionsCount,
+      metricsResult,
+      profileAnalyticsResult,
+      progressQuadrantAnswersResult,
+    ] = await Promise.all([
+      completedSessionsCountPromise,
+      metricsPromise,
+      profileAnalyticsPromise,
+      progressQuadrantAnswersPromise,
+    ]);
+    perf.step('summary_views_loaded');
+
+    const metricsRow = metricsResult.data;
+    const answeredCount = metricsRow?.answered_count ?? 0;
+    const correctCount = metricsRow?.correct_count ?? 0;
+    const incorrectCount = metricsRow?.incorrect_count ?? 0;
+    const averageConfidence =
+      answeredCount > 0 && metricsRow?.average_confidence_score != null
+        ? scoreToConfidenceLevel(metricsRow.average_confidence_score)
+        : null;
+    const heatmap = parseArray(
+      profileAnalyticsResult.data?.heatmap_data,
+      parseHeatmapDay,
+    );
+    const progressQuadrants = buildProgressQuadrantSummary(
+      (progressQuadrantAnswersResult.data ?? []) as Array<
+        Pick<ProgressQuadrantAnswerRow, 'confidence' | 'is_correct'>
+      >,
+      answeredCount,
+    );
+
+    perf.done({
+      answeredCount,
+      completedSessionsCount,
+    });
+
+    return {
+      metrics: {
+        answeredCount,
+        completedSessionsCount,
+        successRate:
+          answeredCount > 0
+            ? Math.round((correctCount / answeredCount) * 100)
+            : null,
+        errorRate:
+          answeredCount > 0
+            ? Math.round((incorrectCount / answeredCount) * 100)
+            : null,
+        averageConfidence,
+        leagueProgress: Math.min(100, Math.round((answeredCount / 300) * 100)),
+      },
+      profileAnalytics: buildEmptyProfileAnalytics(answeredCount, heatmap),
+      progressQuadrants,
+      progressQuadrantQuestions: [] as ProgressQuadrantQuestionItem[],
+      sessionConfidenceBreakdown: [] as SessionConfidenceBreakdownItem[],
+    };
+  },
+);
 
 export const getUserScheduleData = cache(async (userId: string) =>
   getUserSchedule(userId),

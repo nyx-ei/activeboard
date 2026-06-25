@@ -2,8 +2,8 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 let refreshQueued = false;
 let lastRefreshStartedAt = 0;
-const MIN_REFRESH_INTERVAL_MS = 60_000;
-const REFRESH_DELAY_MS = 1_500;
+const MIN_REFRESH_INTERVAL_MS = 15 * 60_000;
+const REFRESH_DELAY_MS = 30_000;
 
 export async function refreshDashboardProfileAnalytics() {
   const supabase = createSupabaseAdminClient();

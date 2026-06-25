@@ -17,7 +17,7 @@ import {
   hasUserTierCapability,
 } from '@/lib/billing/gating';
 import {
-  getDashboardPerformanceData,
+  getDashboardPerformanceSummaryData,
   getDashboardSessionsData,
 } from '@/lib/demo/data';
 import { Link } from '@/i18n/navigation';
@@ -75,7 +75,7 @@ export default async function DashboardPage({
   const [sessionsData, performanceData, accessState, billingSnapshot] =
     await Promise.all([
       getDashboardSessionsData(user),
-      getDashboardPerformanceData(user.id),
+      getDashboardPerformanceSummaryData(user.id),
       getUserAccessState(user.id),
       getUserBillingSnapshot(user.id),
     ]);
