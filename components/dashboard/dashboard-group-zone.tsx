@@ -1501,7 +1501,7 @@ function MobileSessionFirstDashboardZone({
   }
 
   return (
-    <div className="mx-auto max-w-[760px] space-y-3 sm:space-y-4">
+    <div className="mx-auto w-full max-w-[760px] space-y-3 sm:space-y-4 lg:mx-0 lg:max-w-none">
       <section className="rounded-[15px] border border-white/[0.045] bg-[#071a18]/75 px-4 py-3 sm:px-6 sm:py-5">
         <div className="flex items-center justify-between">
           <h2 className="text-[13px] font-semibold text-[#d7e3df] sm:text-[16px]">
