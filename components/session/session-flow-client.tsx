@@ -1117,7 +1117,14 @@ export function ReviewAnswerForm({
       ? `/${locale}/sessions/${sessionId}?q=${targetQuestionIndex}`
       : `/${locale}/sessions/${sessionId}?stage=review&q=${targetQuestionIndex}`;
     setSubmissionError(null);
-    setSaveStatus('saving');
+
+    if (!shouldAdvance) {
+      setSavedCorrectOption(nextCorrectOption);
+      onSaved?.(nextCorrectOption);
+      setSaveStatus('saved');
+    } else {
+      setSaveStatus('saving');
+    }
 
     const savePromise = enqueueSessionSave<{
       ok?: boolean;
@@ -1197,10 +1204,6 @@ export function ReviewAnswerForm({
       });
       return;
     }
-
-    setSavedCorrectOption(nextCorrectOption);
-    onSaved?.(nextCorrectOption);
-    setSaveStatus('saved');
 
     void savePromise.then((result) => {
       if (result.ok) {
