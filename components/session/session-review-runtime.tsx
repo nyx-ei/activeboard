@@ -11,6 +11,7 @@ import type {
   CertaintyCorrectnessStatus,
   ConfidenceLevel,
 } from '@/lib/demo/confidence';
+import type { PlanNextAccess } from '@/lib/session/plan-next-access';
 import {
   ANSWER_OPTIONS,
   type AnswerOption,
@@ -67,6 +68,7 @@ type SessionReviewRuntimeProps = {
   initialQuestion: ReviewQuestion;
   initialDistribution: ReviewDistribution;
   initialOwnAnswer: ReviewOwnAnswer | null;
+  planNextAccess?: PlanNextAccess;
   labels: {
     reviewShort: string;
     previous: string;
@@ -128,6 +130,7 @@ export function SessionReviewRuntime({
   initialQuestion,
   initialDistribution,
   initialOwnAnswer,
+  planNextAccess,
   labels,
 }: SessionReviewRuntimeProps) {
   const [currentIndex, setCurrentIndex] = useState(initialQuestionIndex);
@@ -460,6 +463,7 @@ export function SessionReviewRuntime({
             sessionId={sessionId}
             groupId={groupId}
             questionGoal={questionGoal}
+            planNextAccess={planNextAccess}
             label={labels.finishSession}
             pendingLabel={labels.finishSessionPending}
           />

@@ -296,6 +296,7 @@ function DashboardSessionActionHost({
   canCreateSession,
   createSessionAction,
   sessionPolicy,
+  planNextAccess,
   labels,
 }: DashboardSessionsViewProps) {
   const [isCreateSessionOpen, setIsCreateSessionOpen] = useState(false);
@@ -351,6 +352,7 @@ function DashboardSessionActionHost({
       canCreateSession={canCreateSession}
       action={createSessionAction}
       sessionPolicy={sessionPolicy}
+      planNextAccess={planNextAccess}
       labels={{
         newSession: labels.newSession,
         createSession: labels.createSession,

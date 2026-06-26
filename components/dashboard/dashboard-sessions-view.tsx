@@ -11,6 +11,7 @@ import {
   type SessionListItem,
 } from '@/components/sessions/session-card';
 import type { SessionCreationPolicy } from '@/lib/policy/defaults';
+import type { PlanNextAccess } from '@/lib/session/plan-next-access';
 
 const CANCELLED_SESSION_STORAGE_KEY = 'activeboard:cancelled-session-ids';
 
@@ -106,6 +107,7 @@ export type DashboardSessionsViewProps = {
   canJoinSessions: boolean;
   canCreateSession: boolean;
   sessionPolicy?: SessionCreationPolicy;
+  planNextAccess?: PlanNextAccess;
   cancelSessionAction: (formData: FormData) => void | Promise<void>;
   joinSessionAction: (formData: FormData) => void | Promise<void>;
   createSessionAction: (formData: FormData) => void | Promise<void>;
@@ -153,6 +155,7 @@ export const DashboardSessionsView = memo(function DashboardSessionsView({
   canJoinSessions,
   canCreateSession,
   sessionPolicy,
+  planNextAccess,
   joinSessionAction,
   createSessionAction,
   labels,
@@ -424,6 +427,7 @@ export const DashboardSessionsView = memo(function DashboardSessionsView({
           canCreateSession={canCreateSession}
           action={createSessionAction}
           sessionPolicy={sessionPolicy}
+          planNextAccess={planNextAccess}
           labels={{
             newSession: labels.newSession,
             createSession: labels.createSession,
