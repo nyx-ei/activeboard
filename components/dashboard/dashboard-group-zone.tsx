@@ -1492,7 +1492,32 @@ function MobileSessionFirstDashboardZone({
   const primaryAction = primarySession
     ? getSessionDashboardAction(primarySession, Boolean(selectedNextSession))
     : null;
+  const [calibrationHelpMetric, setCalibrationHelpMetric] = useState<
+    'trueMastery' | 'falseConfidence' | null
+  >(null);
   const [isCalibrationHelpOpen, setIsCalibrationHelpOpen] = useState(false);
+  const calibrationHelpRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!calibrationHelpMetric) {
+      return;
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target as Node | null;
+      if (!target || calibrationHelpRef.current?.contains(target)) {
+        return;
+      }
+
+      setCalibrationHelpMetric(null);
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [calibrationHelpMetric]);
 
   if (!selectedGroup) {
     return (
@@ -1506,7 +1531,7 @@ function MobileSessionFirstDashboardZone({
     <div className="mx-auto w-full max-w-[760px] space-y-3 sm:space-y-4 lg:mx-0 lg:max-w-none">
       <section className="rounded-[15px] border border-white/[0.045] bg-[#071a18]/75 px-4 py-3 sm:px-6 sm:py-5">
         <div className="flex items-center justify-between">
-          <div className="relative">
+          <div className="hidden">
             <button
               type="button"
               onClick={() => setIsCalibrationHelpOpen((isOpen) => !isOpen)}
@@ -1535,22 +1560,73 @@ function MobileSessionFirstDashboardZone({
             {locale === 'fr' ? 'Voir plus' : 'View more'}
           </a>
         </div>
-        <div className="mt-3 grid grid-cols-2 divide-x divide-white/[0.06] sm:mt-4">
-          <div className="pr-3 text-center">
+        <div
+          ref={calibrationHelpRef}
+          className="mt-3 grid grid-cols-2 divide-x divide-white/[0.06] sm:mt-4"
+        >
+          <div className="relative pr-3 text-center">
             <p className="text-[25px] font-semibold leading-none text-[#20D9A3] sm:text-[34px]">
               {calibrationStats.trueMasteryPercent}%
             </p>
-            <p className="mt-1 text-[11px] text-[#8fa7a2] sm:text-[13px]">
-              {labels.trueMastery}
+            <p className="mt-1 inline-flex items-center justify-center gap-1 text-[11px] text-[#8fa7a2] sm:text-[13px]">
+              <span>{labels.trueMastery}</span>
+              <button
+                type="button"
+                onClick={() =>
+                  setCalibrationHelpMetric((metric) =>
+                    metric === 'trueMastery' ? null : 'trueMastery',
+                  )
+                }
+                className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-white/[0.08] text-[#9FF0CE] transition hover:border-[#20D9A3]/30 hover:bg-[#20D9A3]/10"
+                aria-label={
+                  locale === 'fr'
+                    ? 'Comprendre la maîtrise réelle'
+                    : 'Understand true mastery'
+                }
+                aria-expanded={calibrationHelpMetric === 'trueMastery'}
+              >
+                <Info className="h-2.5 w-2.5" aria-hidden="true" />
+              </button>
             </p>
+            {calibrationHelpMetric === 'trueMastery' ? (
+              <div className="absolute left-0 top-full z-20 mt-2 w-[min(230px,calc(100vw-64px))] rounded-[10px] border border-white/[0.08] bg-[#071a18] p-3 text-left text-[11px] font-medium leading-relaxed text-[#b4c8c3] shadow-[0_18px_50px_rgba(0,0,0,0.45)] sm:text-xs">
+                {locale === 'fr'
+                  ? 'Réponses justes avec une certitude élevée.'
+                  : 'Correct answers submitted with high confidence.'}
+              </div>
+            ) : null}
           </div>
-          <div className="pl-3 text-center">
+          <div className="relative pl-3 text-center">
             <p className="text-[25px] font-semibold leading-none text-[#9FF0CE] sm:text-[34px]">
               {calibrationStats.falseConfidencePercent}%
             </p>
-            <p className="mt-1 text-[11px] text-[#8fa7a2] sm:text-[13px]">
-              {labels.falseConfidence}
+            <p className="mt-1 inline-flex items-center justify-center gap-1 text-[11px] text-[#8fa7a2] sm:text-[13px]">
+              <span>{labels.falseConfidence}</span>
+              <button
+                type="button"
+                onClick={() =>
+                  setCalibrationHelpMetric((metric) =>
+                    metric === 'falseConfidence' ? null : 'falseConfidence',
+                  )
+                }
+                className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-white/[0.08] text-[#9FF0CE] transition hover:border-[#20D9A3]/30 hover:bg-[#20D9A3]/10"
+                aria-label={
+                  locale === 'fr'
+                    ? 'Comprendre la fausse confiance'
+                    : 'Understand false confidence'
+                }
+                aria-expanded={calibrationHelpMetric === 'falseConfidence'}
+              >
+                <Info className="h-2.5 w-2.5" aria-hidden="true" />
+              </button>
             </p>
+            {calibrationHelpMetric === 'falseConfidence' ? (
+              <div className="absolute right-0 top-full z-20 mt-2 w-[min(230px,calc(100vw-64px))] rounded-[10px] border border-white/[0.08] bg-[#071a18] p-3 text-left text-[11px] font-medium leading-relaxed text-[#b4c8c3] shadow-[0_18px_50px_rgba(0,0,0,0.45)] sm:text-xs">
+                {locale === 'fr'
+                  ? 'Réponses fausses soumises avec une certitude élevée.'
+                  : 'Incorrect answers submitted with high confidence.'}
+              </div>
+            ) : null}
           </div>
         </div>
       </section>
