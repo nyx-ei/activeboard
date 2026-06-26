@@ -305,7 +305,7 @@ export function SessionReviewRuntime({
   return (
     <main className="flex flex-1 flex-col">
       <header className="bg-background/95 sticky top-0 z-20 border-b border-white/[0.07] backdrop-blur">
-        <div className="mx-auto flex min-h-10 w-full max-w-[700px] items-center gap-2 px-4 py-1 sm:grid sm:min-h-16 sm:grid-cols-[40px_minmax(0,1fr)_40px] sm:gap-3 sm:py-0">
+        <div className="mx-auto flex min-h-10 w-full max-w-[700px] items-center gap-2 px-4 py-1 sm:grid sm:min-h-16 sm:grid-cols-[40px_minmax(0,1fr)_auto] sm:gap-3 sm:py-0">
           <SessionDashboardBackButton
             locale={locale}
             label={sessionTitle}
@@ -323,7 +323,14 @@ export function SessionReviewRuntime({
           <p className="hidden min-w-0 flex-1 text-center text-base font-extrabold text-white sm:block sm:text-lg">
             {sessionTitle} - {labels.reviewShort}
           </p>
-          <span aria-hidden="true" className="hidden sm:block" />
+          <span
+            className={`shrink-0 font-mono text-sm font-extrabold sm:text-base ${
+              isReviewOvertime ? 'text-amber-200' : 'text-[#9FF0CE]'
+            }`}
+            aria-label={locale === 'fr' ? 'Temps de revue' : 'Review time'}
+          >
+            {formatSignedReviewTime(reviewRemainingSeconds)}
+          </span>
         </div>
       </header>
 
@@ -363,19 +370,6 @@ export function SessionReviewRuntime({
               {labels.next} {'>'}
             </button>
           )}
-        </div>
-
-        <div
-          className={`flex items-center justify-between rounded-[10px] border px-3 py-2 text-xs font-bold sm:text-sm ${
-            isReviewOvertime
-              ? 'border-amber-300/30 bg-amber-300/10 text-amber-200'
-              : 'border-brand/20 bg-brand/10 text-[#9FF0CE]'
-          }`}
-        >
-          <span>{locale === 'fr' ? 'Temps de revue' : 'Review time'}</span>
-          <span className="font-mono text-sm sm:text-base">
-            {formatSignedReviewTime(reviewRemainingSeconds)}
-          </span>
         </div>
 
         <section className="surface-mockup p-3 sm:p-5">
