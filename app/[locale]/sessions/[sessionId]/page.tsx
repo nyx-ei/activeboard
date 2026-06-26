@@ -14,6 +14,7 @@ import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
 import { getSessionPageData } from '@/lib/demo/data';
+import { getPlanNextAccess } from '@/lib/session/plan-next-access';
 
 import { advanceSessionStepAction } from './actions';
 
@@ -57,6 +58,7 @@ export default async function SessionPage({
     searchParams.stage,
     requestedQuestionIndex,
   );
+  const planNextAccess = await getPlanNextAccess(user.id);
 
   if (!data?.session || !data.group) {
     notFound();
@@ -267,6 +269,7 @@ export default async function SessionPage({
           initialQuestion={reviewQuestion}
           initialDistribution={data.currentQuestionDistribution}
           initialOwnAnswer={data.currentUserAnswer}
+          planNextAccess={planNextAccess}
           labels={{
             reviewShort: t('reviewShort'),
             previous: t('previous'),

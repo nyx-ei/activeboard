@@ -21,6 +21,8 @@ import {
   getDashboardSessionsData,
 } from '@/lib/demo/data';
 import { Link } from '@/i18n/navigation';
+import { ensureInitialTestSessions } from '@/lib/session/initial-test-sessions';
+import { getPlanNextAccess } from '@/lib/session/plan-next-access';
 
 import {
   cancelDashboardSessionAction,
@@ -72,13 +74,18 @@ export default async function DashboardPage({
     searchParams.sessionJoinFeedback === '1' &&
     Boolean(searchParams.feedbackMessage);
 
-  const [sessionsData, performanceData, accessState, billingSnapshot] =
-    await Promise.all([
-      getDashboardSessionsData(user),
-      getDashboardPerformanceSummaryData(user.id),
-      getUserAccessState(user.id),
-      getUserBillingSnapshot(user.id),
-    ]);
+  const [accessState, billingSnapshot] = await Promise.all([
+    getUserAccessState(user.id),
+    getUserBillingSnapshot(user.id),
+  ]);
+
+  await ensureInitialTestSessions(user, accessState.policy);
+
+  const [sessionsData, performanceData] = await Promise.all([
+    getDashboardSessionsData(user),
+    getDashboardPerformanceSummaryData(user.id),
+  ]);
+  const planNextAccess = await getPlanNextAccess(user.id, accessState.policy);
 
   const canJoinSessions = hasUserTierCapability(accessState, 'canJoinSessions');
   const canCreateSession = hasUserTierCapability(
@@ -131,6 +138,7 @@ export default async function DashboardPage({
       minimumGroupMembersToStart:
         accessState.policy.minimumGroupMembersToStart,
     },
+    planNextAccess,
     cancelSessionAction: cancelDashboardSessionAction,
     joinSessionAction: joinSessionByCodeAction,
     createSessionAction: createDashboardSessionAction,

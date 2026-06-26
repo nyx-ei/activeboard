@@ -10,6 +10,7 @@ import {
   DEFAULT_SESSION_CREATION_POLICY,
   type SessionCreationPolicy,
 } from '@/lib/policy/defaults';
+import type { PlanNextAccess } from '@/lib/session/plan-next-access';
 
 export type CreateSessionModalLabels = {
   newSession: string;
@@ -38,6 +39,7 @@ export function CreateSessionModal({
   action,
   labels,
   sessionPolicy = DEFAULT_SESSION_CREATION_POLICY,
+  planNextAccess,
   onClose,
 }: {
   locale: string;
@@ -56,6 +58,7 @@ export function CreateSessionModal({
   action: (formData: FormData) => void | Promise<void>;
   labels: CreateSessionModalLabels;
   sessionPolicy?: SessionCreationPolicy;
+  planNextAccess?: PlanNextAccess;
   onClose: () => void;
 }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -78,9 +81,16 @@ export function CreateSessionModal({
   const [timerHelpMode, setTimerHelpMode] = useState<
     'per_question' | 'global' | null
   >(null);
+  const [paidCandidateResults, setPaidCandidateResults] = useState<
+    ParticipantCandidate[]
+  >([]);
   const [isCreating, setIsCreating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const minScheduledAt = getMinScheduledAtInputValue();
+  const canInviteCandidates = Boolean(planNextAccess?.canInviteCandidates);
+  const isLockedTestPlan = Boolean(
+    planNextAccess?.isTestPhase && !canInviteCandidates,
+  );
 
   const updateTimerMode = (value: 'per_question' | 'global') => {
     setTimerMode(value);
@@ -96,8 +106,38 @@ export function CreateSessionModal({
   const selectedGroup =
     groups.find((group) => group.id === selectedGroupId) ?? groups[0] ?? null;
   const participantCandidates = useMemo(
-    () => getParticipantCandidates(groups),
-    [groups],
+    () => {
+      const localCandidates = getParticipantCandidates(groups);
+      if (!canInviteCandidates || paidCandidateResults.length === 0) {
+        return localCandidates;
+      }
+
+      const candidateById = new Map(
+        localCandidates.map((candidate) => [candidate.id, candidate]),
+      );
+      for (const candidate of paidCandidateResults) {
+        candidateById.set(candidate.id, {
+          ...candidate,
+          groupIds: [
+            ...new Set([
+              ...(candidateById.get(candidate.id)?.groupIds ?? []),
+              ...candidate.groupIds,
+            ]),
+          ],
+          groupNames: [
+            ...new Set([
+              ...(candidateById.get(candidate.id)?.groupNames ?? []),
+              ...candidate.groupNames,
+            ]),
+          ],
+        });
+      }
+
+      return [...candidateById.values()].sort((left, right) =>
+        left.initials.localeCompare(right.initials),
+      );
+    },
+    [canInviteCandidates, groups, paidCandidateResults],
   );
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<
     string[]
@@ -113,7 +153,7 @@ export function CreateSessionModal({
     }
 
     return participantCandidates.filter((candidate) =>
-      `${candidate.initials} ${candidate.groupNames.join(' ')}`
+      `${candidate.initials} ${candidate.email ?? ''} ${candidate.groupNames.join(' ')}`
         .toLowerCase()
         .includes(search),
     );
@@ -132,6 +172,94 @@ export function CreateSessionModal({
 
     setName(getDefaultSessionName(selectedGroup.name));
   }, [hasEditedName, selectedGroup]);
+
+  useEffect(() => {
+    if (!canInviteCandidates) {
+      setPaidCandidateResults([]);
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+    const query = participantSearch.trim();
+    const timer = window.setTimeout(() => {
+      void fetch(
+        `/api/session-candidates?query=${encodeURIComponent(query)}`,
+        {
+          credentials: 'same-origin',
+          cache: 'no-store',
+          signal: controller.signal,
+        },
+      )
+        .then(async (response) => {
+          const payload = (await response.json().catch(() => null)) as {
+            ok?: boolean;
+            candidates?: Array<{
+              id: string;
+              name: string;
+              email: string;
+              avatarUrl: string | null;
+              compatibilityScore?: number;
+            }>;
+          } | null;
+
+          if (!response.ok || !payload?.ok || cancelled) {
+            return;
+          }
+
+          setPaidCandidateResults(
+            (payload.candidates ?? []).map((candidate) => ({
+              id: candidate.id,
+              initials: getInitials(candidate.name || candidate.email),
+              email: candidate.email,
+              avatarUrl: candidate.avatarUrl,
+              compatibilityScore: candidate.compatibilityScore,
+              groupIds: [],
+              groupNames: [
+                candidate.compatibilityScore
+                  ? locale === 'fr'
+                    ? `${candidate.compatibilityScore} creneaux compatibles`
+                    : `${candidate.compatibilityScore} compatible slots`
+                  : locale === 'fr'
+                    ? 'Candidat paye'
+                    : 'Paid candidate',
+              ],
+            })),
+          );
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setPaidCandidateResults([]);
+          }
+        });
+    }, query ? 160 : 0);
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [canInviteCandidates, locale, participantSearch]);
+
+  useEffect(() => {
+    if (!isLockedTestPlan) {
+      return;
+    }
+
+    setQuestionGoal(
+      String(
+        planNextAccess?.lockedQuestionGoal ??
+          sessionPolicy.defaultQuestionGoal,
+      ),
+    );
+    setTimerMode('per_question');
+    setTimerSeconds(String(sessionPolicy.perQuestionTimerDefaultSeconds));
+  }, [
+    isLockedTestPlan,
+    planNextAccess?.lockedQuestionGoal,
+    sessionPolicy.defaultQuestionGoal,
+    sessionPolicy.perQuestionTimerDefaultSeconds,
+  ]);
 
   const isValid =
     canCreateSession &&
@@ -368,7 +496,7 @@ export function CreateSessionModal({
                           {candidate.initials}
                         </span>
                         <span className="block truncate text-xs text-slate-500">
-                          {candidate.groupNames.join(' · ')}
+                          {candidate.email ?? candidate.groupNames.join(' · ')}
                         </span>
                       </span>
                       <span
@@ -414,14 +542,30 @@ export function CreateSessionModal({
           <span className="text-sm font-bold text-slate-300">
             {labels.scheduledAt}
           </span>
-          <input
-            name="scheduledAt"
-            type="datetime-local"
-            min={minScheduledAt}
-            value={scheduledAt}
-            onChange={(event) => setScheduledAt(event.target.value)}
-            className="field mt-2 h-10 min-w-0 rounded-[7px] px-3 py-2 text-sm [color-scheme:dark]"
-          />
+          {isLockedTestPlan ? (
+            <>
+              <input type="hidden" name="scheduledAt" value={scheduledAt} />
+              <input
+                type="time"
+                value={scheduledAt.slice(11, 16)}
+                onChange={(event) =>
+                  setScheduledAt(
+                    mergeLockedDateWithTime(scheduledAt, event.target.value),
+                  )
+                }
+                className="field mt-2 h-10 min-w-0 rounded-[7px] px-3 py-2 text-sm [color-scheme:dark]"
+              />
+            </>
+          ) : (
+            <input
+              name="scheduledAt"
+              type="datetime-local"
+              min={minScheduledAt}
+              value={scheduledAt}
+              onChange={(event) => setScheduledAt(event.target.value)}
+              className="field mt-2 h-10 min-w-0 rounded-[7px] px-3 py-2 text-sm [color-scheme:dark]"
+            />
+          )}
         </label>
 
         <label className="block">
@@ -434,8 +578,9 @@ export function CreateSessionModal({
             min="1"
             max={sessionPolicy.maxQuestionGoal}
             value={questionGoal}
+            readOnly={isLockedTestPlan}
             onChange={(event) => setQuestionGoal(event.target.value)}
-            className="field mt-2 h-10 rounded-[7px] px-3 py-2 text-sm"
+            className="field mt-2 h-10 rounded-[7px] px-3 py-2 text-sm read-only:cursor-not-allowed read-only:opacity-70"
           />
         </label>
 
@@ -482,8 +627,10 @@ export function CreateSessionModal({
                     value={value}
                     checked={timerMode === value}
                     onChange={() =>
+                      !isLockedTestPlan &&
                       updateTimerMode(value as 'per_question' | 'global')
                     }
+                    disabled={isLockedTestPlan}
                     className="sr-only"
                   />
                   <Clock
@@ -551,12 +698,19 @@ export function CreateSessionModal({
             min="1"
             max={sessionPolicy.maxTimerSeconds}
             value={timerSeconds}
+            readOnly={isLockedTestPlan}
             onChange={(event) => setTimerSeconds(event.target.value)}
-            className="field mt-2 h-10 rounded-[7px] px-3 py-2 text-sm"
+            className="field mt-2 h-10 rounded-[7px] px-3 py-2 text-sm read-only:cursor-not-allowed read-only:opacity-70"
           />
         </label>
 
-        <p className="text-xs italic text-slate-500">{labels.modalHint}</p>
+        <p className="text-xs italic text-slate-500">
+          {isLockedTestPlan
+            ? locale === 'fr'
+              ? `Seule l'heure est modifiable pendant les ${planNextAccess?.requiredTestSessions ?? 3} seances test.`
+              : `Only the time can be changed during the first ${planNextAccess?.requiredTestSessions ?? 3} test sessions.`
+            : labels.modalHint}
+        </p>
         {selectedParticipantCount < sessionPolicy.minimumGroupMembersToStart ? (
           <p className="text-xs font-semibold text-slate-500">
             {labels.groupAccessHint}
@@ -617,6 +771,19 @@ function formatDateTimeLocalValue(date: Date) {
   )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+function mergeLockedDateWithTime(currentValue: string, nextValue: string) {
+  const currentDate = currentValue.slice(0, 10);
+  const nextTime = nextValue.includes('T')
+    ? nextValue.slice(11, 16)
+    : nextValue.slice(0, 5);
+
+  if (!currentDate || !nextTime) {
+    return currentValue;
+  }
+
+  return `${currentDate}T${nextTime}`;
+}
+
 function isValidScheduledAtInput(value: string) {
   if (!value) {
     return false;
@@ -633,10 +800,24 @@ function isValidScheduledAtInput(value: string) {
 type ParticipantCandidate = {
   id: string;
   initials: string;
+  email?: string;
+  compatibilityScore?: number;
   avatarUrl: string | null;
   groupIds: string[];
   groupNames: string[];
 };
+
+function getInitials(value: string) {
+  return (
+    value
+      .split(/[\s@._-]+/)
+      .map((part) => part.trim()[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join('')
+      .toUpperCase() || 'AB'
+  );
+}
 
 function getParticipantCandidates(
   groups: Array<{

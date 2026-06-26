@@ -10,6 +10,10 @@ import { sendSessionCalendarInvites } from '@/lib/notifications/calendar-invites
 import { createGroupNotifications } from '@/lib/notifications/in-app';
 import { createPerfTracker } from '@/lib/observability/perf';
 import { getAppPolicySettings } from '@/lib/policy/app-policy';
+import {
+  getPlanNextAccess,
+  hasPaidAccess,
+} from '@/lib/session/plan-next-access';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { generateInviteCode } from '@/lib/utils';
@@ -145,19 +149,31 @@ export async function POST(request: Request) {
       );
     }
 
-    const [userTierResult, usersResult] = await Promise.all([
-      admin
-        .schema('public')
-        .from('users')
-        .select('questions_answered, has_valid_payment_method, subscription_status')
-        .eq('id', user.id)
-        .maybeSingle(),
-      admin
-        .schema('public')
-        .from('users')
-        .select('id')
-        .in('id', memberUserIds),
-    ]);
+    const [userTierResult, usersResult, selectedGroupMembersResult, planAccess] =
+      await Promise.all([
+        admin
+          .schema('public')
+          .from('users')
+          .select(
+            'questions_answered, has_valid_payment_method, subscription_status',
+          )
+          .eq('id', user.id)
+          .maybeSingle(),
+        admin
+          .schema('public')
+          .from('users')
+          .select('id, has_valid_payment_method, subscription_status, user_tier')
+          .in('id', memberUserIds),
+        groupId
+          ? admin
+              .schema('public')
+              .from('group_members')
+              .select('user_id')
+              .eq('group_id', groupId)
+              .in('user_id', memberUserIds)
+          : Promise.resolve({ data: [] }),
+        getPlanNextAccess(user.id, policy),
+      ]);
     perf.step('session_first_guards_loaded');
 
     const userTier = userTierResult.data
@@ -184,6 +200,40 @@ export async function POST(request: Request) {
         { ok: false, message: await getFeedback('actionFailed') },
         { status: 400 },
       );
+    }
+
+    const selectedGroupMemberIds = new Set(
+      (selectedGroupMembersResult.data ?? [])
+        .map((member) => member.user_id)
+        .filter((memberId): memberId is string => Boolean(memberId)),
+    );
+    const externalCandidateIds = memberUserIds.filter(
+      (memberUserId) => !selectedGroupMemberIds.has(memberUserId),
+    );
+
+    if (externalCandidateIds.length > 0 && !planAccess.canInviteCandidates) {
+      return NextResponse.json(
+        { ok: false, message: await getFeedback('notAuthorized') },
+        { status: 403 },
+      );
+    }
+
+    if (externalCandidateIds.length > 0) {
+      const paidUserIds = new Set(
+        (usersResult.data ?? [])
+          .filter((candidate) => hasPaidAccess(candidate))
+          .map((candidate) => candidate.id),
+      );
+      const hasUnpaidExternalCandidate = externalCandidateIds.some(
+        (candidateId) => !paidUserIds.has(candidateId),
+      );
+
+      if (hasUnpaidExternalCandidate) {
+        return NextResponse.json(
+          { ok: false, message: await getFeedback('notAuthorized') },
+          { status: 403 },
+        );
+      }
     }
 
     const inviteCode = await createUniqueInviteCode(admin);
