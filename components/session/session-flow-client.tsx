@@ -1198,29 +1198,25 @@ export function ReviewAnswerForm({
       return;
     }
 
-    const result = await savePromise;
+    setSavedCorrectOption(nextCorrectOption);
+    onSaved?.(nextCorrectOption);
+    setSaveStatus('saved');
 
-    if (result.ok) {
-      setSavedCorrectOption(nextCorrectOption);
-      onSaved?.(nextCorrectOption);
-      setSaveStatus('saved');
-      if (shouldAdvance) {
-        onAdvance?.(targetQuestionIndex);
-        if (!onAdvance) {
-          router.replace(redirectTo as never);
-        }
+    void savePromise.then((result) => {
+      if (result.ok) {
+        return;
       }
-      return;
-    }
 
-    if (result.redirectTo) {
-      router.replace(result.redirectTo as never);
-      return;
-    }
+      if (result.redirectTo) {
+        router.replace(result.redirectTo as never);
+        return;
+      }
 
-    setSavedCorrectOption(initialCorrectOption ?? '');
-    setSaveStatus('error');
-    setSubmissionError(result.message ?? labels.savePending);
+      setSavedCorrectOption(initialCorrectOption ?? '');
+      setSaveStatus('error');
+      setSubmissionError(result.message ?? labels.savePending);
+      window.setTimeout(() => router.refresh(), 0);
+    });
   }
 
   return (

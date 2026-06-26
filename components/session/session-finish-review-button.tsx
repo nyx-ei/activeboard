@@ -57,7 +57,6 @@ export function SessionFinishReviewButton({
         markDashboardPayloadStale('performance');
         router.prefetch(payload.redirectTo as never);
         router.replace(payload.redirectTo as never);
-        window.setTimeout(() => router.refresh(), 0);
         return;
       }
 

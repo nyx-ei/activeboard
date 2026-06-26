@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ClipboardCheck,
+  Info,
   Lock,
   LogOut,
   Mail,
@@ -1491,6 +1492,7 @@ function MobileSessionFirstDashboardZone({
   const primaryAction = primarySession
     ? getSessionDashboardAction(primarySession, Boolean(selectedNextSession))
     : null;
+  const [isCalibrationHelpOpen, setIsCalibrationHelpOpen] = useState(false);
 
   if (!selectedGroup) {
     return (
@@ -1504,9 +1506,28 @@ function MobileSessionFirstDashboardZone({
     <div className="mx-auto w-full max-w-[760px] space-y-3 sm:space-y-4 lg:mx-0 lg:max-w-none">
       <section className="rounded-[15px] border border-white/[0.045] bg-[#071a18]/75 px-4 py-3 sm:px-6 sm:py-5">
         <div className="flex items-center justify-between">
-          <h2 className="text-[13px] font-semibold text-[#d7e3df] sm:text-[16px]">
-            {locale === 'fr' ? 'Score de calibration' : 'Calibration score'}
-          </h2>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsCalibrationHelpOpen((isOpen) => !isOpen)}
+              className="flex h-7 w-7 items-center justify-center rounded-full border border-white/[0.07] bg-white/[0.025] text-[#9FF0CE] transition hover:border-[#20D9A3]/30 hover:bg-[#20D9A3]/10"
+              aria-label={
+                locale === 'fr'
+                  ? 'Comprendre la mesure'
+                  : 'Understand this measure'
+              }
+              aria-expanded={isCalibrationHelpOpen}
+            >
+              <Info className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+            {isCalibrationHelpOpen ? (
+              <div className="absolute left-0 top-full z-20 mt-2 w-[min(260px,calc(100vw-64px))] rounded-[10px] border border-white/[0.08] bg-[#071a18] p-3 text-[11px] font-medium leading-relaxed text-[#b4c8c3] shadow-[0_18px_50px_rgba(0,0,0,0.45)] sm:text-xs">
+                {locale === 'fr'
+                  ? 'Mesure issue des réponses révisées et du niveau de certitude.'
+                  : 'Measured from reviewed answers and confidence level.'}
+              </div>
+            ) : null}
+          </div>
           <a
             href={`/${locale}/dashboard/progression`}
             className="text-[11px] font-semibold text-[#20D9A3] sm:text-[13px]"
