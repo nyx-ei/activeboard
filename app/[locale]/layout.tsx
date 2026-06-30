@@ -117,15 +117,18 @@ export default async function LocaleLayout({
       .join('')
       .slice(0, 2)
       .toUpperCase() ?? 'AB';
+  const shellClassName = user
+    ? 'min-h-screen overflow-x-hidden bg-[#00100f] px-2 pb-6 pt-2 sm:px-6 sm:pt-4'
+    : 'min-h-screen overflow-x-hidden bg-[#01070d]';
+  const shellContentClassName = user
+    ? 'mx-auto flex min-h-[calc(100vh-2rem)] max-w-[1440px] flex-col gap-4 sm:gap-5'
+    : 'flex min-h-screen flex-col';
+
   return (
     <NextIntlClientProvider locale={locale} messages={clientMessages}>
       <RegisterServiceWorker />
-      <div
-        className={`min-h-screen overflow-x-hidden px-2 pb-6 pt-2 sm:px-6 sm:pt-4 ${
-          user ? 'bg-[#00100f]' : ''
-        }`}
-      >
-        <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-[1440px] flex-col gap-4 sm:gap-5">
+      <div className={shellClassName}>
+        <div className={shellContentClassName}>
           <OfflineStatusBanner />
           <InstallPrompt locale={locale} />
           {user ? <PwaLaunchTracker locale={locale} /> : null}
