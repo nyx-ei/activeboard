@@ -4,6 +4,7 @@ import { Check } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useFormStatus } from 'react-dom';
 
 import { fetchSessionRuntime } from '@/components/session/runtime-client';
 import { SessionDashboardBackButton } from '@/components/session/session-dashboard-back-button';
@@ -53,8 +54,10 @@ type SessionActiveRuntimeProps = {
   timerSeconds: number;
   startedAt: string | null;
   canAdvanceQuestion: boolean;
+  canTakeOverStartResponsibility: boolean;
   canInviteTeammate: boolean;
   inviteTeammateDisabledReason?: string | null;
+  takeOverStartResponsibilityAction: ServerAction;
   initialSubmittedCount: number;
   initialMemberCount: number;
   initialAnswerDeadlineAt: string | null;
@@ -78,6 +81,9 @@ type SessionActiveRuntimeProps = {
     allAnswersSubmitted: string;
     questionsCompletedValue: string;
     goToReview: string;
+    takeOverStartResponsibility: string;
+    takeOverStartResponsibilityPending: string;
+    currentStartResponsible: string;
     quitSession: string;
     quitPending: string;
     quitConfirm: SessionLeaveConfirmLabels;
@@ -100,6 +106,52 @@ const SessionStateRealtimeSync = dynamic(
   { ssr: false },
 );
 
+function TakeOverStartResponsibilityForm({
+  action,
+  locale,
+  sessionId,
+  labels,
+}: {
+  action: ServerAction;
+  locale: string;
+  sessionId: string;
+  labels: {
+    takeOverStartResponsibility: string;
+    takeOverStartResponsibilityPending: string;
+  };
+}) {
+  return (
+    <form action={action}>
+      <input type="hidden" name="locale" value={locale} />
+      <input type="hidden" name="sessionId" value={sessionId} />
+      <TakeOverStartResponsibilityButton labels={labels} />
+    </form>
+  );
+}
+
+function TakeOverStartResponsibilityButton({
+  labels,
+}: {
+  labels: {
+    takeOverStartResponsibility: string;
+    takeOverStartResponsibilityPending: string;
+  };
+}) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="rounded-[13px] border border-brand/35 bg-brand/10 px-4 py-2 text-sm font-extrabold text-brand transition hover:bg-brand/15 disabled:cursor-not-allowed disabled:opacity-70"
+    >
+      {pending
+        ? labels.takeOverStartResponsibilityPending
+        : labels.takeOverStartResponsibility}
+    </button>
+  );
+}
+
 export function SessionActiveRuntime({
   sessionId,
   currentUserId,
@@ -110,8 +162,10 @@ export function SessionActiveRuntime({
   timerSeconds,
   startedAt,
   canAdvanceQuestion,
+  canTakeOverStartResponsibility,
   canInviteTeammate,
   inviteTeammateDisabledReason = null,
+  takeOverStartResponsibilityAction,
   initialSubmittedCount,
   initialMemberCount,
   initialAnswerDeadlineAt,
@@ -562,6 +616,19 @@ export function SessionActiveRuntime({
       </header>
 
       <section className="mx-auto w-full max-w-[560px] px-4 py-7">
+        {canTakeOverStartResponsibility ? (
+          <div className="mb-4 flex flex-col gap-2 rounded-[14px] border border-white/[0.07] bg-white/[0.025] p-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-semibold text-[#8fa7a2]">
+              {labels.currentStartResponsible}
+            </p>
+            <TakeOverStartResponsibilityForm
+              action={takeOverStartResponsibilityAction}
+              locale={locale}
+              sessionId={sessionId}
+              labels={labels}
+            />
+          </div>
+        ) : null}
         <SessionAnswerForm
           key={runtimeQuestionIndex}
           advanceAction={advanceAction}

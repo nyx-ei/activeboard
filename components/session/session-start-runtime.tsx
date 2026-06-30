@@ -4,6 +4,7 @@ import { CalendarClock, Play, UsersRound } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useFormStatus } from 'react-dom';
 
 import { SessionDashboardBackButton } from '@/components/session/session-dashboard-back-button';
 import {
@@ -27,13 +28,19 @@ type SessionStartRuntimeProps = {
   timerSeconds: number;
   questionGoal: number;
   memberCount: number;
+  canStartSession: boolean;
+  canTakeOverStartResponsibility: boolean;
   canInviteTeammate: boolean;
   inviteTeammateDisabledReason?: string | null;
   advanceAction: ServerAction;
+  takeOverStartResponsibilityAction: ServerAction;
   labels: {
     questionsUnit: string;
     startSession: string;
     startSessionPending: string;
+    takeOverStartResponsibility: string;
+    takeOverStartResponsibilityPending: string;
+    currentStartResponsible: string;
     quitSession: string;
     questionUpper: string;
     confidenceTitle: string;
@@ -74,6 +81,52 @@ const OptimisticSessionActiveRuntime = dynamic(
   },
 );
 
+function TakeOverStartResponsibilityForm({
+  action,
+  locale,
+  sessionId,
+  labels,
+}: {
+  action: ServerAction;
+  locale: string;
+  sessionId: string;
+  labels: {
+    takeOverStartResponsibility: string;
+    takeOverStartResponsibilityPending: string;
+  };
+}) {
+  return (
+    <form action={action} className="w-full sm:w-auto">
+      <input type="hidden" name="locale" value={locale} />
+      <input type="hidden" name="sessionId" value={sessionId} />
+      <TakeOverStartResponsibilityButton labels={labels} />
+    </form>
+  );
+}
+
+function TakeOverStartResponsibilityButton({
+  labels,
+}: {
+  labels: {
+    takeOverStartResponsibility: string;
+    takeOverStartResponsibilityPending: string;
+  };
+}) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="min-h-12 w-full rounded-[13px] border border-brand/35 bg-brand/10 px-5 py-2.5 text-sm font-extrabold text-brand transition hover:bg-brand/15 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+    >
+      {pending
+        ? labels.takeOverStartResponsibilityPending
+        : labels.takeOverStartResponsibility}
+    </button>
+  );
+}
+
 export function SessionStartRuntime({
   locale,
   sessionId,
@@ -85,9 +138,12 @@ export function SessionStartRuntime({
   timerSeconds,
   questionGoal,
   memberCount,
+  canStartSession,
+  canTakeOverStartResponsibility,
   canInviteTeammate,
   inviteTeammateDisabledReason = null,
   advanceAction,
+  takeOverStartResponsibilityAction,
   labels,
 }: SessionStartRuntimeProps) {
   const router = useRouter();
@@ -113,8 +169,10 @@ export function SessionStartRuntime({
         timerSeconds={timerSeconds}
         startedAt={activeQuestion.startedAt}
         canAdvanceQuestion={true}
+        canTakeOverStartResponsibility={false}
         canInviteTeammate={canInviteTeammate}
         inviteTeammateDisabledReason={inviteTeammateDisabledReason}
+        takeOverStartResponsibilityAction={takeOverStartResponsibilityAction}
         initialAnswer={null}
         initialConfidence={null as ConfidenceLevel | null}
         initialSubmittedCount={0}
@@ -137,6 +195,10 @@ export function SessionStartRuntime({
           allAnswersSubmitted: labels.allAnswersSubmitted,
           questionsCompletedValue: labels.questionsCompletedValue,
           goToReview: labels.goToReview,
+          takeOverStartResponsibility: labels.takeOverStartResponsibility,
+          takeOverStartResponsibilityPending:
+            labels.takeOverStartResponsibilityPending,
+          currentStartResponsible: labels.currentStartResponsible,
           quitSession: labels.quitSession,
           quitPending: labels.quitPending,
           quitConfirm: labels.quitConfirm,
@@ -210,9 +272,9 @@ export function SessionStartRuntime({
           <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
             <button
               type="button"
-              disabled={isStarting}
+              disabled={isStarting || !canStartSession}
               onClick={() => {
-                if (isStarting) {
+                if (isStarting || !canStartSession) {
                   return;
                 }
 
@@ -296,6 +358,14 @@ export function SessionStartRuntime({
             >
               {isStarting ? labels.startSessionPending : labels.startSession}
             </button>
+            {canTakeOverStartResponsibility ? (
+              <TakeOverStartResponsibilityForm
+                action={takeOverStartResponsibilityAction}
+                locale={locale}
+                sessionId={sessionId}
+                labels={labels}
+              />
+            ) : null}
             {canInviteTeammate ? (
               <SessionInviteTeammateButton
                 locale={locale}
@@ -305,6 +375,11 @@ export function SessionStartRuntime({
               />
             ) : null}
           </div>
+          {!canStartSession ? (
+            <p className="mt-3 text-sm font-semibold text-[#8fa7a2]">
+              {labels.currentStartResponsible}
+            </p>
+          ) : null}
           {errorMessage ? (
             <p className="mt-3 text-sm font-semibold text-rose-300">
               {errorMessage}

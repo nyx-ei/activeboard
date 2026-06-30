@@ -81,7 +81,10 @@ function buildCalendarInviteCopy(args: {
   const sessionLabel = args.sessionName || args.groupName;
   const sharedDetails = [
     {
-      label: args.locale === 'fr' ? 'Leader' : 'Leader',
+      label:
+        args.locale === 'fr'
+          ? 'Responsable de demarrage'
+          : 'Start responsible',
       value: args.leaderName,
     },
     {
@@ -105,8 +108,8 @@ function buildCalendarInviteCopy(args: {
   ];
   const leaderNote =
     args.locale === 'fr'
-      ? "Responsabilites du leader : creer le groupe WhatsApp ou le fil email, confirmer l'heure exacte, partager le lien de reunion et demarrer la session. Si WhatsApp bloque, utilisez le courriel. La Qbank peut venir de n'importe quel membre."
-      : 'Leader responsibilities: create the WhatsApp group or email thread, confirm the exact time, share the meeting link, and start the session. If WhatsApp blocks you, use email. The Qbank can come from anyone in the group.';
+      ? "Responsabilite de demarrage : creer le groupe WhatsApp ou le fil email, confirmer l'heure exacte, partager le lien de reunion et cliquer sur Demarrer. Ce n'est pas un role de chef, d'enseignant, d'evaluateur ou de garant de performance. Chaque membre confirme sa presence et repond lui-meme au feedback apres la session. La Qbank peut venir de n'importe quel membre. Si WhatsApp bloque, utilisez le courriel."
+      : 'Start responsibility: create the WhatsApp group or email thread, confirm the exact time, share the meeting link, and click Start session. This is not a boss, teacher, evaluator, or performance-owner role. Each member confirms their own attendance and answers their own post-session feedback. The Qbank can come from anyone. If WhatsApp blocks you, use email.';
 
   if (args.locale === 'fr') {
     const emailArgs = {

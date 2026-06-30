@@ -199,6 +199,13 @@ export async function POST(request: Request, { params }: RouteContext) {
     );
   }
 
+  if (session.leader_id && session.leader_id !== user.id) {
+    return NextResponse.json(
+      { ok: false, message: await getFeedback('takeOverStartResponsibilityFirst') },
+      { status: 403 },
+    );
+  }
+
   const userTier = userTierResult.data
     ? deriveUserTier({
         questionsAnswered: userTierResult.data.questions_answered ?? 0,

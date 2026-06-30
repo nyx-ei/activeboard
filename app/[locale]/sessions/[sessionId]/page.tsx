@@ -17,7 +17,10 @@ import { getSessionPageData } from '@/lib/demo/data';
 import { getPlanNextAccess } from '@/lib/session/plan-next-access';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
-import { advanceSessionStepAction } from './actions';
+import {
+  advanceSessionStepAction,
+  takeOverStartResponsibilityAction,
+} from './actions';
 
 type SessionPageProps = {
   params: { locale: string; sessionId: string };
@@ -166,6 +169,10 @@ export default async function SessionPage({
       searchParams.stage !== 'review');
   const isReview = searchParams.stage === 'review';
   const canAdvanceQuestion = data.session.leader_id === user.id;
+  const canTakeOverStartResponsibility =
+    Boolean(data.membership) &&
+    Boolean(data.session.leader_id) &&
+    data.session.leader_id !== user.id;
   const canInviteTeammate = Boolean(data.membership);
   const groupMaxMembers =
     typeof (data.group as { max_members?: unknown }).max_members === 'number'
@@ -206,12 +213,18 @@ export default async function SessionPage({
           timerSeconds={data.session.timer_seconds}
           questionGoal={questionGoal}
           memberCount={memberCount}
+          canStartSession={canAdvanceQuestion || !data.session.leader_id}
+          canTakeOverStartResponsibility={canTakeOverStartResponsibility}
           canInviteTeammate={canInviteTeammate}
           inviteTeammateDisabledReason={inviteTeammateDisabledReason}
+          takeOverStartResponsibilityAction={takeOverStartResponsibilityAction}
           labels={{
             questionsUnit: t('questionsUnit'),
             startSession: t('startSession'),
             startSessionPending: t('startSessionPending'),
+            takeOverStartResponsibility: t('takeOverStartResponsibility'),
+            takeOverStartResponsibilityPending: t('takeOverStartResponsibilityPending'),
+            currentStartResponsible: t('currentStartResponsible'),
             quitSession: t('quitSession'),
             questionUpper: t('questionUpper'),
             confidenceTitle: t('confidenceLevel'),
@@ -398,8 +411,10 @@ export default async function SessionPage({
         timerSeconds={data.session.timer_seconds}
         startedAt={data.session.started_at}
         canAdvanceQuestion={canAdvanceQuestion}
+        canTakeOverStartResponsibility={canTakeOverStartResponsibility}
         canInviteTeammate={canInviteTeammate}
         inviteTeammateDisabledReason={inviteTeammateDisabledReason}
+        takeOverStartResponsibilityAction={takeOverStartResponsibilityAction}
         initialAnswer={myAnswer?.selected_option}
         initialConfidence={
           myAnswer?.confidence as ConfidenceLevel | null | undefined
@@ -427,6 +442,9 @@ export default async function SessionPage({
             total: questionGoal,
           }),
           goToReview: t('goToReview'),
+          takeOverStartResponsibility: t('takeOverStartResponsibility'),
+          takeOverStartResponsibilityPending: t('takeOverStartResponsibilityPending'),
+          currentStartResponsible: t('currentStartResponsible'),
           quitSession: t('quitSession'),
           quitPending: t('quitPending'),
           quitConfirm: quitConfirmLabels,
