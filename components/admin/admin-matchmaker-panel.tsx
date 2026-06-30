@@ -548,14 +548,15 @@ export function AdminMatchmakerPanel({
                     <button
                       type="button"
                       onClick={() => assignLeader(user.id)}
-                      className={`inline-flex h-9 items-center justify-center gap-2 rounded-[9px] border px-3 text-xs font-extrabold transition ${
+                      aria-label={copy.leader}
+                      title={copy.leader}
+                      className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] border transition ${
                         isLeader
                           ? 'border-[#f6c945]/60 bg-[#f6c945]/15 text-[#ffe48a]'
                           : 'border-white/[0.08] text-[#b9d1cb] hover:border-[#f6c945]/45 hover:text-[#ffe48a]'
                       }`}
                     >
-                      <Crown className="h-3.5 w-3.5" aria-hidden="true" />
-                      {copy.leader}
+                      <Crown className="h-5 w-5" aria-hidden="true" />
                     </button>
                           </>
                         );
