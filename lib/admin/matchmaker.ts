@@ -1,11 +1,18 @@
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import type { CandidateClassification } from '@/lib/matching/candidate-profile';
 
 export type AdminMatchmakerUser = {
   id: string;
   email: string;
   displayName: string | null;
   avatarUrl: string | null;
+  phoneNumber: string | null;
   questionsAnswered: number;
+  questionsReviewed: number;
+  sessionsJoined: number;
+  positivePeerVotes: number;
+  totalPeerVotes: number;
+  classification: CandidateClassification;
   createdAt: string;
 };
 
@@ -54,9 +61,10 @@ export async function getAdminMatchmakerData(
   const [usersResult, groupsResult, membersResult] = await Promise.all([
     admin
       .schema('public')
-      .from('users')
-      .select('id, email, display_name, avatar_url, questions_answered, created_at')
-      .order('created_at', { ascending: false })
+      .from('candidate_matching_profiles')
+      .select(
+        'user_id, email, display_name, avatar_url, phone_number, questions_completed, questions_reviewed, sessions_joined, positive_peer_votes, total_peer_votes, candidate_classification',
+      )
       .limit(500),
     admin
       .schema('public')
@@ -87,7 +95,7 @@ export async function getAdminMatchmakerData(
         .map((membership) => membership.user_id),
     ),
   ];
-  const loadedUserIds = new Set((usersResult.data ?? []).map((user) => user.id));
+  const loadedUserIds = new Set((usersResult.data ?? []).map((user) => user.user_id));
   const missingSelectedUserIds = selectedGroupUserIds.filter(
     (userId) => !loadedUserIds.has(userId),
   );
@@ -96,11 +104,11 @@ export async function getAdminMatchmakerData(
     missingSelectedUserIds.length > 0
       ? await admin
           .schema('public')
-          .from('users')
+          .from('candidate_matching_profiles')
           .select(
-            'id, email, display_name, avatar_url, questions_answered, created_at',
+            'user_id, email, display_name, avatar_url, phone_number, questions_completed, questions_reviewed, sessions_joined, positive_peer_votes, total_peer_votes, candidate_classification',
           )
-          .in('id', missingSelectedUserIds)
+          .in('user_id', missingSelectedUserIds)
       : { data: [], error: null };
 
   if (selectedUsersResult.error) {
@@ -111,12 +119,18 @@ export async function getAdminMatchmakerData(
     ...(usersResult.data ?? []),
     ...(selectedUsersResult.data ?? []),
   ].map((user) => ({
-    id: user.id,
+    id: user.user_id,
     email: user.email,
     displayName: user.display_name,
     avatarUrl: user.avatar_url,
-    questionsAnswered: user.questions_answered ?? 0,
-    createdAt: user.created_at,
+    phoneNumber: user.phone_number,
+    questionsAnswered: user.questions_completed ?? 0,
+    questionsReviewed: user.questions_reviewed ?? 0,
+    sessionsJoined: user.sessions_joined ?? 0,
+    positivePeerVotes: user.positive_peer_votes ?? 0,
+    totalPeerVotes: user.total_peer_votes ?? 0,
+    classification: user.candidate_classification ?? 'starting',
+    createdAt: '',
   }));
 
   const membershipsByGroup = new Map<

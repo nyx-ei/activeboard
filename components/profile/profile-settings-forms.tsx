@@ -9,10 +9,12 @@ type ProfileDetailsFormProps = {
   action: (formData: FormData) => void;
   locale: string;
   displayName: string;
+  phoneNumber: string;
   initialExamSession: string;
   initialQuestionBanks: string[];
   labels: {
     displayName: string;
+    phoneNumber: string;
     examSession: string;
     selectPlaceholder: string;
     examAprilMay2026: string;
@@ -40,6 +42,7 @@ export function ProfileDetailsForm({
   action,
   locale,
   displayName,
+  phoneNumber,
   initialExamSession,
   initialQuestionBanks,
   labels,
@@ -57,6 +60,17 @@ export function ProfileDetailsForm({
         <input name="displayName" className="field h-10 rounded-[7px] px-3 py-2 text-sm" defaultValue={displayName} />
       </label>
 
+      <label className="block">
+        <span className="mb-2 block text-sm font-semibold text-slate-400">{labels.phoneNumber}</span>
+        <input
+          name="phoneNumber"
+          type="tel"
+          className="field h-10 rounded-[7px] px-3 py-2 text-sm"
+          defaultValue={phoneNumber}
+          autoComplete="tel"
+        />
+      </label>
+
       <SubmitButton pendingLabel={labels.saveProfilePending} className="button-primary w-full rounded-[7px] py-2.5 text-sm">
         {labels.saveProfile}
       </SubmitButton>
@@ -70,6 +84,7 @@ export function ExamSettingsForm({
   action,
   locale,
   displayName,
+  phoneNumber,
   initialExamSession,
   initialQuestionBanks,
   labels,
@@ -93,6 +108,7 @@ export function ExamSettingsForm({
       <input type="hidden" name="locale" value={locale} />
       <input type="hidden" name="section" value="exam" />
       <input type="hidden" name="displayName" value={displayName} />
+      <input type="hidden" name="phoneNumber" value={phoneNumber} />
       {[...selectedBanks].map((bank) => (
         <input key={bank} type="hidden" name="questionBanks" value={bank} />
       ))}

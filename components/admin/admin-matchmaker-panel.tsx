@@ -17,6 +17,7 @@ import type {
   AdminMatchmakerGroup,
   AdminMatchmakerUser,
 } from '@/lib/admin/matchmaker';
+import { getCandidateClassificationCopy } from '@/lib/matching/candidate-profile';
 
 export type AdminMatchmakerCopy = {
   matchmakerEyebrow: string;
@@ -73,6 +74,20 @@ function getGroupLeaderId(group: AdminMatchmakerGroup | null) {
 
 function getUserLabel(user: AdminMatchmakerUser, unnamedUser: string) {
   return user.displayName?.trim() || user.email || unnamedUser;
+}
+
+function getUserMeta(user: AdminMatchmakerUser, locale: 'en' | 'fr') {
+  const classification = getCandidateClassificationCopy(
+    user.classification,
+    locale,
+  );
+  return {
+    label: classification.label,
+    stats:
+      locale === 'fr'
+        ? `${user.questionsAnswered} Q · ${user.questionsReviewed} revues · ${user.positivePeerVotes}/${user.totalPeerVotes} oui`
+        : `${user.questionsAnswered} Q · ${user.questionsReviewed} reviewed · ${user.positivePeerVotes}/${user.totalPeerVotes} yes`,
+  };
 }
 
 function UserAvatar({
@@ -483,12 +498,16 @@ export function AdminMatchmakerPanel({
                 return (
                   <div
                     key={user.id}
-                    className={`grid gap-3 rounded-[12px] border p-3 text-sm transition sm:grid-cols-[minmax(0,1fr)_90px_116px] sm:items-center ${
+                    className={`grid gap-3 rounded-[12px] border p-3 text-sm transition sm:grid-cols-[minmax(0,1fr)_150px_116px] sm:items-center ${
                       isSelected
                         ? 'border-[#20D9A3]/55 bg-[#20D9A3]/10'
                         : 'border-white/[0.08] bg-[#08231f] hover:border-[#20D9A3]/45'
                     }`}
-                  >
+                    >
+                      {(() => {
+                        const meta = getUserMeta(user, locale);
+                        return (
+                          <>
                     <button
                       type="button"
                       onClick={() => toggleMember(user.id)}
@@ -511,10 +530,20 @@ export function AdminMatchmakerPanel({
                         <span className="block truncate text-xs font-semibold text-[#8fa7a2]">
                           {user.email}
                         </span>
+                        {user.phoneNumber ? (
+                          <span className="block truncate text-xs font-semibold text-[#8fa7a2]">
+                            {user.phoneNumber}
+                          </span>
+                        ) : null}
                       </span>
                     </button>
-                    <span className="text-xs font-bold text-[#9fb8b2]">
-                      {user.questionsAnswered} Q
+                    <span className="min-w-0">
+                      <span className="inline-flex max-w-full rounded-full border border-[#20D9A3]/25 bg-[#20D9A3]/10 px-2 py-1 text-xs font-extrabold text-[#9FF0CE]">
+                        <span className="truncate">{meta.label}</span>
+                      </span>
+                      <span className="mt-1 block truncate text-xs font-bold text-[#9fb8b2]">
+                        {meta.stats}
+                      </span>
                     </span>
                     <button
                       type="button"
@@ -528,6 +557,9 @@ export function AdminMatchmakerPanel({
                       <Crown className="h-3.5 w-3.5" aria-hidden="true" />
                       {copy.leader}
                     </button>
+                          </>
+                        );
+                      })()}
                   </div>
                 );
               })

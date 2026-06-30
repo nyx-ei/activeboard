@@ -10,6 +10,7 @@ import {
   type SessionCardLabels,
   type SessionListItem,
 } from '@/components/sessions/session-card';
+import { Link } from '@/i18n/navigation';
 import type { SessionCreationPolicy } from '@/lib/policy/defaults';
 import type { PlanNextAccess } from '@/lib/session/plan-next-access';
 
@@ -140,6 +141,7 @@ export type DashboardSessionsViewProps = {
     trialProgressDescription: string;
     trialProgressWarning: string;
     trialProgressComplete: string;
+    availabilityRefresh: string;
   };
   sessionJoinFeedback?: {
     tone: 'success' | 'error';
@@ -254,6 +256,14 @@ export const DashboardSessionsView = memo(function DashboardSessionsView({
       </section>
 
       <div className="space-y-3">
+        <Link
+          href={{ pathname: '/profile', query: { section: 'exam' } }}
+          prefetch={false}
+          className="inline-flex min-h-10 w-full items-center justify-center rounded-[10px] border border-[#20D9A3]/30 bg-[#20D9A3]/10 px-4 text-sm font-extrabold text-[#9FF0CE] transition hover:border-[#20D9A3]/70 hover:bg-[#20D9A3]/15 sm:w-auto"
+        >
+          {labels.availabilityRefresh}
+        </Link>
+
         {groups.length > 0 ? (
           <div className="w-full">
             <button

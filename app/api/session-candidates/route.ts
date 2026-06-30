@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 
+import { getPlanNextAccess } from '@/lib/session/plan-next-access';
 import {
-  getPlanNextAccess,
-  hasPaidAccess,
-} from '@/lib/session/plan-next-access';
+  getCandidateClassificationCopy,
+  getCandidateClassificationWeight,
+  isActiveOrReliableCandidate,
+} from '@/lib/matching/candidate-profile';
 import {
   AVAILABILITY_WEEKDAYS,
   normalizeAvailabilityGrid,
@@ -13,6 +15,21 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 const MAX_CANDIDATES = 12;
+
+type CandidateBillingFields = {
+  has_valid_payment_method: boolean | null;
+  subscription_status: string | null;
+  user_tier: string | null;
+};
+
+function hasCandidatePaidAccess(candidate: CandidateBillingFields) {
+  return (
+    Boolean(candidate.has_valid_payment_method) ||
+    candidate.subscription_status === 'active' ||
+    candidate.subscription_status === 'trialing' ||
+    candidate.user_tier === 'active'
+  );
+}
 
 export async function GET(request: Request) {
   const supabase = createSupabaseServerClient();
@@ -31,14 +48,24 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const query = (url.searchParams.get('query') ?? '').trim();
+  const locale = url.searchParams.get('locale') === 'fr' ? 'fr' : 'en';
   const admin = createSupabaseAdminClient();
+  const requesterResult = await admin
+    .schema('public')
+    .from('candidate_matching_profiles')
+    .select(
+      'user_id, language, exam_type',
+    )
+    .eq('user_id', user.id)
+    .maybeSingle();
+
   let usersQuery = admin
     .schema('public')
-    .from('users')
+    .from('candidate_matching_profiles')
     .select(
-      'id, display_name, email, avatar_url, has_valid_payment_method, subscription_status, user_tier',
+      'user_id, display_name, email, avatar_url, phone_number, language, exam_type, has_valid_payment_method, subscription_status, user_tier, sessions_joined, questions_completed, questions_reviewed, review_completed_sessions, next_sessions_planned, positive_peer_votes, total_peer_votes, candidate_classification',
     )
-    .neq('id', user.id);
+    .neq('user_id', user.id);
 
   if (query) {
     const safeQuery = query.replaceAll('%', '').replaceAll(',', ' ');
@@ -53,15 +80,15 @@ export async function GET(request: Request) {
   }
 
   const paidUsers = (data ?? [])
-    .filter((candidate) => hasPaidAccess(candidate))
+    .filter((candidate) => hasCandidatePaidAccess(candidate))
     .slice(0, MAX_CANDIDATES);
-  const candidateIds = paidUsers.map((candidate) => candidate.id);
+  const candidateIds = paidUsers.map((candidate) => candidate.user_id);
   const schedulesResult =
     candidateIds.length > 0
       ? await admin
           .schema('public')
           .from('user_schedules')
-          .select('user_id, availability_grid')
+          .select('user_id, timezone, availability_grid')
           .in('user_id', [user.id, ...candidateIds])
       : { data: [] };
   const scheduleByUserId = new Map(
@@ -71,37 +98,86 @@ export async function GET(request: Request) {
     ]),
   );
   const requesterGrid = scheduleByUserId.get(user.id);
+  const requesterTimezone =
+    (schedulesResult.data ?? []).find((schedule) => schedule.user_id === user.id)
+      ?.timezone ?? null;
+  const timezoneByUserId = new Map(
+    (schedulesResult.data ?? []).map((schedule) => [
+      schedule.user_id,
+      schedule.timezone,
+    ]),
+  );
   const scoredCandidates = paidUsers
     .map((candidate) => {
-      const candidateGrid = scheduleByUserId.get(candidate.id);
+      const candidateGrid = scheduleByUserId.get(candidate.user_id);
+      const candidateTimezone = timezoneByUserId.get(candidate.user_id) ?? null;
+      const classificationWeight = getCandidateClassificationWeight(
+        candidate.candidate_classification,
+      );
+      const availabilityScore = getCompatibilityScore(
+        requesterGrid,
+        candidateGrid,
+      );
+      const profileScore =
+        classificationWeight +
+        availabilityScore +
+        (requesterResult.data?.language &&
+        candidate.language === requesterResult.data.language
+          ? 8
+          : 0) +
+        (requesterResult.data?.exam_type &&
+        candidate.exam_type === requesterResult.data.exam_type
+          ? 8
+          : 0) +
+        (requesterTimezone && candidateTimezone === requesterTimezone ? 4 : 0) +
+        Math.min(8, Number(candidate.positive_peer_votes ?? 0) * 2);
+
       return {
         candidate,
         availability: candidateGrid ?? null,
-        compatibilityScore: getCompatibilityScore(
-          requesterGrid,
-          candidateGrid,
-        ),
+        compatibilityScore: availabilityScore,
+        profileScore,
+        candidateTimezone,
       };
     })
     .sort((left, right) => {
-      if (right.compatibilityScore !== left.compatibilityScore) {
-        return right.compatibilityScore - left.compatibilityScore;
+      if (right.profileScore !== left.profileScore) {
+        return right.profileScore - left.profileScore;
       }
 
       return (left.candidate.display_name ?? left.candidate.email).localeCompare(
         right.candidate.display_name ?? right.candidate.email,
       );
     });
+  const hasActiveReliableMatch = scoredCandidates.some(({ candidate }) =>
+    isActiveOrReliableCandidate(candidate.candidate_classification),
+  );
 
   return NextResponse.json({
     ok: true,
-    candidates: scoredCandidates.map(({ candidate, availability, compatibilityScore }) => ({
-      id: candidate.id,
+    hasActiveReliableMatch,
+    fallbackRecommendation: hasActiveReliableMatch
+      ? null
+      : locale === 'fr'
+        ? 'Deux séances test supplémentaires sont recommandées avant de proposer un groupe stable.'
+        : 'Two more test sessions are recommended before proposing a stable group.',
+    candidates: scoredCandidates.map(({ candidate, availability, compatibilityScore, profileScore, candidateTimezone }) => ({
+      id: candidate.user_id,
       name: candidate.display_name ?? candidate.email,
       email: candidate.email,
       avatarUrl: candidate.avatar_url,
+      phoneNumber: candidate.phone_number,
       isPaid: true,
       compatibilityScore,
+      profileScore,
+      timezone: candidateTimezone,
+      classification: candidate.candidate_classification,
+      classificationLabel: getCandidateClassificationCopy(
+        candidate.candidate_classification,
+        locale,
+      ).label,
+      positivePeerVotes: candidate.positive_peer_votes ?? 0,
+      totalPeerVotes: candidate.total_peer_votes ?? 0,
       availability,
     })),
   });

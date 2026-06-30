@@ -128,6 +128,21 @@ export async function POST(request: Request, { params }: RouteContext) {
     .eq('id', sessionId);
   perf.step('session_completed');
 
+  void supabase
+    .schema('public')
+    .from('session_member_activity')
+    .upsert(
+      {
+        session_id: sessionId,
+        user_id: user.id,
+        attendance_status: 'present',
+        participated_in_review: true,
+        planned_next_session: true,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'session_id,user_id' },
+    );
+
   void Promise.allSettled([
     logAppEvent({
       eventName: APP_EVENTS.sessionEnded,

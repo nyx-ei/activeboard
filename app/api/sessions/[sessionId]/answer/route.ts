@@ -428,6 +428,17 @@ export async function POST(request: Request, { params }: RouteContext) {
       },
     }),
     sendTrialWarningEmailIfNeeded(user.id),
+    (async () => {
+      await supabase.schema('public').from('session_member_activity').upsert(
+        {
+          session_id: sessionId,
+          user_id: user.id,
+          attendance_status: 'present',
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'session_id,user_id' },
+      );
+    })(),
   ]);
   scheduleDashboardProfileAnalyticsRefresh();
   perf.step('deferred_side_effects_started');
