@@ -15,12 +15,12 @@ function ActiveBoardLandingLogo() {
   return (
     <div
       data-landing-logo
-      className="mt-3 flex max-w-[150px] translate-y-3 items-center gap-2 lg:mt-2 lg:max-w-none lg:translate-y-0 lg:gap-3"
+      className="flex max-w-[170px] items-center gap-2 lg:max-w-none lg:gap-3"
     >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] bg-brand text-sm font-extrabold text-white shadow-[0_10px_26px_rgba(31,230,166,0.24)] lg:h-10 lg:w-10 lg:rounded-[8px] lg:text-base">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] bg-brand text-sm font-extrabold text-white shadow-[0_10px_26px_rgba(31,230,166,0.2)] lg:h-10 lg:w-10 lg:rounded-[8px] lg:text-base">
         AB
       </div>
-      <span className="min-w-0 text-[20px] font-extrabold leading-none tracking-[-0.04em] text-white lg:text-[27px]">
+      <span className="min-w-0 text-[20px] font-extrabold leading-none text-white lg:text-[26px]">
         ActiveBoard
       </span>
     </div>
@@ -39,81 +39,68 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
   return (
     <main
       id="top"
-      className="-mx-2 -mb-24 -mt-6 min-h-screen overflow-hidden bg-[#01070d] px-5 pb-9 pt-0 sm:-mx-6 sm:px-9 sm:pt-0 lg:px-9"
+      className="-mx-2 -mb-24 -mt-6 min-h-screen overflow-x-hidden bg-[#01070d] px-5 pb-10 pt-5 sm:-mx-6 sm:px-9 lg:px-9"
     >
-      <section className="mx-auto grid min-h-[calc(100vh-72px)] max-w-[1280px] grid-cols-1 items-center gap-5 lg:grid-cols-[minmax(400px,500px)_minmax(0,1fr)] lg:gap-8">
-        <div className="relative z-10 w-full max-w-[454px] lg:-translate-y-10">
+      <section className="mx-auto grid max-w-[1280px] grid-cols-1 items-center gap-7 pb-10 pt-1 lg:min-h-[calc(100vh-96px)] lg:grid-cols-[minmax(420px,520px)_minmax(0,1fr)] lg:gap-10 lg:py-10">
+        <div className="relative z-10 w-full max-w-[520px]">
           <ActiveBoardLandingLogo />
 
           <p
             data-landing-badge
-            className="mt-5 inline-flex max-w-full items-center gap-3 rounded-full border border-white/[0.11] bg-[#050d15]/80 px-3.5 py-2 text-[13px] font-medium text-[#d6dce5] shadow-[0_0_0_1px_rgba(22,210,144,0.02)] lg:mt-4"
+            className="mt-6 inline-flex max-w-full items-center gap-2.5 rounded-full border border-white/[0.10] bg-white/[0.035] px-3.5 py-2 text-[12px] font-semibold leading-snug text-[#d8e1df] shadow-[0_0_0_1px_rgba(22,210,144,0.02)]"
           >
             <Users
-              className="h-[18px] w-[18px] text-brand"
+              className="h-4 w-4 shrink-0 text-brand"
               aria-hidden="true"
             />
-            {t('landingBadge')}
+            <span className="min-w-0">{t('landingBadge')}</span>
           </p>
-
-          <div data-landing-mobile-image className="relative my-4 lg:hidden">
-            <Image
-              src="/landing/direct-signup-devices.png"
-              alt="ActiveBoard live question phone and review laptop"
-              width={527}
-              height={474}
-              priority
-              unoptimized
-              className="mx-auto w-full max-w-[480px] object-contain"
-              sizes="100vw"
-            />
-          </div>
 
           <h1
             data-landing-hero
-            className="mt-5 text-[38px] font-bold leading-[1.02] tracking-[-0.035em] text-white sm:text-[44px] lg:mt-5"
+            className="mt-6 text-[34px] font-extrabold leading-[1.04] text-white sm:text-[44px] lg:text-[56px]"
           >
             {t('landingTitle')}
           </h1>
-          <p className="mt-4 max-w-[470px] text-[18px] font-normal leading-[1.32] tracking-[-0.01em] text-[#c5c9d0]">
+          <p className="mt-4 max-w-[490px] text-[17px] font-medium leading-[1.5] text-[#c6d4d1] sm:text-[18px]">
             {t('landingSubtitle')}
           </p>
 
-          <ul className="mt-5 grid gap-2 text-[15px] font-semibold leading-snug text-[#dce7ef]">
+          <ul className="mt-5 grid gap-2.5 text-[14px] font-semibold leading-snug text-[#dce7ef] sm:text-[15px]">
             <li className="flex gap-2">
               <ArrowRight
-                className="mt-0.5 h-4 w-4 shrink-0 text-brand"
+                className="mt-0.5 h-4 w-4 shrink-0 text-brand/90"
                 aria-hidden="true"
               />
               <span>{t('heroStep1')}</span>
             </li>
             <li className="flex gap-2">
               <ArrowRight
-                className="mt-0.5 h-4 w-4 shrink-0 text-brand"
+                className="mt-0.5 h-4 w-4 shrink-0 text-brand/90"
                 aria-hidden="true"
               />
               <span>{t('heroStep2')}</span>
             </li>
             <li className="flex gap-2">
               <ArrowRight
-                className="mt-0.5 h-4 w-4 shrink-0 text-brand"
+                className="mt-0.5 h-4 w-4 shrink-0 text-brand/90"
                 aria-hidden="true"
               />
               <span>{t('heroStep3')}</span>
             </li>
             <li className="flex gap-2">
               <ArrowRight
-                className="mt-0.5 h-4 w-4 shrink-0 text-brand"
+                className="mt-0.5 h-4 w-4 shrink-0 text-brand/90"
                 aria-hidden="true"
               />
               <span>{t('heroStep4')}</span>
             </li>
           </ul>
-          <p className="mt-4 text-[15px] font-extrabold uppercase tracking-[0.16em] text-white/80">
+          <p className="mt-5 text-[14px] font-extrabold text-white/85">
             {t('heroProofLine')}
           </p>
 
-          <div className="mt-4">
+          <div className="mt-5">
             <LandingDirectSignupForm
               locale={locale}
               labels={{
@@ -130,30 +117,43 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
 
           <a
             href="#how-it-works"
-            className="mt-3 inline-flex items-center gap-2 text-sm font-extrabold text-brand transition hover:text-brand-strong"
+            className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-brand transition hover:text-brand-strong"
           >
             {t('secondaryCta')}
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </a>
 
-          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[14px] font-normal text-[#d6dce5]">
-            <span className="inline-flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-brand" aria-hidden="true" />
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-[13px] font-semibold text-[#d6dce5]">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-1.5">
+              <CheckCircle2 className="h-4 w-4 text-brand" aria-hidden="true" />
               {t('landingProofFree')}
             </span>
-            <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-            <span>{t('landingProofQbanks')}</span>
-            <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-            <span className="inline-flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-brand" aria-hidden="true" />
+            <span className="inline-flex items-center rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-1.5">
+              {t('landingProofQbanks')}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-1.5">
+              <ShieldCheck className="h-4 w-4 text-brand" aria-hidden="true" />
               {t('landingProofCard')}
             </span>
+          </div>
+
+          <div data-landing-mobile-image className="relative mt-7 lg:hidden">
+            <Image
+              src="/landing/direct-signup-devices.png"
+              alt="ActiveBoard live question phone and review laptop"
+              width={527}
+              height={474}
+              priority
+              unoptimized
+              className="mx-auto w-full max-w-[390px] object-contain opacity-95"
+              sizes="100vw"
+            />
           </div>
         </div>
 
         <div
           data-landing-desktop-image
-          className="relative hidden min-h-[500px] min-w-0 items-center justify-end overflow-hidden lg:flex"
+          className="relative hidden min-h-[500px] min-w-0 items-center justify-end overflow-x-hidden lg:flex"
         >
           <div className="relative flex w-full min-w-0 justify-end">
             <Image
@@ -163,30 +163,30 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
               height={474}
               priority
               unoptimized
-              className="relative z-10 mt-0 h-auto w-full max-w-[700px] object-contain"
+              className="relative z-10 mt-0 h-auto w-full max-w-[690px] object-contain opacity-95"
               sizes="(min-width: 1280px) 700px, calc(100vw - 540px)"
             />
           </div>
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-[1180px] gap-4 pb-10 lg:grid-cols-[1.1fr_0.9fr] lg:pb-14">
-        <div className="rounded-[8px] border border-white/[0.08] bg-[#071812] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.18)] sm:p-7">
-          <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-brand">
+      <section className="mx-auto grid max-w-[1180px] gap-4 pb-10 lg:grid-cols-[1.12fr_0.88fr] lg:pb-14">
+        <div className="rounded-[8px] border border-white/[0.08] bg-white/[0.035] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.16)] sm:p-7">
+          <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-brand">
             {t('whyEyebrow')}
           </p>
-          <h2 className="mt-3 max-w-[760px] text-[30px] font-extrabold leading-tight tracking-[-0.025em] text-white sm:text-[38px]">
+          <h2 className="mt-3 max-w-[760px] text-[28px] font-extrabold leading-[1.12] text-white sm:text-[36px]">
             {t('whyTitle')}
           </h2>
-          <p className="mt-4 max-w-[720px] text-lg leading-8 text-[#c5d4d0]">
+          <p className="mt-4 max-w-[720px] text-base font-medium leading-7 text-[#c5d4d0] sm:text-[17px]">
             {t('whyBody')}
           </p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
             {['whyMetric1', 'whyMetric2', 'whyMetric3', 'whyMetric4'].map(
               (key) => (
                 <div
                   key={key}
-                  className="rounded-[8px] border border-white/[0.08] bg-[#020d0a]/70 px-4 py-3 text-sm font-bold text-[#dce7ef]"
+                  className="rounded-[8px] border border-white/[0.07] bg-[#020d0a]/55 px-4 py-3 text-[13px] font-semibold leading-snug text-[#dce7ef]"
                 >
                   {t(key)}
                 </div>
@@ -195,25 +195,25 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
           </div>
         </div>
 
-        <aside className="border-brand/20 rounded-[8px] border bg-[#0a1d16] p-5 sm:p-7">
-          <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-brand">
+        <aside className="rounded-[8px] border border-brand/20 bg-[#071812] p-5 sm:p-7">
+          <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-brand">
             {t('proofEyebrow')}
           </p>
           <div className="mt-5 grid gap-4">
             <div>
-              <p className="text-5xl font-extrabold tracking-[-0.04em] text-white">
+              <p className="text-[42px] font-extrabold leading-none text-white sm:text-5xl">
                 194
               </p>
-              <p className="mt-1 text-base font-semibold text-[#b5c8c4]">
+              <p className="mt-2 text-sm font-semibold leading-snug text-[#b5c8c4] sm:text-base">
                 {t('proofCandidates')}
               </p>
             </div>
             <div className="h-px bg-white/10" />
             <div>
-              <p className="text-5xl font-extrabold tracking-[-0.04em] text-brand">
+              <p className="text-[42px] font-extrabold leading-none text-brand sm:text-5xl">
                 13
               </p>
-              <p className="mt-1 text-base font-semibold text-[#b5c8c4]">
+              <p className="mt-2 text-sm font-semibold leading-snug text-[#b5c8c4] sm:text-base">
                 {t('proofActiveMembers')}
               </p>
             </div>
@@ -223,27 +223,27 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
 
       <section
         id="how-it-works"
-        className="mx-auto max-w-[1180px] rounded-[8px] border border-white/[0.08] bg-[#050d15]/80 p-5 sm:p-7"
+        className="mx-auto max-w-[1180px] rounded-[8px] border border-white/[0.08] bg-[#050d15]/75 p-5 sm:p-7"
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-brand">
+            <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-brand">
               {t('howTitle')}
             </p>
-            <h2 className="mt-3 max-w-[760px] text-[30px] font-extrabold leading-tight tracking-[-0.025em] text-white sm:text-[38px]">
+            <h2 className="mt-3 max-w-[760px] text-[27px] font-extrabold leading-[1.14] text-white sm:text-[36px]">
               {t('impactLine')}
             </h2>
           </div>
           <a
             href="#top"
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[6px] bg-brand px-5 text-sm font-extrabold text-[#04120e] transition hover:bg-brand-strong"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[6px] bg-brand px-5 text-center text-sm font-extrabold leading-snug text-[#04120e] transition hover:bg-brand-strong sm:shrink-0"
           >
             {t('finalCta')}
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </a>
         </div>
 
-        <div className="mt-7 grid gap-4 md:grid-cols-3">
+        <div className="mt-7 grid gap-3 md:grid-cols-3">
           {[
             ['1', 'howStep1'],
             ['2', 'howStep2'],
@@ -253,10 +253,10 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
               key={number}
               className="rounded-[8px] border border-white/[0.08] bg-[#081711] p-5"
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand text-base font-extrabold text-[#04120e]">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-sm font-extrabold text-[#04120e]">
                 {number}
               </div>
-              <p className="mt-5 text-lg font-extrabold leading-snug text-white">
+              <p className="mt-4 text-base font-extrabold leading-snug text-white sm:text-lg">
                 {t(key)}
               </p>
             </div>

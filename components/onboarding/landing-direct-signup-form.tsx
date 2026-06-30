@@ -131,17 +131,17 @@ export function LandingDirectSignupForm({
 
   return (
     <div className="w-full max-w-[420px]">
-      <div className="space-y-[7px]">
+      <div className="space-y-2">
         <label className="relative block">
           <Mail
-            className="pointer-events-none absolute left-[18px] top-1/2 h-5 w-5 -translate-y-1/2 text-brand"
+            className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-brand"
             aria-hidden="true"
           />
           <input
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="h-[43px] w-full rounded-[5px] border border-[#1c2d40] bg-[#020910]/70 pl-[54px] pr-4 text-[14px] font-medium text-white outline-none transition placeholder:text-[#c1c7cf] focus:border-brand focus:ring-2 focus:ring-emerald-400/20"
+            className="h-12 w-full rounded-[8px] border border-white/[0.09] bg-[#020910]/75 pl-11 pr-4 text-[14px] font-semibold text-white outline-none transition placeholder:text-[#9aa7ad] focus:border-brand focus:ring-2 focus:ring-emerald-400/20"
             placeholder={labels.email}
             autoComplete="email"
           />
@@ -159,7 +159,7 @@ export function LandingDirectSignupForm({
         data-landing-submit
         disabled={!isValid || isSubmitting}
         onClick={submitSignup}
-        className="mt-[10px] flex h-[47px] w-full items-center justify-center rounded-[5px] bg-brand text-[19px] font-bold tracking-[-0.02em] text-[#05110d] transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-3 flex min-h-12 w-full items-center justify-center rounded-[8px] bg-brand px-4 text-center text-[15px] font-extrabold leading-snug text-[#05110d] transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-50 sm:text-base"
       >
         {isSubmitting ? labels.pending : labels.submit}
       </button>
