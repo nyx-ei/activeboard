@@ -433,7 +433,7 @@ function getCopy(locale: AppLocale) {
       matchmakerEyebrow: 'Match-maker',
       matchmakerTitle: 'Composition des groupes',
       matchmakerDescription:
-        'Crée ou ajuste les groupes depuis la console administrateur. Choisis les membres, puis désigne le leader du groupe.',
+        'Crée ou ajuste les groupes depuis la console administrateur. Choisis les membres, puis désigne le responsable de démarrage.',
       newGroup: 'Nouveau groupe',
       groupName: 'Nom du groupe',
       capacity: 'Capacité',
@@ -443,9 +443,9 @@ function getCopy(locale: AppLocale) {
       difficultyHigh: 'Élevé',
       members: 'Membres',
       membersHint:
-        'Le leader est automatiquement inclus dans le groupe. Maximum 6 membres.',
+        'Le responsable de démarrage est automatiquement inclus dans le groupe. Maximum 6 membres.',
       usersShown: 'utilisateurs affichés',
-      leader: 'Leader',
+      leader: 'Responsable de démarrage',
       unnamedUser: 'Utilisateur sans nom',
       createGroup: 'Créer le groupe',
       updateGroup: 'Mettre à jour le groupe',
@@ -455,7 +455,7 @@ function getCopy(locale: AppLocale) {
       currentGroups: 'Groupes actuels',
       notSet: 'non défini',
       matchmakerSaved: 'Composition du groupe enregistrée.',
-      matchmakerMissing: 'Ajoute un nom, au moins un membre et un leader.',
+      matchmakerMissing: 'Ajoute un nom, au moins un membre et un responsable de démarrage.',
       matchmakerTooMany: 'Un groupe ne peut pas dépasser 6 membres.',
       matchmakerInvalidUser: 'Un utilisateur sélectionné est introuvable.',
       matchmakerActiveSession:
@@ -505,7 +505,7 @@ function getCopy(locale: AppLocale) {
     matchmakerEyebrow: 'Match-maker',
     matchmakerTitle: 'Group composition',
     matchmakerDescription:
-      'Create or adjust groups from the admin console. Choose members, then assign the group leader.',
+      'Create or adjust groups from the admin console. Choose members, then assign the start responsible.',
     newGroup: 'New group',
     groupName: 'Group name',
     capacity: 'Capacity',
@@ -515,9 +515,9 @@ function getCopy(locale: AppLocale) {
     difficultyHigh: 'High',
     members: 'Members',
     membersHint:
-      'The leader is automatically included in the group. Maximum 6 members.',
+      'The start responsible is automatically included in the group. Maximum 6 members.',
     usersShown: 'users shown',
-    leader: 'Leader',
+    leader: 'Start responsible',
     unnamedUser: 'Unnamed user',
     createGroup: 'Create group',
     updateGroup: 'Update group',
@@ -527,7 +527,7 @@ function getCopy(locale: AppLocale) {
     currentGroups: 'Current groups',
     notSet: 'not set',
     matchmakerSaved: 'Group composition saved.',
-    matchmakerMissing: 'Add a name, at least one member, and a leader.',
+    matchmakerMissing: 'Add a name, at least one member, and a start responsible.',
     matchmakerTooMany: 'A group cannot exceed 6 members.',
     matchmakerInvalidUser: 'One selected user could not be found.',
     matchmakerActiveSession:

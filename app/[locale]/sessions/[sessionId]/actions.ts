@@ -1531,6 +1531,116 @@ export async function passLeaderAction(formData: FormData) {
   );
 }
 
+export async function takeOverStartResponsibilityAction(formData: FormData) {
+  const locale = formData.get('locale') as AppLocale;
+  const sessionId = String(formData.get('sessionId') ?? '');
+  const t = await getTranslations({ locale, namespace: 'Feedback' });
+  const { supabase, user } = await getCurrentAuthUser();
+
+  if (!user) {
+    redirect(`/${locale}/auth/login`);
+  }
+
+  const { data: session } = await supabase
+    .schema('public')
+    .from('sessions')
+    .select('group_id, leader_id, status')
+    .eq('id', sessionId)
+    .maybeSingle();
+
+  if (!session) {
+    redirect(withFeedback(`/${locale}/dashboard`, 'error', t('notAuthorized')));
+  }
+
+  if (
+    session.status !== 'scheduled' &&
+    session.status !== 'active' &&
+    session.status !== 'incomplete'
+  ) {
+    redirect(
+      withFeedback(
+        `/${locale}/sessions/${sessionId}`,
+        'error',
+        t('actionFailed'),
+      ),
+    );
+  }
+
+  const { data: membership } = await supabase
+    .schema('public')
+    .from('group_members')
+    .select('user_id')
+    .eq('group_id', session.group_id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (!membership) {
+    redirect(
+      withFeedback(
+        `/${locale}/sessions/${sessionId}`,
+        'error',
+        t('notAuthorized'),
+      ),
+    );
+  }
+
+  if (session.leader_id === user.id) {
+    redirect(
+      withFeedback(
+        `/${locale}/sessions/${sessionId}`,
+        'success',
+        t('startResponsibleTakenOver'),
+      ),
+    );
+  }
+
+  let updateQuery = supabase
+    .schema('public')
+    .from('sessions')
+    .update({ leader_id: user.id })
+    .select('group_id, leader_id')
+    .eq('id', sessionId)
+    .eq('status', session.status);
+
+  updateQuery = session.leader_id
+    ? updateQuery.eq('leader_id', session.leader_id)
+    : updateQuery.is('leader_id', null);
+
+  const { data: updatedSession, error } = await updateQuery.maybeSingle();
+
+  if (error || updatedSession?.leader_id !== user.id) {
+    redirect(
+      withFeedback(
+        `/${locale}/sessions/${sessionId}`,
+        'error',
+        t('sessionStateChanged'),
+      ),
+    );
+  }
+
+  await logAppEvent({
+    eventName: APP_EVENTS.leaderPassed,
+    locale,
+    userId: user.id,
+    groupId: session.group_id,
+    sessionId,
+    metadata: {
+      next_leader_id: user.id,
+      previous_leader_id: session.leader_id,
+      source: 'start_responsibility_takeover',
+    },
+  });
+
+  revalidatePath(`/${locale}/sessions/${sessionId}`);
+  redirect(
+    withFeedback(
+      `/${locale}/sessions/${sessionId}`,
+      'success',
+      t('startResponsibleTakenOver'),
+    ),
+  );
+}
+
 export async function endSessionAction(formData: FormData) {
   const locale = formData.get('locale') as AppLocale;
   const sessionId = formData.get('sessionId') as string;

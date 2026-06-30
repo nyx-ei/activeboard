@@ -436,7 +436,7 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                           {group.name}
                         </p>
                         <p className={`mt-1 truncate text-xs ${muted}`}>
-                          Leader :{' '}
+                          Responsable :{' '}
                           {group.leaderNames.join(', ') || 'non défini'}
                         </p>
                       </div>
@@ -491,7 +491,7 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                     ['follow_up', 'À relancer'],
                     ['inactive', 'Inactifs'],
                     ['active', 'Actifs'],
-                    ['leader', 'Leaders'],
+                    ['leader', 'Responsables'],
                   ].map(([value, label]) => (
                     <button
                       key={value}
@@ -633,7 +633,7 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                               </p>
                               {member.isLeader ? (
                                 <span className="rounded-full border border-[#27e0b4]/30 bg-[#27e0b4]/10 px-2 py-0.5 text-[11px] font-black text-[#27e0b4]">
-                                  Leader
+                                  Responsable
                                 </span>
                               ) : null}
                             </div>
@@ -698,7 +698,7 @@ export function OpsDashboardView({ backHref, data }: OpsDashboardViewProps) {
                       <Clock3 className="h-4 w-4" aria-hidden="true" />
                       {formatDate(member.lastActivityAt)}
                     </span>
-                    <span>{member.isLeader ? 'Leader' : 'Membre'}</span>
+                    <span>{member.isLeader ? 'Responsable' : 'Membre'}</span>
                     <span>{member.questionsDone} Q faites</span>
                     <span>{member.questionsReviewed} Q révisées</span>
                     <span>{member.scheduledSessions} sessions planifiées</span>
