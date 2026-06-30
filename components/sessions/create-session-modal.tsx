@@ -1,7 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, Clock, HelpCircle, Search, UsersRound } from 'lucide-react';
+import {
+  AlertCircle,
+  Check,
+  Clock,
+  HelpCircle,
+  Search,
+  UsersRound,
+} from 'lucide-react';
 
 import { Modal, ModalTitle } from '@/components/ui/modal';
 import { SubmitButton } from '@/components/ui/submit-button';
@@ -261,16 +268,18 @@ export function CreateSessionModal({
     sessionPolicy.perQuestionTimerDefaultSeconds,
   ]);
 
-  const isValid =
-    canCreateSession &&
-    selectedParticipantCount >= sessionPolicy.minimumGroupMembersToStart &&
-    name.trim().length > 0 &&
-    isValidScheduledAtInput(scheduledAt) &&
-    Number(questionGoal) > 0 &&
-    Number(questionGoal) <= sessionPolicy.maxQuestionGoal &&
-    Number(timerSeconds) > 0 &&
-    Number(timerSeconds) <= sessionPolicy.maxTimerSeconds;
-
+  const validationIssue = getCreateSessionValidationIssue({
+    locale,
+    canCreateSession,
+    selectedParticipantCount,
+    minimumParticipantCount: sessionPolicy.minimumGroupMembersToStart,
+    name,
+    scheduledAt,
+    questionGoal,
+    maxQuestionGoal: sessionPolicy.maxQuestionGoal,
+    timerSeconds,
+    maxTimerSeconds: sessionPolicy.maxTimerSeconds,
+  });
   return (
     <Modal
       open
@@ -299,12 +308,17 @@ export function CreateSessionModal({
         action={action}
         className="mt-5 space-y-4"
         onSubmit={(event) => {
-          if (!isValid || isCreating) {
+          if (isCreating) {
             event.preventDefault();
             return;
           }
 
           event.preventDefault();
+          if (validationIssue) {
+            setErrorMessage(validationIssue);
+            return;
+          }
+
           setErrorMessage(null);
           setIsCreating(true);
           window.sessionStorage.setItem('activeboard:session-flow-active', '1');
@@ -711,18 +725,21 @@ export function CreateSessionModal({
               : `Only the time can be changed during the first ${planNextAccess?.requiredTestSessions ?? 3} test sessions.`
             : labels.modalHint}
         </p>
-        {selectedParticipantCount < sessionPolicy.minimumGroupMembersToStart ? (
-          <p className="text-xs font-semibold text-slate-500">
-            {labels.groupAccessHint}
-          </p>
-        ) : null}
         {errorMessage ? (
-          <p className="text-sm font-semibold text-rose-300">{errorMessage}</p>
+          <div
+            role="alert"
+            className="flex items-start gap-3 rounded-[10px] border border-rose-300/20 bg-rose-300/[0.08] px-3 py-3 text-sm font-semibold leading-5 text-rose-100 shadow-[0_16px_42px_rgba(0,0,0,0.18)]"
+          >
+            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-rose-300/10 text-rose-200">
+              <AlertCircle className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <span className="min-w-0">{errorMessage}</span>
+          </div>
         ) : null}
         <SubmitButton
           pendingLabel={labels.createSessionPending}
           className="button-primary disabled:bg-brand/40 h-10 w-full rounded-[7px] py-2 text-sm disabled:text-white/60"
-          disabled={!isValid || isCreating}
+          disabled={isCreating}
         >
           {isCreating ? labels.createSessionPending : labels.createSession}
         </SubmitButton>
@@ -795,6 +812,98 @@ function isValidScheduledAtInput(value: string) {
     Number.isFinite(scheduledAt.getTime()) &&
     scheduledAt.getTime() >= Date.now() - 5 * 60 * 1000
   );
+}
+
+function getCreateSessionValidationIssue({
+  locale,
+  canCreateSession,
+  selectedParticipantCount,
+  minimumParticipantCount,
+  name,
+  scheduledAt,
+  questionGoal,
+  maxQuestionGoal,
+  timerSeconds,
+  maxTimerSeconds,
+}: {
+  locale: string;
+  canCreateSession: boolean;
+  selectedParticipantCount: number;
+  minimumParticipantCount: number;
+  name: string;
+  scheduledAt: string;
+  questionGoal: string;
+  maxQuestionGoal: number;
+  timerSeconds: string;
+  maxTimerSeconds: number;
+}) {
+  const copy = getCreateSessionValidationCopy(locale);
+  const questionGoalValue = Number(questionGoal);
+  const timerSecondsValue = Number(timerSeconds);
+
+  if (!canCreateSession) {
+    return copy.notAllowed;
+  }
+
+  if (selectedParticipantCount < minimumParticipantCount) {
+    return copy.minimumParticipants
+      .replace('{minimum}', String(minimumParticipantCount))
+      .replace('{selected}', String(selectedParticipantCount));
+  }
+
+  if (!name.trim()) {
+    return copy.sessionName;
+  }
+
+  if (!isValidScheduledAtInput(scheduledAt)) {
+    return copy.scheduledAt;
+  }
+
+  if (
+    !Number.isFinite(questionGoalValue) ||
+    questionGoalValue < 1 ||
+    questionGoalValue > maxQuestionGoal
+  ) {
+    return copy.questionGoal.replace('{maximum}', String(maxQuestionGoal));
+  }
+
+  if (
+    !Number.isFinite(timerSecondsValue) ||
+    timerSecondsValue < 1 ||
+    timerSecondsValue > maxTimerSeconds
+  ) {
+    return copy.timerSeconds.replace('{maximum}', String(maxTimerSeconds));
+  }
+
+  return null;
+}
+
+function getCreateSessionValidationCopy(locale: string) {
+  if (locale === 'fr') {
+    return {
+      notAllowed:
+        "La création de session n'est pas disponible pour ton profil actuel.",
+      minimumParticipants:
+        'Sélectionne au moins {minimum} participants pour créer une session. Actuellement : {selected}.',
+      sessionName: 'Ajoute un nom de session.',
+      scheduledAt: 'Choisis une date et une heure valides.',
+      questionGoal:
+        'Le nombre de questions doit être compris entre 1 et {maximum}.',
+      timerSeconds:
+        'Le minuteur doit être compris entre 1 et {maximum} secondes.',
+    };
+  }
+
+  return {
+    notAllowed:
+      'Session creation is not available for your current profile.',
+    minimumParticipants:
+      'Select at least {minimum} participants to create a session. Current selection: {selected}.',
+    sessionName: 'Add a session name.',
+    scheduledAt: 'Choose a valid date and time.',
+    questionGoal: 'Number of questions must be between 1 and {maximum}.',
+    timerSeconds: 'Timer must be between 1 and {maximum} seconds.',
+  };
 }
 
 type ParticipantCandidate = {

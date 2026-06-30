@@ -38,6 +38,45 @@ function getStaticSessionScheduledFeedback(locale: AppLocale) {
   return locale === 'fr' ? 'Session programmée.' : 'Session scheduled.';
 }
 
+function getCreateSessionApiValidationFeedback(
+  locale: AppLocale,
+  reason:
+    | 'missing_session_context'
+    | 'missing_session_name'
+    | 'invalid_scheduled_at'
+    | 'invalid_question_goal'
+    | 'invalid_timer',
+  maximum?: number,
+) {
+  if (locale === 'fr') {
+    switch (reason) {
+      case 'missing_session_context':
+        return 'Choisis un pool ou au moins 2 participants avant de creer une session.';
+      case 'missing_session_name':
+        return 'Ajoute un nom de session.';
+      case 'invalid_scheduled_at':
+        return 'Choisis une date et une heure valides.';
+      case 'invalid_question_goal':
+        return `Le nombre de questions doit etre compris entre 1 et ${maximum ?? 'le maximum autorise'}.`;
+      case 'invalid_timer':
+        return `Le minuteur doit etre compris entre 1 et ${maximum ?? 'le maximum autorise'} secondes.`;
+    }
+  }
+
+  switch (reason) {
+    case 'missing_session_context':
+      return 'Choose a pool or at least 2 participants before creating a session.';
+    case 'missing_session_name':
+      return 'Add a session name.';
+    case 'invalid_scheduled_at':
+      return 'Choose a valid date and time.';
+    case 'invalid_question_goal':
+      return `Number of questions must be between 1 and ${maximum ?? 'the maximum allowed'}.`;
+    case 'invalid_timer':
+      return `Timer must be between 1 and ${maximum ?? 'the maximum allowed'} seconds.`;
+  }
+}
+
 type FastCreateSessionResult = {
   ok: boolean | null;
   message_key: string | null;
@@ -104,19 +143,55 @@ export async function POST(request: Request) {
     return feedbackTranslations(key);
   };
 
-  if (
-    (!groupId && participantUserIds.length === 0) ||
-    !sessionName ||
-    !scheduledAt ||
-    !Number.isFinite(questionGoal) ||
-    questionGoal < 1 ||
-    questionGoal > policy.maxQuestionGoal ||
-    !Number.isFinite(timerSeconds) ||
-    timerSeconds < 1 ||
-    timerSeconds > policy.maxTimerSeconds
-  ) {
+  const validationMessage =
+    !groupId && participantUserIds.length === 0
+      ? getCreateSessionApiValidationFeedback(
+          locale,
+          'missing_session_context',
+        )
+      : !sessionName
+        ? getCreateSessionApiValidationFeedback(
+            locale,
+            'missing_session_name',
+          )
+        : !scheduledAt
+          ? getCreateSessionApiValidationFeedback(
+              locale,
+              'invalid_scheduled_at',
+            )
+          : !Number.isFinite(questionGoal) ||
+              questionGoal < 1 ||
+              questionGoal > policy.maxQuestionGoal
+            ? getCreateSessionApiValidationFeedback(
+                locale,
+                'invalid_question_goal',
+                policy.maxQuestionGoal,
+              )
+            : !Number.isFinite(timerSeconds) ||
+                timerSeconds < 1 ||
+                timerSeconds > policy.maxTimerSeconds
+              ? getCreateSessionApiValidationFeedback(
+                  locale,
+                  'invalid_timer',
+                  policy.maxTimerSeconds,
+                )
+              : null;
+
+  if (validationMessage) {
     return NextResponse.json(
-      { ok: false, message: await getFeedback('missingFields') },
+      { ok: false, message: validationMessage },
+      { status: 400 },
+    );
+  }
+  if (!scheduledAt) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message: getCreateSessionApiValidationFeedback(
+          locale,
+          'invalid_scheduled_at',
+        ),
+      },
       { status: 400 },
     );
   }
