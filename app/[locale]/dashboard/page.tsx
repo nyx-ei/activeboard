@@ -195,6 +195,7 @@ export default async function DashboardPage({
         remaining: '{remaining}',
       }),
       trialProgressComplete: t('trialProgressComplete'),
+      availabilityRefresh: t('availabilityRefresh'),
     },
   } satisfies DashboardSessionsViewProps;
 

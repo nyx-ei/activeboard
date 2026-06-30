@@ -15,6 +15,7 @@ import { requireUser } from '@/lib/auth';
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
 import { getSessionPageData } from '@/lib/demo/data';
 import { getPlanNextAccess } from '@/lib/session/plan-next-access';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 import { advanceSessionStepAction } from './actions';
 
@@ -40,6 +41,49 @@ type ReviewQuestion = {
   correct_option?: string | null;
   review_version?: number;
 };
+
+async function getReviewPeers(groupId: string, currentUserId: string) {
+  const supabase = createSupabaseAdminClient();
+  const { data: memberships } = await supabase
+    .schema('public')
+    .from('group_members')
+    .select('user_id')
+    .eq('group_id', groupId);
+
+  const peerIds = [
+    ...new Set(
+      (memberships ?? [])
+        .map((membership) => membership.user_id)
+        .filter(
+          (memberId): memberId is string =>
+            Boolean(memberId) && memberId !== currentUserId,
+        ),
+    ),
+  ];
+
+  if (peerIds.length === 0) {
+    return [];
+  }
+
+  const { data: profiles } = await supabase
+    .schema('public')
+    .from('users')
+    .select('id, email, display_name, avatar_url')
+    .in('id', peerIds);
+
+  const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+
+  return peerIds.map((peerId) => {
+    const profile = profileById.get(peerId);
+
+    return {
+      id: peerId,
+      name: profile?.display_name ?? profile?.email ?? 'ActiveBoard',
+      email: profile?.email ?? '',
+      avatarUrl: profile?.avatar_url ?? null,
+    };
+  });
+}
 
 export default async function SessionPage({
   params,
@@ -242,6 +286,7 @@ export default async function SessionPage({
 
   if (isReview && question) {
     const reviewQuestion = question as ReviewQuestion;
+    const reviewPeers = await getReviewPeers(data.group.id, user.id);
     const reviewedQuestionCount =
       'reviewedQuestionCount' in data &&
       typeof data.reviewedQuestionCount === 'number'
@@ -270,6 +315,7 @@ export default async function SessionPage({
           initialDistribution={data.currentQuestionDistribution}
           initialOwnAnswer={data.currentUserAnswer}
           planNextAccess={planNextAccess}
+          reviewPeers={reviewPeers}
           labels={{
             reviewShort: t('reviewShort'),
             previous: t('previous'),

@@ -35,12 +35,17 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
   const { data: profile } = await supabase
     .schema('public')
     .from('users')
-    .select('display_name, exam_session, question_banks')
+    .select('display_name, exam_session, phone_number, question_banks')
     .eq('id', user.id)
     .maybeSingle();
   const userSchedule = await getUserScheduleData(user.id);
   const section = searchParams.section === 'exam' ? 'exam' : 'profile';
   const displayName = profile?.display_name ?? user.user_metadata.full_name ?? user.email?.split('@')[0] ?? 'ActiveBoard';
+  const phoneNumber =
+    profile?.phone_number ??
+    (typeof user.user_metadata.phone_number === 'string'
+      ? user.user_metadata.phone_number
+      : '');
   const examSession = profile?.exam_session ?? (typeof user.user_metadata.exam_session === 'string' ? user.user_metadata.exam_session : '');
   const questionBanks = profile?.question_banks ?? (Array.isArray(user.user_metadata.question_banks)
     ? user.user_metadata.question_banks.filter((value): value is string => typeof value === 'string')
@@ -96,10 +101,12 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
                 action={updateProfileAction}
                 locale={locale}
                 displayName={displayName}
+                phoneNumber={phoneNumber}
                 initialExamSession={examSession}
                 initialQuestionBanks={questionBanks}
                 labels={{
                   displayName: t('displayName'),
+                  phoneNumber: t('phoneNumber'),
                   examSession: t('examSession'),
                   selectPlaceholder: t('selectPlaceholder'),
                   examAprilMay2026: t('examAprilMay2026'),
@@ -139,10 +146,12 @@ export default async function ProfilePage({ params, searchParams }: ProfilePageP
                 action={updateProfileAction}
                 locale={locale}
                 displayName={displayName}
+                phoneNumber={phoneNumber}
                 initialExamSession={examSession}
                 initialQuestionBanks={questionBanks}
                 labels={{
                   displayName: t('displayName'),
+                  phoneNumber: t('phoneNumber'),
                   examSession: t('examSession'),
                   selectPlaceholder: t('selectPlaceholder'),
                   examAprilMay2026: t('examAprilMay2026'),

@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarClock, Check, Search } from 'lucide-react';
+import { CalendarClock, Check, Search, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -13,6 +13,15 @@ type Candidate = {
   email: string;
   avatarUrl: string | null;
   compatibilityScore?: number;
+  classificationLabel?: string;
+  phoneNumber?: string | null;
+};
+
+type ReviewPeer = {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl: string | null;
 };
 
 export function SessionFinishReviewButton({
@@ -23,6 +32,7 @@ export function SessionFinishReviewButton({
   planNextAccess,
   label,
   pendingLabel,
+  peers = [],
 }: {
   locale: string;
   sessionId: string;
@@ -31,6 +41,7 @@ export function SessionFinishReviewButton({
   planNextAccess?: PlanNextAccess;
   label: string;
   pendingLabel: string;
+  peers?: ReviewPeer[];
 }) {
   const router = useRouter();
   const [isFinishing, setIsFinishing] = useState(false);
@@ -43,16 +54,22 @@ export function SessionFinishReviewButton({
   );
   const [candidateSearch, setCandidateSearch] = useState('');
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [fallbackRecommendation, setFallbackRecommendation] = useState<
+    string | null
+  >(null);
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>(
     [],
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [peerFeedback, setPeerFeedback] = useState<Record<string, boolean>>({});
   const canInviteCandidates = Boolean(planNextAccess?.canInviteCandidates);
   const isLockedTestPlan = Boolean(
     planNextAccess?.isTestPhase && !canInviteCandidates,
   );
   const lockedQuestionGoal =
     planNextAccess?.lockedQuestionGoal ?? questionGoal;
+  const isPeerFeedbackComplete =
+    peers.length === 0 || peers.every((peer) => peer.id in peerFeedback);
 
   useEffect(() => {
     if (!isLockedTestPlan) {
@@ -69,6 +86,7 @@ export function SessionFinishReviewButton({
   useEffect(() => {
     if (!canInviteCandidates || !isPlannerOpen) {
       setCandidates([]);
+      setFallbackRecommendation(null);
       return;
     }
 
@@ -76,7 +94,7 @@ export function SessionFinishReviewButton({
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
       void fetch(
-        `/api/session-candidates?query=${encodeURIComponent(candidateSearch.trim())}`,
+        `/api/session-candidates?locale=${locale}&query=${encodeURIComponent(candidateSearch.trim())}`,
         {
           credentials: 'same-origin',
           cache: 'no-store',
@@ -87,6 +105,7 @@ export function SessionFinishReviewButton({
           const payload = (await response.json().catch(() => null)) as {
             ok?: boolean;
             candidates?: Candidate[];
+            fallbackRecommendation?: string | null;
           } | null;
 
           if (!response.ok || !payload?.ok || cancelled) {
@@ -94,10 +113,12 @@ export function SessionFinishReviewButton({
           }
 
           setCandidates(payload.candidates ?? []);
+          setFallbackRecommendation(payload.fallbackRecommendation ?? null);
         })
         .catch(() => {
           if (!cancelled) {
             setCandidates([]);
+            setFallbackRecommendation(null);
           }
         });
     }, candidateSearch.trim() ? 160 : 0);
@@ -107,7 +128,7 @@ export function SessionFinishReviewButton({
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [canInviteCandidates, candidateSearch, isPlannerOpen]);
+  }, [canInviteCandidates, candidateSearch, isPlannerOpen, locale]);
 
   async function finishReview() {
     setIsFinishing(true);
@@ -145,6 +166,35 @@ export function SessionFinishReviewButton({
     }
   }
 
+  async function savePeerFeedback() {
+    if (peers.length === 0) {
+      return true;
+    }
+
+    const feedback = peers
+      .filter((peer) => peer.id in peerFeedback)
+      .map((peer) => ({
+        userId: peer.id,
+        willStudyAgain: peerFeedback[peer.id],
+      }));
+
+    if (feedback.length === 0) {
+      return true;
+    }
+
+    const response = await fetch(`/api/sessions/${sessionId}/peer-feedback`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'same-origin',
+      cache: 'no-store',
+      body: JSON.stringify({ feedback }),
+    });
+
+    return response.ok;
+  }
+
   async function planNextAndFinish() {
     if (isFinishing) {
       return;
@@ -154,6 +204,27 @@ export function SessionFinishReviewButton({
     setErrorMessage(null);
 
     try {
+      if (!isPeerFeedbackComplete) {
+        setErrorMessage(
+          locale === 'fr'
+            ? 'Réponds pour chaque membre avant de terminer.'
+            : 'Answer for each member before finishing.',
+        );
+        setIsFinishing(false);
+        return;
+      }
+
+      const feedbackSaved = await savePeerFeedback();
+      if (!feedbackSaved) {
+        setErrorMessage(
+          locale === 'fr'
+            ? "Le retour pair-à-pair n'a pas pu être enregistré."
+            : 'Peer feedback could not be saved.',
+        );
+        setIsFinishing(false);
+        return;
+      }
+
       const response = await fetch('/api/sessions', {
         method: 'POST',
         headers: {
@@ -311,7 +382,9 @@ export function SessionFinishReviewButton({
                             ? locale === 'fr'
                               ? `${candidate.compatibilityScore} créneaux compatibles`
                               : `${candidate.compatibilityScore} compatible slots`
-                            : candidate.email}
+                            : candidate.phoneNumber ??
+                              candidate.classificationLabel ??
+                              candidate.email}
                         </span>
                       </span>
                       {selected ? (
@@ -320,12 +393,92 @@ export function SessionFinishReviewButton({
                     </button>
                   );
                 })}
+                {fallbackRecommendation ? (
+                  <p className="rounded-[9px] border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs font-bold leading-5 text-amber-100">
+                    {fallbackRecommendation}
+                  </p>
+                ) : null}
+              </div>
+          </div>
+        ) : null}
+          {peers.length > 0 ? (
+            <div className="mt-3 rounded-[12px] border border-white/[0.08] bg-white/[0.025] p-2">
+              <p className="px-1 text-xs font-extrabold text-white">
+                {locale === 'fr'
+                  ? 'Étudierais-tu encore avec cette personne ?'
+                  : 'Will you study with this person again?'}
+              </p>
+              <div className="mt-2 space-y-1">
+                {peers.map((peer) => (
+                  <div
+                    key={peer.id}
+                    className="flex items-center gap-2 rounded-[9px] bg-[#071512] p-2"
+                  >
+                    <span
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#22504a] bg-cover bg-center text-[11px] font-bold text-[#9FF0CE]"
+                      style={{
+                        backgroundImage: peer.avatarUrl
+                          ? `url("${peer.avatarUrl}")`
+                          : undefined,
+                      }}
+                    >
+                      {peer.avatarUrl ? null : getInitials(peer.name || peer.email)}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-bold text-white">
+                        {peer.name}
+                      </span>
+                      <span className="block truncate text-xs text-slate-500">
+                        {peer.email}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPeerFeedback((current) => ({
+                          ...current,
+                          [peer.id]: false,
+                        }))
+                      }
+                      className={`inline-flex h-9 w-9 items-center justify-center rounded-[9px] border ${
+                        peerFeedback[peer.id] === false
+                          ? 'border-rose-300/60 bg-rose-300/15 text-rose-200'
+                          : 'border-white/[0.08] text-slate-500'
+                      }`}
+                      aria-label="No"
+                    >
+                      <ThumbsDown className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPeerFeedback((current) => ({
+                          ...current,
+                          [peer.id]: true,
+                        }))
+                      }
+                      className={`inline-flex h-9 w-9 items-center justify-center rounded-[9px] border ${
+                        peerFeedback[peer.id] === true
+                          ? 'border-brand/70 bg-brand/15 text-brand'
+                          : 'border-white/[0.08] text-slate-500'
+                      }`}
+                      aria-label="Yes"
+                    >
+                      <ThumbsUp className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
           ) : null}
           <button
             type="button"
-            disabled={isFinishing || !sessionName.trim() || !scheduledAt}
+            disabled={
+              isFinishing ||
+              !sessionName.trim() ||
+              !scheduledAt ||
+              !isPeerFeedbackComplete
+            }
             onClick={() => void planNextAndFinish()}
             className="mt-3 h-11 w-full rounded-[9px] bg-brand text-sm font-extrabold text-[#06120e] disabled:cursor-not-allowed disabled:opacity-60"
           >

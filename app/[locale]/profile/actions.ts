@@ -13,6 +13,7 @@ import { withFeedback } from '@/lib/utils';
 export async function updateProfileAction(formData: FormData) {
   const locale = ((formData.get('locale') as string | null) ?? 'en') as AppLocale;
   const displayName = ((formData.get('displayName') as string | null) ?? '').trim();
+  const phoneNumber = ((formData.get('phoneNumber') as string | null) ?? '').trim();
   const examSession = ((formData.get('examSession') as string | null) ?? '').trim();
   const questionBanks = formData.getAll('questionBanks').map((value) => String(value));
   const section = ((formData.get('section') as string | null) ?? '').trim();
@@ -29,6 +30,7 @@ export async function updateProfileAction(formData: FormData) {
     data: {
       ...user.user_metadata,
       full_name: displayName,
+      phone_number: phoneNumber || null,
       exam_session: examSession || null,
       question_banks: questionBanks,
     },
@@ -43,6 +45,7 @@ export async function updateProfileAction(formData: FormData) {
     .from('users')
     .update({
       display_name: displayName,
+      phone_number: phoneNumber || null,
       exam_session: examSession
         ? (examSession as 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead')
         : null,

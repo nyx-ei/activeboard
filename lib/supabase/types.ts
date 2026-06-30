@@ -641,6 +641,60 @@ type SessionCalendarInvitesUpdate = {
   user_id?: string;
 };
 
+type SessionMemberActivityRow = {
+  attendance_status: 'present' | 'absent' | 'late';
+  participated_in_review: boolean;
+  planned_next_session: boolean;
+  session_id: string;
+  updated_at: string;
+  user_id: string;
+};
+
+type SessionMemberActivityInsert = {
+  attendance_status?: 'present' | 'absent' | 'late';
+  participated_in_review?: boolean;
+  planned_next_session?: boolean;
+  session_id: string;
+  updated_at?: string;
+  user_id: string;
+};
+
+type SessionMemberActivityUpdate = {
+  attendance_status?: 'present' | 'absent' | 'late';
+  participated_in_review?: boolean;
+  planned_next_session?: boolean;
+  session_id?: string;
+  updated_at?: string;
+  user_id?: string;
+};
+
+type SessionPeerFeedbackRow = {
+  created_at: string;
+  reviewer_user_id: string;
+  session_id: string;
+  subject_user_id: string;
+  updated_at: string;
+  will_study_again: boolean;
+};
+
+type SessionPeerFeedbackInsert = {
+  created_at?: string;
+  reviewer_user_id: string;
+  session_id: string;
+  subject_user_id: string;
+  updated_at?: string;
+  will_study_again: boolean;
+};
+
+type SessionPeerFeedbackUpdate = {
+  created_at?: string;
+  reviewer_user_id?: string;
+  session_id?: string;
+  subject_user_id?: string;
+  updated_at?: string;
+  will_study_again?: boolean;
+};
+
 type UsersRow = {
   avatar_url: string | null;
   billing_updated_at: string;
@@ -657,6 +711,7 @@ type UsersRow = {
   has_valid_payment_method: boolean;
   id: string;
   locale: 'en' | 'fr';
+  phone_number: string | null;
   question_banks: string[];
   questions_answered: number;
   stripe_customer_id: string | null;
@@ -691,6 +746,7 @@ type UsersInsert = {
   has_valid_payment_method?: boolean;
   id: string;
   locale?: 'en' | 'fr';
+  phone_number?: string | null;
   question_banks?: string[];
   questions_answered?: number;
   stripe_customer_id?: string | null;
@@ -725,6 +781,7 @@ type UsersUpdate = {
   has_valid_payment_method?: boolean;
   id?: string;
   locale?: 'en' | 'fr';
+  phone_number?: string | null;
   question_banks?: string[];
   questions_answered?: number;
   stripe_customer_id?: string | null;
@@ -805,6 +862,34 @@ type GroupSeatAvailabilityViewRow = {
   group_id: string | null;
   max_members: number;
   seats_available: number;
+};
+
+type CandidateMatchingProfilesViewRow = {
+  avatar_url: string | null;
+  candidate_classification:
+    | 'starting'
+    | 'active'
+    | 'reliable'
+    | 'stable_priority'
+    | null;
+  completed_sessions: number | null;
+  display_name: string | null;
+  email: string;
+  exam_session: UsersRow['exam_session'];
+  exam_type: UsersRow['exam_type'];
+  has_valid_payment_method: boolean | null;
+  language: 'en' | 'fr' | null;
+  next_sessions_planned: number | null;
+  phone_number: string | null;
+  positive_peer_votes: number | null;
+  questions_completed: number | null;
+  questions_reviewed: number | null;
+  review_completed_sessions: number | null;
+  sessions_joined: number | null;
+  subscription_status: UsersRow['subscription_status'] | null;
+  total_peer_votes: number | null;
+  user_id: string;
+  user_tier: UsersRow['user_tier'] | null;
 };
 
 export type Database = {
@@ -912,6 +997,18 @@ export type Database = {
         Update: SessionCalendarInvitesUpdate;
         Relationships: [];
       };
+      session_member_activity: {
+        Row: SessionMemberActivityRow;
+        Insert: SessionMemberActivityInsert;
+        Update: SessionMemberActivityUpdate;
+        Relationships: [];
+      };
+      session_peer_feedback: {
+        Row: SessionPeerFeedbackRow;
+        Insert: SessionPeerFeedbackInsert;
+        Update: SessionPeerFeedbackUpdate;
+        Relationships: [];
+      };
       users: {
         Row: UsersRow;
         Insert: UsersInsert;
@@ -926,6 +1023,10 @@ export type Database = {
       };
     };
     Views: {
+      candidate_matching_profiles: {
+        Row: CandidateMatchingProfilesViewRow;
+        Relationships: [];
+      };
       dashboard_session_question_counts: {
         Row: DashboardSessionQuestionCountsViewRow;
         Relationships: [];

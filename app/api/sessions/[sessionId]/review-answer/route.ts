@@ -350,6 +350,19 @@ export async function POST(request: Request, { params }: RouteContext) {
       });
     });
   }
+  void supabase
+    .schema('public')
+    .from('session_member_activity')
+    .upsert(
+      {
+        session_id: sessionId,
+        user_id: user.id,
+        attendance_status: 'present',
+        participated_in_review: true,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'session_id,user_id' },
+    );
   void logAppEvent({
     eventName: APP_EVENTS.answerRevealed,
     locale,

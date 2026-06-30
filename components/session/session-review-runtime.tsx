@@ -69,6 +69,12 @@ type SessionReviewRuntimeProps = {
   initialDistribution: ReviewDistribution;
   initialOwnAnswer: ReviewOwnAnswer | null;
   planNextAccess?: PlanNextAccess;
+  reviewPeers?: Array<{
+    id: string;
+    name: string;
+    email: string;
+    avatarUrl: string | null;
+  }>;
   labels: {
     reviewShort: string;
     previous: string;
@@ -131,6 +137,7 @@ export function SessionReviewRuntime({
   initialDistribution,
   initialOwnAnswer,
   planNextAccess,
+  reviewPeers = [],
   labels,
 }: SessionReviewRuntimeProps) {
   const [currentIndex, setCurrentIndex] = useState(initialQuestionIndex);
@@ -466,6 +473,7 @@ export function SessionReviewRuntime({
             planNextAccess={planNextAccess}
             label={labels.finishSession}
             pendingLabel={labels.finishSessionPending}
+            peers={reviewPeers}
           />
         ) : null}
       </section>
