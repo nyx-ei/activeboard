@@ -224,8 +224,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const [userTierResult, usersResult, selectedGroupMembersResult, planAccess] =
-      await Promise.all([
+    const [
+      userTierResult,
+      usersResult,
+      selectedGroupMembersResult,
+      selectedGroupResult,
+      planAccess,
+    ] = await Promise.all([
         admin
           .schema('public')
           .from('users')
@@ -247,6 +252,14 @@ export async function POST(request: Request) {
               .eq('group_id', groupId)
               .in('user_id', memberUserIds)
           : Promise.resolve({ data: [] }),
+        groupId
+          ? admin
+              .schema('public')
+              .from('groups')
+              .select('name')
+              .eq('id', groupId)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
         getPlanNextAccess(user.id, policy),
       ]);
     perf.step('session_first_guards_loaded');
@@ -316,7 +329,11 @@ export async function POST(request: Request) {
       .schema('public')
       .from('groups')
       .insert({
-        name: sessionName,
+        name: getSessionFirstGroupName(
+          locale,
+          selectedGroupResult.data?.name,
+          scheduledAt,
+        ),
         invite_code: inviteCode,
         created_by: user.id,
         difficulty_level: 'medium',
@@ -730,6 +747,27 @@ function parseParticipantUserIds(value: unknown) {
         ),
     ),
   ];
+}
+
+function getSessionFirstGroupName(
+  locale: AppLocale,
+  poolName: string | null | undefined,
+  scheduledAt: Date,
+) {
+  const baseName =
+    poolName?.trim() || (locale === 'fr' ? 'Séance test' : 'Test session');
+  const dateLabel = new Intl.DateTimeFormat(
+    locale === 'fr' ? 'fr-CA' : 'en-CA',
+    {
+      day: '2-digit',
+      month: 'short',
+    },
+  )
+    .format(scheduledAt)
+    .replace('.', '');
+  const name = `${baseName} · ${dateLabel}`;
+
+  return name.length > 80 ? name.slice(0, 80).trim() : name;
 }
 
 async function createUniqueInviteCode(

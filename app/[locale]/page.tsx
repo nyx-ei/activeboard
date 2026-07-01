@@ -39,15 +39,17 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
   return (
     <main
       id="top"
-      className="min-h-screen w-full overflow-x-hidden bg-[#01070d] pb-10 pt-4"
+      className="relative min-h-screen w-full overflow-x-hidden bg-[#01070d] pb-10"
     >
-      <section className="mx-auto grid w-full max-w-[1280px] grid-cols-1 items-center gap-8 px-3 pb-10 pt-1 sm:px-4 lg:grid-cols-[minmax(420px,520px)_minmax(0,1fr)] lg:gap-10 lg:px-6 lg:py-12">
-        <div className="relative z-10 w-full max-w-[520px]">
-          <ActiveBoardLandingLogo />
+      <div className="absolute left-3 top-3 z-40 sm:left-6 sm:top-4 lg:left-9">
+        <ActiveBoardLandingLogo />
+      </div>
 
+      <section className="mx-auto grid w-full max-w-[1280px] grid-cols-1 items-center gap-8 px-3 pb-10 pt-24 sm:px-4 lg:grid-cols-[minmax(420px,520px)_minmax(0,1fr)] lg:gap-10 lg:px-6 lg:pb-12 lg:pt-28">
+        <div className="relative z-10 w-full max-w-[520px]">
           <p
             data-landing-badge
-            className="mt-6 inline-flex max-w-full items-center gap-2.5 rounded-full border border-white/[0.10] bg-white/[0.035] px-3.5 py-2 text-[12px] font-semibold leading-snug text-[#d8e1df]"
+            className="inline-flex max-w-full items-center gap-2.5 rounded-full border border-white/[0.10] bg-white/[0.035] px-3.5 py-2 text-[12px] font-semibold leading-snug text-[#d8e1df]"
           >
             <Users
               className="h-4 w-4 shrink-0 text-brand"
