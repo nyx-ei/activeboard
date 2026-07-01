@@ -3,9 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
+  BadgeCheck,
   Check,
   Clock,
   HelpCircle,
+  Languages,
+  Lock,
   Search,
   UsersRound,
 } from 'lucide-react';
@@ -70,7 +73,6 @@ export function CreateSessionModal({
 }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [name, setName] = useState('');
-  const [hasEditedName, setHasEditedName] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState(initialGroupId);
   const [participantSearch, setParticipantSearch] = useState('');
   const [scheduledAt, setScheduledAt] = useState(() =>
@@ -154,31 +156,28 @@ export function CreateSessionModal({
       .map((candidate) => candidate.id),
   );
   const filteredParticipantCandidates = useMemo(() => {
+    const visibleCandidates = canInviteCandidates
+      ? participantCandidates
+      : participantCandidates.filter((candidate) =>
+          candidate.groupIds.includes(selectedGroupId),
+        );
     const search = participantSearch.trim().toLowerCase();
-    if (!search) {
-      return participantCandidates;
+    if (!canInviteCandidates || !search) {
+      return visibleCandidates;
     }
 
-    return participantCandidates.filter((candidate) =>
-      `${candidate.initials} ${candidate.email ?? ''} ${candidate.groupNames.join(' ')}`
+    return visibleCandidates.filter((candidate) =>
+      `${candidate.initials} ${candidate.email ?? ''}`
         .toLowerCase()
         .includes(search),
     );
-  }, [participantCandidates, participantSearch]);
+  }, [canInviteCandidates, participantCandidates, participantSearch, selectedGroupId]);
   const selectedParticipantCount = selectedParticipantIds.length;
   const returnTo = selectedGroup
     ? `/${locale}/dashboard?groupId=${encodeURIComponent(selectedGroup.id)}`
     : `/${locale}/dashboard`;
   const participantCopy = getCleanParticipantCopy(locale);
   const timerModeCopy = getCleanTimerModeCopy(locale);
-
-  useEffect(() => {
-    if (hasEditedName || !selectedGroup) {
-      return;
-    }
-
-    setName(getDefaultSessionName(selectedGroup.name));
-  }, [hasEditedName, selectedGroup]);
 
   useEffect(() => {
     if (!canInviteCandidates) {
@@ -207,6 +206,13 @@ export function CreateSessionModal({
               email: string;
               avatarUrl: string | null;
               compatibilityScore?: number;
+              classificationLabel?: string;
+              language?: string | null;
+              positivePeerVotes?: number;
+              questionsCompleted?: number;
+              questionsReviewed?: number;
+              sessionsJoined?: number;
+              totalPeerVotes?: number;
             }>;
           } | null;
 
@@ -221,16 +227,15 @@ export function CreateSessionModal({
               email: candidate.email,
               avatarUrl: candidate.avatarUrl,
               compatibilityScore: candidate.compatibilityScore,
+              classificationLabel: candidate.classificationLabel,
+              language: candidate.language,
+              positivePeerVotes: candidate.positivePeerVotes,
+              questionsCompleted: candidate.questionsCompleted,
+              questionsReviewed: candidate.questionsReviewed,
+              sessionsJoined: candidate.sessionsJoined,
+              totalPeerVotes: candidate.totalPeerVotes,
               groupIds: [],
-              groupNames: [
-                candidate.compatibilityScore
-                  ? locale === 'fr'
-                    ? `${candidate.compatibilityScore} creneaux compatibles`
-                    : `${candidate.compatibilityScore} compatible slots`
-                  : locale === 'fr'
-                    ? 'Candidat paye'
-                    : 'Paid candidate',
-              ],
+              groupNames: [],
             })),
           );
         })
@@ -287,7 +292,7 @@ export function CreateSessionModal({
       backdropLabel={labels.close}
       initialFocusRef={closeButtonRef}
       mobileSheet
-      contentClassName="max-h-[90vh] w-full max-w-[478px] overscroll-contain overflow-y-auto rounded-t-[18px] bg-[#111827] p-4 shadow-2xl ring-1 ring-white/[0.08] [scrollbar-width:none] sm:rounded-[14px] sm:p-6 [&::-webkit-scrollbar]:hidden"
+      contentClassName="max-h-[90vh] w-full max-w-[540px] overscroll-contain overflow-y-auto rounded-t-[18px] bg-[#111827] p-4 shadow-2xl ring-1 ring-white/[0.08] [scrollbar-width:none] sm:rounded-[14px] sm:p-6 [&::-webkit-scrollbar]:hidden"
     >
       <div className="flex items-center justify-between">
         <ModalTitle className="text-lg font-extrabold text-white">
@@ -439,10 +444,25 @@ export function CreateSessionModal({
           >
             {groups.map((group) => (
               <option key={group.id} value={group.id}>
-                {group.name}
+                {group.name} · {formatPoolMemberCount(group.memberCount, locale)}
               </option>
             ))}
           </select>
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-bold text-slate-300">
+            {labels.sessionName}
+          </span>
+          <textarea
+            name="sessionName"
+            rows={2}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder={labels.sessionNamePlaceholder}
+            className="field mt-2 min-h-[76px] resize-none rounded-[9px] px-3 py-2 text-sm leading-5"
+            autoComplete="off"
+          />
         </label>
 
         <div>
@@ -458,15 +478,46 @@ export function CreateSessionModal({
             </span>
           </div>
           <div className="mt-2 rounded-[10px] border border-white/[0.08] bg-white/[0.025] p-2">
-            <label className="flex h-9 items-center gap-2 rounded-[8px] border border-white/[0.06] bg-[#071512] px-2 text-sm text-slate-300">
-              <Search className="h-4 w-4 text-slate-500" aria-hidden="true" />
+            <label
+              className={`flex h-10 items-center gap-2 rounded-[8px] border px-2 text-sm text-slate-300 ${
+                canInviteCandidates
+                  ? 'border-white/[0.06] bg-[#071512]'
+                  : 'border-amber-200/20 bg-amber-200/[0.06]'
+              }`}
+            >
+              {canInviteCandidates ? (
+                <Search
+                  className="h-4 w-4 text-slate-500"
+                  aria-hidden="true"
+                />
+              ) : (
+                <Lock
+                  className="h-4 w-4 text-amber-200"
+                  aria-hidden="true"
+                />
+              )}
               <input
                 value={participantSearch}
                 onChange={(event) => setParticipantSearch(event.target.value)}
-                placeholder={participantCopy.search}
-                className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-slate-600"
+                placeholder={
+                  canInviteCandidates
+                    ? participantCopy.search
+                    : isLockedTestPlan
+                      ? participantCopy.searchLockedTest
+                      : participantCopy.searchLockedPayment
+                }
+                disabled={!canInviteCandidates}
+                className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-slate-500 disabled:cursor-not-allowed"
               />
             </label>
+            {!canInviteCandidates && !isLockedTestPlan ? (
+              <a
+                href={`/${locale}/billing`}
+                className="mt-2 inline-flex h-8 items-center justify-center rounded-full border border-brand/30 px-3 text-xs font-extrabold text-brand transition hover:bg-brand/10"
+              >
+                {participantCopy.unlockSearch}
+              </a>
+            ) : null}
             <div className="mt-2 max-h-44 space-y-1 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {filteredParticipantCandidates.length > 0 ? (
                 filteredParticipantCandidates.map((candidate) => {
@@ -509,8 +560,27 @@ export function CreateSessionModal({
                         <span className="block truncate text-sm font-semibold">
                           {candidate.initials}
                         </span>
-                        <span className="block truncate text-xs text-slate-500">
-                          {candidate.email ?? candidate.groupNames.join(' · ')}
+                        <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] font-bold text-slate-400">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.05] px-2 py-0.5">
+                            <Languages
+                              className="h-3 w-3"
+                              aria-hidden="true"
+                            />
+                            {formatCandidateLanguage(candidate.language, locale)}
+                          </span>
+                          <span className="rounded-full bg-white/[0.05] px-2 py-0.5">
+                            {participantCopy.questions.replace(
+                              '{count}',
+                              String(candidate.questionsCompleted ?? 0),
+                            )}
+                          </span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-0.5 text-[#9FF0CE]">
+                            <BadgeCheck
+                              className="h-3 w-3"
+                              aria-hidden="true"
+                            />
+                            {formatCandidateSeriousness(candidate, locale)}
+                          </span>
                         </span>
                       </span>
                       <span
@@ -534,23 +604,6 @@ export function CreateSessionModal({
             </div>
           </div>
         </div>
-
-        <label className="block">
-          <span className="text-sm font-bold text-slate-300">
-            {labels.sessionName}
-          </span>
-          <input
-            name="sessionName"
-            value={name}
-            onChange={(event) => {
-              setHasEditedName(true);
-              setName(event.target.value);
-            }}
-            placeholder={labels.sessionNamePlaceholder}
-            className="field mt-2 h-10 rounded-[7px] px-3 py-2 text-sm"
-            autoComplete="off"
-          />
-        </label>
 
         <label className="block">
           <span className="text-sm font-bold text-slate-300">
@@ -748,16 +801,6 @@ export function CreateSessionModal({
   );
 }
 
-function getDefaultSessionName(groupName: string) {
-  const cleanName = groupName.trim();
-
-  if (!cleanName) {
-    return 'Session';
-  }
-
-  return cleanName.length > 38 ? cleanName.slice(0, 38).trim() : cleanName;
-}
-
 function getDefaultScheduledAtInputValue() {
   const next = new Date();
   next.setMinutes(next.getMinutes() + 60);
@@ -885,7 +928,7 @@ function getCreateSessionValidationCopy(locale: string) {
         "La création de session n'est pas disponible pour ton profil actuel.",
       minimumParticipants:
         'Sélectionne au moins {minimum} participants pour créer une session. Actuellement : {selected}.',
-      sessionName: 'Ajoute un nom de session.',
+      sessionName: 'Ajoute un objectif de séance.',
       scheduledAt: 'Choisis une date et une heure valides.',
       questionGoal:
         'Le nombre de questions doit être compris entre 1 et {maximum}.',
@@ -899,7 +942,7 @@ function getCreateSessionValidationCopy(locale: string) {
       'Session creation is not available for your current profile.',
     minimumParticipants:
       'Select at least {minimum} participants to create a session. Current selection: {selected}.',
-    sessionName: 'Add a session name.',
+    sessionName: 'Add a session objective.',
     scheduledAt: 'Choose a valid date and time.',
     questionGoal: 'Number of questions must be between 1 and {maximum}.',
     timerSeconds: 'Timer must be between 1 and {maximum} seconds.',
@@ -911,10 +954,62 @@ type ParticipantCandidate = {
   initials: string;
   email?: string;
   compatibilityScore?: number;
+  classificationLabel?: string;
+  language?: string | null;
+  positivePeerVotes?: number;
+  questionsCompleted?: number;
+  questionsReviewed?: number;
+  sessionsJoined?: number;
+  totalPeerVotes?: number;
   avatarUrl: string | null;
   groupIds: string[];
   groupNames: string[];
 };
+
+function formatCandidateLanguage(language: string | null | undefined, locale: string) {
+  const normalized = language?.trim().toUpperCase();
+  if (normalized) {
+    return normalized.slice(0, 5);
+  }
+
+  return locale === 'fr' ? 'Langue n/d' : 'Language n/a';
+}
+
+function formatCandidateSeriousness(
+  candidate: ParticipantCandidate,
+  locale: string,
+) {
+  const positiveVotes = candidate.positivePeerVotes ?? 0;
+  const totalVotes = candidate.totalPeerVotes ?? 0;
+
+  if (totalVotes > 0) {
+    return locale === 'fr'
+      ? `${positiveVotes}/${totalVotes} oui`
+      : `${positiveVotes}/${totalVotes} yes`;
+  }
+
+  if ((candidate.questionsReviewed ?? 0) > 0) {
+    return locale === 'fr'
+      ? `${candidate.questionsReviewed} revues`
+      : `${candidate.questionsReviewed} reviewed`;
+  }
+
+  if ((candidate.sessionsJoined ?? 0) > 0) {
+    return locale === 'fr'
+      ? `${candidate.sessionsJoined} séances`
+      : `${candidate.sessionsJoined} sessions`;
+  }
+
+  return candidate.classificationLabel ?? (locale === 'fr' ? 'Profil récent' : 'New profile');
+}
+
+function formatPoolMemberCount(memberCount: number, locale: string) {
+  if (locale === 'fr') {
+    return `${memberCount} membre${memberCount > 1 ? 's' : ''}`;
+  }
+
+  return `${memberCount} member${memberCount === 1 ? '' : 's'}`;
+}
 
 function getInitials(value: string) {
   return (
@@ -958,6 +1053,9 @@ function getParticipantCandidates(
         id: member.id,
         initials: member.initials,
         avatarUrl: member.avatarUrl,
+        questionsCompleted: 0,
+        questionsReviewed: 0,
+        sessionsJoined: 0,
         groupIds: [group.id],
         groupNames: [group.name],
       });
@@ -976,6 +1074,10 @@ function getCleanParticipantCopy(locale: string) {
       participants: 'Participants de la session',
       selected: '{count} sélectionnés',
       search: 'Rechercher un membre',
+      searchLockedTest: 'Recherche disponible après 3 séances test',
+      searchLockedPayment: 'Paiement requis pour rechercher des candidats',
+      unlockSearch: 'Débloquer la recherche',
+      questions: '{count} Q',
       empty: 'Aucun membre disponible',
     };
   }
@@ -985,6 +1087,10 @@ function getCleanParticipantCopy(locale: string) {
     participants: 'Session participants',
     selected: '{count} selected',
     search: 'Search a member',
+    searchLockedTest: 'Search unlocks after 3 test sessions',
+    searchLockedPayment: 'Payment required to search candidates',
+    unlockSearch: 'Unlock search',
+    questions: '{count} Q',
     empty: 'No member available',
   };
 }
@@ -1026,6 +1132,10 @@ export function getParticipantCopy(locale: string) {
       participants: 'Participants de la session',
       selected: '{count} sélectionnés',
       search: 'Rechercher un membre',
+      searchLockedTest: 'Recherche disponible après 3 séances test',
+      searchLockedPayment: 'Paiement requis pour rechercher des candidats',
+      unlockSearch: 'Débloquer la recherche',
+      questions: '{count} Q',
       empty: 'Aucun membre disponible',
     };
   }
@@ -1035,6 +1145,10 @@ export function getParticipantCopy(locale: string) {
     participants: 'Session participants',
     selected: '{count} selected',
     search: 'Search a member',
+    searchLockedTest: 'Search unlocks after 3 test sessions',
+    searchLockedPayment: 'Payment required to search candidates',
+    unlockSearch: 'Unlock search',
+    questions: '{count} Q',
     empty: 'No member available',
   };
 }
