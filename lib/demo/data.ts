@@ -48,6 +48,9 @@ type DashboardSession = {
 type DashboardGroupMemberPreview = {
   id: string;
   initials: string;
+  name?: string | null;
+  email?: string | null;
+  phoneNumber?: string | null;
   avatarUrl: string | null;
 };
 
@@ -348,7 +351,7 @@ async function getUsersMap(supabase: PublicClient, userIds: string[]) {
   const { data } = await supabase
     .schema('public')
     .from('users')
-    .select('id, display_name, email, avatar_url')
+    .select('id, display_name, email, avatar_url, phone_number')
     .in('id', userIds);
 
   return new Map((data ?? []).map((user) => [user.id, user]));
@@ -988,7 +991,7 @@ async function getDashboardCore(userId: string) {
       ? await supabaseAdmin
           .schema('public')
           .from('users')
-          .select('id, display_name, email, avatar_url')
+          .select('id, display_name, email, avatar_url, phone_number')
           .in('id', memberIds)
       : { data: [] };
   const groupLimitsById = new Map(
@@ -1040,6 +1043,9 @@ async function getDashboardCore(userId: string) {
         return {
           id: member.user_id ?? `${group.group_id}-member`,
           initials: getInitials(displayLabel),
+          name: profile?.display_name ?? null,
+          email: profile?.email ?? null,
+          phoneNumber: profile?.phone_number ?? null,
           avatarUrl: profile?.avatar_url ?? null,
         };
       }),

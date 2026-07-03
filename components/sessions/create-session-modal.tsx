@@ -3,11 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
-  BadgeCheck,
-  Check,
   Clock,
+  Copy,
   HelpCircle,
-  Languages,
   Lock,
   Search,
   UsersRound,
@@ -60,6 +58,9 @@ export function CreateSessionModal({
     membersPreview?: Array<{
       id: string;
       initials: string;
+      name?: string | null;
+      email?: string | null;
+      phoneNumber?: string | null;
       avatarUrl: string | null;
     }>;
   }>;
@@ -143,7 +144,7 @@ export function CreateSessionModal({
       }
 
       return [...candidateById.values()].sort((left, right) =>
-        left.initials.localeCompare(right.initials),
+        formatCandidateName(left).localeCompare(formatCandidateName(right)),
       );
     },
     [canInviteCandidates, groups, paidCandidateResults],
@@ -167,7 +168,7 @@ export function CreateSessionModal({
     }
 
     return visibleCandidates.filter((candidate) =>
-      `${candidate.initials} ${candidate.email ?? ''}`
+      `${candidate.name ?? ''} ${candidate.initials} ${candidate.email ?? ''} ${candidate.phoneNumber ?? ''}`
         .toLowerCase()
         .includes(search),
     );
@@ -205,14 +206,7 @@ export function CreateSessionModal({
               name: string;
               email: string;
               avatarUrl: string | null;
-              compatibilityScore?: number;
-              classificationLabel?: string;
-              language?: string | null;
-              positivePeerVotes?: number;
-              questionsCompleted?: number;
-              questionsReviewed?: number;
-              sessionsJoined?: number;
-              totalPeerVotes?: number;
+              phoneNumber?: string | null;
             }>;
           } | null;
 
@@ -223,17 +217,11 @@ export function CreateSessionModal({
           setPaidCandidateResults(
             (payload.candidates ?? []).map((candidate) => ({
               id: candidate.id,
+              name: candidate.name,
               initials: getInitials(candidate.name || candidate.email),
               email: candidate.email,
+              phoneNumber: candidate.phoneNumber,
               avatarUrl: candidate.avatarUrl,
-              compatibilityScore: candidate.compatibilityScore,
-              classificationLabel: candidate.classificationLabel,
-              language: candidate.language,
-              positivePeerVotes: candidate.positivePeerVotes,
-              questionsCompleted: candidate.questionsCompleted,
-              questionsReviewed: candidate.questionsReviewed,
-              sessionsJoined: candidate.sessionsJoined,
-              totalPeerVotes: candidate.totalPeerVotes,
               groupIds: [],
               groupNames: [],
             })),
@@ -518,19 +506,25 @@ export function CreateSessionModal({
                 {participantCopy.unlockSearch}
               </a>
             ) : null}
-            <div className="mt-2 max-h-44 space-y-1 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="mt-2 max-h-40 space-y-1 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {filteredParticipantCandidates.length > 0 ? (
                 filteredParticipantCandidates.map((candidate) => {
                   const isSelected = selectedParticipantIds.includes(
                     candidate.id,
                   );
+                  const candidateName = formatCandidateName(candidate);
+                  const candidateContact = formatCandidateContact(
+                    candidate,
+                    participantCopy,
+                  );
+                  const candidatePhone = candidate.phoneNumber?.trim();
 
                   return (
                     <label
                       key={candidate.id}
-                      className={`flex cursor-pointer items-center gap-3 rounded-[9px] px-2 py-2 transition ${
+                      className={`grid h-10 cursor-pointer grid-cols-[minmax(88px,1fr)_minmax(96px,0.9fr)_32px] items-center gap-2 rounded-[9px] px-2 transition ${
                         isSelected
-                          ? 'bg-brand/10 text-white'
+                          ? 'bg-brand/10 text-white ring-1 ring-brand/30'
                           : 'text-slate-300 hover:bg-white/[0.04]'
                       }`}
                     >
@@ -546,52 +540,29 @@ export function CreateSessionModal({
                         }}
                         className="sr-only"
                       />
-                      <span
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[#22504a] bg-cover bg-center text-[11px] font-bold text-[#9FF0CE]"
-                        style={{
-                          backgroundImage: candidate.avatarUrl
-                            ? `url("${candidate.avatarUrl}")`
-                            : undefined,
-                        }}
-                      >
-                        {candidate.avatarUrl ? null : candidate.initials}
+                      <span className="min-w-0 truncate text-sm font-semibold">
+                        {candidateName}
                       </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold">
-                          {candidate.initials}
-                        </span>
-                        <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] font-bold text-slate-400">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.05] px-2 py-0.5">
-                            <Languages
-                              className="h-3 w-3"
-                              aria-hidden="true"
-                            />
-                            {formatCandidateLanguage(candidate.language, locale)}
-                          </span>
-                          <span className="rounded-full bg-white/[0.05] px-2 py-0.5">
-                            {participantCopy.questions.replace(
-                              '{count}',
-                              String(candidate.questionsCompleted ?? 0),
-                            )}
-                          </span>
-                          <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-0.5 text-[#9FF0CE]">
-                            <BadgeCheck
-                              className="h-3 w-3"
-                              aria-hidden="true"
-                            />
-                            {formatCandidateSeriousness(candidate, locale)}
-                          </span>
-                        </span>
+                      <span className="min-w-0 truncate text-xs font-semibold text-slate-400">
+                        {candidateContact}
                       </span>
-                      <span
-                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                          isSelected
-                            ? 'border-brand bg-brand text-[#06120e]'
-                            : 'border-white/[0.12] text-transparent'
-                        }`}
-                      >
-                        <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                      </span>
+                      {candidatePhone ? (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            void copyCandidatePhone(candidatePhone);
+                          }}
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04] text-slate-400 transition hover:border-brand/40 hover:text-brand"
+                          aria-label={participantCopy.copyPhone}
+                          title={participantCopy.copyPhone}
+                        >
+                          <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                        </button>
+                      ) : (
+                        <span aria-hidden="true" />
+                      )}
                     </label>
                   );
                 })
@@ -605,51 +576,89 @@ export function CreateSessionModal({
           </div>
         </div>
 
-        <label className="block">
+        <div>
           <span className="text-sm font-bold text-slate-300">
             {labels.scheduledAt}
           </span>
-          {isLockedTestPlan ? (
-            <>
-              <input type="hidden" name="scheduledAt" value={scheduledAt} />
+          <input type="hidden" name="scheduledAt" value={scheduledAt} />
+          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_minmax(96px,0.65fr)] gap-2">
+            <label className="relative block">
+              {isLockedTestPlan ? (
+                <Lock
+                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-200"
+                  aria-hidden="true"
+                />
+              ) : null}
               <input
-                type="time"
-                value={scheduledAt.slice(11, 16)}
+                type="date"
+                min={minScheduledAt.slice(0, 10)}
+                value={scheduledAt.slice(0, 10)}
+                disabled={isLockedTestPlan}
                 onChange={(event) =>
                   setScheduledAt(
-                    mergeLockedDateWithTime(scheduledAt, event.target.value),
+                    mergeDateWithTime(scheduledAt, event.target.value),
                   )
                 }
-                className="field mt-2 h-10 min-w-0 rounded-[7px] px-3 py-2 text-sm [color-scheme:dark]"
+                className={`field h-10 min-w-0 rounded-[7px] px-3 py-2 text-sm [color-scheme:dark] ${
+                  isLockedTestPlan
+                    ? 'cursor-not-allowed pr-9 text-slate-400 opacity-75'
+                    : ''
+                }`}
+                aria-label={
+                  locale === 'fr' ? 'Date de la séance' : 'Session date'
+                }
               />
-            </>
-          ) : (
+            </label>
             <input
-              name="scheduledAt"
-              type="datetime-local"
-              min={minScheduledAt}
-              value={scheduledAt}
-              onChange={(event) => setScheduledAt(event.target.value)}
-              className="field mt-2 h-10 min-w-0 rounded-[7px] px-3 py-2 text-sm [color-scheme:dark]"
+              type="time"
+              value={scheduledAt.slice(11, 16)}
+              onChange={(event) =>
+                setScheduledAt(
+                  mergeLockedDateWithTime(scheduledAt, event.target.value),
+                )
+              }
+              className="field h-10 min-w-0 rounded-[7px] px-3 py-2 text-sm [color-scheme:dark]"
+              aria-label={
+                locale === 'fr' ? 'Heure de la séance' : 'Session time'
+              }
             />
-          )}
-        </label>
+          </div>
+        </div>
 
-        <label className="block">
-          <span className="text-sm font-bold text-slate-300">
-            {labels.questionCount}
-          </span>
-          <input
-            name="questionGoal"
-            type="number"
-            min="1"
-            max={sessionPolicy.maxQuestionGoal}
-            value={questionGoal}
-            readOnly={isLockedTestPlan}
-            onChange={(event) => setQuestionGoal(event.target.value)}
-            className="field mt-2 h-10 rounded-[7px] px-3 py-2 text-sm read-only:cursor-not-allowed read-only:opacity-70"
-          />
-        </label>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block min-w-0">
+            <span className="block truncate text-sm font-bold text-slate-300">
+              {labels.questionCount}
+            </span>
+            <input
+              name="questionGoal"
+              type="number"
+              min="1"
+              max={sessionPolicy.maxQuestionGoal}
+              value={questionGoal}
+              readOnly={isLockedTestPlan}
+              onChange={(event) => setQuestionGoal(event.target.value)}
+              className="field mt-2 h-10 rounded-[7px] px-3 py-2 text-sm read-only:cursor-not-allowed read-only:opacity-70"
+            />
+          </label>
+          <label className="block min-w-0">
+            <span className="block truncate text-sm font-bold text-slate-300">
+              {timerMode === 'global'
+                ? labels.totalTimerSeconds
+                : labels.timerSeconds}
+            </span>
+            <input
+              name="timerSeconds"
+              type="number"
+              min="1"
+              max={sessionPolicy.maxTimerSeconds}
+              value={timerSeconds}
+              readOnly={isLockedTestPlan}
+              onChange={(event) => setTimerSeconds(event.target.value)}
+              className="field mt-2 h-10 rounded-[7px] px-3 py-2 text-sm read-only:cursor-not-allowed read-only:opacity-70"
+            />
+          </label>
+        </div>
 
         <div>
           <div className="flex items-center gap-2">
@@ -753,24 +762,6 @@ export function CreateSessionModal({
           ) : null}
         </div>
 
-        <label className="block">
-          <span className="text-sm font-bold text-slate-300">
-            {timerMode === 'global'
-              ? labels.totalTimerSeconds
-              : labels.timerSeconds}
-          </span>
-          <input
-            name="timerSeconds"
-            type="number"
-            min="1"
-            max={sessionPolicy.maxTimerSeconds}
-            value={timerSeconds}
-            readOnly={isLockedTestPlan}
-            onChange={(event) => setTimerSeconds(event.target.value)}
-            className="field mt-2 h-10 rounded-[7px] px-3 py-2 text-sm read-only:cursor-not-allowed read-only:opacity-70"
-          />
-        </label>
-
         <p className="text-xs italic text-slate-500">
           {isLockedTestPlan
             ? locale === 'fr'
@@ -842,6 +833,17 @@ function mergeLockedDateWithTime(currentValue: string, nextValue: string) {
   }
 
   return `${currentDate}T${nextTime}`;
+}
+
+function mergeDateWithTime(currentValue: string, nextDate: string) {
+  const safeDate = nextDate.slice(0, 10);
+  const currentTime = currentValue.slice(11, 16) || '09:00';
+
+  if (!safeDate || !currentTime) {
+    return currentValue;
+  }
+
+  return `${safeDate}T${currentTime}`;
 }
 
 function isValidScheduledAtInput(value: string) {
@@ -951,57 +953,14 @@ function getCreateSessionValidationCopy(locale: string) {
 
 type ParticipantCandidate = {
   id: string;
+  name?: string | null;
   initials: string;
   email?: string;
-  compatibilityScore?: number;
-  classificationLabel?: string;
-  language?: string | null;
-  positivePeerVotes?: number;
-  questionsCompleted?: number;
-  questionsReviewed?: number;
-  sessionsJoined?: number;
-  totalPeerVotes?: number;
+  phoneNumber?: string | null;
   avatarUrl: string | null;
   groupIds: string[];
   groupNames: string[];
 };
-
-function formatCandidateLanguage(language: string | null | undefined, locale: string) {
-  const normalized = language?.trim().toUpperCase();
-  if (normalized) {
-    return normalized.slice(0, 5);
-  }
-
-  return locale === 'fr' ? 'Langue n/d' : 'Language n/a';
-}
-
-function formatCandidateSeriousness(
-  candidate: ParticipantCandidate,
-  locale: string,
-) {
-  const positiveVotes = candidate.positivePeerVotes ?? 0;
-  const totalVotes = candidate.totalPeerVotes ?? 0;
-
-  if (totalVotes > 0) {
-    return locale === 'fr'
-      ? `${positiveVotes}/${totalVotes} oui`
-      : `${positiveVotes}/${totalVotes} yes`;
-  }
-
-  if ((candidate.questionsReviewed ?? 0) > 0) {
-    return locale === 'fr'
-      ? `${candidate.questionsReviewed} revues`
-      : `${candidate.questionsReviewed} reviewed`;
-  }
-
-  if ((candidate.sessionsJoined ?? 0) > 0) {
-    return locale === 'fr'
-      ? `${candidate.sessionsJoined} séances`
-      : `${candidate.sessionsJoined} sessions`;
-  }
-
-  return candidate.classificationLabel ?? (locale === 'fr' ? 'Profil récent' : 'New profile');
-}
 
 function formatPoolMemberCount(memberCount: number, locale: string) {
   if (locale === 'fr') {
@@ -1009,6 +968,29 @@ function formatPoolMemberCount(memberCount: number, locale: string) {
   }
 
   return `${memberCount} member${memberCount === 1 ? '' : 's'}`;
+}
+
+function formatCandidateName(candidate: ParticipantCandidate) {
+  return candidate.name?.trim() || candidate.initials;
+}
+
+function formatCandidateContact(
+  candidate: ParticipantCandidate,
+  copy: ReturnType<typeof getCleanParticipantCopy>,
+) {
+  return (
+    candidate.phoneNumber?.trim() ||
+    copy.contactUnavailable
+  );
+}
+
+async function copyCandidatePhone(phoneNumber: string) {
+  const value = phoneNumber.trim();
+  if (!value || typeof navigator === 'undefined' || !navigator.clipboard) {
+    return;
+  }
+
+  await navigator.clipboard.writeText(value);
 }
 
 function getInitials(value: string) {
@@ -1030,6 +1012,9 @@ function getParticipantCandidates(
     membersPreview?: Array<{
       id: string;
       initials: string;
+      name?: string | null;
+      email?: string | null;
+      phoneNumber?: string | null;
       avatarUrl: string | null;
     }>;
   }>,
@@ -1052,10 +1037,10 @@ function getParticipantCandidates(
       candidateById.set(member.id, {
         id: member.id,
         initials: member.initials,
+        name: member.name,
+        email: member.email ?? undefined,
+        phoneNumber: member.phoneNumber,
         avatarUrl: member.avatarUrl,
-        questionsCompleted: 0,
-        questionsReviewed: 0,
-        sessionsJoined: 0,
         groupIds: [group.id],
         groupNames: [group.name],
       });
@@ -1063,7 +1048,7 @@ function getParticipantCandidates(
   }
 
   return [...candidateById.values()].sort((left, right) =>
-    left.initials.localeCompare(right.initials),
+    formatCandidateName(left).localeCompare(formatCandidateName(right)),
   );
 }
 
@@ -1078,6 +1063,8 @@ function getCleanParticipantCopy(locale: string) {
       searchLockedPayment: 'Paiement requis pour rechercher des candidats',
       unlockSearch: 'Débloquer la recherche',
       questions: '{count} Q',
+      copyPhone: 'Copier le tÃ©lÃ©phone',
+      contactUnavailable: 'Contact non renseignÃ©',
       empty: 'Aucun membre disponible',
     };
   }
@@ -1091,6 +1078,8 @@ function getCleanParticipantCopy(locale: string) {
     searchLockedPayment: 'Payment required to search candidates',
     unlockSearch: 'Unlock search',
     questions: '{count} Q',
+    copyPhone: 'Copy phone number',
+    contactUnavailable: 'No contact',
     empty: 'No member available',
   };
 }
