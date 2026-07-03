@@ -179,6 +179,11 @@ export function CreateSessionModal({
     : `/${locale}/dashboard`;
   const participantCopy = getCleanParticipantCopy(locale);
   const timerModeCopy = getCleanTimerModeCopy(locale);
+  const modalTitle = isLockedTestPlan
+    ? locale === 'fr'
+      ? 'Session test'
+      : 'Test session'
+    : labels.newSession;
 
   useEffect(() => {
     if (!canInviteCandidates) {
@@ -284,7 +289,7 @@ export function CreateSessionModal({
     >
       <div className="flex items-center justify-between">
         <ModalTitle className="text-lg font-extrabold text-white">
-          {labels.newSession}
+          {modalTitle}
         </ModalTitle>
         <button
           ref={closeButtonRef}
@@ -411,13 +416,17 @@ export function CreateSessionModal({
             value={participantId}
           />
         ))}
+        {isLockedTestPlan ? (
+          <input type="hidden" name="groupId" value={selectedGroupId} />
+        ) : null}
 
-        <label className="block">
+        <label className={isLockedTestPlan ? 'hidden' : 'block'}>
           <span className="text-sm font-bold text-slate-300">
             {participantCopy.poolLabel}
           </span>
           <select
-            name="groupId"
+            name={isLockedTestPlan ? undefined : 'groupId'}
+            disabled={isLockedTestPlan}
             value={selectedGroupId}
             onChange={(event) => {
               const nextGroupId = event.target.value;
@@ -473,17 +482,16 @@ export function CreateSessionModal({
                   : 'border-amber-200/20 bg-amber-200/[0.06]'
               }`}
             >
-              {canInviteCandidates ? (
-                <Search
-                  className="h-4 w-4 text-slate-500"
-                  aria-hidden="true"
-                />
-              ) : (
+              <Search
+                className="h-4 w-4 shrink-0 text-slate-500"
+                aria-hidden="true"
+              />
+              {!canInviteCandidates ? (
                 <Lock
-                  className="h-4 w-4 text-amber-200"
+                  className="h-4 w-4 shrink-0 text-amber-200"
                   aria-hidden="true"
                 />
-              )}
+              ) : null}
               <input
                 value={participantSearch}
                 onChange={(event) => setParticipantSearch(event.target.value)}
