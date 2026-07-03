@@ -522,9 +522,9 @@ export function CreateSessionModal({
                   return (
                     <label
                       key={candidate.id}
-                      className={`grid h-10 cursor-pointer grid-cols-[minmax(88px,1fr)_minmax(96px,0.9fr)_32px] items-center gap-2 rounded-[9px] px-2 transition ${
+                      className={`grid h-10 cursor-pointer grid-cols-[32px_minmax(72px,1fr)_minmax(82px,0.86fr)_32px] items-center gap-2 rounded-[9px] px-2 transition ${
                         isSelected
-                          ? 'bg-brand/10 text-white ring-1 ring-brand/30'
+                          ? 'bg-brand/10 text-white'
                           : 'text-slate-300 hover:bg-white/[0.04]'
                       }`}
                     >
@@ -540,6 +540,16 @@ export function CreateSessionModal({
                         }}
                         className="sr-only"
                       />
+                      <span
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[#22504a] bg-cover bg-center text-[11px] font-bold text-[#9FF0CE]"
+                        style={{
+                          backgroundImage: candidate.avatarUrl
+                            ? `url("${candidate.avatarUrl}")`
+                            : undefined,
+                        }}
+                      >
+                        {candidate.avatarUrl ? null : candidate.initials}
+                      </span>
                       <span className="min-w-0 truncate text-sm font-semibold">
                         {candidateName}
                       </span>
@@ -1063,8 +1073,8 @@ function getCleanParticipantCopy(locale: string) {
       searchLockedPayment: 'Paiement requis pour rechercher des candidats',
       unlockSearch: 'Débloquer la recherche',
       questions: '{count} Q',
-      copyPhone: 'Copier le tÃ©lÃ©phone',
-      contactUnavailable: 'Contact non renseignÃ©',
+      copyPhone: 'Copier le téléphone',
+      contactUnavailable: 'Téléphone non renseigné',
       empty: 'Aucun membre disponible',
     };
   }
@@ -1079,7 +1089,7 @@ function getCleanParticipantCopy(locale: string) {
     unlockSearch: 'Unlock search',
     questions: '{count} Q',
     copyPhone: 'Copy phone number',
-    contactUnavailable: 'No contact',
+    contactUnavailable: 'No phone',
     empty: 'No member available',
   };
 }
