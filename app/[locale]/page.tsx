@@ -45,8 +45,8 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
         <ActiveBoardLandingLogo />
       </div>
 
-      <section className="mx-auto grid w-full max-w-[1400px] grid-cols-1 items-start gap-7 px-3 pb-8 pt-20 sm:px-4 lg:grid-cols-[minmax(500px,650px)_minmax(0,1fr)] lg:gap-4 lg:px-6 lg:pb-10 lg:pt-24">
-        <div className="relative z-10 w-full max-w-[650px]">
+      <section className="mx-auto grid w-full max-w-[1460px] grid-cols-1 items-start gap-7 px-3 pb-8 pt-20 sm:px-4 lg:grid-cols-[minmax(430px,520px)_minmax(0,1fr)] lg:gap-3 lg:px-6 lg:pb-10 lg:pt-24 xl:grid-cols-[minmax(470px,570px)_minmax(0,1fr)]">
+        <div className="relative z-10 w-full max-w-[570px]">
           <p
             data-landing-badge
             className="inline-flex max-w-full items-center gap-2.5 rounded-full border border-white/[0.10] bg-white/[0.035] px-3.5 py-2 text-[12px] font-semibold leading-snug text-[#d8e1df]"
@@ -73,13 +73,17 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
 
           <h1
             data-landing-hero
-            className="mt-4 max-w-[650px] text-[31px] font-extrabold leading-[1.04] text-white sm:text-[40px] lg:text-[48px] xl:text-[54px]"
+            className="mt-4 max-w-[570px] text-[31px] font-extrabold leading-[1.04] text-white sm:text-[40px] lg:text-[50px] xl:text-[58px]"
           >
-            {t('landingTitleBefore')}{' '}
-            <span className="bg-gradient-to-r from-brand to-[#58f4c5] bg-clip-text text-transparent">
-              MCCQE
-            </span>{' '}
-            {t('landingTitleAfter')}
+            <span className="block">{t('landingHeroLine1')}</span>
+            <span className="block">
+              <span className="bg-gradient-to-r from-brand to-[#58f4c5] bg-clip-text text-transparent">
+                MCCQE
+              </span>{' '}
+              {t('landingHeroLine2')}
+            </span>
+            <span className="block">{t('landingHeroLine3')}</span>
+            <span className="block">{t('landingHeroLine4')}</span>
           </h1>
           <p className="mt-3 max-w-[520px] text-[15px] font-medium leading-[1.5] text-[#c6d4d1] sm:text-[17px]">
             {t('landingSubtitle')}
@@ -157,10 +161,10 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
 
         <div
           data-landing-desktop-image
-          className="relative hidden min-h-[470px] min-w-0 items-start justify-end overflow-visible pt-16 lg:flex xl:pt-12"
+          className="relative hidden min-h-[560px] min-w-0 items-start justify-end overflow-visible pt-8 lg:flex xl:pt-6"
         >
-          <div className="absolute bottom-12 right-0 h-28 w-[82%] rounded-full bg-brand/20 blur-3xl" />
-          <div className="absolute right-0 top-4 h-[360px] w-[680px] rounded-full bg-emerald-400/14 blur-3xl" />
+          <div className="absolute bottom-16 right-0 h-32 w-[86%] rounded-full bg-brand/22 blur-3xl" />
+          <div className="absolute right-0 top-0 h-[410px] w-[780px] rounded-full bg-emerald-400/16 blur-3xl" />
           <div className="relative flex w-full min-w-0 origin-center justify-end [perspective:1100px]">
             <Image
               src="/landing/direct-signup-devices.png"
@@ -169,8 +173,8 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
               height={474}
               priority
               unoptimized
-              className="relative z-10 mt-0 h-auto w-full max-w-[790px] -rotate-[1deg] scale-[1.06] object-contain opacity-95 drop-shadow-[0_34px_80px_rgba(0,0,0,0.62)] [transform:rotateY(-16deg)_rotateX(3deg)]"
-              sizes="(min-width: 1280px) 820px, calc(100vw - 520px)"
+              className="relative z-10 mt-0 h-auto w-full max-w-[900px] -rotate-[0.5deg] scale-[1.14] object-contain opacity-95 drop-shadow-[0_34px_80px_rgba(0,0,0,0.62)] [transform:rotateY(-19deg)_rotateX(3deg)]"
+              sizes="(min-width: 1280px) 940px, calc(100vw - 470px)"
             />
           </div>
         </div>
