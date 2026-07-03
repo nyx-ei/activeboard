@@ -280,7 +280,7 @@ export function CreateSessionModal({
       backdropLabel={labels.close}
       initialFocusRef={closeButtonRef}
       mobileSheet
-      contentClassName="max-h-[90vh] w-full max-w-[calc(100vw-16px)] overscroll-contain overflow-x-hidden overflow-y-auto rounded-t-[18px] bg-[#111827] p-3 shadow-2xl ring-1 ring-white/[0.08] [scrollbar-width:none] sm:max-w-[540px] sm:rounded-[14px] sm:p-6 [&::-webkit-scrollbar]:hidden"
+      contentClassName="max-h-[90vh] w-full max-w-[calc(100vw-12px)] overscroll-contain overflow-x-hidden overflow-y-auto rounded-t-[18px] bg-[#111827] p-2.5 shadow-2xl ring-1 ring-white/[0.08] [scrollbar-width:none] sm:max-w-[540px] sm:rounded-[14px] sm:p-6 [&::-webkit-scrollbar]:hidden"
     >
       <div className="flex items-center justify-between">
         <ModalTitle className="text-lg font-extrabold text-white">
@@ -299,7 +299,7 @@ export function CreateSessionModal({
 
       <form
         action={action}
-        className="mt-5 space-y-4"
+        className="mt-5 min-w-0 space-y-4"
         onSubmit={(event) => {
           if (isCreating) {
             event.preventDefault();
@@ -591,7 +591,7 @@ export function CreateSessionModal({
             {labels.scheduledAt}
           </span>
           <input type="hidden" name="scheduledAt" value={scheduledAt} />
-          <div className="mt-2 grid grid-cols-1 gap-2 min-[430px]:grid-cols-[minmax(0,1fr)_minmax(86px,0.56fr)]">
+          <div className="mt-2 grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,0.64fr)] gap-1.5 sm:gap-2">
             <label className="relative block min-w-0">
               {isLockedTestPlan ? (
                 <Lock
@@ -609,7 +609,7 @@ export function CreateSessionModal({
                     mergeDateWithTime(scheduledAt, event.target.value),
                   )
                 }
-                className={`field h-10 min-w-0 max-w-full rounded-[7px] px-2 py-2 text-[13px] [color-scheme:dark] sm:px-3 sm:text-sm ${
+                className={`field h-10 min-w-0 max-w-full rounded-[7px] px-1.5 py-2 text-center text-[12px] [color-scheme:dark] sm:px-3 sm:text-left sm:text-sm ${
                   isLockedTestPlan
                     ? 'cursor-not-allowed pr-9 text-slate-400 opacity-75'
                     : ''
@@ -627,7 +627,7 @@ export function CreateSessionModal({
                   mergeLockedDateWithTime(scheduledAt, event.target.value),
                 )
               }
-              className="field h-10 min-w-0 max-w-full rounded-[7px] px-2 py-2 text-[13px] [color-scheme:dark] sm:px-3 sm:text-sm"
+              className="field h-10 min-w-0 max-w-full rounded-[7px] px-1.5 py-2 text-center text-[12px] [color-scheme:dark] sm:px-3 sm:text-left sm:text-sm"
               aria-label={
                 locale === 'fr' ? 'Heure de la séance' : 'Session time'
               }
@@ -635,9 +635,9 @@ export function CreateSessionModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-2 min-[430px]:grid-cols-2">
+        <div className="grid min-w-0 grid-cols-2 gap-1.5 sm:gap-2">
           <label className="block min-w-0">
-            <span className="block truncate text-sm font-bold text-slate-300">
+            <span className="block text-xs font-bold leading-tight text-slate-300 sm:text-sm">
               {labels.questionCount}
             </span>
             <input
@@ -648,11 +648,11 @@ export function CreateSessionModal({
               value={questionGoal}
               readOnly={isLockedTestPlan}
               onChange={(event) => setQuestionGoal(event.target.value)}
-              className="field mt-2 h-10 rounded-[7px] px-3 py-2 text-sm read-only:cursor-not-allowed read-only:opacity-70"
+              className="field mt-2 h-10 min-w-0 rounded-[7px] px-2 py-2 text-sm read-only:cursor-not-allowed read-only:opacity-70 sm:px-3"
             />
           </label>
           <label className="block min-w-0">
-            <span className="block truncate text-sm font-bold text-slate-300">
+            <span className="block text-xs font-bold leading-tight text-slate-300 sm:text-sm">
               {timerMode === 'global'
                 ? labels.totalTimerSeconds
                 : labels.timerSeconds}
@@ -665,7 +665,7 @@ export function CreateSessionModal({
               value={timerSeconds}
               readOnly={isLockedTestPlan}
               onChange={(event) => setTimerSeconds(event.target.value)}
-              className="field mt-2 h-10 rounded-[7px] px-3 py-2 text-sm read-only:cursor-not-allowed read-only:opacity-70"
+              className="field mt-2 h-10 min-w-0 rounded-[7px] px-2 py-2 text-sm read-only:cursor-not-allowed read-only:opacity-70 sm:px-3"
             />
           </label>
         </div>
