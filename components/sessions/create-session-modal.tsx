@@ -280,7 +280,7 @@ export function CreateSessionModal({
       backdropLabel={labels.close}
       initialFocusRef={closeButtonRef}
       mobileSheet
-      contentClassName="max-h-[90vh] w-full max-w-[540px] overscroll-contain overflow-y-auto rounded-t-[18px] bg-[#111827] p-4 shadow-2xl ring-1 ring-white/[0.08] [scrollbar-width:none] sm:rounded-[14px] sm:p-6 [&::-webkit-scrollbar]:hidden"
+      contentClassName="max-h-[90vh] w-full max-w-[calc(100vw-16px)] overscroll-contain overflow-x-hidden overflow-y-auto rounded-t-[18px] bg-[#111827] p-3 shadow-2xl ring-1 ring-white/[0.08] [scrollbar-width:none] sm:max-w-[540px] sm:rounded-[14px] sm:p-6 [&::-webkit-scrollbar]:hidden"
     >
       <div className="flex items-center justify-between">
         <ModalTitle className="text-lg font-extrabold text-white">
@@ -591,8 +591,8 @@ export function CreateSessionModal({
             {labels.scheduledAt}
           </span>
           <input type="hidden" name="scheduledAt" value={scheduledAt} />
-          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_minmax(96px,0.65fr)] gap-2">
-            <label className="relative block">
+          <div className="mt-2 grid grid-cols-1 gap-2 min-[430px]:grid-cols-[minmax(0,1fr)_minmax(86px,0.56fr)]">
+            <label className="relative block min-w-0">
               {isLockedTestPlan ? (
                 <Lock
                   className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-200"
@@ -609,7 +609,7 @@ export function CreateSessionModal({
                     mergeDateWithTime(scheduledAt, event.target.value),
                   )
                 }
-                className={`field h-10 min-w-0 rounded-[7px] px-3 py-2 text-sm [color-scheme:dark] ${
+                className={`field h-10 min-w-0 max-w-full rounded-[7px] px-2 py-2 text-[13px] [color-scheme:dark] sm:px-3 sm:text-sm ${
                   isLockedTestPlan
                     ? 'cursor-not-allowed pr-9 text-slate-400 opacity-75'
                     : ''
@@ -627,7 +627,7 @@ export function CreateSessionModal({
                   mergeLockedDateWithTime(scheduledAt, event.target.value),
                 )
               }
-              className="field h-10 min-w-0 rounded-[7px] px-3 py-2 text-sm [color-scheme:dark]"
+              className="field h-10 min-w-0 max-w-full rounded-[7px] px-2 py-2 text-[13px] [color-scheme:dark] sm:px-3 sm:text-sm"
               aria-label={
                 locale === 'fr' ? 'Heure de la séance' : 'Session time'
               }
@@ -635,7 +635,7 @@ export function CreateSessionModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2 min-[430px]:grid-cols-2">
           <label className="block min-w-0">
             <span className="block truncate text-sm font-bold text-slate-300">
               {labels.questionCount}
