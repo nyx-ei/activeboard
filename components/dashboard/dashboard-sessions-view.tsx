@@ -55,6 +55,9 @@ export type DashboardSessionsViewProps = {
     membersPreview?: Array<{
       id: string;
       initials: string;
+      name?: string | null;
+      email?: string | null;
+      phoneNumber?: string | null;
       avatarUrl: string | null;
     }>;
     hasLiveSession?: boolean;

@@ -72,7 +72,7 @@ export async function getShellGroupsForUser(userId: string, locale: string) {
       ? await supabaseAdmin
           .schema('public')
           .from('users')
-          .select('id, display_name, email, avatar_url')
+          .select('id, display_name, email, avatar_url, phone_number')
           .in('id', memberIds)
       : { data: [] };
   const memberProfileById = new Map(
@@ -98,6 +98,9 @@ export async function getShellGroupsForUser(userId: string, locale: string) {
       return {
         id: membership.user_id,
         initials: getInitials(displayLabel),
+        name: profile?.display_name ?? null,
+        email: profile?.email ?? null,
+        phoneNumber: profile?.phone_number ?? null,
         avatarUrl: profile?.avatar_url ?? null,
       };
     });
