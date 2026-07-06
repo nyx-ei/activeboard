@@ -1,6 +1,8 @@
 import 'server-only';
 
 import type { AppPolicySettings } from '@/lib/policy/defaults';
+import { hasEmailEnv } from '@/lib/env';
+import { sendSessionCalendarInvites } from '@/lib/notifications/calendar-invites';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import type { Database } from '@/lib/supabase/types';
 import { generateInviteCode } from '@/lib/utils';
@@ -14,6 +16,18 @@ type UserRow = Pick<
   Database['public']['Tables']['users']['Row'],
   'id'
 >;
+type SessionRow = Database['public']['Tables']['sessions']['Row'];
+type TestSessionInviteRow = Pick<
+  SessionRow,
+  | 'id'
+  | 'group_id'
+  | 'name'
+  | 'scheduled_at'
+  | 'share_code'
+  | 'meeting_link'
+  | 'timer_seconds'
+  | 'leader_id'
+>;
 
 export async function ensureInitialTestSessions(
   user: UserRow,
@@ -23,14 +37,14 @@ export async function ensureInitialTestSessions(
   >,
 ) {
   const admin = createSupabaseAdminClient();
-  const existingCount = await countExistingTestWindowSessions(admin, user.id);
+  const groupId = await getOrCreateTestGroup(admin, user);
+  const existingCount = await countExistingTestWindowSessions(admin, groupId);
   const missingCount = TEST_SESSION_TARGET - existingCount;
 
   if (missingCount <= 0) {
     return;
   }
 
-  const groupId = await getOrCreateTestGroup(admin, user);
   const now = new Date();
   const sessions = Array.from({ length: missingCount }, (_, index) => {
     const sessionNumber = existingCount + index + 1;
@@ -47,39 +61,30 @@ export async function ensureInitialTestSessions(
     };
   });
 
-  await admin.schema('public').from('sessions').insert(sessions);
+  const { data: createdSessions, error } = await admin
+    .schema('public')
+    .from('sessions')
+    .insert(sessions)
+    .select(
+      'id, group_id, name, scheduled_at, share_code, meeting_link, timer_seconds, leader_id',
+    );
+
+  if (error) {
+    throw error;
+  }
+
+  dispatchTestSessionInvites(createdSessions ?? []);
 }
 
 async function countExistingTestWindowSessions(
   admin: AdminClient,
-  userId: string,
+  groupId: string,
 ) {
-  const { count } = await (
-    admin as AdminClient & {
-      schema: (schemaName: 'public') => {
-        from: (relation: 'dashboard_user_sessions') => {
-          select: (
-            columns: string,
-            options: { count: 'exact'; head: true },
-          ) => {
-            eq: (
-              column: 'user_id',
-              value: string,
-            ) => {
-              neq: (
-                column: 'status',
-                value: string,
-              ) => Promise<{ count: number | null }>;
-            };
-          };
-        };
-      };
-    }
-  )
+  const { count } = await admin
     .schema('public')
-    .from('dashboard_user_sessions')
+    .from('sessions')
     .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId)
+    .eq('group_id', groupId)
     .neq('status', 'cancelled');
 
   return Math.min(count ?? 0, TEST_SESSION_TARGET);
@@ -97,18 +102,6 @@ async function getOrCreateTestGroup(admin: AdminClient, user: UserRow) {
 
   if (existingTestMembership?.group_id) {
     return existingTestMembership.group_id;
-  }
-
-  const { data: existingMembership } = await admin
-    .schema('public')
-    .from('group_members')
-    .select('group_id')
-    .eq('user_id', user.id)
-    .limit(1)
-    .maybeSingle();
-
-  if (existingMembership?.group_id) {
-    return existingMembership.group_id;
   }
 
   const inviteCode = await createUniqueInviteCode(admin);
@@ -170,4 +163,14 @@ function getDefaultTestSessionDate(now: Date, sessionNumber: number) {
 
 function getFallbackTestGroupName(user: UserRow) {
   return `${user.id.slice(0, 8)} - test`;
+}
+
+function dispatchTestSessionInvites(sessions: TestSessionInviteRow[]) {
+  if (!hasEmailEnv() || sessions.length === 0) {
+    return;
+  }
+
+  void Promise.allSettled(
+    sessions.map((session) => sendSessionCalendarInvites(session)),
+  );
 }

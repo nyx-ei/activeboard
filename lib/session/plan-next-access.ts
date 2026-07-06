@@ -44,44 +44,18 @@ export const getPlanNextAccess = cache(
       DEFAULT_APP_POLICY_SETTINGS,
   ): Promise<PlanNextAccess> => {
     const supabase = createSupabaseServerClient();
-    const [userResult, completedSessionsResult] = await Promise.all([
+    const [userResult, completedTestSessionCount] = await Promise.all([
       supabase
         .schema('public')
         .from('users')
         .select('has_valid_payment_method, subscription_status, user_tier')
         .eq('id', userId)
         .maybeSingle(),
-      (
-        supabase as unknown as {
-          schema: (schemaName: string) => {
-            from: (relation: string) => {
-              select: (
-                columns: string,
-                options: { count: 'exact'; head: true },
-              ) => {
-                eq: (
-                  column: string,
-                  value: string,
-                ) => {
-                  eq: (
-                    column: string,
-                    value: string,
-                  ) => Promise<{ count: number | null }>;
-                };
-              };
-            };
-          };
-        }
-      )
-        .schema('public')
-        .from('dashboard_user_sessions')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('status', 'completed'),
+      countCompletedTestSessions(userId),
     ]);
 
     const completedTestSessions = Math.min(
-      completedSessionsResult.count ?? 0,
+      completedTestSessionCount,
       TEST_SESSION_TARGET,
     );
     const isPaid = hasPaidAccess(userResult.data);
@@ -102,3 +76,31 @@ export const getPlanNextAccess = cache(
     };
   },
 );
+
+async function countCompletedTestSessions(userId: string) {
+  const supabase = createSupabaseServerClient();
+  const { data: memberships } = await supabase
+    .schema('public')
+    .from('group_members')
+    .select('group_id, groups!inner(group_kind)')
+    .eq('user_id', userId)
+    .eq('groups.group_kind', 'session_test');
+
+  const groupIds =
+    memberships
+      ?.map((membership) => membership.group_id)
+      .filter((groupId): groupId is string => Boolean(groupId)) ?? [];
+
+  if (groupIds.length === 0) {
+    return 0;
+  }
+
+  const { count } = await supabase
+    .schema('public')
+    .from('sessions')
+    .select('id', { count: 'exact', head: true })
+    .in('group_id', groupIds)
+    .eq('status', 'completed');
+
+  return count ?? 0;
+}
