@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
@@ -21,6 +22,7 @@ import {
   getDashboardSessionsData,
 } from '@/lib/demo/data';
 import { Link } from '@/i18n/navigation';
+import { getOnboardingCompletion } from '@/lib/onboarding/completion';
 import { ensureInitialTestSessions } from '@/lib/session/initial-test-sessions';
 import { getPlanNextAccess } from '@/lib/session/plan-next-access';
 
@@ -78,6 +80,11 @@ export default async function DashboardPage({
     getUserAccessState(user.id),
     getUserBillingSnapshot(user.id),
   ]);
+
+  const onboarding = await getOnboardingCompletion(user.id, locale);
+  if (onboarding.nextPath) {
+    redirect(onboarding.nextPath);
+  }
 
   await ensureInitialTestSessions(user, accessState.policy);
 

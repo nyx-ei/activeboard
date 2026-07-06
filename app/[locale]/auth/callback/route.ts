@@ -5,6 +5,7 @@ import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
 import { hasEmailEnv } from '@/lib/env';
 import { sendAccountWelcomeEmail } from '@/lib/notifications/account';
+import { getOnboardingCompletion } from '@/lib/onboarding/completion';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { Database } from '@/lib/supabase/types';
 
@@ -56,7 +57,7 @@ export async function GET(request: Request, { params }: RouteContext) {
       exam_type:
         typeof user.user_metadata.exam_type === 'string'
           ? (user.user_metadata.exam_type as 'mccqe1' | 'usmle' | 'plab' | 'other')
-          : null,
+          : 'mccqe1',
       exam_session:
         typeof user.user_metadata.exam_session === 'string'
           ? (user.user_metadata.exam_session as 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead')
@@ -107,6 +108,11 @@ export async function GET(request: Request, { params }: RouteContext) {
 
     if (pendingInvite?.id) {
       redirectPath = `/${locale}/invite/${pendingInvite.id}`;
+    } else {
+      const onboarding = await getOnboardingCompletion(user.id, locale);
+      if (onboarding.nextPath) {
+        redirectPath = onboarding.nextPath;
+      }
     }
   }
 

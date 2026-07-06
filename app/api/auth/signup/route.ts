@@ -69,6 +69,7 @@ export async function POST(request: Request) {
     user_metadata: {
       full_name: displayName,
       locale,
+      exam_type: 'mccqe1',
       ...(examSession ? { exam_session: examSession } : {}),
     },
   });
@@ -97,6 +98,7 @@ export async function POST(request: Request) {
         id: createdUserId,
         email,
         display_name: displayName,
+        exam_type: 'mccqe1',
         exam_session: examSession,
         locale,
       },
