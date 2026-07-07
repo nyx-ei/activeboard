@@ -27,6 +27,9 @@ type CreateSessionPayload = {
   questionGoal?: number;
   timerMode?: 'per_question' | 'global';
   timerSeconds?: number;
+  meetingLink?: string;
+  forceCreate?: boolean;
+  continuitySessionId?: string;
   participantUserIds?: unknown;
 };
 
@@ -121,6 +124,9 @@ export async function POST(request: Request) {
   const questionGoal = Number(body?.questionGoal);
   const timerMode = body?.timerMode === 'global' ? 'global' : 'per_question';
   const timerSeconds = Number(body?.timerSeconds);
+  const meetingLink = body?.meetingLink?.trim() ?? '';
+  const forceCreate = body?.forceCreate === true;
+  const continuitySessionId = body?.continuitySessionId ?? '';
   const policy = await getAppPolicySettings();
   const sessionsPath =
     groupId && returnTo === groupDashboardPath(locale, groupId)
@@ -381,6 +387,7 @@ export async function POST(request: Request) {
         group_id: createdGroup.id,
         name: sessionName,
         scheduled_at: scheduledAt.toISOString(),
+        meeting_link: meetingLink || null,
         timer_mode: timerMode,
         timer_seconds: timerSeconds,
         question_goal: Math.min(
@@ -426,6 +433,7 @@ export async function POST(request: Request) {
           timer_mode: timerMode,
           scheduled_at: scheduledAt.toISOString(),
           share_code: createdSession.share_code,
+          meeting_link_present: Boolean(meetingLink),
         },
       }),
       hasEmailEnv()
@@ -465,31 +473,36 @@ export async function POST(request: Request) {
 
   perf.setContext({ groupId, locale });
 
-  const { data: fastRows, error: fastError } = await (
-    supabase.schema('public') as unknown as {
-      rpc: (
-        fn: 'activeboard_create_session_self_fast_v2',
-        args: {
-          target_group_id: string;
-          session_name: string;
-          target_scheduled_at: string;
-          target_question_goal: number;
-          target_timer_mode: string;
-          target_timer_seconds: number;
-        },
-      ) => Promise<{
-        data: FastCreateSessionResult[] | null;
-        error: { code?: string; message?: string } | null;
-      }>;
-    }
-  ).rpc('activeboard_create_session_self_fast_v2', {
-    target_group_id: groupId,
-    session_name: sessionName,
-    target_scheduled_at: scheduledAt.toISOString(),
-    target_question_goal: Math.min(Math.round(questionGoal), policy.maxQuestionGoal),
-    target_timer_mode: timerMode,
-    target_timer_seconds: timerSeconds,
-  });
+  const { data: fastRows, error: fastError } = forceCreate
+    ? { data: null, error: null }
+    : await (
+        supabase.schema('public') as unknown as {
+          rpc: (
+            fn: 'activeboard_create_session_self_fast_v2',
+            args: {
+              target_group_id: string;
+              session_name: string;
+              target_scheduled_at: string;
+              target_question_goal: number;
+              target_timer_mode: string;
+              target_timer_seconds: number;
+            },
+          ) => Promise<{
+            data: FastCreateSessionResult[] | null;
+            error: { code?: string; message?: string } | null;
+          }>;
+        }
+      ).rpc('activeboard_create_session_self_fast_v2', {
+        target_group_id: groupId,
+        session_name: sessionName,
+        target_scheduled_at: scheduledAt.toISOString(),
+        target_question_goal: Math.min(
+          Math.round(questionGoal),
+          policy.maxQuestionGoal,
+        ),
+        target_timer_mode: timerMode,
+        target_timer_seconds: timerSeconds,
+      });
   const fastResult = fastRows?.[0] ?? null;
   if (!fastError && fastResult) {
     perf.step('fast_rpc_completed');
@@ -515,6 +528,14 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser();
 
     if (!fastResult.reused) {
+      if (meetingLink) {
+        void createSupabaseAdminClient()
+          .schema('public')
+          .from('sessions')
+          .update({ meeting_link: meetingLink })
+          .eq('id', fastResult.session_id);
+      }
+
       void notifySessionScheduled({
         groupId,
         sessionId: fastResult.session_id,
@@ -564,8 +585,12 @@ export async function POST(request: Request) {
   }
   perf.setContext({ userId: user.id, groupId, locale });
 
-  const [userTierResult, groupMembersResult, existingResult] =
-    await Promise.all([
+  const [
+    userTierResult,
+    groupMembersResult,
+    existingResult,
+    continuitySessionResult,
+  ] = await Promise.all([
       admin
         .schema('public')
         .from('users')
@@ -588,6 +613,15 @@ export async function POST(request: Request) {
         .order('scheduled_at', { ascending: false })
         .limit(1)
         .maybeSingle(),
+      continuitySessionId
+        ? admin
+            .schema('public')
+            .from('sessions')
+            .select('id')
+            .eq('id', continuitySessionId)
+            .eq('group_id', groupId)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
     ]);
   perf.step('guards_loaded');
 
@@ -610,7 +644,11 @@ export async function POST(request: Request) {
         policy,
       })
     : 'locked';
-  if (!getUserTierCapabilities(userTier).canCreateSession) {
+  const isContinuityPlan = Boolean(continuitySessionResult.data?.id);
+  if (
+    !getUserTierCapabilities(userTier).canCreateSession &&
+    !isContinuityPlan
+  ) {
     return NextResponse.json(
       {
         ok: false,
@@ -627,7 +665,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (existingResult.data?.id) {
+  if (!forceCreate && existingResult.data?.id) {
     return NextResponse.json({
       ok: true,
       redirectTo: groupDashboardPath(locale, groupId),
@@ -644,6 +682,7 @@ export async function POST(request: Request) {
       group_id: groupId,
       name: sessionName,
       scheduled_at: scheduledAt.toISOString(),
+      meeting_link: meetingLink || null,
       timer_mode: timerMode,
       timer_seconds: timerSeconds,
       question_goal: Math.min(Math.round(questionGoal), policy.maxQuestionGoal),
@@ -682,6 +721,7 @@ export async function POST(request: Request) {
         timer_mode: timerMode,
         scheduled_at: scheduledAt.toISOString(),
         share_code: createdSession.share_code,
+        meeting_link_present: Boolean(meetingLink),
       },
     }),
     hasEmailEnv()

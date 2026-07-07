@@ -8,20 +8,23 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 type TrialAvailabilityPageProps = {
   params: { locale: string };
+  searchParams?: { mode?: string };
 };
 
 export default async function TrialAvailabilityPage({
   params,
+  searchParams,
 }: TrialAvailabilityPageProps) {
   const locale = (params.locale === 'fr' ? 'fr' : 'en') as AppLocale;
   const user = await requireUser(locale);
   const onboarding = await getOnboardingCompletion(user.id, locale);
+  const isEditMode = searchParams?.mode === 'edit';
 
   if (!onboarding.profileComplete) {
     redirect(`/${locale}/onboarding/profile`);
   }
 
-  if (!onboarding.nextPath) {
+  if (!onboarding.nextPath && !isEditMode) {
     redirect(`/${locale}/dashboard`);
   }
 
@@ -37,7 +40,7 @@ export default async function TrialAvailabilityPage({
     <TrialAvailabilityForm
       locale={locale}
       initialTimezone={schedule?.timezone ?? 'UTC'}
+      mode={isEditMode ? 'edit' : undefined}
     />
   );
 }
-

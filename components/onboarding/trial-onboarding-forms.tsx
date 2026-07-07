@@ -430,9 +430,11 @@ export function TrialProfileForm({
 export function TrialAvailabilityForm({
   locale,
   initialTimezone = 'UTC',
+  mode,
 }: {
   locale: AppLocale;
   initialTimezone?: string | null;
+  mode?: 'edit';
 }) {
   const t = copy[locale];
   const [timezone, setTimezone] = useState(initialTimezone || 'UTC');
@@ -488,6 +490,7 @@ export function TrialAvailabilityForm({
       <form action={completeTrialAvailabilityAction} className="mt-7">
         <input type="hidden" name="locale" value={locale} />
         <input type="hidden" name="timezone" value={timezone} />
+        {mode ? <input type="hidden" name="mode" value={mode} /> : null}
         <input
           type="hidden"
           name="availabilitySlots"

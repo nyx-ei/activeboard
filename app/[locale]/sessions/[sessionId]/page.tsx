@@ -4,6 +4,8 @@ import { getTranslations } from 'next-intl/server';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
 import { SessionActiveRuntime } from '@/components/session/session-active-runtime';
+import { SessionPeerFeedbackRuntime } from '@/components/session/session-peer-feedback-runtime';
+import { SessionPlanNextRuntime } from '@/components/session/session-plan-next-runtime';
 import { SessionQuitButton } from '@/components/session/session-quit-button';
 import { SessionReviewRuntime } from '@/components/session/session-review-runtime';
 import { SessionStageRefresh } from '@/components/session/session-stage-refresh';
@@ -159,15 +161,18 @@ export default async function SessionPage({
   const answeredCount = data.answeredCount;
   const memberCount = Math.max(data.members.length, 1);
   const isPerQuestionMode = data.session.timer_mode === 'per_question';
+  const isReview = searchParams.stage === 'review';
+  const isFeedback = searchParams.stage === 'feedback';
+  const isPlanNext = searchParams.stage === 'plan-next';
+  const isPostAnswerStage = isReview || isFeedback || isPlanNext;
   const shouldShowCompletion =
     searchParams.stage === 'complete' ||
-    (data.session.status === 'completed' && searchParams.stage !== 'review') ||
-    (data.session.status === 'incomplete' && searchParams.stage !== 'review') ||
+    (data.session.status === 'completed' && !isPostAnswerStage) ||
+    (data.session.status === 'incomplete' && !isPostAnswerStage) ||
     (data.session.status === 'active' &&
       !isPerQuestionMode &&
       answeredCount >= questionGoal &&
-      searchParams.stage !== 'review');
-  const isReview = searchParams.stage === 'review';
+      !isPostAnswerStage);
   const canAdvanceQuestion = data.session.leader_id === user.id;
   const canTakeOverStartResponsibility =
     Boolean(data.membership) &&
@@ -299,7 +304,6 @@ export default async function SessionPage({
 
   if (isReview && question) {
     const reviewQuestion = question as ReviewQuestion;
-    const reviewPeers = await getReviewPeers(data.group.id, user.id);
     const reviewedQuestionCount =
       'reviewedQuestionCount' in data &&
       typeof data.reviewedQuestionCount === 'number'
@@ -318,7 +322,6 @@ export default async function SessionPage({
         <SessionReviewRuntime
           locale={locale}
           sessionId={params.sessionId}
-          groupId={data.group.id}
           sessionTitle={data.session.name ?? data.group.name}
           questionGoal={questionGoal}
           timerMode={data.session.timer_mode}
@@ -327,8 +330,6 @@ export default async function SessionPage({
           initialQuestion={reviewQuestion}
           initialDistribution={data.currentQuestionDistribution}
           initialOwnAnswer={data.currentUserAnswer}
-          planNextAccess={planNextAccess}
-          reviewPeers={reviewPeers}
           labels={{
             reviewShort: t('reviewShort'),
             previous: t('previous'),
@@ -358,6 +359,50 @@ export default async function SessionPage({
           }}
         />
       </>
+    );
+  }
+
+  if (isFeedback) {
+    const reviewPeers = await getReviewPeers(data.group.id, user.id);
+
+    return (
+      <main className="flex flex-1 flex-col">
+        <SessionTabPresence sessionId={params.sessionId} />
+        <FeedbackBanner
+          message={searchParams.feedbackMessage}
+          tone={searchParams.feedbackTone}
+          feedbackId={searchParams.feedbackId}
+        />
+        <SessionPeerFeedbackRuntime
+          locale={locale}
+          sessionId={params.sessionId}
+          sessionTitle={data.session.name ?? data.group.name}
+          peers={reviewPeers}
+        />
+      </main>
+    );
+  }
+
+  if (isPlanNext) {
+    return (
+      <main className="flex flex-1 flex-col">
+        <SessionTabPresence sessionId={params.sessionId} />
+        <FeedbackBanner
+          message={searchParams.feedbackMessage}
+          tone={searchParams.feedbackTone}
+          feedbackId={searchParams.feedbackId}
+        />
+        <SessionPlanNextRuntime
+          locale={locale}
+          sessionId={params.sessionId}
+          groupId={data.group.id}
+          sessionTitle={data.session.name ?? data.group.name}
+          questionGoal={questionGoal}
+          timerSeconds={data.session.timer_seconds}
+          timerMode={data.session.timer_mode}
+          planNextAccess={planNextAccess}
+        />
+      </main>
     );
   }
 
