@@ -1,7 +1,17 @@
 'use client';
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
-import { ArrowLeft, Check, Clock, Mail, ShieldCheck } from 'lucide-react';
+import {
+  ArrowLeft,
+  BookOpen,
+  Check,
+  Clock,
+  Globe2,
+  Mail,
+  Phone,
+  ShieldCheck,
+  User,
+} from 'lucide-react';
 
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
@@ -157,19 +167,24 @@ function OnboardingShell({
   children,
   locale,
   showBack = false,
+  wide = false,
 }: {
   children: React.ReactNode;
   locale: AppLocale;
   showBack?: boolean;
+  wide?: boolean;
 }) {
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(31,230,166,0.13),transparent_38%),#01080d] px-4 py-6 text-white sm:px-6">
-      <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-[980px] items-center justify-center">
-        <section className="relative w-full max-w-[430px] rounded-[24px] border border-white/[0.08] bg-[#111827]/95 p-5 shadow-[0_28px_90px_rgba(0,0,0,0.42)] sm:p-7">
+    <main className="min-h-screen bg-background px-4 py-8 text-white sm:px-6">
+      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center justify-center">
+        <section className={`w-full ${wide ? 'max-w-[680px]' : 'max-w-[410px]'}`}>
+          <div className="mx-auto mb-8 flex h-[52px] w-[52px] items-center justify-center rounded-[8px] bg-brand text-xl font-extrabold text-white">
+            AB
+          </div>
           {showBack ? (
             <Link
               href="/"
-              className="mb-5 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-slate-300 transition hover:border-brand/40 hover:text-brand"
+              className="mb-6 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.035] text-slate-300 transition hover:border-brand/40 hover:text-brand"
               aria-label={locale === 'fr' ? 'Retour' : 'Back'}
             >
               <ArrowLeft className="h-5 w-5" aria-hidden />
@@ -185,20 +200,29 @@ function OnboardingShell({
 function Field({
   label,
   children,
+  icon,
 }: {
   label: string;
   children: React.ReactNode;
+  icon?: React.ReactNode;
 }) {
   return (
     <label className="grid gap-2 text-sm font-bold text-slate-200">
       <span>{label}</span>
-      {children}
+      <span className="relative block">
+        {icon ? (
+          <span className="pointer-events-none absolute left-4 top-1/2 z-10 flex -translate-y-1/2 text-brand">
+            {icon}
+          </span>
+        ) : null}
+        {children}
+      </span>
     </label>
   );
 }
 
-const inputClassName =
-  'h-12 w-full rounded-[8px] border border-white/[0.1] bg-white/[0.07] px-4 text-base font-semibold text-white outline-none transition placeholder:text-slate-500 focus:border-brand/70 focus:bg-white/[0.09]';
+const inputWithIconClassName =
+  'field h-14 rounded-[6px] px-12 text-base';
 
 export function TrialAccountForm({ locale }: { locale: AppLocale }) {
   const t = copy[locale];
@@ -253,13 +277,13 @@ export function TrialAccountForm({ locale }: { locale: AppLocale }) {
   if (sent) {
     return (
       <OnboardingShell locale={locale}>
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand/15 text-brand">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand/15 text-brand">
           <Mail className="h-6 w-6" aria-hidden />
         </div>
-        <h1 className="mt-5 text-2xl font-extrabold text-white">
+        <h1 className="mt-5 text-center text-2xl font-extrabold text-white">
           {t.checkEmailTitle}
         </h1>
-        <p className="mt-2 text-sm font-semibold leading-6 text-slate-300">
+        <p className="mt-2 text-center text-sm font-medium leading-6 text-slate-400">
           {t.checkEmailBody}
         </p>
       </OnboardingShell>
@@ -269,32 +293,33 @@ export function TrialAccountForm({ locale }: { locale: AppLocale }) {
   return (
     <OnboardingShell locale={locale} showBack>
       <h1 className="text-2xl font-extrabold text-white">{t.accountTitle}</h1>
-      <p className="mt-1 text-xs font-semibold text-slate-400">
-        {t.accountSubtitle.replace('{offset}', getTimezoneOffsetLabel())}
+      <p className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-slate-400">
+        <Globe2 className="h-4 w-4 text-brand" aria-hidden />
+        <span>{t.accountSubtitle.replace('{offset}', getTimezoneOffsetLabel())}</span>
       </p>
 
       <form className="mt-7 grid gap-4" onSubmit={handleSubmit}>
-        <Field label={t.firstName}>
+        <Field label={t.firstName} icon={<User className="h-5 w-5" aria-hidden />}>
           <input
-            className={inputClassName}
+            className={inputWithIconClassName}
             value={firstName}
             onChange={(event) => setFirstName(event.target.value)}
             placeholder={t.firstNamePlaceholder}
             autoComplete="given-name"
           />
         </Field>
-        <Field label={t.lastName}>
+        <Field label={t.lastName} icon={<User className="h-5 w-5" aria-hidden />}>
           <input
-            className={inputClassName}
+            className={inputWithIconClassName}
             value={lastName}
             onChange={(event) => setLastName(event.target.value)}
             placeholder={t.lastNamePlaceholder}
             autoComplete="family-name"
           />
         </Field>
-        <Field label={t.email}>
+        <Field label={t.email} icon={<Mail className="h-5 w-5" aria-hidden />}>
           <input
-            className={inputClassName}
+            className={inputWithIconClassName}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder={t.emailPlaceholder}
@@ -310,7 +335,7 @@ export function TrialAccountForm({ locale }: { locale: AppLocale }) {
         <button
           type="submit"
           disabled={!canSubmit || isPending}
-          className="mt-24 inline-flex h-12 items-center justify-center rounded-[8px] bg-brand text-sm font-extrabold text-[#04120e] transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-50"
+          className="button-primary mt-16 h-16 w-full rounded-[6px] text-base disabled:opacity-50"
         >
           {isPending ? t.sending : t.verifyEmail}
         </button>
@@ -344,26 +369,27 @@ export function TrialProfileForm({
 
   return (
     <OnboardingShell locale={locale} showBack>
-      <h1 className="text-xl font-extrabold text-white">{t.profileTitle}</h1>
-      <p className="mt-5 text-sm font-semibold text-slate-400">
-        {t.timezone} : {timezone}
+      <h1 className="text-2xl font-extrabold text-white">{t.profileTitle}</h1>
+      <p className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-slate-400">
+        <Globe2 className="h-4 w-4 text-brand" aria-hidden />
+        <span>{t.timezone} : {timezone}</span>
       </p>
 
-      <form action={completeTrialProfileAction} className="mt-5 grid gap-4">
+      <form action={completeTrialProfileAction} className="mt-7 grid gap-4">
         <input type="hidden" name="locale" value={locale} />
         <input type="hidden" name="timezone" value={timezone} />
-        <Field label={t.whatsapp}>
+        <Field label={t.whatsapp} icon={<Phone className="h-5 w-5" aria-hidden />}>
           <input
-            className={inputClassName}
+            className={inputWithIconClassName}
             name="phoneNumber"
             defaultValue={initialPhoneNumber ?? ''}
             placeholder={t.whatsappPlaceholder}
             autoComplete="tel"
           />
         </Field>
-        <Field label={t.exam}>
+        <Field label={t.exam} icon={<BookOpen className="h-5 w-5" aria-hidden />}>
           <select
-            className={inputClassName}
+            className={inputWithIconClassName}
             name="examType"
             defaultValue={initialExamType || 'mccqe1'}
           >
@@ -374,9 +400,9 @@ export function TrialProfileForm({
             ))}
           </select>
         </Field>
-        <Field label={t.qbank}>
+        <Field label={t.qbank} icon={<BookOpen className="h-5 w-5" aria-hidden />}>
           <select
-            className={inputClassName}
+            className={inputWithIconClassName}
             name="qbank"
             defaultValue={initialQbank ?? ''}
           >
@@ -392,7 +418,7 @@ export function TrialProfileForm({
         </Field>
         <button
           type="submit"
-          className="mt-24 inline-flex h-12 items-center justify-center rounded-[8px] bg-brand text-sm font-extrabold text-[#04120e] transition hover:bg-brand-strong"
+          className="button-primary mt-16 h-16 w-full rounded-[6px] text-base"
         >
           {t.continue}
         </button>
@@ -450,11 +476,12 @@ export function TrialAvailabilityForm({
   }
 
   return (
-    <OnboardingShell locale={locale} showBack>
-      <h1 className="text-lg font-extrabold text-white">
+    <OnboardingShell locale={locale} showBack wide>
+      <h1 className="text-2xl font-extrabold text-white">
         {t.availabilityTitle}
       </h1>
-      <p className="text-xs font-semibold text-slate-400">
+      <p className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-slate-400">
+        <Clock className="h-4 w-4 text-brand" aria-hidden />
         {t.availabilitySubtitle}
       </p>
 
@@ -467,7 +494,7 @@ export function TrialAvailabilityForm({
           value={JSON.stringify(slots)}
         />
 
-        <div className="grid grid-cols-[1fr_76px_76px] items-center gap-x-3 gap-y-3 text-sm">
+        <div className="grid grid-cols-[minmax(58px,1fr)_76px_76px] items-center gap-x-3 gap-y-3 text-sm sm:grid-cols-[minmax(120px,1fr)_88px_88px]">
           <div />
           <div className="text-center text-xs font-bold text-slate-300">
             <p>{t.morning}</p>
@@ -491,7 +518,7 @@ export function TrialAvailabilityForm({
                     type="button"
                     onClick={() => toggleSlot(weekday, slot)}
                     aria-pressed={checked}
-                    className={`mx-auto flex h-7 w-7 items-center justify-center rounded-[6px] border transition ${
+                    className={`mx-auto flex h-8 w-8 items-center justify-center rounded-[6px] border transition ${
                       checked
                         ? 'border-brand bg-brand text-[#04120e]'
                         : 'border-white/15 bg-white/[0.04] text-transparent hover:border-brand/50'
@@ -541,7 +568,7 @@ export function TrialAvailabilityForm({
         <button
           type="submit"
           disabled={!canSubmit}
-          className="mt-7 inline-flex h-12 w-full items-center justify-center gap-2 rounded-[8px] bg-brand text-sm font-extrabold text-[#04120e] transition hover:bg-brand-strong disabled:cursor-not-allowed disabled:opacity-50"
+          className="button-primary mt-7 h-16 w-full rounded-[6px] text-base disabled:opacity-50"
         >
           <Clock className="h-4 w-4" aria-hidden />
           {t.generate}
