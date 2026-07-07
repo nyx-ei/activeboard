@@ -1,9 +1,15 @@
-import { ArrowRight, CheckCircle2, ShieldCheck, Users } from 'lucide-react';
+import {
+  ArrowRight,
+  CalendarCheck2,
+  Lock,
+  ShieldCheck,
+  Sparkles,
+  Users,
+} from 'lucide-react';
 import Image from 'next/image';
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
-import { LandingDirectSignupForm } from '@/components/onboarding/landing-direct-signup-form';
 import type { AppLocale } from '@/i18n/routing';
 import { getCurrentUser } from '@/lib/auth';
 
@@ -13,14 +19,11 @@ type LocaleHomePageProps = {
 
 function ActiveBoardLandingLogo() {
   return (
-    <div
-      data-landing-logo
-      className="flex max-w-[170px] items-center gap-2 lg:max-w-none lg:gap-3"
-    >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] bg-brand text-sm font-extrabold text-white shadow-[0_10px_26px_rgba(31,230,166,0.2)] lg:h-10 lg:w-10 lg:rounded-[8px] lg:text-base">
+    <div className="flex items-center gap-3">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-brand text-base font-extrabold text-white shadow-[0_16px_34px_rgba(31,230,166,0.24)]">
         AB
       </div>
-      <span className="min-w-0 text-[20px] font-extrabold leading-none text-white lg:text-[26px]">
+      <span className="text-[24px] font-extrabold leading-none text-white sm:text-[28px]">
         ActiveBoard
       </span>
     </div>
@@ -36,245 +39,122 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
     redirect(`/${locale}/dashboard`);
   }
 
+  const proofItems = [
+    { key: 'heroStep2', Icon: CalendarCheck2 },
+    { key: 'heroStep3', Icon: ShieldCheck },
+    { key: 'heroStep4', Icon: Sparkles },
+  ] as const;
+
   return (
     <main
       id="top"
-      className="relative min-h-screen w-full overflow-x-hidden bg-[radial-gradient(circle_at_82%_8%,rgba(12,110,82,0.34),transparent_34%),linear-gradient(180deg,#01070d_0%,#020a0f_48%,#020805_100%)] pb-10"
+      className="min-h-screen overflow-x-hidden bg-[#01080d] text-white"
     >
-      <div className="absolute left-3 top-3 z-40 sm:left-6 sm:top-4 lg:left-9">
-        <ActiveBoardLandingLogo />
-      </div>
+      <section className="relative isolate min-h-screen overflow-hidden bg-[linear-gradient(115deg,#01070d_0%,#02090d_48%,#053526_100%)]">
+        <header className="relative z-20 mx-auto flex w-full max-w-[1500px] items-center px-5 pt-5 sm:px-8 lg:px-12 lg:pt-7">
+          <ActiveBoardLandingLogo />
+        </header>
 
-      <section className="mx-auto grid w-full max-w-[1460px] grid-cols-1 items-start gap-7 px-3 pb-8 pt-20 sm:px-4 lg:grid-cols-[minmax(430px,520px)_minmax(0,1fr)] lg:gap-3 lg:px-6 lg:pb-10 lg:pt-24 xl:grid-cols-[minmax(470px,570px)_minmax(0,1fr)]">
-        <div className="relative z-10 w-full max-w-[570px]">
-          <p
-            data-landing-badge
-            className="inline-flex max-w-full items-center gap-2.5 rounded-full border border-white/[0.10] bg-white/[0.035] px-3.5 py-2 text-[12px] font-semibold leading-snug text-[#d8e1df]"
-          >
-            <Users
-              className="h-4 w-4 shrink-0 text-brand"
-              aria-hidden="true"
-            />
-            <span className="min-w-0">{t('landingBadge')}</span>
-          </p>
-
-          <div data-landing-mobile-image className="relative my-5 lg:hidden">
-            <Image
-              src="/landing/direct-signup-devices.png"
-              alt="ActiveBoard live question phone and review laptop"
-              width={527}
-              height={474}
-              priority
-              unoptimized
-              className="mx-auto w-full max-w-[360px] object-contain opacity-95"
-              sizes="100vw"
-            />
-          </div>
-
-          <h1
-            data-landing-hero
-            className="mt-4 max-w-[570px] text-[31px] font-extrabold leading-[1.04] text-white sm:text-[40px] lg:text-[50px] xl:text-[58px]"
-          >
-            <span className="block">{t('landingHeroLine1')}</span>
-            <span className="block">
-              <span className="bg-gradient-to-r from-brand to-[#58f4c5] bg-clip-text text-transparent">
-                MCCQE
-              </span>{' '}
-              {t('landingHeroLine2')}
-            </span>
-            <span className="block">{t('landingHeroLine3')}</span>
-            <span className="block">{t('landingHeroLine4')}</span>
-          </h1>
-          <p className="mt-3 max-w-[520px] text-[15px] font-medium leading-[1.5] text-[#c6d4d1] sm:text-[17px]">
-            {t('landingSubtitle')}
-          </p>
-
-          <ul className="mt-4 grid gap-2 rounded-[8px] border border-white/[0.07] bg-white/[0.025] p-3 text-[13px] font-semibold leading-snug text-[#dce7ef] sm:text-[14px]">
-            <li className="flex gap-2">
-              <CheckCircle2
-                className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand"
-                aria-hidden="true"
-              />
-              <span>{t('heroStep2')}</span>
-            </li>
-            <li className="flex gap-2">
-              <CheckCircle2
-                className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand"
-                aria-hidden="true"
-              />
-              <span>{t('heroStep3')}</span>
-            </li>
-            <li className="flex gap-2">
-              <CheckCircle2
-                className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand"
-                aria-hidden="true"
-              />
-              <span>{t('heroStep4')}</span>
-            </li>
-          </ul>
-          <div className="mt-4 max-w-[520px] space-y-1.5 text-[12px] font-bold leading-snug">
-            <p className="text-[#cde5de]">
-              {t('heroPatternLine')}
+        <div className="relative z-10 mx-auto grid w-full max-w-[1500px] grid-cols-1 items-center gap-7 px-5 pb-8 pt-7 sm:px-8 lg:min-h-[calc(100vh-84px)] lg:grid-cols-[minmax(430px,540px)_minmax(0,1fr)] lg:gap-2 lg:px-12 lg:pb-10 lg:pt-5 xl:grid-cols-[minmax(480px,590px)_minmax(0,1fr)]">
+          <div className="max-w-[620px]">
+            <p className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-2 text-[12px] font-bold leading-snug text-[#d6e2df] sm:text-[13px]">
+              <Users className="h-4 w-4 shrink-0 text-brand" aria-hidden />
+              <span>{t('landingBadge')}</span>
             </p>
-            <p className="text-[12px] font-extrabold uppercase tracking-[0.16em] text-white/80">
-              {t('heroProofLine')}
+
+            <h1 className="mt-6 text-[40px] font-extrabold leading-[0.98] text-white sm:text-[54px] lg:text-[60px] xl:text-[68px]">
+              <span className="block">{t('landingHeroLine1')}</span>
+              <span className="block bg-gradient-to-r from-brand to-[#63f3cf] bg-clip-text text-transparent">
+                {t('landingHeroLine2')}
+              </span>
+              <span className="block">{t('landingHeroLine3')}</span>
+            </h1>
+
+            <p className="mt-5 max-w-[520px] text-[17px] font-medium leading-7 text-[#d2dcda] sm:text-[20px]">
+              {t('landingSubtitle')}
             </p>
-          </div>
 
-          <div className="mt-4">
-            <LandingDirectSignupForm
-              locale={locale}
-              labels={{
-                email: t('directEmail'),
-                submit: t('primaryCta'),
-                pending: t('directPending'),
-                missingFields: t('directMissingFields'),
-                accountExists: t('directAccountExists'),
-                inviteExists: t('directInviteExists'),
-                genericError: t('directGenericError'),
-              }}
-            />
-          </div>
+            <div className="mt-6 grid max-w-[560px] gap-2.5 rounded-[8px] border border-white/[0.08] bg-white/[0.035] p-4">
+              {proofItems.map(({ key, Icon }) => {
+                return (
+                  <div
+                    key={key}
+                    className="flex items-center gap-3 text-[15px] font-bold leading-snug text-[#e9f2ef] sm:text-base"
+                  >
+                    <Icon
+                      className="h-5 w-5 shrink-0 text-brand"
+                      aria-hidden
+                    />
+                    <span>{t(key)}</span>
+                  </div>
+                );
+              })}
+            </div>
 
-          <a
-            href="#how-it-works"
-            className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.025] px-4 py-2 text-sm font-bold text-brand transition hover:border-brand/40 hover:text-brand-strong"
-          >
-            {t('secondaryCta')}
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </a>
-
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-[12px] font-semibold text-[#d6dce5] sm:text-[13px]">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-1.5">
-              <CheckCircle2 className="h-4 w-4 text-brand" aria-hidden="true" />
-              {t('landingProofFree')}
-            </span>
-            <span className="inline-flex items-center rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-1.5">
-              {t('landingProofQbanks')}
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-1.5">
-              <ShieldCheck className="h-4 w-4 text-brand" aria-hidden="true" />
-              {t('landingProofCard')}
-            </span>
-          </div>
-        </div>
-
-        <div
-          data-landing-desktop-image
-          className="relative hidden min-h-[560px] min-w-0 items-start justify-end overflow-visible pt-8 lg:flex xl:pt-6"
-        >
-          <div className="absolute bottom-16 right-0 h-32 w-[86%] rounded-full bg-brand/22 blur-3xl" />
-          <div className="absolute right-0 top-0 h-[410px] w-[780px] rounded-full bg-emerald-400/16 blur-3xl" />
-          <div className="relative flex w-full min-w-0 origin-center justify-end [perspective:1100px]">
-            <Image
-              src="/landing/direct-signup-devices.png"
-              alt="ActiveBoard live question phone and review laptop"
-              width={527}
-              height={474}
-              priority
-              unoptimized
-              className="relative z-10 mt-0 h-auto w-full max-w-[900px] -rotate-[0.5deg] scale-[1.14] object-contain opacity-95 drop-shadow-[0_34px_80px_rgba(0,0,0,0.62)] [transform:rotateY(-19deg)_rotateX(3deg)]"
-              sizes="(min-width: 1280px) 940px, calc(100vw - 470px)"
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto grid w-full max-w-[1180px] gap-4 px-3 pb-10 sm:px-4 lg:grid-cols-[1.12fr_0.88fr] lg:px-6 lg:pb-14">
-        <div className="rounded-[8px] border border-white/[0.08] bg-white/[0.03] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.14)] sm:p-7">
-          <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-brand">
-            {t('whyEyebrow')}
-          </p>
-          <h2 className="mt-3 max-w-[760px] text-[26px] font-extrabold leading-[1.12] text-white sm:text-[34px]">
-            {t('whyTitle')}
-          </h2>
-          <p className="mt-4 max-w-[720px] text-base font-medium leading-7 text-[#c5d4d0] sm:text-[17px]">
-            {t('whyBody')}
-          </p>
-          <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
-            {['whyMetric1', 'whyMetric2', 'whyMetric3', 'whyMetric4'].map(
-              (key) => (
-                <div
-                  key={key}
-                  className="rounded-[8px] border border-white/[0.07] bg-[#020d0a]/45 px-4 py-3 text-[13px] font-semibold leading-snug text-[#dce7ef]"
+            <div className="mt-6 max-w-[540px] space-y-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <a
+                  href={`/${locale}/auth/login?mode=sign-up`}
+                  className="inline-flex min-h-14 items-center justify-center gap-2 rounded-[8px] bg-brand px-6 text-base font-extrabold text-[#03130e] shadow-[0_24px_60px_rgba(31,230,166,0.24)] transition hover:bg-brand-strong"
                 >
-                  {t(key)}
-                </div>
-              ),
-            )}
+                  {t('primaryCta')}
+                  <ArrowRight className="h-5 w-5" aria-hidden />
+                </a>
+                <a
+                  href="#how-it-works"
+                  className="inline-flex min-h-14 items-center justify-center gap-2 rounded-[8px] border border-white/10 bg-white/[0.035] px-5 text-sm font-extrabold text-white transition hover:border-brand/50 hover:text-brand"
+                >
+                  {t('secondaryCta')}
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </a>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 text-[13px] font-semibold text-white/72">
+                <span className="inline-flex items-center gap-2">
+                  <Lock className="h-4 w-4 text-white/55" aria-hidden />
+                  {t('noCreditCard')}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative min-h-[280px] overflow-visible [perspective:1200px] lg:min-h-[610px]">
+            <div className="absolute inset-y-8 right-[-8%] hidden w-[86%] rounded-full bg-brand/12 blur-3xl lg:block" />
+            <Image
+              src="/landing/direct-signup-devices.png"
+              alt="ActiveBoard live question phone and review laptop"
+              width={527}
+              height={474}
+              priority
+              unoptimized
+              className="relative z-10 mx-auto h-auto w-full max-w-[520px] origin-right object-contain opacity-95 drop-shadow-[0_34px_90px_rgba(0,0,0,0.64)] sm:max-w-[620px] lg:absolute lg:right-[-8%] lg:top-[-1%] lg:max-w-[940px] lg:[transform:rotateY(-18deg)_rotateX(2deg)_scale(1.2)] xl:right-[-10%] xl:max-w-[1080px] xl:[transform:rotateY(-20deg)_rotateX(3deg)_scale(1.28)]"
+              sizes="(min-width: 1280px) 920px, (min-width: 1024px) 58vw, 100vw"
+            />
           </div>
         </div>
-
-        <aside className="rounded-[8px] border border-brand/15 bg-[#071812]/90 p-5 sm:p-7">
-          <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-brand">
-            {t('proofEyebrow')}
-          </p>
-          <div className="mt-5 grid gap-4">
-            <div>
-              <p className="text-[42px] font-extrabold leading-none text-white sm:text-5xl">
-                13
-              </p>
-              <p className="mt-2 text-sm font-semibold leading-snug text-[#b5c8c4] sm:text-base">
-                {t('proofCompleted')}
-              </p>
-            </div>
-            <div className="h-px bg-white/10" />
-            <div>
-              <p className="text-[42px] font-extrabold leading-none text-brand sm:text-5xl">
-                44
-              </p>
-              <p className="mt-2 text-sm font-semibold leading-snug text-[#b5c8c4] sm:text-base">
-                {t('proofPreparing')}
-              </p>
-            </div>
-            <p className="rounded-full border border-brand/20 bg-brand/10 px-4 py-2 text-sm font-extrabold text-brand">
-              {t('proofNext')}
-            </p>
-          </div>
-        </aside>
       </section>
 
       <section
         id="how-it-works"
-        className="mx-auto w-[calc(100%-1.5rem)] max-w-[1180px] rounded-[8px] border border-white/[0.08] bg-[#050d15]/70 p-5 sm:w-[calc(100%-2rem)] sm:p-7 lg:w-[calc(100%-3rem)]"
+        className="mx-auto grid w-full max-w-[1180px] gap-4 px-5 py-8 sm:px-8 lg:grid-cols-3 lg:px-12"
       >
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-[12px] font-extrabold uppercase tracking-[0.14em] text-brand">
-              {t('howTitle')}
-            </p>
-            <h2 className="mt-3 max-w-[760px] text-[25px] font-extrabold leading-[1.14] text-white sm:text-[34px]">
-              {t('impactLine')}
-            </h2>
-          </div>
-          <a
-            href="#top"
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[6px] bg-brand px-5 text-center text-sm font-extrabold leading-snug text-[#04120e] transition hover:bg-brand-strong sm:shrink-0"
+        {[
+          ['1', 'howStep1'],
+          ['2', 'howStep2'],
+          ['3', 'howStep3'],
+        ].map(([number, key]) => (
+          <div
+            key={number}
+            className="rounded-[8px] border border-white/[0.08] bg-white/[0.03] p-5"
           >
-            {t('finalCta')}
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </a>
-        </div>
-
-        <div className="mt-7 grid gap-3 md:grid-cols-3">
-          {[
-            ['1', 'howStep1'],
-            ['2', 'howStep2'],
-            ['3', 'howStep3'],
-          ].map(([number, key]) => (
-            <div
-              key={number}
-              className="rounded-[8px] border border-white/[0.08] bg-[#081711]/85 p-5"
-            >
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-sm font-extrabold text-[#04120e]">
-                {number}
-              </div>
-              <p className="mt-4 text-base font-extrabold leading-snug text-white sm:text-lg">
-                {t(key)}
-              </p>
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-sm font-extrabold text-[#04120e]">
+              {number}
             </div>
-          ))}
-        </div>
+            <p className="mt-4 text-base font-extrabold leading-snug text-white">
+              {t(key)}
+            </p>
+          </div>
+        ))}
       </section>
     </main>
   );
