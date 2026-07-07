@@ -14,6 +14,7 @@ export type SessionListItem = {
   share_code: string;
   status: 'scheduled' | 'active' | 'incomplete' | 'completed' | 'cancelled';
   question_goal?: number;
+  timer_seconds?: number;
   answeredQuestionCount?: number;
   questionCount?: number;
 };

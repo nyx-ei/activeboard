@@ -1,0 +1,486 @@
+'use client';
+
+import { useMemo } from 'react';
+import {
+  ArrowRight,
+  CheckCircle2,
+  LockKeyhole,
+  MoreVertical,
+  Plus,
+  Radio,
+  RotateCcw,
+  Users,
+} from 'lucide-react';
+
+import { Link } from '@/i18n/navigation';
+import type { DashboardPerformanceViewProps } from '@/components/dashboard/dashboard-performance-view';
+import type { DashboardSessionsViewProps } from '@/components/dashboard/dashboard-sessions-view';
+import type { SessionListItem } from '@/components/sessions/session-card';
+
+type TrialDashboardViewProps = {
+  locale: string;
+  sessionsProps: DashboardSessionsViewProps;
+  performanceProps: DashboardPerformanceViewProps;
+};
+
+type TrialStatus =
+  | 'notStarted'
+  | 'started'
+  | 'review'
+  | 'feedback'
+  | 'nextSessionPlanned'
+  | 'done';
+
+const COPY = {
+  fr: {
+    unlock: (remaining: number) =>
+      remaining > 0
+        ? `Termine ${remaining} séance${remaining > 1 ? 's' : ''} de plus pour débloquer les candidats sérieux.`
+        : 'Candidats sérieux débloqués.',
+    reliabilityScore: 'Score de fiabilité',
+    activeCandidates: 'candidats actifs',
+    viewMore: 'Voir plus',
+    testSessions: 'Séances tests',
+    updateAvailability: 'Modifier mes disponibilités',
+    seriousPoolLocked: 'Pool sérieux verrouillé',
+    reviewedQuestions: 'Questions révisées',
+    trueMastery: 'Maîtrise réelle',
+    falseConfidence: 'Fausse confiance',
+    startSession: 'Démarrer',
+    statuses: {
+      notStarted: 'Non démarrée',
+      started: 'Démarrée',
+      review: 'Révision',
+      feedback: 'Feedback',
+      nextSessionPlanned: 'À planifier',
+      done: 'Terminée',
+    },
+  },
+  en: {
+    unlock: (remaining: number) =>
+      remaining > 0
+        ? `Complete ${remaining} more session${remaining > 1 ? 's' : ''} to unlock serious candidates.`
+        : 'Serious candidates unlocked.',
+    reliabilityScore: 'Reliability score',
+    activeCandidates: 'active candidates',
+    viewMore: 'View more',
+    testSessions: 'Test sessions',
+    updateAvailability: 'Update availability',
+    seriousPoolLocked: 'Serious pool locked',
+    reviewedQuestions: 'Questions reviewed',
+    trueMastery: 'True mastery',
+    falseConfidence: 'False confidence',
+    startSession: 'Start session',
+    statuses: {
+      notStarted: 'Not started',
+      started: 'Started',
+      review: 'Review',
+      feedback: 'Feedback',
+      nextSessionPlanned: 'Next session planned',
+      done: 'Done',
+    },
+  },
+};
+
+function getCopy(locale: string) {
+  return locale.startsWith('fr') ? COPY.fr : COPY.en;
+}
+
+function getSessionStatus(session: SessionListItem): TrialStatus {
+  if (session.status === 'completed') {
+    return 'done';
+  }
+
+  if (session.status === 'active') {
+    return 'started';
+  }
+
+  if (session.status === 'incomplete') {
+    return 'review';
+  }
+
+  return session.scheduled_at ? 'notStarted' : 'nextSessionPlanned';
+}
+
+function getStatusClass(status: TrialStatus) {
+  switch (status) {
+    case 'done':
+      return 'border-violet-300/45 bg-violet-400/10 text-violet-200';
+    case 'started':
+      return 'border-[#20D9A3]/45 bg-[#20D9A3]/12 text-[#77f1c7]';
+    case 'review':
+      return 'border-sky-300/45 bg-sky-400/10 text-sky-200';
+    case 'feedback':
+      return 'border-amber-300/45 bg-amber-400/10 text-amber-200';
+    case 'nextSessionPlanned':
+      return 'border-cyan-300/45 bg-cyan-400/10 text-cyan-200';
+    default:
+      return 'border-amber-300/45 bg-amber-400/10 text-amber-200';
+  }
+}
+
+function getPriority(status: SessionListItem['status']) {
+  switch (status) {
+    case 'active':
+      return 0;
+    case 'incomplete':
+      return 1;
+    case 'scheduled':
+      return 2;
+    case 'completed':
+      return 3;
+    default:
+      return 4;
+  }
+}
+
+function selectTrialSessions(sessions: SessionListItem[]) {
+  return sessions
+    .filter((session) => session.status !== 'cancelled')
+    .slice()
+    .sort((left, right) => {
+      const priorityDelta = getPriority(left.status) - getPriority(right.status);
+      if (priorityDelta !== 0) {
+        return priorityDelta;
+      }
+
+      return (
+        new Date(right.scheduled_at).getTime() -
+        new Date(left.scheduled_at).getTime()
+      );
+    })
+    .slice(0, 3);
+}
+
+function formatDate(locale: string, value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return 'XXhXX';
+  }
+
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+  }).format(date);
+}
+
+function formatTime(locale: string, value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return 'XXhXX';
+  }
+
+  return new Intl.DateTimeFormat(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function ParticipantsBadge() {
+  return (
+    <div className="flex h-14 w-24 shrink-0 items-center justify-center gap-1 rounded-full border border-[#20D9A3]/20 bg-white/[0.035] text-slate-300 shadow-[inset_0_0_24px_rgba(32,217,163,0.07)] sm:h-16 sm:w-32">
+      <Users className="h-5 w-5 opacity-80" aria-hidden="true" />
+      <Users className="h-5 w-5 text-[#20D9A3]" aria-hidden="true" />
+      <Users className="h-5 w-5 opacity-80" aria-hidden="true" />
+    </div>
+  );
+}
+
+function TrialSessionRow({
+  session,
+  index,
+  locale,
+  labels,
+}: {
+  session: SessionListItem;
+  index: number;
+  locale: string;
+  labels: ReturnType<typeof getCopy>;
+}) {
+  const status = getSessionStatus(session);
+  const answered = session.answeredQuestionCount ?? 0;
+  const target = session.question_goal || session.questionCount || 20;
+  const timerSeconds = session.timer_seconds ?? 90;
+  const title = session.name || `Session ${index + 1}`;
+  const isActionable =
+    session.status === 'active' ||
+    session.status === 'incomplete' ||
+    session.status === 'scheduled';
+
+  return (
+    <Link
+      href={`/sessions/${session.id}`}
+      className="group grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-[#20D9A3]/25 bg-[#082c24]/68 px-4 py-3 text-left shadow-[inset_0_0_38px_rgba(32,217,163,0.035)] transition hover:border-[#20D9A3]/55 hover:bg-[#0b3a30]/78 sm:gap-5 sm:px-5"
+    >
+      <ParticipantsBadge />
+      <div className="min-w-0">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <h3 className="truncate text-lg font-extrabold text-white sm:text-xl">
+            {title}
+          </h3>
+          <span
+            className={`inline-flex min-h-7 items-center rounded-full border px-3 text-xs font-extrabold ${getStatusClass(status)}`}
+          >
+            {labels.statuses[status]}
+          </span>
+        </div>
+        <p className="mt-1 truncate text-base font-semibold text-[#a8bcb7]">
+          {answered}/{target}Q
+          <span className="px-2 text-[#5b7771]">·</span>
+          {timerSeconds}sec
+        </p>
+      </div>
+      <div className="flex min-w-[84px] flex-col items-end justify-center text-right text-base font-bold text-[#b8c7c4] sm:min-w-[110px]">
+        {isActionable ? (
+          <>
+            <span>{formatDate(locale, session.scheduled_at)}</span>
+            <span>{formatTime(locale, session.scheduled_at)}</span>
+          </>
+        ) : session.status === 'completed' ? (
+          <MoreVertical className="h-8 w-8 text-[#9aaca8]" aria-hidden="true" />
+        ) : (
+          <span>XXhXX</span>
+        )}
+      </div>
+    </Link>
+  );
+}
+
+function EmptyTrialSessionRow({
+  index,
+  labels,
+}: {
+  index: number;
+  labels: ReturnType<typeof getCopy>;
+}) {
+  return (
+    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-[#20D9A3]/15 bg-[#08261f]/48 px-4 py-3 opacity-90 sm:gap-5 sm:px-5">
+      <ParticipantsBadge />
+      <div className="min-w-0">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <h3 className="truncate text-lg font-extrabold text-white sm:text-xl">
+            Session {index + 1}
+          </h3>
+          <span
+            className={`inline-flex min-h-7 items-center rounded-full border px-3 text-xs font-extrabold ${getStatusClass('nextSessionPlanned')}`}
+          >
+            {labels.statuses.nextSessionPlanned}
+          </span>
+        </div>
+        <p className="mt-1 text-base font-semibold text-[#a8bcb7]">
+          0Q
+          <span className="px-2 text-[#5b7771]">·</span>
+          90sec
+        </p>
+      </div>
+      <div className="min-w-[84px] text-right text-base font-bold text-[#b8c7c4] sm:min-w-[110px]">
+        XXhXX
+      </div>
+    </div>
+  );
+}
+
+export function TrialDashboardView({
+  locale,
+  sessionsProps,
+  performanceProps,
+}: TrialDashboardViewProps) {
+  const labels = getCopy(locale);
+  const trialSessions = useMemo(
+    () => selectTrialSessions(sessionsProps.sessions),
+    [sessionsProps.sessions],
+  );
+  const completedSessions = sessionsProps.sessions.filter(
+    (session) => session.status === 'completed',
+  ).length;
+  const remainingSessions = Math.max(3 - Math.min(completedSessions, 3), 0);
+  const activeCandidateIds = new Set<string>();
+  let activeCandidateFallback = 0;
+
+  for (const group of sessionsProps.groups) {
+    activeCandidateFallback += group.memberCount;
+    for (const member of group.membersPreview ?? []) {
+      activeCandidateIds.add(member.id);
+    }
+  }
+
+  const activeCandidates =
+    activeCandidateIds.size > 0
+      ? activeCandidateIds.size
+      : activeCandidateFallback;
+  const reliabilityScore = Math.max(
+    0,
+    Math.min(
+      100,
+      Math.round(
+        (performanceProps.successRate ?? 0) * 0.5 +
+          (Math.min(completedSessions, 3) / 3) * 50,
+      ),
+    ),
+  );
+  const trueMastery = performanceProps.successRate ?? 0;
+  const falseConfidence =
+    performanceProps.progressQuadrantQuestions.length > 0
+      ? Math.round(
+          (performanceProps.progressQuadrantQuestions.filter(
+            (question) => question.quadrant === 'falseConfidence',
+          ).length /
+            performanceProps.progressQuadrantQuestions.length) *
+            100,
+        )
+      : 0;
+  const reviewedQuestions = performanceProps.progressQuadrantQuestions.length;
+  const firstActionableSession = trialSessions.find(
+    (session) => session.status !== 'completed',
+  );
+  const emptyRows = Array.from({
+    length: Math.max(0, 3 - trialSessions.length),
+  });
+
+  return (
+    <section className="rounded-[28px] border border-white/[0.07] bg-[radial-gradient(circle_at_50%_10%,rgba(32,217,163,0.13),rgba(1,24,20,0.78)_42%,rgba(0,16,15,0.95)_100%)] px-4 py-5 shadow-[0_24px_80px_rgba(0,0,0,0.36)] sm:px-8 sm:py-7 lg:px-12">
+      <div className="mx-auto w-full max-w-[900px] space-y-6 lg:max-w-none">
+        <div className="rounded-[20px] border border-[#20D9A3]/45 bg-[#04231d]/70 p-3 shadow-[inset_0_0_28px_rgba(32,217,163,0.06)]">
+          <div className="flex items-center gap-3 text-sm font-extrabold text-white sm:text-lg">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[#20D9A3]/25 bg-[#062f27] text-[#20D9A3]">
+              <LockKeyhole className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <span>{labels.unlock(remainingSessions)}</span>
+            <ArrowRight
+              className="h-5 w-5 shrink-0 text-[#20D9A3]"
+              aria-hidden="true"
+            />
+          </div>
+        </div>
+
+        <div className="grid rounded-[24px] border border-white/[0.12] bg-[#082c24]/78 shadow-[inset_0_0_46px_rgba(32,217,163,0.06)] sm:grid-cols-2">
+          <div className="flex min-h-[180px] flex-col items-center justify-center border-b border-white/[0.08] p-6 text-center sm:border-b-0 sm:border-r">
+            <div className="flex items-end gap-2 text-[72px] font-black leading-none tracking-[-0.06em] text-[#20D9A3] sm:text-[88px]">
+              {reliabilityScore}
+              <span className="pb-2 text-4xl">%</span>
+            </div>
+            <p className="mt-4 text-xl font-semibold text-[#b8c7c4]">
+              {labels.reliabilityScore}
+            </p>
+          </div>
+          <div className="flex min-h-[180px] flex-col items-center justify-center p-6 text-center">
+            <div className="flex items-center gap-4">
+              <span className="grid h-20 w-32 place-items-center rounded-full border border-[#20D9A3]/20 bg-[#0c3a31] text-[#20D9A3] shadow-[0_0_32px_rgba(32,217,163,0.12)]">
+                <Users className="h-12 w-12" aria-hidden="true" />
+              </span>
+              <span className="text-4xl font-black text-[#20D9A3]">
+                +{Math.max(activeCandidates, 0)}
+              </span>
+            </div>
+            <p className="mt-5 text-xl font-semibold text-[#b8c7c4]">
+              {Math.max(activeCandidates, 0)} {labels.activeCandidates}
+            </p>
+            <Link
+              href="/lookup"
+              className="mt-5 inline-flex items-center gap-2 text-base font-extrabold text-[#20D9A3] transition hover:text-[#66f0c7]"
+            >
+              {labels.viewMore}
+              <ArrowRight className="h-5 w-5" aria-hidden="true" />
+            </Link>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-white sm:text-3xl">
+              {labels.testSessions}
+            </h1>
+            {firstActionableSession ? (
+              <Link
+                href={`/sessions/${firstActionableSession.id}`}
+                className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[#20D9A3] px-4 text-sm font-extrabold text-[#062b22] shadow-[0_16px_32px_rgba(32,217,163,0.18)] transition hover:bg-[#2fe9b1]"
+              >
+                <Radio className="h-4 w-4" aria-hidden="true" />
+                <span className="max-[420px]:sr-only">
+                  {labels.startSession}
+                </span>
+              </Link>
+            ) : null}
+          </div>
+
+          {trialSessions.map((session, index) => (
+            <TrialSessionRow
+              key={session.id}
+              session={session}
+              index={index}
+              locale={locale}
+              labels={labels}
+            />
+          ))}
+          {emptyRows.map((_, index) => (
+            <EmptyTrialSessionRow
+              key={`empty-${index}`}
+              index={trialSessions.length + index}
+              labels={labels}
+            />
+          ))}
+        </div>
+
+        <div className="flex justify-end">
+          <Link
+            href="/profile?section=availability"
+            className="inline-flex items-center gap-2 text-base font-extrabold text-[#20D9A3] underline decoration-[#20D9A3]/45 underline-offset-4 transition hover:text-[#66f0c7]"
+          >
+            <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            {labels.updateAvailability}
+            <ArrowRight className="h-5 w-5" aria-hidden="true" />
+          </Link>
+        </div>
+
+        <div className="relative rounded-[24px] border border-white/[0.1] bg-[#082c24]/70 p-5 shadow-[inset_0_0_40px_rgba(32,217,163,0.05)] sm:p-6">
+          <Link
+            href="/dashboard/progression"
+            className="absolute right-5 top-5 text-sm font-extrabold text-[#20D9A3] transition hover:text-[#66f0c7]"
+          >
+            {labels.viewMore}
+          </Link>
+          <div className="grid grid-cols-2 divide-x divide-white/[0.07] pr-16">
+            <div className="text-center">
+              <div className="text-4xl font-black text-[#20D9A3] sm:text-5xl">
+                {trueMastery}%
+              </div>
+              <p className="mt-2 text-sm font-semibold text-[#b8c7c4] sm:text-base">
+                {labels.trueMastery}
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl font-black text-[#9ff0ce] sm:text-5xl">
+                {falseConfidence}%
+              </div>
+              <p className="mt-2 text-sm font-semibold text-[#b8c7c4] sm:text-base">
+                {labels.falseConfidence}
+              </p>
+            </div>
+          </div>
+          <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-1.5 text-xs font-bold text-[#a8bcb7]">
+            <CheckCircle2 className="h-4 w-4 text-[#20D9A3]" aria-hidden="true" />
+            {reviewedQuestions} {labels.reviewedQuestions}
+          </div>
+        </div>
+
+        <div className="flex items-end justify-end gap-4">
+          <button
+            type="button"
+            aria-label={labels.seriousPoolLocked}
+            disabled
+            className="relative grid h-20 w-20 place-items-center rounded-full border border-[#20D9A3]/40 bg-[#0c3a31] text-[#9ff0ce] opacity-90 shadow-[0_0_38px_rgba(32,217,163,0.16)] sm:h-24 sm:w-24"
+          >
+            <Plus className="h-12 w-12" aria-hidden="true" />
+            <span className="absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full bg-amber-300 text-[#062b22]">
+              <LockKeyhole className="h-4 w-4" aria-hidden="true" />
+            </span>
+          </button>
+          <span className="pb-2 text-sm font-bold text-[#b8c7c4] sm:text-base">
+            {labels.seriousPoolLocked}
+          </span>
+        </div>
+      </div>
+    </section>
+  );
+}
