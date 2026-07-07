@@ -15,6 +15,7 @@ import {
 import { Link } from '@/i18n/navigation';
 import type { DashboardPerformanceViewProps } from '@/components/dashboard/dashboard-performance-view';
 import type { DashboardSessionsViewProps } from '@/components/dashboard/dashboard-sessions-view';
+import { SeriousCandidatesPanel } from '@/components/dashboard/serious-candidates-panel';
 import type { SessionListItem } from '@/components/sessions/session-card';
 
 type TrialDashboardViewProps = {
@@ -480,6 +481,11 @@ export function TrialDashboardView({
             {labels.seriousPoolLocked}
           </span>
         </div>
+
+        <SeriousCandidatesPanel
+          locale={locale}
+          planNextAccess={sessionsProps.planNextAccess}
+        />
       </div>
     </section>
   );
