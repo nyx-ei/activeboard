@@ -80,17 +80,28 @@ export async function GET(request: Request) {
   }
 
   const paidUsers = (data ?? [])
-    .filter((candidate) => hasCandidatePaidAccess(candidate))
+    .filter(
+      (candidate) =>
+        hasCandidatePaidAccess(candidate) &&
+        isActiveOrReliableCandidate(candidate.candidate_classification),
+    )
     .slice(0, MAX_CANDIDATES);
   const candidateIds = paidUsers.map((candidate) => candidate.user_id);
-  const schedulesResult =
+  const [schedulesResult, activityResult] =
     candidateIds.length > 0
-      ? await admin
-          .schema('public')
-          .from('user_schedules')
-          .select('user_id, timezone, availability_grid')
-          .in('user_id', [user.id, ...candidateIds])
-      : { data: [] };
+      ? await Promise.all([
+          admin
+            .schema('public')
+            .from('user_schedules')
+            .select('user_id, timezone, availability_grid')
+            .in('user_id', [user.id, ...candidateIds]),
+          admin
+            .schema('public')
+            .from('session_member_activity')
+            .select('user_id, attendance_status, updated_at')
+            .in('user_id', candidateIds),
+        ])
+      : [{ data: [] }, { data: [] }];
   const scheduleByUserId = new Map(
     (schedulesResult.data ?? []).map((schedule) => [
       schedule.user_id,
@@ -107,6 +118,28 @@ export async function GET(request: Request) {
       schedule.timezone,
     ]),
   );
+  const activityByUserId = new Map<
+    string,
+    { attended: number; late: number; lastActiveAt: string | null }
+  >();
+  for (const activity of activityResult.data ?? []) {
+    const current = activityByUserId.get(activity.user_id) ?? {
+      attended: 0,
+      late: 0,
+      lastActiveAt: null,
+    };
+    current.attended += activity.attendance_status === 'present' ? 1 : 0;
+    current.late += activity.attendance_status === 'late' ? 1 : 0;
+    if (
+      activity.updated_at &&
+      (!current.lastActiveAt ||
+        new Date(activity.updated_at).getTime() >
+          new Date(current.lastActiveAt).getTime())
+    ) {
+      current.lastActiveAt = activity.updated_at;
+    }
+    activityByUserId.set(activity.user_id, current);
+  }
   const scoredCandidates = paidUsers
     .map((candidate) => {
       const candidateGrid = scheduleByUserId.get(candidate.user_id);
@@ -161,31 +194,51 @@ export async function GET(request: Request) {
       : locale === 'fr'
         ? 'Deux séances test supplémentaires sont recommandées avant de proposer un groupe stable.'
         : 'Two more test sessions are recommended before proposing a stable group.',
-    candidates: scoredCandidates.map(({ candidate, availability, compatibilityScore, profileScore, candidateTimezone }) => ({
-      id: candidate.user_id,
-      name: candidate.display_name ?? candidate.email,
-      email: candidate.email,
-      avatarUrl: candidate.avatar_url,
-      phoneNumber: candidate.phone_number,
-      isPaid: true,
-      compatibilityScore,
-      profileScore,
-      timezone: candidateTimezone,
-      classification: candidate.candidate_classification,
-      classificationLabel: getCandidateClassificationCopy(
-        candidate.candidate_classification,
-        locale,
-      ).label,
-      language: candidate.language,
-      questionsCompleted: candidate.questions_completed ?? 0,
-      questionsReviewed: candidate.questions_reviewed ?? 0,
-      sessionsJoined: candidate.sessions_joined ?? 0,
-      reviewCompletedSessions: candidate.review_completed_sessions ?? 0,
-      nextSessionsPlanned: candidate.next_sessions_planned ?? 0,
-      positivePeerVotes: candidate.positive_peer_votes ?? 0,
-      totalPeerVotes: candidate.total_peer_votes ?? 0,
-      availability,
-    })),
+    candidates: scoredCandidates.map(
+      ({
+        candidate,
+        availability,
+        compatibilityScore,
+        profileScore,
+        candidateTimezone,
+      }) => {
+        const activity = activityByUserId.get(candidate.user_id);
+        const attended = activity?.attended ?? Number(candidate.sessions_joined ?? 0);
+        const punctualityRate =
+          attended > 0
+            ? Math.max(0, Math.round(((attended - (activity?.late ?? 0)) / attended) * 100))
+            : null;
+
+        return {
+          id: candidate.user_id,
+          name: candidate.display_name ?? candidate.email,
+          email: candidate.email,
+          avatarUrl: candidate.avatar_url,
+          phoneNumber: candidate.phone_number,
+          isPaid: true,
+          compatibilityScore,
+          profileScore,
+          timezone: candidateTimezone,
+          classification: candidate.candidate_classification,
+          classificationLabel: getCandidateClassificationCopy(
+            candidate.candidate_classification,
+            locale,
+          ).label,
+          language: candidate.language,
+          questionsCompleted: candidate.questions_completed ?? 0,
+          questionsReviewed: candidate.questions_reviewed ?? 0,
+          sessionsJoined: candidate.sessions_joined ?? 0,
+          sessionsAttended: attended,
+          reviewCompletedSessions: candidate.review_completed_sessions ?? 0,
+          nextSessionsPlanned: candidate.next_sessions_planned ?? 0,
+          positivePeerVotes: candidate.positive_peer_votes ?? 0,
+          totalPeerVotes: candidate.total_peer_votes ?? 0,
+          punctualityRate,
+          lastActiveAt: activity?.lastActiveAt ?? null,
+          availability,
+        };
+      },
+    ),
   });
 }
 
