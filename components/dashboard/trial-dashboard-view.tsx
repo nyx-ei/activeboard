@@ -424,7 +424,7 @@ export function TrialDashboardView({
 
         <div className="flex justify-end">
           <Link
-            href="/profile?section=availability"
+            href="/onboarding/availability"
             className="inline-flex items-center gap-2 text-base font-extrabold text-[#20D9A3] underline decoration-[#20D9A3]/45 underline-offset-4 transition hover:text-[#66f0c7]"
           >
             <RotateCcw className="h-4 w-4" aria-hidden="true" />

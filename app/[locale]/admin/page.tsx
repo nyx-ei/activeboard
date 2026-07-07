@@ -226,19 +226,7 @@ export default async function AdminPolicyPage({
             </div>
           </section>
 
-          <section className="grid gap-4 lg:grid-cols-3">
-            <SettingsCard title={copy.freeTrial}>
-              <NumberField
-                name="trialQuestionLimit"
-                label={copy.freeQuestionLimit}
-                value={policy.trialQuestionLimit}
-              />
-              <NumberField
-                name="trialWarningThreshold"
-                label={copy.warningThreshold}
-                value={policy.trialWarningThreshold}
-              />
-            </SettingsCard>
+          <section className="grid gap-4 lg:grid-cols-2">
             <SettingsCard title={copy.sessionDefaults}>
               <NumberField
                 name="defaultQuestionGoal"

@@ -6,7 +6,6 @@ import { requireUser } from '@/lib/auth';
 import { getUserBillingSnapshot } from '@/lib/billing/user-tier';
 import { hasStripeEnv } from '@/lib/env';
 import { isFeatureEnabled } from '@/lib/features/flags';
-import { getAppPolicySettings } from '@/lib/policy/app-policy';
 import { getBillingPlans } from '@/lib/stripe/pricing';
 import { getUnlimitedPaymentLink } from '@/lib/stripe/payment-links';
 
@@ -24,10 +23,9 @@ export default async function BillingPage({ params }: BillingPageProps) {
   const locale = params.locale as AppLocale;
   const user = await requireUser(locale);
   const t = await getTranslations('Billing');
-  const [snapshot, billingEnabled, policy] = await Promise.all([
+  const [snapshot, billingEnabled] = await Promise.all([
     getUserBillingSnapshot(user.id),
     isFeatureEnabled('canUseStripeBilling'),
-    getAppPolicySettings(),
   ]);
   const stripeConfigured = hasStripeEnv();
   const plans = stripeConfigured ? await getBillingPlans(locale) : [];
@@ -36,8 +34,6 @@ export default async function BillingPage({ params }: BillingPageProps) {
     return null;
   }
 
-  const questionProgress = Math.min(snapshot.questions_answered, policy.trialQuestionLimit);
-  const progressPercentage = Math.min(100, Math.round((questionProgress / policy.trialQuestionLimit) * 100));
   const primaryPlan = plans.find((plan) => plan.highlight) ?? plans[0] ?? null;
   const monthlyPrice = locale === 'fr' ? '15$' : '$15';
   const billingReady = Boolean(billingEnabled && stripeConfigured && primaryPlan);
@@ -56,18 +52,6 @@ export default async function BillingPage({ params }: BillingPageProps) {
             <Link href="/dashboard" className="text-2xl leading-none text-slate-400 transition hover:text-white" aria-label={t('close')}>
               x
             </Link>
-          </div>
-
-          <div className="mt-5">
-            <div className="flex items-center justify-between gap-4">
-              <p className="text-sm font-semibold text-slate-300">{t('answersUsed')}</p>
-              <p className="text-sm font-extrabold text-white">
-                {questionProgress} / {policy.trialQuestionLimit}
-              </p>
-            </div>
-            <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-[#233049]">
-              <div className="h-full rounded-full bg-brand" style={{ width: `${progressPercentage}%` }} />
-            </div>
           </div>
 
           <div className="mt-5 rounded-[10px] border border-white/[0.06] bg-[#172237] p-4">

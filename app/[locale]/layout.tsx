@@ -11,7 +11,6 @@ import { Search } from 'lucide-react';
 import { LandingSignInLink } from '@/components/layout/landing-sign-in-link';
 import { LanguageSwitcher } from '@/components/layout/language-switcher';
 import { ProfileMenu } from '@/components/layout/profile-menu';
-import { DashboardAwareQuestionProgressRing } from '@/components/layout/dashboard-aware-question-progress-ring';
 import { OfflineStatusBanner } from '@/components/pwa/offline-status-banner';
 import { InstallPrompt } from '@/components/pwa/install-prompt';
 import { PwaLaunchTracker } from '@/components/pwa/pwa-launch-tracker';
@@ -23,7 +22,6 @@ import {
   getUserAccessState,
   hasUserTierCapability,
 } from '@/lib/billing/gating';
-import { DEFAULT_APP_POLICY_SETTINGS } from '@/lib/policy/defaults';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export function generateStaticParams() {
@@ -84,11 +82,6 @@ export default async function LocaleLayout({
                 accessState,
                 'canBrowseLookupLayer',
               ),
-              isActive: accessState.effectiveUserTier === 'active',
-              questionsAnswered: accessState.snapshot?.questions_answered ?? 0,
-              trialQuestionLimit:
-                accessState.policy.trialQuestionLimit ??
-                DEFAULT_APP_POLICY_SETTINGS.trialQuestionLimit,
               preferredGroupId: memberships[0]?.group_id ?? null,
             };
           })()
@@ -96,9 +89,6 @@ export default async function LocaleLayout({
             isCaptain: false,
             hasGroups: false,
             canBrowseLookupLayer: false,
-            isActive: false,
-            questionsAnswered: 0,
-            trialQuestionLimit: DEFAULT_APP_POLICY_SETTINGS.trialQuestionLimit,
             preferredGroupId: null as string | null,
           }),
     ]);
@@ -183,20 +173,6 @@ export default async function LocaleLayout({
                     >
                       <LanguageSwitcher persistUserPreference />
                     </Suspense>
-                    {!shellData.isActive ? (
-                      <DashboardAwareQuestionProgressRing
-                        answeredCount={shellData.questionsAnswered}
-                        totalCount={shellData.trialQuestionLimit}
-                        label={t('questionProgressLabel', {
-                          current: Math.max(
-                            shellData.trialQuestionLimit -
-                              shellData.questionsAnswered,
-                            0,
-                          ),
-                          total: shellData.trialQuestionLimit,
-                        })}
-                      />
-                    ) : null}
                     <ProfileMenu
                       initials={initials}
                       name={displayName}
