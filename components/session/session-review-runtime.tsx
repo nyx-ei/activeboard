@@ -4,14 +4,13 @@ import { BarChart3 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 import { SessionDashboardBackButton } from '@/components/session/session-dashboard-back-button';
-import { SessionFinishReviewButton } from '@/components/session/session-finish-review-button';
 import { ReviewAnswerForm } from '@/components/session/session-flow-client';
 import type { SessionLeaveConfirmLabels } from '@/components/session/session-leave-confirm-dialog';
+import { Link } from '@/i18n/navigation';
 import type {
   CertaintyCorrectnessStatus,
   ConfidenceLevel,
 } from '@/lib/demo/confidence';
-import type { PlanNextAccess } from '@/lib/session/plan-next-access';
 import {
   ANSWER_OPTIONS,
   type AnswerOption,
@@ -59,7 +58,6 @@ type ReviewDistribution = {
 type SessionReviewRuntimeProps = {
   locale: string;
   sessionId: string;
-  groupId: string;
   sessionTitle: string;
   questionGoal: number;
   timerMode: 'per_question' | 'global';
@@ -68,13 +66,6 @@ type SessionReviewRuntimeProps = {
   initialQuestion: ReviewQuestion;
   initialDistribution: ReviewDistribution;
   initialOwnAnswer: ReviewOwnAnswer | null;
-  planNextAccess?: PlanNextAccess;
-  reviewPeers?: Array<{
-    id: string;
-    name: string;
-    email: string;
-    avatarUrl: string | null;
-  }>;
   labels: {
     reviewShort: string;
     previous: string;
@@ -127,7 +118,6 @@ function getDistributionCount(
 export function SessionReviewRuntime({
   locale,
   sessionId,
-  groupId,
   sessionTitle,
   questionGoal,
   timerMode,
@@ -136,8 +126,6 @@ export function SessionReviewRuntime({
   initialQuestion,
   initialDistribution,
   initialOwnAnswer,
-  planNextAccess,
-  reviewPeers = [],
   labels,
 }: SessionReviewRuntimeProps) {
   const [currentIndex, setCurrentIndex] = useState(initialQuestionIndex);
@@ -465,16 +453,13 @@ export function SessionReviewRuntime({
         ) : null}
 
         {canFinish ? (
-          <SessionFinishReviewButton
-            locale={locale}
-            sessionId={sessionId}
-            groupId={groupId}
-            questionGoal={questionGoal}
-            planNextAccess={planNextAccess}
-            label={labels.finishSession}
-            pendingLabel={labels.finishSessionPending}
-            peers={reviewPeers}
-          />
+          <Link
+            href={`/sessions/${sessionId}?stage=feedback`}
+            prefetch={false}
+            className="button-primary w-full justify-center rounded-[8px] px-5 py-3 text-sm"
+          >
+            {labels.finishSession}
+          </Link>
         ) : null}
       </section>
     </main>

@@ -160,6 +160,12 @@ export async function completeTrialProfileAction(formData: FormData) {
 export async function completeTrialAvailabilityAction(formData: FormData) {
   const locale = getLocale(formData);
   const user = await requireUser(locale);
+  const isEditMode = formData.get('mode') === 'edit';
+  const availabilityPath = `/${locale}/onboarding/availability${
+    isEditMode ? '?mode=edit' : ''
+  }`;
+  const availabilityErrorPath = (error: string) =>
+    `${availabilityPath}${availabilityPath.includes('?') ? '&' : '?'}error=${error}`;
   const understood = formData.get('understood') === 'on';
   const timezone =
     ((formData.get('timezone') as string | null) ?? '').trim() || 'UTC';
@@ -168,7 +174,7 @@ export async function completeTrialAvailabilityAction(formData: FormData) {
   );
 
   if (!understood || getSlotCount(grid) < 5) {
-    redirect(`/${locale}/onboarding/availability?error=minimum_slots`);
+    redirect(availabilityErrorPath('minimum_slots'));
   }
 
   const supabase = createSupabaseServerClient();
@@ -182,7 +188,7 @@ export async function completeTrialAvailabilityAction(formData: FormData) {
   );
 
   if (error) {
-    redirect(`/${locale}/onboarding/availability?error=save_failed`);
+    redirect(availabilityErrorPath('save_failed'));
   }
 
   revalidatePath(`/${locale}/dashboard`);
