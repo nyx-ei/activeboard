@@ -945,7 +945,7 @@
                     "globalShort":  "global",
                     "launchQuestion":  "Lancer la question",
                     "launchQuestionPending":  "Lancement de la question...",
-                    "startSession":  "Démarrer",
+                    "startSession":  "Démarrer le sprint",
                     "startSessionPending":  "Démarrage...",
                     "endSession":  "Terminer la session",
                     "endSessionPending":  "Clôture de la session...",

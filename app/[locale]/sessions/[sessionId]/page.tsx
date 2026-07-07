@@ -213,6 +213,7 @@ export default async function SessionPage({
           sessionShareLabel={t('shareCodeLabel', {
             code: data.session.share_code,
           })}
+          meetingLink={data.session.meeting_link}
           timerLabel={timerLabel}
           timerMode={data.session.timer_mode}
           timerSeconds={data.session.timer_seconds}
@@ -230,6 +231,8 @@ export default async function SessionPage({
             takeOverStartResponsibility: t('takeOverStartResponsibility'),
             takeOverStartResponsibilityPending: t('takeOverStartResponsibilityPending'),
             currentStartResponsible: t('currentStartResponsible'),
+            meetingLink: t('meetingLink'),
+            joinCall: t('joinCall'),
             quitSession: t('quitSession'),
             questionUpper: t('questionUpper'),
             confidenceTitle: t('confidenceLevel'),

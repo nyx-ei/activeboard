@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarClock, Play, UsersRound } from 'lucide-react';
+import { CalendarClock, LinkIcon, Play, UsersRound } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -23,6 +23,7 @@ type SessionStartRuntimeProps = {
   currentUserId: string;
   sessionTitle: string;
   sessionShareLabel: string;
+  meetingLink?: string | null;
   timerLabel: string;
   timerMode: 'per_question' | 'global';
   timerSeconds: number;
@@ -41,6 +42,8 @@ type SessionStartRuntimeProps = {
     takeOverStartResponsibility: string;
     takeOverStartResponsibilityPending: string;
     currentStartResponsible: string;
+    meetingLink: string;
+    joinCall: string;
     quitSession: string;
     questionUpper: string;
     confidenceTitle: string;
@@ -133,6 +136,7 @@ export function SessionStartRuntime({
   currentUserId,
   sessionTitle,
   sessionShareLabel,
+  meetingLink,
   timerLabel,
   timerMode,
   timerSeconds,
@@ -267,6 +271,28 @@ export function SessionStartRuntime({
                 </p>
               </div>
             </div>
+
+            {meetingLink ? (
+              <div className="mt-3 rounded-[13px] border border-white/[0.055] bg-white/[0.018] px-3 py-3">
+                <div className="flex items-center gap-2">
+                  <LinkIcon className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
+                  <p className="min-w-0 flex-1 truncate text-sm font-extrabold text-white">
+                    {labels.meetingLink}
+                  </p>
+                  <a
+                    href={meetingLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="shrink-0 rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-xs font-extrabold text-brand transition hover:bg-brand/15"
+                  >
+                    {labels.joinCall}
+                  </a>
+                </div>
+                <p className="mt-2 truncate text-xs font-semibold text-[#8fa7a2]">
+                  {meetingLink}
+                </p>
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
