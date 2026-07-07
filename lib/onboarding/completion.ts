@@ -3,6 +3,10 @@ import 'server-only';
 import { cache } from 'react';
 
 import type { AppLocale } from '@/i18n/routing';
+import {
+  getAvailabilitySlotCount,
+  normalizeAvailabilityGrid,
+} from '@/lib/schedule/availability';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export type OnboardingCompletion = {
@@ -10,16 +14,6 @@ export type OnboardingCompletion = {
   availabilityComplete: boolean;
   nextPath: string | null;
 };
-
-export function hasAvailabilitySlots(value: unknown) {
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-
-  return Object.values(value as Record<string, unknown>).some(
-    (hours) => Array.isArray(hours) && hours.length > 0,
-  );
-}
 
 export const getOnboardingCompletion = cache(
   async (
@@ -31,7 +25,7 @@ export const getOnboardingCompletion = cache(
       supabase
         .schema('public')
         .from('users')
-        .select('display_name, exam_session')
+        .select('display_name, phone_number, exam_type')
         .eq('id', userId)
         .maybeSingle(),
       supabase
@@ -44,15 +38,19 @@ export const getOnboardingCompletion = cache(
 
     const profileComplete = Boolean(
       profileResult.data?.display_name?.trim() &&
-        profileResult.data?.exam_session,
+        profileResult.data?.phone_number?.trim() &&
+        profileResult.data?.exam_type,
     );
-    const availabilityComplete = hasAvailabilitySlots(
-      scheduleResult.data?.availability_grid,
-    );
+    const availabilityComplete =
+      getAvailabilitySlotCount(
+        normalizeAvailabilityGrid(scheduleResult.data?.availability_grid),
+      ) >= 5;
     const nextPath =
       profileComplete && availabilityComplete
         ? null
-        : `/${locale}/profile?section=exam&onboarding=1`;
+        : profileComplete
+          ? `/${locale}/onboarding/availability`
+          : `/${locale}/onboarding/profile`;
 
     return {
       profileComplete,

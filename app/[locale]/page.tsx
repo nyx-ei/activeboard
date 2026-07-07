@@ -94,7 +94,7 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
             <div className="mt-4 max-w-[590px] space-y-2.5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <a
-                  href={`/${locale}/auth/login?mode=sign-up`}
+                  href={`/${locale}/onboarding/account`}
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[8px] bg-brand px-6 text-[15px] font-extrabold text-[#03130e] shadow-[0_24px_60px_rgba(31,230,166,0.24)] transition hover:bg-brand-strong sm:text-base"
                 >
                   {t('primaryCta')}
