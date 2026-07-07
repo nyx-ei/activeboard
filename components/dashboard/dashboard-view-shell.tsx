@@ -3,14 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { DashboardPerformanceViewProps } from '@/components/dashboard/dashboard-performance-view';
-import {
-  DashboardGroupZone,
-  type DashboardGroupZoneProps,
-} from '@/components/dashboard/dashboard-group-zone';
-import {
-  DashboardSprintActivityZone,
-  type DashboardSprintActivityZoneProps,
-} from '@/components/dashboard/dashboard-sprint-activity-zone';
+import type { DashboardGroupZoneProps } from '@/components/dashboard/dashboard-group-zone';
+import type { DashboardSprintActivityZoneProps } from '@/components/dashboard/dashboard-sprint-activity-zone';
 import {
   fetchDashboardPayload,
   consumeDashboardPayloadStale,
@@ -19,6 +13,7 @@ import {
   type DashboardView,
 } from '@/components/dashboard/dashboard-data-cache';
 import type { DashboardSessionsViewProps } from '@/components/dashboard/dashboard-sessions-view';
+import { TrialDashboardView } from '@/components/dashboard/trial-dashboard-view';
 import { subscribeSessionTabRecovery } from '@/components/session/session-tab-channel';
 import { CreateSessionModal } from '@/components/sessions/create-session-modal';
 
@@ -69,10 +64,8 @@ export function DashboardViewShell({
 }: DashboardViewShellProps) {
   const [resolvedSessionsProps, setResolvedSessionsProps] =
     useState(sessionsProps);
-  const [resolvedSprintActivityProps, setResolvedSprintActivityProps] =
-    useState(sprintActivityProps);
-  const [resolvedGroupZoneProps, setResolvedGroupZoneProps] =
-    useState(groupZoneProps);
+  const [resolvedPerformanceProps, setResolvedPerformanceProps] =
+    useState(performanceProps);
   const lastVisibleRevalidationRef = useRef(0);
   const hasLiveSessions = useMemo(
     () => resolvedSessionsProps.groups.some((group) => group.hasLiveSession),
@@ -95,19 +88,27 @@ export function DashboardViewShell({
           groups: sessionsPayload.groups ?? [],
           sessions: sessionsPayload.sessions ?? [],
         }));
-        setResolvedGroupZoneProps((current) => ({
-          ...current,
-          groups: sessionsPayload.groups ?? [],
-        }));
       } else {
         const performancePayload = payload as DashboardPerformancePayload;
-        setResolvedSprintActivityProps((current) => ({
+        setResolvedPerformanceProps((current) => ({
           ...current,
           answeredCount: performancePayload.metrics?.answeredCount ?? 0,
           completedSessionsCount:
             performancePayload.metrics?.completedSessionsCount ?? 0,
-          trueMastery: performancePayload.metrics?.successRate ?? null,
+          successRate: performancePayload.metrics?.successRate ?? null,
+          averageConfidence:
+            performancePayload.metrics?.averageConfidence ?? null,
           heatmap: performancePayload.profileAnalytics?.heatmap ?? [],
+          blueprintGrid: performancePayload.profileAnalytics?.blueprintGrid ?? [],
+          errorTypeBreakdown:
+            performancePayload.profileAnalytics?.errorTypeBreakdown ?? [],
+          weeklyTrend: performancePayload.profileAnalytics?.weeklyTrend ?? [],
+          confidenceCalibration:
+            performancePayload.profileAnalytics?.confidenceCalibration ?? [],
+          sessionConfidenceBreakdown:
+            performancePayload.sessionConfidenceBreakdown ?? [],
+          progressQuadrantQuestions:
+            performancePayload.progressQuadrantQuestions ?? [],
         }));
       }
     },
@@ -116,8 +117,7 @@ export function DashboardViewShell({
 
   useEffect(() => {
     setResolvedSessionsProps(sessionsProps);
-    setResolvedSprintActivityProps(sprintActivityProps);
-    setResolvedGroupZoneProps(groupZoneProps);
+    setResolvedPerformanceProps(performanceProps);
     seedDashboardPayload<DashboardPayloadByView, 'sessions'>('sessions', {
       ok: true,
       groups: sessionsProps.groups,
@@ -283,8 +283,11 @@ export function DashboardViewShell({
 
   return (
     <div className="space-y-5">
-      <DashboardSprintActivityZone {...resolvedSprintActivityProps} />
-      <DashboardGroupZone {...resolvedGroupZoneProps} />
+      <TrialDashboardView
+        locale={resolvedSessionsProps.locale}
+        sessionsProps={resolvedSessionsProps}
+        performanceProps={resolvedPerformanceProps}
+      />
       <DashboardSessionActionHost {...resolvedSessionsProps} />
     </div>
   );

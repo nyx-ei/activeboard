@@ -11,7 +11,7 @@ import { Search } from 'lucide-react';
 import { LandingSignInLink } from '@/components/layout/landing-sign-in-link';
 import { LanguageSwitcher } from '@/components/layout/language-switcher';
 import { ProfileMenu } from '@/components/layout/profile-menu';
-import { QuestionProgressRing } from '@/components/layout/question-progress-ring';
+import { DashboardAwareQuestionProgressRing } from '@/components/layout/dashboard-aware-question-progress-ring';
 import { OfflineStatusBanner } from '@/components/pwa/offline-status-banner';
 import { InstallPrompt } from '@/components/pwa/install-prompt';
 import { PwaLaunchTracker } from '@/components/pwa/pwa-launch-tracker';
@@ -184,7 +184,7 @@ export default async function LocaleLayout({
                       <LanguageSwitcher persistUserPreference />
                     </Suspense>
                     {!shellData.isActive ? (
-                      <QuestionProgressRing
+                      <DashboardAwareQuestionProgressRing
                         answeredCount={shellData.questionsAnswered}
                         totalCount={shellData.trialQuestionLimit}
                         label={t('questionProgressLabel', {
