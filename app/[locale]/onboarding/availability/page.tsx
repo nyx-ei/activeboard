@@ -32,7 +32,7 @@ export default async function TrialAvailabilityPage({
   const { data: schedule } = await supabase
     .schema('public')
     .from('user_schedules')
-    .select('timezone')
+    .select('timezone, availability_grid')
     .eq('user_id', user.id)
     .maybeSingle();
 
@@ -40,6 +40,7 @@ export default async function TrialAvailabilityPage({
     <TrialAvailabilityForm
       locale={locale}
       initialTimezone={schedule?.timezone ?? 'UTC'}
+      initialAvailabilityGrid={schedule?.availability_grid ?? null}
       mode={isEditMode ? 'edit' : undefined}
     />
   );

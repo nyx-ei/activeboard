@@ -15,6 +15,7 @@ import {
 
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
+import type { AvailabilityGrid } from '@/lib/schedule/availability';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import {
   completeTrialAvailabilityAction,
@@ -61,6 +62,7 @@ const copy = {
     targetConduct: 'Respect code of conduct',
     understand: 'I understand',
     generate: 'Generate 3 test sessions',
+    saveAvailability: 'Save availability',
     selected: '{count}/5 slots selected',
     availabilityError: 'Choose at least 5 slots and accept the commitment.',
     days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
@@ -118,6 +120,7 @@ const copy = {
     targetReview: 'Réviser les questions assignées',
     targetConduct: 'Respecter le code de conduite',
     understand: 'Je comprends',
+    saveAvailability: 'Enregistrer',
     generate: 'Générer 3 sessions test',
     selected: '{count}/5 créneaux sélectionnés',
     availabilityError:
@@ -153,6 +156,38 @@ const weekdays = [
 
 type Weekday = (typeof weekdays)[number];
 type Slot = 'morning' | 'evening';
+
+function buildEmptyAvailabilitySlots() {
+  return weekdays.reduce(
+    (accumulator, weekday) => {
+      accumulator[weekday] = [];
+      return accumulator;
+    },
+    {} as Record<Weekday, Slot[]>,
+  );
+}
+
+function getInitialAvailabilitySlots(
+  grid: AvailabilityGrid | null | undefined,
+) {
+  const slots = buildEmptyAvailabilitySlots();
+
+  if (!grid) {
+    return slots;
+  }
+
+  for (const weekday of weekdays) {
+    const hours = Array.isArray(grid[weekday]) ? grid[weekday] : [];
+    if (hours.some((hour) => hour >= 6 && hour < 12)) {
+      slots[weekday].push('morning');
+    }
+    if (hours.some((hour) => hour >= 18 && hour <= 22)) {
+      slots[weekday].push('evening');
+    }
+  }
+
+  return slots;
+}
 
 function getTimezoneOffsetLabel() {
   const offsetMinutes = -new Date().getTimezoneOffset();
@@ -430,23 +465,19 @@ export function TrialProfileForm({
 export function TrialAvailabilityForm({
   locale,
   initialTimezone = 'UTC',
+  initialAvailabilityGrid = null,
   mode,
 }: {
   locale: AppLocale;
   initialTimezone?: string | null;
+  initialAvailabilityGrid?: AvailabilityGrid | null;
   mode?: 'edit';
 }) {
   const t = copy[locale];
   const [timezone, setTimezone] = useState(initialTimezone || 'UTC');
-  const [understood, setUnderstood] = useState(false);
+  const [understood, setUnderstood] = useState(mode === 'edit');
   const [slots, setSlots] = useState<Record<Weekday, Slot[]>>(() =>
-    weekdays.reduce(
-      (accumulator, weekday) => {
-        accumulator[weekday] = [];
-        return accumulator;
-      },
-      {} as Record<Weekday, Slot[]>,
-    ),
+    getInitialAvailabilitySlots(initialAvailabilityGrid),
   );
 
   useEffect(() => {
@@ -574,7 +605,7 @@ export function TrialAvailabilityForm({
           className="button-primary mt-7 h-16 w-full rounded-[6px] text-base disabled:opacity-50"
         >
           <Clock className="h-4 w-4" aria-hidden />
-          {t.generate}
+          {mode === 'edit' ? t.saveAvailability : t.generate}
         </button>
       </form>
     </OnboardingShell>
