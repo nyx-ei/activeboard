@@ -10,6 +10,10 @@ const trialForms = readFileSync(
   'components/onboarding/trial-onboarding-forms.tsx',
   'utf8',
 );
+const onboardingActions = readFileSync(
+  'app/[locale]/onboarding/actions.ts',
+  'utf8',
+);
 const sessionPage = readFileSync(
   'app/[locale]/sessions/[sessionId]/page.tsx',
   'utf8',
@@ -22,12 +26,36 @@ const startRuntime = readFileSync(
   'components/session/session-start-runtime.tsx',
   'utf8',
 );
+const progressEntryRuntime = readFileSync(
+  'components/session/session-progress-entry-runtime.tsx',
+  'utf8',
+);
+const progressPanel = readFileSync(
+  'components/session/session-progress-panel.tsx',
+  'utf8',
+);
 const feedbackRuntime = readFileSync(
   'components/session/session-peer-feedback-runtime.tsx',
   'utf8',
 );
+const activeRuntime = readFileSync(
+  'components/session/session-active-runtime.tsx',
+  'utf8',
+);
 const planNextRuntime = readFileSync(
   'components/session/session-plan-next-runtime.tsx',
+  'utf8',
+);
+const advanceRoute = readFileSync(
+  'app/api/sessions/[sessionId]/advance/route.ts',
+  'utf8',
+);
+const trialDashboard = readFileSync(
+  'components/dashboard/trial-dashboard-view.tsx',
+  'utf8',
+);
+const sessionCard = readFileSync(
+  'components/sessions/session-card.tsx',
   'utf8',
 );
 
@@ -49,7 +77,72 @@ test('availability edit mode preloads saved schedule grid', () => {
   assert.match(trialForms, /hour >= 18 && hour <= 22/);
 });
 
+test('availability onboarding requires 5 slots and recommends 7 with status colors', () => {
+  assert.match(trialForms, /const MIN_AVAILABILITY_SLOTS = 5/);
+  assert.match(trialForms, /const STRONG_AVAILABILITY_SLOTS = 7/);
+  assert.match(trialForms, /availabilitySubtitle: 'Choose at least 5 slots'/);
+  assert.match(trialForms, /selected: '\{count\}\/\{target\} slots selected'/);
+  assert.match(
+    trialForms,
+    /const hasMinimumSlots = selectedCount >= MIN_AVAILABILITY_SLOTS/,
+  );
+  assert.match(
+    trialForms,
+    /const hasStrongAvailability = selectedCount >= STRONG_AVAILABILITY_SLOTS/,
+  );
+  assert.match(trialForms, /text-amber-300/);
+  assert.match(trialForms, /text-brand/);
+  assert.match(onboardingActions, /const MIN_AVAILABILITY_SLOTS = 5/);
+  assert.match(
+    onboardingActions,
+    /getSlotCount\(grid\) < MIN_AVAILABILITY_SLOTS/,
+  );
+});
+
 test('trial session review to feedback to plan-next to dashboard remains reachable', () => {
+  assert.match(sessionPage, /<SessionProgressEntryRuntime/);
+  assert.match(
+    sessionPage,
+    /const isProgress = searchParams\.stage === 'progress'/,
+  );
+  assert.match(
+    trialDashboard,
+    /href=\{`\/sessions\/\$\{session\.id\}\?stage=progress`\}/,
+  );
+  assert.match(
+    trialDashboard,
+    /href=\{`\/sessions\/\$\{firstActionableSession\.id\}\?stage=progress`\}/,
+  );
+  assert.match(
+    sessionCard,
+    /router\.push\(`\/sessions\/\$\{session\.id\}\?stage=progress`\)/,
+  );
+  assert.match(progressEntryRuntime, /<SessionProgressPanel/);
+  assert.match(sessionPage, /\?stage=start/);
+  assert.match(sessionPage, /sessionHref=\{progressSessionHref\}/);
+  assert.match(progressEntryRuntime, /\?stage=feedback/);
+  assert.match(progressEntryRuntime, /\?stage=plan-next/);
+  assert.match(feedbackRuntime, /<SessionProgressPanel/);
+  assert.match(planNextRuntime, /<SessionProgressPanel/);
+  assert.match(progressPanel, /Session progress/);
+  assert.match(progressPanel, /sessionActive: 'Sprint'/);
+  assert.match(
+    activeRuntime,
+    /const reviewHref = `\/\$\{locale\}\/sessions\/\$\{sessionId\}\?stage=review&q=\$\{runtimeQuestionIndex\}`/,
+  );
+  assert.match(
+    activeRuntime,
+    /redirectTo=\{`\/\$\{locale\}\/sessions\/\$\{sessionId\}\?stage=progress`\}/,
+  );
+  assert.match(
+    activeRuntime,
+    /href=\{`\/sessions\/\$\{sessionId\}\?stage=review`\}/,
+  );
+  assert.match(
+    advanceRoute,
+    /const reviewHref = `\/\$\{locale\}\/sessions\/\$\{sessionId\}\?stage=review&q=\$\{questionIndex\}`/,
+  );
+  assert.match(advanceRoute, /redirectTo: reviewHref/);
   assert.match(
     sessionPage,
     /const isFeedback = searchParams\.stage === 'feedback'/,

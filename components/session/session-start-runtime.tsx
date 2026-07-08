@@ -224,6 +224,7 @@ export function SessionStartRuntime({
               variant="text"
               sessionId={sessionId}
               confirmLabels={labels.quitConfirm}
+              redirectTo={`/${locale}/sessions/${sessionId}?stage=progress`}
             />
             <p className="min-w-0 truncate rounded-full border border-white/[0.08] bg-white/[0.025] px-3 py-1 text-xs font-bold text-[#8fa7a2]">
               {sessionShareLabel}

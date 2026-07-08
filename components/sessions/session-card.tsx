@@ -78,7 +78,7 @@ export const SessionCard = memo(function SessionCard({
   const targetCount = session.question_goal || session.questionCount || 10;
   const openSession = () => {
     startTransition(() => {
-      router.push(`/sessions/${session.id}`);
+      router.push(`/sessions/${session.id}?stage=progress`);
     });
   };
 

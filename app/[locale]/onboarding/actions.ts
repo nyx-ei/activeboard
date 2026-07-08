@@ -27,6 +27,8 @@ const SLOT_TO_HOUR = {
   evening: 18,
 } as const;
 
+const MIN_AVAILABILITY_SLOTS = 5;
+
 type AvailabilitySlot = keyof typeof SLOT_TO_HOUR;
 
 function getLocale(formData: FormData): AppLocale {
@@ -173,7 +175,7 @@ export async function completeTrialAvailabilityAction(formData: FormData) {
     (formData.get('availabilitySlots') as string | null) ?? null,
   );
 
-  if (!understood || getSlotCount(grid) < 5) {
+  if (!understood || getSlotCount(grid) < MIN_AVAILABILITY_SLOTS) {
     redirect(availabilityErrorPath('minimum_slots'));
   }
 

@@ -309,6 +309,7 @@ export function SessionReviewRuntime({
             label={sessionTitle}
             sessionId={sessionId}
             confirmLabels={labels.quitConfirm}
+            redirectTo={`/${locale}/sessions/${sessionId}?stage=progress&q=${currentIndex}`}
           />
           <div className="min-w-0 flex-1 sm:hidden">
             <p className="truncate text-xs font-semibold leading-tight text-white">

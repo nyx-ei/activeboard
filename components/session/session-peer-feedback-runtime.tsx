@@ -1,11 +1,11 @@
 'use client';
 
-import { ArrowLeft, Check, HelpCircle, ThumbsDown, ThumbsUp, UserRound } from 'lucide-react';
+import { HelpCircle, ThumbsDown, ThumbsUp, UserRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type React from 'react';
 import { useState, useTransition } from 'react';
 
-import { Link } from '@/i18n/navigation';
+import { SessionProgressPanel } from '@/components/session/session-progress-panel';
 
 type Peer = {
   id: string;
@@ -27,10 +27,6 @@ const copy = {
   en: {
     back: 'Back',
     title: 'Peer feedback',
-    progress: 'Session progress',
-    sessionDone: 'Sprint reviewed',
-    feedback: 'Peer feedback',
-    planNext: 'Plan next session',
     question: 'Would you study with this person again?',
     yes: 'Yes',
     no: 'No',
@@ -44,10 +40,6 @@ const copy = {
   fr: {
     back: 'Retour',
     title: 'Feedback',
-    progress: 'Progression de la séance',
-    sessionDone: 'Sprint révisé',
-    feedback: 'Feedback',
-    planNext: 'Planifier la suite',
     question: 'Étudierais-tu encore avec cette personne ?',
     yes: 'Oui',
     no: 'Non',
@@ -112,35 +104,14 @@ export function SessionPeerFeedbackRuntime({
   }
 
   return (
-    <main className="min-h-screen bg-[#001915] px-4 py-6 text-white sm:px-6">
-      <section className="mx-auto flex w-full max-w-3xl flex-col gap-5">
-        <div className="flex items-center gap-4">
-          <Link
-            href={`/sessions/${sessionId}?stage=review`}
-            prefetch={false}
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-brand/50 hover:text-white"
-            aria-label={t.back}
-          >
-            <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-          </Link>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">
-              {t.progress}
-            </p>
-            <h1 className="text-2xl font-extrabold text-white">
-              {sessionTitle}
-            </h1>
-          </div>
-        </div>
-
-        <div className="rounded-[18px] border border-brand/35 bg-[#082c24]/70 p-4 shadow-[inset_0_0_35px_rgba(32,217,163,0.06)]">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <ProgressStep done label={t.sessionDone} />
-            <ProgressStep active label={t.feedback} />
-            <ProgressStep label={t.planNext} />
-          </div>
-        </div>
-
+    <SessionProgressPanel
+      locale={language}
+      sessionTitle={sessionTitle}
+      activeStep="feedback"
+      backHref={`/sessions/${sessionId}?stage=review`}
+      backLabel={t.back}
+      sessionHref={`/sessions/${sessionId}?stage=review`}
+    >
         <div className="rounded-[18px] border border-white/10 bg-[#111827] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.25)] sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -226,43 +197,7 @@ export function SessionPeerFeedbackRuntime({
             {isPending ? t.submitting : t.submit}
           </button>
         </div>
-      </section>
-    </main>
-  );
-}
-
-function ProgressStep({
-  label,
-  active = false,
-  done = false,
-}: {
-  label: string;
-  active?: boolean;
-  done?: boolean;
-}) {
-  return (
-    <div
-      className={`flex items-center gap-3 rounded-[12px] border px-3 py-3 text-sm font-extrabold ${
-        active
-          ? 'border-brand bg-brand/10 text-brand'
-          : done
-            ? 'border-brand/35 bg-white/[0.03] text-white'
-            : 'border-white/10 bg-white/[0.025] text-slate-500'
-      }`}
-    >
-      <span
-        className={`flex h-6 w-6 items-center justify-center rounded-full border ${
-          done
-            ? 'border-brand bg-brand text-[#04120e]'
-            : active
-              ? 'border-brand text-brand'
-              : 'border-white/15 text-transparent'
-        }`}
-      >
-        {done ? <Check className="h-4 w-4" aria-hidden="true" /> : null}
-      </span>
-      <span className="truncate">{label}</span>
-    </div>
+    </SessionProgressPanel>
   );
 }
 

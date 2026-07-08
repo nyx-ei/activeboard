@@ -6,6 +6,7 @@ import { FeedbackBanner } from '@/components/app/feedback-banner';
 import { SessionActiveRuntime } from '@/components/session/session-active-runtime';
 import { SessionPeerFeedbackRuntime } from '@/components/session/session-peer-feedback-runtime';
 import { SessionPlanNextRuntime } from '@/components/session/session-plan-next-runtime';
+import { SessionProgressEntryRuntime } from '@/components/session/session-progress-entry-runtime';
 import { SessionQuitButton } from '@/components/session/session-quit-button';
 import { SessionReviewRuntime } from '@/components/session/session-review-runtime';
 import { SessionStageRefresh } from '@/components/session/session-stage-refresh';
@@ -164,7 +165,14 @@ export default async function SessionPage({
   const isReview = searchParams.stage === 'review';
   const isFeedback = searchParams.stage === 'feedback';
   const isPlanNext = searchParams.stage === 'plan-next';
+  const isProgress = searchParams.stage === 'progress';
   const isPostAnswerStage = isReview || isFeedback || isPlanNext;
+  const reviewedQuestionCount =
+    'reviewedQuestionCount' in data &&
+    typeof data.reviewedQuestionCount === 'number'
+      ? data.reviewedQuestionCount
+      : questions.filter((item) => (item as ReviewQuestion).correct_option)
+          .length;
   const shouldShowCompletion =
     searchParams.stage === 'complete' ||
     (data.session.status === 'completed' && !isPostAnswerStage) ||
@@ -189,6 +197,40 @@ export default async function SessionPage({
       : question?.phase === 'review'
         ? inviteTeammateLabels.reviewInProgress
         : null;
+  const progressQuestionQuery =
+    typeof currentIndex === 'number' ? `&q=${currentIndex}` : '';
+  const progressSessionHref =
+    data.session.status === 'scheduled'
+      ? `/sessions/${params.sessionId}?stage=start`
+      : data.session.status === 'incomplete' ||
+          data.session.status === 'completed' ||
+          question?.phase === 'review'
+        ? `/sessions/${params.sessionId}?stage=review&q=${currentIndex}`
+        : `/sessions/${params.sessionId}?q=${currentIndex}`;
+
+  if (isProgress) {
+    return (
+      <main className="flex flex-1 flex-col">
+        <SessionTabPresence sessionId={params.sessionId} />
+        <FeedbackBanner
+          message={searchParams.feedbackMessage}
+          tone={searchParams.feedbackTone}
+          feedbackId={searchParams.feedbackId}
+        />
+        <SessionProgressEntryRuntime
+          locale={locale}
+          sessionId={params.sessionId}
+          sessionTitle={data.session.name ?? data.group.name}
+          status={data.session.status}
+          sessionHref={progressSessionHref}
+          questionGoal={questionGoal}
+          timerSeconds={data.session.timer_seconds}
+          answeredCount={answeredCount}
+          reviewedCount={reviewedQuestionCount}
+        />
+      </main>
+    );
+  }
 
   if (data.session.status === 'scheduled') {
     const timerLabel =
@@ -285,7 +327,7 @@ export default async function SessionPage({
             })}
           </p>
           <Link
-            href={`/sessions/${params.sessionId}?stage=review`}
+            href={`/sessions/${params.sessionId}?stage=progress${progressQuestionQuery}`}
             prefetch={false}
             className="button-primary mt-7 rounded-[7px] px-5 py-2.5 text-sm"
           >
@@ -298,6 +340,7 @@ export default async function SessionPage({
               label={t('quitSession')}
               pendingLabel={t('quitPending')}
               confirmLabels={quitConfirmLabels}
+              redirectTo={`/${locale}/sessions/${params.sessionId}?stage=progress`}
             />
           </div>
         </section>
@@ -307,12 +350,6 @@ export default async function SessionPage({
 
   if (isReview && question) {
     const reviewQuestion = question as ReviewQuestion;
-    const reviewedQuestionCount =
-      'reviewedQuestionCount' in data &&
-      typeof data.reviewedQuestionCount === 'number'
-        ? data.reviewedQuestionCount
-        : questions.filter((item) => (item as ReviewQuestion).correct_option)
-            .length;
 
     return (
       <>
