@@ -79,6 +79,8 @@ export function SessionProgressEntryRuntime({
       sessionHref={sessionHref}
       feedbackHref={reviewDone ? `/sessions/${sessionId}?stage=feedback` : undefined}
       planNextHref={reviewDone ? `/sessions/${sessionId}?stage=plan-next` : undefined}
+      sessionMeta={`${Math.min(answeredCount, questionGoal)}/${questionGoal}Q - ${timerSeconds} sec`}
+      feedbackMeta={`${Math.min(reviewedCount, questionGoal)}/${questionGoal} ${t.reviewed}`}
     >
       <div className="rounded-[18px] border border-white/10 bg-[#111827] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.25)] sm:p-6">
         <div className="flex items-start gap-4">
