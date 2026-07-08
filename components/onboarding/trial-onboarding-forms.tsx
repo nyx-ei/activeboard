@@ -72,7 +72,7 @@ const copy = {
     days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
     dayShort: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     exams: {
-      mccqe1: 'MCCQE1',
+      mccqe1: 'MCCQE in English',
       usmle: 'USMLE',
       plab: 'PLAB',
       other: 'Other',
@@ -132,7 +132,7 @@ const copy = {
     days: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'],
     dayShort: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
     exams: {
-      mccqe1: 'MCCQE1',
+      mccqe1: 'EACMC',
       usmle: 'USMLE',
       plab: 'PLAB',
       other: 'Autre',

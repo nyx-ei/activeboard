@@ -12,6 +12,9 @@ const trialDashboard = readFileSync(
 );
 const candidatesRoute = readFileSync('app/api/session-candidates/route.ts', 'utf8');
 const seriousGroupsRoute = readFileSync('app/api/serious-groups/route.ts', 'utf8');
+const rankedCandidates = readFileSync('lib/matching/serious-candidates.ts', 'utf8');
+const lookupPage = readFileSync('app/[locale]/lookup/page.tsx', 'utf8');
+const dashboardPage = readFileSync('app/[locale]/dashboard/page.tsx', 'utf8');
 
 test('dashboard triggers serious-candidate paywall after trial sessions', () => {
   assert.match(seriousPanel, /completedTestSessions >= requiredTestSessions/);
@@ -24,14 +27,25 @@ test('dashboard triggers serious-candidate paywall after trial sessions', () => 
 test('serious candidates are gated, ranked, and expose reliability indicators', () => {
   assert.match(candidatesRoute, /getPlanNextAccess\(user\.id\)/);
   assert.match(candidatesRoute, /!access\.canInviteCandidates/);
-  assert.match(candidatesRoute, /isActiveOrReliableCandidate/);
-  assert.match(candidatesRoute, /compatibilityScore/);
-  assert.match(candidatesRoute, /profileScore/);
-  assert.match(candidatesRoute, /punctualityRate/);
-  assert.match(candidatesRoute, /lastActiveAt/);
+  assert.match(candidatesRoute, /getRankedSeriousCandidates/);
+  assert.match(rankedCandidates, /isActiveOrReliableCandidate/);
+  assert.match(rankedCandidates, /compatibilityScore/);
+  assert.match(rankedCandidates, /profileScore/);
+  assert.match(rankedCandidates, /punctualityRate/);
+  assert.match(rankedCandidates, /lastActiveAt/);
   assert.match(seriousPanel, /positivePeerVotes/);
   assert.match(seriousPanel, /nextSessionsPlanned/);
   assert.match(seriousPanel, /questionsReviewed/);
+});
+
+test('lookup preview is reachable before payment and masks contact details', () => {
+  assert.match(dashboardPage, /liveGroupsHref: `\/\$\{locale\}\/lookup`/);
+  assert.doesNotMatch(lookupPage, /redirect\(`\/\$\{locale\}\/billing`\)/);
+  assert.match(lookupPage, /canRevealContacts = planNextAccess\.canInviteCandidates/);
+  assert.match(lookupPage, /contactHidden/);
+  assert.match(lookupPage, /phoneHidden/);
+  assert.match(lookupPage, /revealContacts \? candidate\.email : labels\.contactHidden/);
+  assert.match(lookupPage, /revealContacts\s+\?\s+candidate\.phoneNumber \|\| labels\.phoneHidden/);
 });
 
 test('paid users can create max-five serious study groups from eligible candidates', () => {
