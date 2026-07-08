@@ -166,6 +166,8 @@ export function SessionPlanNextRuntime({
       backLabel={t.back}
       sessionHref={`/sessions/${sessionId}?stage=review`}
       feedbackHref={`/sessions/${sessionId}?stage=feedback`}
+      sessionMeta={`${questionGoal}/${questionGoal}Q - ${timerSeconds} sec`}
+      planNextMeta="XX - XXhXX"
     >
         <div className="rounded-[18px] border border-white/10 bg-[#111827] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.25)] sm:p-6">
           <h2 className="text-xl font-extrabold text-white">{t.title}</h2>

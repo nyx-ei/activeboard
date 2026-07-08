@@ -126,6 +126,11 @@ test('trial session review to feedback to plan-next to dashboard remains reachab
   assert.match(planNextRuntime, /<SessionProgressPanel/);
   assert.match(progressPanel, /Session progress/);
   assert.match(progressPanel, /sessionActive: 'Sprint'/);
+  assert.match(progressPanel, /grid-cols-\[22px_minmax\(0,1fr\)\]/);
+  assert.match(progressPanel, /border-dashed/);
+  assert.match(progressPanel, /statusStarted/);
+  assert.doesNotMatch(progressPanel, /sm:grid-cols-3/);
+  assert.match(progressEntryRuntime, /sessionMeta=\{`\$\{Math\.min\(answeredCount, questionGoal\)\}\/\$\{questionGoal\}Q - \$\{timerSeconds\} sec`\}/);
   assert.match(
     activeRuntime,
     /const reviewHref = `\/\$\{locale\}\/sessions\/\$\{sessionId\}\?stage=review&q=\$\{runtimeQuestionIndex\}`/,
