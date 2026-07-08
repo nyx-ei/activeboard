@@ -572,6 +572,7 @@ export function SessionActiveRuntime({
               label={labels.quitSession}
               pendingLabel={labels.quitPending}
               confirmLabels={labels.quitConfirm}
+              redirectTo={`/${locale}/sessions/${sessionId}?stage=progress`}
             />
           </div>
         </section>
@@ -589,6 +590,7 @@ export function SessionActiveRuntime({
             label={labels.quitSession}
             sessionId={sessionId}
             confirmLabels={labels.quitConfirm}
+            redirectTo={`/${locale}/sessions/${sessionId}?stage=progress`}
           />
           <div className="min-w-0 flex-1 text-center">
             <div className="flex flex-wrap items-center justify-center gap-2">

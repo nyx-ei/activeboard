@@ -15,12 +15,14 @@ export function SessionQuitButton({
   label,
   pendingLabel,
   confirmLabels,
+  redirectTo,
 }: {
   locale: string;
   sessionId: string;
   label: string;
   pendingLabel: string;
   confirmLabels: SessionLeaveConfirmLabels;
+  redirectTo?: string;
 }) {
   const router = useRouter();
   const [isConfirming, setIsConfirming] = useState(false);
@@ -33,10 +35,10 @@ export function SessionQuitButton({
 
     setIsLeaving(true);
     setIsConfirming(false);
-    const redirectTo = `/${locale}/dashboard`;
+    const resolvedRedirectTo = redirectTo ?? `/${locale}/dashboard`;
     window.sessionStorage.removeItem('activeboard:session-flow-active');
     markDashboardPayloadStale('sessions');
-    router.prefetch(redirectTo as never);
+    router.prefetch(resolvedRedirectTo as never);
     void fetch(`/api/sessions/${sessionId}/quit`, {
       method: 'POST',
       headers: {
@@ -47,7 +49,7 @@ export function SessionQuitButton({
       keepalive: true,
       body: JSON.stringify({ locale }),
     });
-    router.replace(redirectTo as never);
+    router.replace(resolvedRedirectTo as never);
     window.setTimeout(() => router.refresh(), 0);
   };
 

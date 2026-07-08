@@ -63,10 +63,6 @@ export default async function BillingPage({ params }: BillingPageProps) {
                     <span className="text-slate-500">+</span>
                     <span>{t('freePlanFeatureQuestions')}</span>
                   </li>
-                  <li className="flex gap-2">
-                    <span className="text-slate-500">+</span>
-                    <span>{t('freePlanFeatureNoCard')}</span>
-                  </li>
                 </ul>
               </div>
               <div className="flex items-center gap-2">
@@ -100,6 +96,9 @@ export default async function BillingPage({ params }: BillingPageProps) {
                   </span>
                 ) : null}
                 <p className="text-lg font-extrabold text-brand">
+                  <span className="mr-2 text-sm font-semibold text-slate-500 line-through">
+                    {t('regularPrice')}
+                  </span>
                   {monthlyPrice} <span className="text-sm font-semibold text-slate-400">/ {t('perMonth')}</span>
                 </p>
               </div>

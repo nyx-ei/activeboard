@@ -10,6 +10,7 @@ import {
   Mail,
   Phone,
   ShieldCheck,
+  ShieldAlert,
   User,
 } from 'lucide-react';
 
@@ -21,6 +22,9 @@ import {
   completeTrialAvailabilityAction,
   completeTrialProfileAction,
 } from '@/app/[locale]/onboarding/actions';
+
+const MIN_AVAILABILITY_SLOTS = 5;
+const STRONG_AVAILABILITY_SLOTS = 7;
 
 const copy = {
   en: {
@@ -50,7 +54,7 @@ const copy = {
     saving: 'Saving...',
     missingProfile: 'WhatsApp number and exam are required.',
     availabilityTitle: 'What is your availability this week?',
-    availabilitySubtitle: 'Choose 5 slots',
+    availabilitySubtitle: 'Choose at least 5 slots',
     morning: 'Morning',
     evening: 'Evening',
     morningHours: '06h to 12h',
@@ -63,12 +67,12 @@ const copy = {
     understand: 'I understand',
     generate: 'Generate 3 test sessions',
     saveAvailability: 'Save availability',
-    selected: '{count}/5 slots selected',
+    selected: '{count}/{target} slots selected',
     availabilityError: 'Choose at least 5 slots and accept the commitment.',
     days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
     dayShort: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     exams: {
-      mccqe1: 'MCCQE1',
+      mccqe1: 'MCCQE in English',
       usmle: 'USMLE',
       plab: 'PLAB',
       other: 'Other',
@@ -109,7 +113,7 @@ const copy = {
     saving: 'Sauvegarde...',
     missingProfile: 'Le numéro WhatsApp et l’examen sont requis.',
     availabilityTitle: 'Quelles sont vos disponibilités cette semaine ?',
-    availabilitySubtitle: 'Choisissez 5 créneaux',
+    availabilitySubtitle: 'Choisissez au moins 5 créneaux',
     morning: 'Matin',
     evening: 'Soir',
     morningHours: '06h à 12h',
@@ -122,13 +126,13 @@ const copy = {
     understand: 'Je comprends',
     saveAvailability: 'Enregistrer',
     generate: 'Générer 3 sessions test',
-    selected: '{count}/5 créneaux sélectionnés',
+    selected: '{count}/{target} créneaux sélectionnés',
     availabilityError:
       'Choisissez au moins 5 créneaux et acceptez l’engagement.',
     days: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'],
     dayShort: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
     exams: {
-      mccqe1: 'MCCQE1',
+      mccqe1: 'EACMC',
       usmle: 'USMLE',
       plab: 'PLAB',
       other: 'Autre',
@@ -492,7 +496,14 @@ export function TrialAvailabilityForm({
       weekdays.reduce((count, weekday) => count + slots[weekday].length, 0),
     [slots],
   );
-  const canSubmit = selectedCount >= 5 && understood;
+  const hasMinimumSlots = selectedCount >= MIN_AVAILABILITY_SLOTS;
+  const hasStrongAvailability = selectedCount >= STRONG_AVAILABILITY_SLOTS;
+  const canSubmit = hasMinimumSlots && understood;
+  const selectedBadgeTone = hasStrongAvailability
+    ? 'border-brand/25 bg-brand/10 text-brand'
+    : hasMinimumSlots
+      ? 'border-amber-400/25 bg-amber-400/10 text-amber-300'
+      : 'border-white/10 bg-white/[0.04] text-slate-400';
 
   function toggleSlot(weekday: Weekday, slot: Slot) {
     setSlots((current) => {
@@ -569,8 +580,17 @@ export function TrialAvailabilityForm({
         <div className="mt-7 rounded-[8px] border border-white/[0.08] bg-white/[0.035] p-4">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-extrabold text-white">{t.target}</p>
-            <span className="rounded-full bg-brand/10 px-3 py-1 text-xs font-extrabold text-brand">
-              {t.selected.replace('{count}', String(selectedCount))}
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-extrabold ${selectedBadgeTone}`}
+            >
+              {hasStrongAvailability ? (
+                <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+              ) : (
+                <ShieldAlert className="h-3.5 w-3.5" aria-hidden />
+              )}
+              {t.selected
+                .replace('{count}', String(selectedCount))
+                .replace('{target}', String(STRONG_AVAILABILITY_SLOTS))}
             </span>
           </div>
           <ul className="mt-3 grid gap-2 text-xs font-semibold leading-5 text-slate-300">

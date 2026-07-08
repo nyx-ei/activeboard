@@ -313,9 +313,7 @@ export default async function DashboardPage({
     groups: dashboardGroups,
     initialGroupId: searchParams.groupId,
     createGroupHref: `/${locale}/create-group`,
-    liveGroupsHref: canBrowseLookupLayer
-      ? `/${locale}/lookup`
-      : `/${locale}/billing`,
+    liveGroupsHref: `/${locale}/lookup`,
     canBrowseLookupLayer,
     calibrationStats: {
       trueMasteryPercent: trueMasteryQuadrant?.percentage ?? 0,

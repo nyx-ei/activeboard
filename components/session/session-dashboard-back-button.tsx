@@ -16,17 +16,19 @@ export function SessionDashboardBackButton({
   variant = 'icon',
   sessionId,
   confirmLabels,
+  redirectTo,
 }: {
   locale: string;
   label?: string;
   variant?: 'icon' | 'text';
   sessionId?: string;
   confirmLabels?: SessionLeaveConfirmLabels;
+  redirectTo?: string;
 }) {
   const router = useRouter();
   const [isNavigating, setIsNavigating] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
-  const href = `/${locale}/dashboard`;
+  const href = redirectTo ?? `/${locale}/dashboard`;
 
   useEffect(() => {
     const id = window.setTimeout(() => {

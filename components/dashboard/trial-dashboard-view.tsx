@@ -211,7 +211,7 @@ function TrialSessionRow({
 
   return (
     <Link
-      href={`/sessions/${session.id}`}
+      href={`/sessions/${session.id}?stage=progress`}
       className="group grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-[#20D9A3]/25 bg-[#082c24]/68 px-4 py-3 text-left shadow-[inset_0_0_38px_rgba(32,217,163,0.035)] transition hover:border-[#20D9A3]/55 hover:bg-[#0b3a30]/78 sm:gap-5 sm:px-5"
     >
       <ParticipantsBadge />
@@ -394,7 +394,7 @@ export function TrialDashboardView({
             </h1>
             {firstActionableSession ? (
               <Link
-                href={`/sessions/${firstActionableSession.id}`}
+                href={`/sessions/${firstActionableSession.id}?stage=progress`}
                 className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[#20D9A3] px-4 text-sm font-extrabold text-[#062b22] shadow-[0_16px_32px_rgba(32,217,163,0.18)] transition hover:bg-[#2fe9b1]"
               >
                 <Radio className="h-4 w-4" aria-hidden="true" />
