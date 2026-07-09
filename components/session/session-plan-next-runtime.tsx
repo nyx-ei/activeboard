@@ -132,9 +132,12 @@ export function SessionPlanNextRuntime({
           returnTo: `/${language}/sessions/${sessionId}?stage=progress&feedback=done`,
         }),
       });
+      const createPayload = (await createResponse
+        .json()
+        .catch(() => null)) as { message?: string } | null;
 
       if (!createResponse.ok) {
-        setError(t.error);
+        setError(createPayload?.message ?? t.error);
         return;
       }
 
@@ -146,9 +149,12 @@ export function SessionPlanNextRuntime({
           body: JSON.stringify({ locale: language }),
         },
       );
+      const finishPayload = (await finishResponse
+        .json()
+        .catch(() => null)) as { message?: string } | null;
 
       if (!finishResponse.ok) {
-        setError(t.error);
+        setError(finishPayload?.message ?? t.error);
         return;
       }
 

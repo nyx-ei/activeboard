@@ -658,10 +658,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (
-    groupMembers.length < policy.minimumGroupMembersToStart &&
-    !isContinuityPlan
-  ) {
+  if (groupMembers.length < policy.minimumGroupMembersToStart) {
     return NextResponse.json(
       { ok: false, message: await getFeedback('minimumMembersRequired') },
       { status: 400 },

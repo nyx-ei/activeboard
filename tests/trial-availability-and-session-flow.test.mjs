@@ -173,6 +173,7 @@ test('trial session review to feedback to plan-next to dashboard remains reachab
     /stage=progress&feedback=done/,
   );
   assert.match(planNextRuntime, /continuitySessionId: sessionId/);
+  assert.match(planNextRuntime, /createPayload\?\.message \?\? t\.error/);
   assert.match(
     planNextRuntime,
     /`\/api\/sessions\/\$\{sessionId\}\/finish-review`/,
@@ -181,7 +182,8 @@ test('trial session review to feedback to plan-next to dashboard remains reachab
     planNextRuntime,
     /stage=progress&feedback=done/,
   );
-  assert.match(sessionsRoute, /groupMembers\.length < policy\.minimumGroupMembersToStart &&\s*!isContinuityPlan/);
+  assert.match(sessionsRoute, /groupMembers\.length < policy\.minimumGroupMembersToStart\)/);
+  assert.doesNotMatch(sessionsRoute, /minimumGroupMembersToStart &&\s*!isContinuityPlan/);
 });
 
 test('start session screen exposes meeting link and sprint CTA copy', () => {
