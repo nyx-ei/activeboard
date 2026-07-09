@@ -45,10 +45,9 @@ export default async function TrialProfilePage({
     <TrialProfileForm
       locale={locale}
       initialPhoneNumber={profileResult.data?.phone_number ?? ''}
-      initialExamType={profileResult.data?.exam_type ?? 'mccqe1'}
-      initialQbank={profileResult.data?.question_banks?.[0] ?? ''}
+      initialExamType={profileResult.data?.exam_type ?? 'mccqe_en'}
+      initialQbanks={profileResult.data?.question_banks ?? []}
       initialTimezone={scheduleResult.data?.timezone ?? 'UTC'}
     />
   );
 }
-

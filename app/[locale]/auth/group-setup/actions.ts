@@ -22,7 +22,7 @@ type LandingGroupSetupDraft = {
   displayName: string;
   email: string;
   onboardingUserId?: string;
-  examType?: 'mccqe1' | 'usmle' | 'plab' | 'other';
+  examType?: 'mccqe_fr' | 'mccqe_en' | 'usmle' | 'plab' | 'other';
   examSession?: FounderExamSession;
   locale: AppLocale;
   timezone?: string;
@@ -89,7 +89,7 @@ function parseDraft(value: Json): LandingGroupSetupDraft | null {
       displayName: draft.displayName.trim(),
       email: normalizeEmail(draft.email),
       onboardingUserId: draft.onboardingUserId,
-      examType: draft.examType ?? 'mccqe1',
+      examType: draft.examType ?? 'mccqe_en',
       examSession: VALID_EXAM_SESSIONS.has(
         draft.examSession as FounderExamSession,
       )
@@ -227,7 +227,7 @@ export async function completeLandingGroupSetupAction(
       user_metadata: {
         full_name: draft.displayName,
         locale: studyLanguage,
-        exam_type: 'mccqe1',
+        exam_type: 'mccqe_en',
         exam_session: examSession,
         question_banks: draft.questionBanks,
       },
@@ -241,7 +241,7 @@ export async function completeLandingGroupSetupAction(
           id: founderUserId,
           email: founderEmail,
           display_name: draft.displayName,
-          exam_type: 'mccqe1',
+          exam_type: 'mccqe_en',
           exam_session: examSession,
           locale: studyLanguage,
           question_banks: draft.questionBanks ?? [],

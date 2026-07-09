@@ -18,7 +18,7 @@ type SessionProgressPanelProps = {
   sessionMeta?: string;
   feedbackMeta?: string;
   planNextMeta?: string;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 };
 
 const copy = {
@@ -251,7 +251,7 @@ export function SessionProgressPanel({
           />
         </div>
 
-        {children}
+        {children ? children : null}
       </section>
     </main>
   );

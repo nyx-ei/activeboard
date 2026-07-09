@@ -41,11 +41,14 @@ test('serious candidates are gated, ranked, and expose reliability indicators', 
 test('lookup preview is reachable before payment and masks contact details', () => {
   assert.match(dashboardPage, /liveGroupsHref: `\/\$\{locale\}\/lookup`/);
   assert.doesNotMatch(lookupPage, /redirect\(`\/\$\{locale\}\/billing`\)/);
-  assert.match(lookupPage, /canRevealContacts = planNextAccess\.canInviteCandidates/);
-  assert.match(lookupPage, /contactHidden/);
-  assert.match(lookupPage, /phoneHidden/);
-  assert.match(lookupPage, /revealContacts \? candidate\.email : labels\.contactHidden/);
-  assert.match(lookupPage, /revealContacts\s+\?\s+candidate\.phoneNumber \|\| labels\.phoneHidden/);
+  assert.match(lookupPage, /canRevealProfiles = planNextAccess\.canInviteCandidates/);
+  assert.match(lookupPage, /profileScore/);
+  assert.match(lookupPage, /maskPersonName/);
+  assert.match(lookupPage, /href="\/billing"/);
+  assert.doesNotMatch(lookupPage, /candidate\.email/);
+  assert.doesNotMatch(lookupPage, /phoneNumber/);
+  assert.doesNotMatch(lookupPage, /sessionsAttended/);
+  assert.doesNotMatch(lookupPage, /questionsReviewed/);
 });
 
 test('paid users can create max-five serious study groups from eligible candidates', () => {

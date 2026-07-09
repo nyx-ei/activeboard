@@ -701,7 +701,7 @@ type UsersRow = {
   created_at: string;
   display_name: string | null;
   email: string;
-  exam_type: 'mccqe1' | 'usmle' | 'plab' | 'other' | null;
+  exam_type: 'mccqe_fr' | 'mccqe_en' | 'usmle' | 'plab' | 'other' | null;
   exam_session:
     | 'april_may_2026'
     | 'august_september_2026'
@@ -736,7 +736,7 @@ type UsersInsert = {
   created_at?: string;
   display_name?: string | null;
   email: string;
-  exam_type?: 'mccqe1' | 'usmle' | 'plab' | 'other' | null;
+  exam_type?: 'mccqe_fr' | 'mccqe_en' | 'usmle' | 'plab' | 'other' | null;
   exam_session?:
     | 'april_may_2026'
     | 'august_september_2026'
@@ -771,7 +771,7 @@ type UsersUpdate = {
   created_at?: string;
   display_name?: string | null;
   email?: string;
-  exam_type?: 'mccqe1' | 'usmle' | 'plab' | 'other' | null;
+  exam_type?: 'mccqe_fr' | 'mccqe_en' | 'usmle' | 'plab' | 'other' | null;
   exam_session?:
     | 'april_may_2026'
     | 'august_september_2026'

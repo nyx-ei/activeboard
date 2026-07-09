@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 
+const landingPage = readFileSync('app/[locale]/page.tsx', 'utf8');
+const landingEnMessages = readFileSync('messages/en.json', 'utf8');
+const landingFrMessages = readFileSync('messages/fr.json', 'utf8');
 const availabilityPage = readFileSync(
   'app/[locale]/onboarding/availability/page.tsx',
   'utf8',
@@ -12,6 +15,10 @@ const trialForms = readFileSync(
 );
 const onboardingActions = readFileSync(
   'app/[locale]/onboarding/actions.ts',
+  'utf8',
+);
+const splitMccqeMigration = readFileSync(
+  'supabase/migrations/20260709120000_split_mccqe_exam_language.sql',
   'utf8',
 );
 const sessionPage = readFileSync(
@@ -50,8 +57,13 @@ const advanceRoute = readFileSync(
   'app/api/sessions/[sessionId]/advance/route.ts',
   'utf8',
 );
+const sessionsRoute = readFileSync('app/api/sessions/route.ts', 'utf8');
 const trialDashboard = readFileSync(
   'components/dashboard/trial-dashboard-view.tsx',
+  'utf8',
+);
+const dashboardGroupZone = readFileSync(
+  'components/dashboard/dashboard-group-zone.tsx',
   'utf8',
 );
 const sessionCard = readFileSync(
@@ -99,6 +111,68 @@ test('availability onboarding requires 5 slots and recommends 7 with status colo
   );
 });
 
+test('trial profile onboarding uses checkbox qbanks and language-specific MCCQE exam choices', () => {
+  assert.match(trialForms, /mccqe_fr: 'MCCQE in French'/);
+  assert.match(trialForms, /mccqe_en: 'MCCQE in English'/);
+  assert.match(trialForms, /mccqe_fr: 'EACMC en francais'/);
+  assert.match(trialForms, /mccqe_en: 'EACMC en anglais'/);
+  assert.match(trialForms, /type="checkbox"/);
+  assert.match(trialForms, /name="qbank"/);
+  assert.match(trialForms, /defaultChecked=\{selectedQbanks\.has\(value\)\}/);
+  assert.match(onboardingActions, /formData\s*\.\s*getAll\('qbank'\)/);
+  assert.match(onboardingActions, /question_banks: questionBanks/);
+  assert.match(onboardingActions, /'mccqe_fr'/);
+  assert.match(onboardingActions, /'mccqe_en'/);
+  assert.match(splitMccqeMigration, /exam_type in \('mccqe_fr', 'mccqe_en', 'usmle', 'plab', 'other'\)/);
+});
+
+test('trial dashboard keeps reliability and candidate metrics side by side on mobile', () => {
+  assert.match(trialDashboard, /grid grid-cols-2 rounded-\[24px\]/);
+  assert.doesNotMatch(trialDashboard, /sm:grid-cols-2/);
+  assert.match(trialDashboard, /w-\[72px\]/);
+  assert.match(trialDashboard, /grid-cols-\[auto_minmax\(0,1fr\)_minmax\(60px,auto\)\]/);
+  assert.match(trialDashboard, /sm:grid-cols-\[auto_minmax\(0,1fr\)_auto\]/);
+  assert.match(trialDashboard, /text-\[12px\] font-bold leading-snug/);
+  assert.match(trialDashboard, /sm:min-w-\[110px\]/);
+  assert.match(trialDashboard, /<ReliabilityInfo labels=\{labels\} \/>/);
+  assert.match(trialDashboard, /reliabilityInfoTitle: 'Score composition'/);
+  assert.match(trialDashboard, /Attendance 30%/);
+  assert.match(trialDashboard, /reviewed questions 20%/);
+  assert.match(trialDashboard, /peer validation 10%/);
+  assert.match(trialDashboard, /function MetricValue/);
+  assert.match(trialDashboard, /TrendingUp/);
+  assert.match(trialDashboard, /TrendingDown/);
+  assert.match(trialDashboard, /<MetricValue value=\{trueMastery\} direction="up" \/>/);
+  assert.match(trialDashboard, /<MetricValue value=\{falseConfidence\} direction="down" \/>/);
+  assert.match(dashboardGroupZone, /TrendingUp/);
+  assert.match(dashboardGroupZone, /TrendingDown/);
+});
+
+test('landing hero stays compact with updated proof copy and wider device visual', () => {
+  assert.match(landingEnMessages, /Join 40\+ IMGs seriously preparing for MCCQE1/);
+  assert.match(landingEnMessages, /The MCCQE prep period/);
+  assert.match(landingEnMessages, /that changes everything/);
+  assert.match(landingEnMessages, /Prepare it with candidates as committed as you are\./);
+  assert.match(landingEnMessages, /No promises\. Only proof\./);
+  assert.match(landingEnMessages, /Free to start/);
+  assert.match(landingEnMessages, /Start Your First Sprint/);
+  assert.match(landingFrMessages, /Joigner 40\+ DHCEU/);
+  assert.match(landingPage, /heroProofLine/);
+  assert.match(landingPage, /heroPatternLine/);
+  assert.match(landingPage, /lg:max-w-\[980px\]/);
+  assert.match(landingPage, /xl:max-w-\[1160px\]/);
+  assert.doesNotMatch(landingPage, /secondaryCta/);
+});
+
+test('dashboard progression details route is not linked or mounted', () => {
+  assert.doesNotMatch(trialDashboard, /dashboard\/progression/);
+  assert.doesNotMatch(dashboardGroupZone, /dashboard\/progression/);
+  assert.equal(
+    existsSync('app/[locale]/dashboard/progression/page.tsx'),
+    false,
+  );
+});
+
 test('trial session review to feedback to plan-next to dashboard remains reachable', () => {
   assert.match(sessionPage, /<SessionProgressEntryRuntime/);
   assert.match(
@@ -122,6 +196,11 @@ test('trial session review to feedback to plan-next to dashboard remains reachab
   assert.match(sessionPage, /sessionHref=\{progressSessionHref\}/);
   assert.match(progressEntryRuntime, /\?stage=feedback/);
   assert.match(progressEntryRuntime, /\?stage=plan-next/);
+  assert.match(progressEntryRuntime, /<SessionProgressPanel/);
+  assert.match(progressEntryRuntime, /\/>/);
+  assert.doesNotMatch(progressEntryRuntime, /sessionDetails/);
+  assert.doesNotMatch(progressEntryRuntime, /button-primary/);
+  assert.match(sessionPage, /feedbackSubmitted=\{searchParams\.feedback === 'done'\}/);
   assert.match(feedbackRuntime, /<SessionProgressPanel/);
   assert.match(planNextRuntime, /<SessionProgressPanel/);
   assert.match(progressPanel, /Session progress/);
@@ -164,17 +243,20 @@ test('trial session review to feedback to plan-next to dashboard remains reachab
   );
   assert.match(
     feedbackRuntime,
-    /router\.replace\(`\/\$\{language\}\/sessions\/\$\{sessionId\}\?stage=plan-next`\)/,
+    /stage=progress&feedback=done/,
   );
   assert.match(planNextRuntime, /continuitySessionId: sessionId/);
+  assert.match(planNextRuntime, /createPayload\?\.message \?\? t\.error/);
   assert.match(
     planNextRuntime,
     /`\/api\/sessions\/\$\{sessionId\}\/finish-review`/,
   );
   assert.match(
     planNextRuntime,
-    /router\.replace\(`\/\$\{language\}\/dashboard`\)/,
+    /stage=progress&feedback=done/,
   );
+  assert.match(sessionsRoute, /groupMembers\.length < policy\.minimumGroupMembersToStart\)/);
+  assert.doesNotMatch(sessionsRoute, /minimumGroupMembersToStart &&\s*!isContinuityPlan/);
 });
 
 test('start session screen exposes meeting link and sprint CTA copy', () => {

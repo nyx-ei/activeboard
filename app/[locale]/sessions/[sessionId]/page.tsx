@@ -31,6 +31,7 @@ type SessionPageProps = {
     feedbackMessage?: string;
     feedbackTone?: string;
     feedbackId?: string;
+    feedback?: string;
     q?: string;
     stage?: string;
   };
@@ -227,6 +228,7 @@ export default async function SessionPage({
           timerSeconds={data.session.timer_seconds}
           answeredCount={answeredCount}
           reviewedCount={reviewedQuestionCount}
+          feedbackSubmitted={searchParams.feedback === 'done'}
         />
       </main>
     );

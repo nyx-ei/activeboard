@@ -7,7 +7,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import type { Json } from '@/lib/supabase/types';
 import { normalizeEmail } from '@/lib/utils';
 
-type FounderExamType = 'mccqe1' | 'usmle' | 'plab' | 'other';
+type FounderExamType = 'mccqe_fr' | 'mccqe_en' | 'usmle' | 'plab' | 'other';
 type FounderExamSession =
   | 'april_may_2026'
   | 'august_september_2026'
@@ -60,7 +60,8 @@ type LandingOnboardingStartResult =
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const VALID_EXAM_TYPES = new Set<FounderExamType>([
-  'mccqe1',
+  'mccqe_fr',
+  'mccqe_en',
   'usmle',
   'plab',
   'other',
@@ -104,6 +105,10 @@ function parseDraft(rawDraft: string): FounderOnboardingDraft | null {
           .filter(Boolean),
       ),
     ];
+    const rawExamType =
+      typeof draft.examType === 'string' ? (draft.examType as string) : '';
+    const normalizedExamType =
+      rawExamType === 'mccqe1' ? 'mccqe_en' : rawExamType;
     const normalizedSchedule = (draft.schedule ?? [])
       .map((slot) => ({
         weekday: slot?.weekday,
@@ -129,7 +134,7 @@ function parseDraft(rawDraft: string): FounderOnboardingDraft | null {
     if (
       typeof draft.displayName !== 'string' ||
       typeof draft.email !== 'string' ||
-      !VALID_EXAM_TYPES.has(draft.examType as FounderExamType) ||
+      !VALID_EXAM_TYPES.has(normalizedExamType as FounderExamType) ||
       !VALID_EXAM_SESSIONS.has(draft.examSession as FounderExamSession) ||
       (draft.locale !== 'en' && draft.locale !== 'fr') ||
       typeof draft.timezone !== 'string' ||
@@ -142,7 +147,7 @@ function parseDraft(rawDraft: string): FounderOnboardingDraft | null {
     return {
       displayName: draft.displayName.trim(),
       email: normalizeEmail(draft.email),
-      examType: draft.examType as FounderExamType,
+      examType: normalizedExamType as FounderExamType,
       examSession: draft.examSession as FounderExamSession,
       locale: draft.locale,
       timezone: draft.timezone.trim() || 'UTC',

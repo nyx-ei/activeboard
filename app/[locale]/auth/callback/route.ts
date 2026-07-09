@@ -56,8 +56,15 @@ export async function GET(request: Request, { params }: RouteContext) {
       avatar_url: user.user_metadata.avatar_url ?? null,
       exam_type:
         typeof user.user_metadata.exam_type === 'string'
-          ? (user.user_metadata.exam_type as 'mccqe1' | 'usmle' | 'plab' | 'other')
-          : 'mccqe1',
+          ? ((user.user_metadata.exam_type === 'mccqe1'
+              ? 'mccqe_en'
+              : user.user_metadata.exam_type) as
+              | 'mccqe_fr'
+              | 'mccqe_en'
+              | 'usmle'
+              | 'plab'
+              | 'other')
+          : 'mccqe_en',
       exam_session:
         typeof user.user_metadata.exam_session === 'string'
           ? (user.user_metadata.exam_session as 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead')

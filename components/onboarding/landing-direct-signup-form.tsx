@@ -95,7 +95,7 @@ export function LandingDirectSignupForm({
     const draft = {
       displayName,
       email: normalizedFounderEmail,
-      examType: 'mccqe1',
+      examType: 'mccqe_en',
       examSession: 'planning_ahead',
       locale: locale === 'fr' ? 'fr' : 'en',
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',

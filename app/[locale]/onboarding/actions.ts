@@ -11,14 +11,13 @@ import {
 import { requireUser } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
-const VALID_EXAMS = new Set(['mccqe1', 'usmle', 'plab', 'other']);
+const VALID_EXAMS = new Set(['mccqe_fr', 'mccqe_en', 'usmle', 'plab', 'other']);
 const VALID_QBANKS = new Set([
-  '',
   'uworld',
   'canadaqbank',
   'amboss',
   'aceqbank',
-  'cmc',
+  'cmc_prep',
   'other',
 ]);
 
@@ -40,6 +39,14 @@ function getLocale(formData: FormData): AppLocale {
 function buildDisplayName(userName: string | null, userEmail?: string) {
   const fallback = userEmail?.split('@')[0] ?? 'ActiveBoard';
   return userName?.trim() || fallback;
+}
+
+function normalizeExamType(value: string) {
+  return value === 'mccqe1' ? 'mccqe_en' : value;
+}
+
+function normalizeQuestionBank(value: string) {
+  return value === 'cmc' ? 'cmc_prep' : value;
 }
 
 function parseAvailabilitySlots(raw: string | null): AvailabilityGrid {
@@ -88,8 +95,19 @@ export async function completeTrialProfileAction(formData: FormData) {
   const locale = getLocale(formData);
   const user = await requireUser(locale);
   const phoneNumber = ((formData.get('phoneNumber') as string | null) ?? '').trim();
-  const examType = ((formData.get('examType') as string | null) ?? '').trim();
-  const qbank = ((formData.get('qbank') as string | null) ?? '').trim();
+  const examType = normalizeExamType(
+    ((formData.get('examType') as string | null) ?? '').trim(),
+  );
+  const questionBanks = [
+    ...new Set(
+      formData
+        .getAll('qbank')
+        .map((value) =>
+          normalizeQuestionBank(typeof value === 'string' ? value.trim() : ''),
+        )
+        .filter(Boolean),
+    ),
+  ];
   const timezone =
     ((formData.get('timezone') as string | null) ?? '').trim() || 'UTC';
   const displayName = buildDisplayName(
@@ -103,7 +121,7 @@ export async function completeTrialProfileAction(formData: FormData) {
     redirect(`/${locale}/onboarding/profile?error=missing_fields`);
   }
 
-  if (!VALID_QBANKS.has(qbank)) {
+  if (!questionBanks.every((qbank) => VALID_QBANKS.has(qbank))) {
     redirect(`/${locale}/onboarding/profile?error=missing_fields`);
   }
 
@@ -114,7 +132,7 @@ export async function completeTrialProfileAction(formData: FormData) {
       full_name: displayName,
       phone_number: phoneNumber,
       exam_type: examType,
-      question_banks: qbank ? [qbank] : [],
+      question_banks: questionBanks,
       timezone,
     },
   });
@@ -129,8 +147,8 @@ export async function completeTrialProfileAction(formData: FormData) {
       email: user.email ?? '',
       display_name: displayName,
       phone_number: phoneNumber,
-      exam_type: examType as 'mccqe1' | 'usmle' | 'plab' | 'other',
-      question_banks: qbank ? [qbank] : [],
+      exam_type: examType as 'mccqe_fr' | 'mccqe_en' | 'usmle' | 'plab' | 'other',
+      question_banks: questionBanks,
       locale,
     },
     { onConflict: 'id' },
