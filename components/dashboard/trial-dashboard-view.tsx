@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import {
   ArrowRight,
   CheckCircle2,
+  Info,
   LockKeyhole,
   MoreVertical,
   Plus,
@@ -39,6 +40,9 @@ const COPY = {
         ? `Termine ${remaining} séance${remaining > 1 ? 's' : ''} de plus pour débloquer les candidats sérieux.`
         : 'Candidats sérieux débloqués.',
     reliabilityScore: 'Score de fiabilité',
+    reliabilityInfoTitle: 'Composition du score',
+    reliabilityInfo:
+      'Presence 30%, ponctualite 15%, completion 15%, questions revisees 20%, prochaine seance 10%, validation pair-a-pair 10%.',
     activeCandidates: 'candidats actifs',
     viewMore: 'Voir plus',
     testSessions: 'Séances tests',
@@ -63,6 +67,9 @@ const COPY = {
         ? `Complete ${remaining} more session${remaining > 1 ? 's' : ''} to unlock serious candidates.`
         : 'Serious candidates unlocked.',
     reliabilityScore: 'Reliability score',
+    reliabilityInfoTitle: 'Score composition',
+    reliabilityInfo:
+      'Attendance 30%, punctuality 15%, completion 15%, reviewed questions 20%, next session planned 10%, peer validation 10%.',
     activeCandidates: 'active candidates',
     viewMore: 'View more',
     testSessions: 'Test sessions',
@@ -282,6 +289,26 @@ function EmptyTrialSessionRow({
   );
 }
 
+function ReliabilityInfo({ labels }: { labels: ReturnType<typeof getCopy> }) {
+  return (
+    <span className="group relative inline-flex align-middle">
+      <button
+        type="button"
+        className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#20D9A3]/30 bg-[#20D9A3]/10 text-[#20D9A3] transition hover:border-[#20D9A3]/60 hover:bg-[#20D9A3]/15 focus:outline-none focus:ring-2 focus:ring-[#20D9A3]/30"
+        aria-label={labels.reliabilityInfoTitle}
+      >
+        <Info className="h-3.5 w-3.5" aria-hidden="true" />
+      </button>
+      <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden w-[min(260px,calc(100vw-48px))] -translate-x-1/2 rounded-[10px] border border-white/[0.08] bg-[#071a18] p-3 text-left text-[11px] font-semibold leading-5 text-[#b8c7c4] shadow-[0_18px_50px_rgba(0,0,0,0.5)] group-hover:block group-focus-within:block">
+        <span className="block text-xs font-extrabold text-white">
+          {labels.reliabilityInfoTitle}
+        </span>
+        <span className="mt-1 block">{labels.reliabilityInfo}</span>
+      </span>
+    </span>
+  );
+}
+
 export function TrialDashboardView({
   locale,
   sessionsProps,
@@ -355,34 +382,35 @@ export function TrialDashboardView({
           </div>
         </div>
 
-        <div className="grid rounded-[24px] border border-white/[0.12] bg-[#082c24]/78 shadow-[inset_0_0_46px_rgba(32,217,163,0.06)] sm:grid-cols-2">
-          <div className="flex min-h-[180px] flex-col items-center justify-center border-b border-white/[0.08] p-6 text-center sm:border-b-0 sm:border-r">
-            <div className="flex items-end gap-2 text-[72px] font-black leading-none tracking-[-0.06em] text-[#20D9A3] sm:text-[88px]">
+        <div className="grid grid-cols-2 rounded-[24px] border border-white/[0.12] bg-[#082c24]/78 shadow-[inset_0_0_46px_rgba(32,217,163,0.06)]">
+          <div className="flex min-h-[150px] flex-col items-center justify-center border-r border-white/[0.08] p-4 text-center sm:min-h-[180px] sm:p-6">
+            <div className="flex items-end gap-1 text-[48px] font-black leading-none tracking-[-0.06em] text-[#20D9A3] min-[390px]:text-[56px] sm:gap-2 sm:text-[88px]">
               {reliabilityScore}
-              <span className="pb-2 text-4xl">%</span>
+              <span className="pb-1 text-2xl sm:pb-2 sm:text-4xl">%</span>
             </div>
-            <p className="mt-4 text-xl font-semibold text-[#b8c7c4]">
+            <p className="mt-3 text-sm font-semibold leading-snug text-[#b8c7c4] min-[390px]:text-base sm:mt-4 sm:text-xl">
               {labels.reliabilityScore}
+              <ReliabilityInfo labels={labels} />
             </p>
           </div>
-          <div className="flex min-h-[180px] flex-col items-center justify-center p-6 text-center">
-            <div className="flex items-center gap-4">
-              <span className="grid h-20 w-32 place-items-center rounded-full border border-[#20D9A3]/20 bg-[#0c3a31] text-[#20D9A3] shadow-[0_0_32px_rgba(32,217,163,0.12)]">
-                <Users className="h-12 w-12" aria-hidden="true" />
+          <div className="flex min-h-[150px] flex-col items-center justify-center p-4 text-center sm:min-h-[180px] sm:p-6">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <span className="grid h-14 w-20 place-items-center rounded-full border border-[#20D9A3]/20 bg-[#0c3a31] text-[#20D9A3] shadow-[0_0_32px_rgba(32,217,163,0.12)] min-[390px]:h-16 min-[390px]:w-24 sm:h-20 sm:w-32">
+                <Users className="h-8 w-8 sm:h-12 sm:w-12" aria-hidden="true" />
               </span>
-              <span className="text-4xl font-black text-[#20D9A3]">
+              <span className="text-3xl font-black text-[#20D9A3] sm:text-4xl">
                 +{Math.max(activeCandidates, 0)}
               </span>
             </div>
-            <p className="mt-5 text-xl font-semibold text-[#b8c7c4]">
+            <p className="mt-4 text-sm font-semibold leading-snug text-[#b8c7c4] min-[390px]:text-base sm:mt-5 sm:text-xl">
               {Math.max(activeCandidates, 0)} {labels.activeCandidates}
             </p>
             <Link
               href="/lookup"
-              className="mt-5 inline-flex items-center gap-2 text-base font-extrabold text-[#20D9A3] transition hover:text-[#66f0c7]"
+              className="mt-4 inline-flex items-center gap-1 text-sm font-extrabold text-[#20D9A3] transition hover:text-[#66f0c7] sm:mt-5 sm:gap-2 sm:text-base"
             >
               {labels.viewMore}
-              <ArrowRight className="h-5 w-5" aria-hidden="true" />
+              <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
             </Link>
           </div>
         </div>

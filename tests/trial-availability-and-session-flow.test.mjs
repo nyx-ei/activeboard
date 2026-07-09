@@ -100,6 +100,16 @@ test('availability onboarding requires 5 slots and recommends 7 with status colo
   );
 });
 
+test('trial dashboard keeps reliability and candidate metrics side by side on mobile', () => {
+  assert.match(trialDashboard, /grid grid-cols-2 rounded-\[24px\]/);
+  assert.doesNotMatch(trialDashboard, /sm:grid-cols-2/);
+  assert.match(trialDashboard, /<ReliabilityInfo labels=\{labels\} \/>/);
+  assert.match(trialDashboard, /reliabilityInfoTitle: 'Score composition'/);
+  assert.match(trialDashboard, /Attendance 30%/);
+  assert.match(trialDashboard, /reviewed questions 20%/);
+  assert.match(trialDashboard, /peer validation 10%/);
+});
+
 test('trial session review to feedback to plan-next to dashboard remains reachable', () => {
   assert.match(sessionPage, /<SessionProgressEntryRuntime/);
   assert.match(
