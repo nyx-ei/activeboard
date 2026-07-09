@@ -1,6 +1,6 @@
 import {
   ArrowRight,
-  CalendarCheck2,
+  CheckCircle2,
   Lock,
   ShieldCheck,
   Sparkles,
@@ -40,7 +40,7 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
   }
 
   const proofItems = [
-    { key: 'heroStep2', Icon: CalendarCheck2 },
+    { key: 'heroStep2', Icon: CheckCircle2 },
     { key: 'heroStep3', Icon: ShieldCheck },
     { key: 'heroStep4', Icon: Sparkles },
   ] as const;
@@ -51,18 +51,18 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
       className="min-h-screen overflow-x-hidden bg-[#01080d] text-white"
     >
       <section className="relative isolate min-h-screen overflow-hidden bg-[linear-gradient(115deg,#01070d_0%,#02090d_48%,#053526_100%)]">
-        <header className="relative z-20 mx-auto flex w-full max-w-[1500px] items-center px-5 pt-5 sm:px-8 lg:px-12 lg:pt-6">
+        <header className="relative z-20 mx-auto flex w-full max-w-[1500px] items-center px-5 pt-4 sm:px-8 lg:px-12 lg:pt-5">
           <ActiveBoardLandingLogo />
         </header>
 
-        <div className="relative z-10 mx-auto grid w-full max-w-[1500px] grid-cols-1 items-center gap-6 px-5 pb-7 pt-5 sm:px-8 lg:min-h-[calc(100vh-76px)] lg:grid-cols-[minmax(560px,700px)_minmax(0,1fr)] lg:gap-0 lg:px-12 lg:pb-8 lg:pt-4 xl:grid-cols-[minmax(620px,760px)_minmax(0,1fr)]">
+        <div className="relative z-10 mx-auto grid w-full max-w-[1500px] grid-cols-1 items-center gap-4 px-5 pb-6 pt-3 sm:px-8 lg:min-h-[calc(100vh-66px)] lg:grid-cols-[minmax(520px,650px)_minmax(0,1fr)] lg:gap-0 lg:px-12 lg:pb-5 lg:pt-0 xl:grid-cols-[minmax(570px,700px)_minmax(0,1fr)]">
           <div className="max-w-[760px]">
             <p className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-2 text-[12px] font-bold leading-snug text-[#d6e2df] sm:text-[13px]">
               <Users className="h-4 w-4 shrink-0 text-brand" aria-hidden />
               <span>{t('landingBadge')}</span>
             </p>
 
-            <h1 className="mt-5 max-w-[760px] text-[34px] font-extrabold leading-[1.02] text-white sm:text-[46px] lg:text-[52px] xl:text-[58px]">
+            <h1 className="mt-4 max-w-[720px] text-[34px] font-extrabold leading-[1.03] text-white sm:text-[46px] lg:text-[54px] xl:text-[64px]">
               <span>{t('landingHeroLine1')} </span>
               <span className="bg-gradient-to-r from-brand to-[#63f3cf] bg-clip-text text-transparent">
                 {t('landingHeroLine2')}
@@ -70,11 +70,15 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
               <span> {t('landingHeroLine3')}</span>
             </h1>
 
-            <p className="mt-4 max-w-[590px] text-[16px] font-medium leading-6 text-[#d2dcda] sm:text-[18px]">
+            <p className="mt-3 max-w-[610px] text-[16px] font-medium leading-6 text-[#d2dcda] sm:text-[18px]">
               {t('landingSubtitle')}
             </p>
 
-            <div className="mt-4 grid max-w-[590px] gap-2 rounded-[8px] border border-white/[0.08] bg-white/[0.035] p-3.5">
+            <p className="mt-4 text-[15px] font-extrabold text-white sm:text-base">
+              {t('heroProofLine')}
+            </p>
+
+            <div className="mt-3 grid max-w-[590px] gap-2">
               {proofItems.map(({ key, Icon }) => {
                 return (
                   <div
@@ -91,6 +95,10 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
               })}
             </div>
 
+            <p className="mt-3 max-w-[590px] text-[14px] font-semibold leading-6 text-[#d2dcda] sm:text-[15px]">
+              {t('heroPatternLine')}
+            </p>
+
             <div className="mt-4 max-w-[590px] space-y-2.5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <a
@@ -99,13 +107,6 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
                 >
                   {t('primaryCta')}
                   <ArrowRight className="h-5 w-5" aria-hidden />
-                </a>
-                <a
-                  href="#how-it-works"
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[8px] border border-white/10 bg-white/[0.035] px-5 text-sm font-extrabold text-white transition hover:border-brand/50 hover:text-brand"
-                >
-                  {t('secondaryCta')}
-                  <ArrowRight className="h-4 w-4" aria-hidden />
                 </a>
               </div>
 
@@ -118,8 +119,8 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
             </div>
           </div>
 
-          <div className="relative min-h-[260px] overflow-visible [perspective:1200px] lg:min-h-[560px]">
-            <div className="absolute inset-y-8 right-[-8%] hidden w-[86%] rounded-full bg-brand/12 blur-3xl lg:block" />
+          <div className="relative min-h-[260px] overflow-visible [perspective:1400px] lg:min-h-[600px]">
+            <div className="absolute inset-y-4 right-[-16%] hidden w-[105%] rounded-full bg-brand/14 blur-3xl lg:block" />
             <Image
               src="/landing/direct-signup-devices.png"
               alt="ActiveBoard live question phone and review laptop"
@@ -127,8 +128,8 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
               height={474}
               priority
               unoptimized
-              className="relative z-10 mx-auto h-auto w-full max-w-[500px] origin-right object-contain opacity-95 drop-shadow-[0_34px_90px_rgba(0,0,0,0.64)] sm:max-w-[580px] lg:absolute lg:right-[-9%] lg:top-[4%] lg:max-w-[820px] lg:[transform:rotateY(-18deg)_rotateX(2deg)_scale(1.08)] xl:right-[-10%] xl:max-w-[940px] xl:[transform:rotateY(-20deg)_rotateX(3deg)_scale(1.16)]"
-              sizes="(min-width: 1280px) 920px, (min-width: 1024px) 58vw, 100vw"
+              className="relative z-10 mx-auto h-auto w-full max-w-[560px] origin-right object-contain opacity-95 drop-shadow-[0_34px_90px_rgba(0,0,0,0.64)] sm:max-w-[680px] lg:absolute lg:right-[-25%] lg:top-[-2%] lg:max-w-[980px] lg:[transform:rotateY(-24deg)_rotateX(3deg)_scale(1.22)] xl:right-[-30%] xl:max-w-[1160px] xl:[transform:rotateY(-26deg)_rotateX(4deg)_scale(1.34)]"
+              sizes="(min-width: 1280px) 1120px, (min-width: 1024px) 66vw, 100vw"
             />
           </div>
         </div>

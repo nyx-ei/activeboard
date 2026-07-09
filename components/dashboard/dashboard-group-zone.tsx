@@ -1556,12 +1556,6 @@ function MobileSessionFirstDashboardZone({
               </div>
             ) : null}
           </div>
-          <a
-            href={`/${locale}/dashboard/progression`}
-            className="text-[11px] font-semibold text-[#20D9A3] sm:text-[13px]"
-          >
-            {locale === 'fr' ? 'Voir plus' : 'View more'}
-          </a>
         </div>
         <div
           ref={calibrationHelpRef}

@@ -463,13 +463,7 @@ export function TrialDashboardView({
         </div>
 
         <div className="relative rounded-[24px] border border-white/[0.1] bg-[#082c24]/70 p-5 shadow-[inset_0_0_40px_rgba(32,217,163,0.05)] sm:p-6">
-          <Link
-            href="/dashboard/progression"
-            className="absolute right-5 top-5 text-sm font-extrabold text-[#20D9A3] transition hover:text-[#66f0c7]"
-          >
-            {labels.viewMore}
-          </Link>
-          <div className="grid grid-cols-2 divide-x divide-white/[0.07] pr-16">
+          <div className="grid grid-cols-2 divide-x divide-white/[0.07]">
             <div className="text-center">
               <div className="text-4xl font-black text-[#20D9A3] sm:text-5xl">
                 {trueMastery}%

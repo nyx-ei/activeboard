@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 
+const landingPage = readFileSync('app/[locale]/page.tsx', 'utf8');
+const landingEnMessages = readFileSync('messages/en.json', 'utf8');
+const landingFrMessages = readFileSync('messages/fr.json', 'utf8');
 const availabilityPage = readFileSync(
   'app/[locale]/onboarding/availability/page.tsx',
   'utf8',
@@ -57,6 +60,10 @@ const advanceRoute = readFileSync(
 const sessionsRoute = readFileSync('app/api/sessions/route.ts', 'utf8');
 const trialDashboard = readFileSync(
   'components/dashboard/trial-dashboard-view.tsx',
+  'utf8',
+);
+const dashboardGroupZone = readFileSync(
+  'components/dashboard/dashboard-group-zone.tsx',
   'utf8',
 );
 const sessionCard = readFileSync(
@@ -127,6 +134,31 @@ test('trial dashboard keeps reliability and candidate metrics side by side on mo
   assert.match(trialDashboard, /Attendance 30%/);
   assert.match(trialDashboard, /reviewed questions 20%/);
   assert.match(trialDashboard, /peer validation 10%/);
+});
+
+test('landing hero stays compact with updated proof copy and wider device visual', () => {
+  assert.match(landingEnMessages, /Join 40\+ IMGs seriously preparing for MCCQE1/);
+  assert.match(landingEnMessages, /The MCCQE prep period/);
+  assert.match(landingEnMessages, /that changes everything/);
+  assert.match(landingEnMessages, /Prepare it with candidates as committed as you are\./);
+  assert.match(landingEnMessages, /No promises\. Only proof\./);
+  assert.match(landingEnMessages, /Free to start/);
+  assert.match(landingEnMessages, /Start Your First Sprint/);
+  assert.match(landingFrMessages, /Joigner 40\+ DHCEU/);
+  assert.match(landingPage, /heroProofLine/);
+  assert.match(landingPage, /heroPatternLine/);
+  assert.match(landingPage, /lg:max-w-\[980px\]/);
+  assert.match(landingPage, /xl:max-w-\[1160px\]/);
+  assert.doesNotMatch(landingPage, /secondaryCta/);
+});
+
+test('dashboard progression details route is not linked or mounted', () => {
+  assert.doesNotMatch(trialDashboard, /dashboard\/progression/);
+  assert.doesNotMatch(dashboardGroupZone, /dashboard\/progression/);
+  assert.equal(
+    existsSync('app/[locale]/dashboard/progression/page.tsx'),
+    false,
+  );
 });
 
 test('trial session review to feedback to plan-next to dashboard remains reachable', () => {
