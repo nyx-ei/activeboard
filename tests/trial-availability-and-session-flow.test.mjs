@@ -157,10 +157,13 @@ test('landing hero stays compact with updated proof copy and wider device visual
   assert.match(landingEnMessages, /Free to start/);
   assert.match(landingEnMessages, /Start Your First Sprint/);
   assert.match(landingFrMessages, /Joigner 40\+ DHCEU/);
+  assert.match(landingFrMessages, /La préparation EACMC/);
   assert.match(landingPage, /heroProofLine/);
   assert.match(landingPage, /heroPatternLine/);
-  assert.match(landingPage, /lg:max-w-\[980px\]/);
-  assert.match(landingPage, /xl:max-w-\[1160px\]/);
+  assert.match(landingPage, /xl:text-\[52px\]/);
+  assert.match(landingPage, /lg:w-\[min\(54vw,900px\)\]/);
+  assert.match(landingPage, /lg:left-1\/2/);
+  assert.match(landingPage, /translate\(-50%,-50%\)_rotateY/);
   assert.doesNotMatch(landingPage, /secondaryCta/);
 });
 
@@ -200,9 +203,22 @@ test('trial session review to feedback to plan-next to dashboard remains reachab
   assert.match(progressEntryRuntime, /\/>/);
   assert.doesNotMatch(progressEntryRuntime, /sessionDetails/);
   assert.doesNotMatch(progressEntryRuntime, /button-primary/);
+  assert.match(progressEntryRuntime, /const canOpenPlanNext = feedbackSubmitted/);
+  assert.match(
+    progressEntryRuntime,
+    /canOpenPlanNext \? `\/sessions\/\$\{sessionId\}\?stage=plan-next` : undefined/,
+  );
   assert.match(sessionPage, /feedbackSubmitted=\{searchParams\.feedback === 'done'\}/);
-  assert.match(feedbackRuntime, /<SessionProgressPanel/);
-  assert.match(planNextRuntime, /<SessionProgressPanel/);
+  assert.doesNotMatch(feedbackRuntime, /SessionProgressPanel/);
+  assert.doesNotMatch(planNextRuntime, /SessionProgressPanel/);
+  assert.match(
+    feedbackRuntime,
+    /href=\{`\/sessions\/\$\{sessionId\}\?stage=progress`\}/,
+  );
+  assert.match(
+    planNextRuntime,
+    /href=\{`\/sessions\/\$\{sessionId\}\?stage=progress&feedback=done`\}/,
+  );
   assert.match(progressPanel, /Session progress/);
   assert.match(progressPanel, /sessionActive: 'Sprint'/);
   assert.match(progressPanel, /grid-cols-\[22px_minmax\(0,1fr\)\]/);

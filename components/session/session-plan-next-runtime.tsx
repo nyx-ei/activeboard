@@ -1,11 +1,18 @@
 'use client';
 
-import { CalendarDays, Clock, LinkIcon, LockKeyhole, Users } from 'lucide-react';
+import {
+  ArrowLeft,
+  CalendarDays,
+  Clock,
+  LinkIcon,
+  LockKeyhole,
+  Users,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type React from 'react';
 import { useMemo, useState, useTransition } from 'react';
 
-import { SessionProgressPanel } from '@/components/session/session-progress-panel';
+import { Link } from '@/i18n/navigation';
 import type { PlanNextAccess } from '@/lib/session/plan-next-access';
 
 type SessionPlanNextRuntimeProps = {
@@ -166,20 +173,27 @@ export function SessionPlanNextRuntime({
   }
 
   return (
-    <SessionProgressPanel
-      locale={language}
-      sessionTitle={sessionTitle}
-      activeStep="plan-next"
-      backHref={`/sessions/${sessionId}?stage=progress&feedback=done`}
-      backLabel={t.back}
-      sessionHref={`/sessions/${sessionId}?stage=review`}
-      feedbackHref={`/sessions/${sessionId}?stage=feedback`}
-      sessionMeta={`${questionGoal}/${questionGoal}Q - ${timerSeconds} sec`}
-      planNextMeta="XX - XXhXX"
-    >
-        <div className="rounded-[18px] border border-white/10 bg-[#111827] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.25)] sm:p-6">
-          <h2 className="text-xl font-extrabold text-white">{t.title}</h2>
+    <section className="mx-auto flex w-full max-w-[640px] flex-col gap-5 px-4 py-6 text-white sm:px-6">
+      <div className="flex items-center gap-4">
+        <Link
+          href={`/sessions/${sessionId}?stage=progress&feedback=done`}
+          prefetch={false}
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-brand/50 hover:text-white"
+          aria-label={t.back}
+        >
+          <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+        </Link>
+        <div className="min-w-0">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">
+            {sessionTitle}
+          </p>
+          <h1 className="truncate text-2xl font-extrabold text-white">
+            {t.title}
+          </h1>
+        </div>
+      </div>
 
+      <div className="rounded-[18px] border border-white/10 bg-[#111827] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.25)] sm:p-6">
           <div className="mt-5 grid gap-4">
             <label className="grid gap-2">
               <span className="text-sm font-extrabold text-slate-300">
@@ -263,8 +277,8 @@ export function SessionPlanNextRuntime({
           >
             {isPending ? t.scheduling : t.schedule}
           </button>
-        </div>
-    </SessionProgressPanel>
+      </div>
+    </section>
   );
 }
 
