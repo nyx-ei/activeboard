@@ -63,6 +63,7 @@ export function SessionProgressEntryRuntime({
   const language = locale === 'fr' ? 'fr' : 'en';
   const t = getCopy(language);
   const reviewDone = reviewedCount >= questionGoal || status === 'completed';
+  const canOpenPlanNext = feedbackSubmitted;
   const activeStep = getActiveStep({
     status,
     reviewedCount,
@@ -81,7 +82,7 @@ export function SessionProgressEntryRuntime({
         reviewDone ? `/sessions/${sessionId}?stage=feedback` : undefined
       }
       planNextHref={
-        reviewDone ? `/sessions/${sessionId}?stage=plan-next` : undefined
+        canOpenPlanNext ? `/sessions/${sessionId}?stage=plan-next` : undefined
       }
       sessionMeta={`${Math.min(answeredCount, questionGoal)}/${questionGoal}Q - ${timerSeconds} sec`}
       feedbackMeta={`${Math.min(reviewedCount, questionGoal)}/${questionGoal} ${t.reviewed}`}
