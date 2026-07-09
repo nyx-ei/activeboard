@@ -50,6 +50,7 @@ const advanceRoute = readFileSync(
   'app/api/sessions/[sessionId]/advance/route.ts',
   'utf8',
 );
+const sessionsRoute = readFileSync('app/api/sessions/route.ts', 'utf8');
 const trialDashboard = readFileSync(
   'components/dashboard/trial-dashboard-view.tsx',
   'utf8',
@@ -122,6 +123,11 @@ test('trial session review to feedback to plan-next to dashboard remains reachab
   assert.match(sessionPage, /sessionHref=\{progressSessionHref\}/);
   assert.match(progressEntryRuntime, /\?stage=feedback/);
   assert.match(progressEntryRuntime, /\?stage=plan-next/);
+  assert.match(progressEntryRuntime, /<SessionProgressPanel/);
+  assert.match(progressEntryRuntime, /\/>/);
+  assert.doesNotMatch(progressEntryRuntime, /sessionDetails/);
+  assert.doesNotMatch(progressEntryRuntime, /button-primary/);
+  assert.match(sessionPage, /feedbackSubmitted=\{searchParams\.feedback === 'done'\}/);
   assert.match(feedbackRuntime, /<SessionProgressPanel/);
   assert.match(planNextRuntime, /<SessionProgressPanel/);
   assert.match(progressPanel, /Session progress/);
@@ -164,7 +170,7 @@ test('trial session review to feedback to plan-next to dashboard remains reachab
   );
   assert.match(
     feedbackRuntime,
-    /router\.replace\(`\/\$\{language\}\/sessions\/\$\{sessionId\}\?stage=plan-next`\)/,
+    /stage=progress&feedback=done/,
   );
   assert.match(planNextRuntime, /continuitySessionId: sessionId/);
   assert.match(
@@ -173,8 +179,9 @@ test('trial session review to feedback to plan-next to dashboard remains reachab
   );
   assert.match(
     planNextRuntime,
-    /router\.replace\(`\/\$\{language\}\/dashboard`\)/,
+    /stage=progress&feedback=done/,
   );
+  assert.match(sessionsRoute, /groupMembers\.length < policy\.minimumGroupMembersToStart &&\s*!isContinuityPlan/);
 });
 
 test('start session screen exposes meeting link and sprint CTA copy', () => {

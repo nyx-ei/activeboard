@@ -129,7 +129,7 @@ export function SessionPlanNextRuntime({
           meetingLink: meetingLink.trim(),
           forceCreate: true,
           continuitySessionId: sessionId,
-          returnTo: `/${language}/dashboard`,
+          returnTo: `/${language}/sessions/${sessionId}?stage=progress&feedback=done`,
         }),
       });
 
@@ -152,7 +152,9 @@ export function SessionPlanNextRuntime({
         return;
       }
 
-      router.replace(`/${language}/dashboard`);
+      router.replace(
+        `/${language}/sessions/${sessionId}?stage=progress&feedback=done`,
+      );
       router.refresh();
     });
   }
@@ -162,7 +164,7 @@ export function SessionPlanNextRuntime({
       locale={language}
       sessionTitle={sessionTitle}
       activeStep="plan-next"
-      backHref={`/sessions/${sessionId}?stage=feedback`}
+      backHref={`/sessions/${sessionId}?stage=progress&feedback=done`}
       backLabel={t.back}
       sessionHref={`/sessions/${sessionId}?stage=review`}
       feedbackHref={`/sessions/${sessionId}?stage=feedback`}

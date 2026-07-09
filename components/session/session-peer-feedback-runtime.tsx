@@ -98,7 +98,9 @@ export function SessionPeerFeedbackRuntime({
         return;
       }
 
-      router.replace(`/${language}/sessions/${sessionId}?stage=plan-next`);
+      router.replace(
+        `/${language}/sessions/${sessionId}?stage=progress&feedback=done`,
+      );
       router.refresh();
     });
   }
@@ -108,7 +110,7 @@ export function SessionPeerFeedbackRuntime({
       locale={language}
       sessionTitle={sessionTitle}
       activeStep="feedback"
-      backHref={`/sessions/${sessionId}?stage=review`}
+      backHref={`/sessions/${sessionId}?stage=progress`}
       backLabel={t.back}
       sessionHref={`/sessions/${sessionId}?stage=review`}
     >
