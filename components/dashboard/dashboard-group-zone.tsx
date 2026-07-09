@@ -27,6 +27,8 @@ import {
   Radio,
   Search,
   Send,
+  TrendingDown,
+  TrendingUp,
   UserPlus,
   UsersRound,
   X,
@@ -1562,8 +1564,9 @@ function MobileSessionFirstDashboardZone({
           className="mt-3 grid grid-cols-2 divide-x divide-white/[0.06] sm:mt-4"
         >
           <div className="relative pr-3 text-center">
-            <p className="text-[25px] font-semibold leading-none text-[#20D9A3] sm:text-[34px]">
-              {calibrationStats.trueMasteryPercent}%
+            <p className="inline-flex items-end justify-center gap-1 text-[25px] font-semibold leading-none text-[#20D9A3] sm:gap-1.5 sm:text-[34px]">
+              <span>{calibrationStats.trueMasteryPercent}%</span>
+              <TrendingUp className="mb-0.5 h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" strokeWidth={3} />
             </p>
             <p className="mt-1 inline-flex items-center justify-center gap-1 text-[11px] text-[#8fa7a2] sm:text-[13px]">
               <span>{labels.trueMastery}</span>
@@ -1594,8 +1597,9 @@ function MobileSessionFirstDashboardZone({
             ) : null}
           </div>
           <div className="relative pl-3 text-center">
-            <p className="text-[25px] font-semibold leading-none text-[#9FF0CE] sm:text-[34px]">
-              {calibrationStats.falseConfidencePercent}%
+            <p className="inline-flex items-end justify-center gap-1 text-[25px] font-semibold leading-none text-[#9FF0CE] sm:gap-1.5 sm:text-[34px]">
+              <span>{calibrationStats.falseConfidencePercent}%</span>
+              <TrendingDown className="mb-0.5 h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" strokeWidth={3} />
             </p>
             <p className="mt-1 inline-flex items-center justify-center gap-1 text-[11px] text-[#8fa7a2] sm:text-[13px]">
               <span>{labels.falseConfidence}</span>

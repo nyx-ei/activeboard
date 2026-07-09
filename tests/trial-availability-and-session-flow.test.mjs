@@ -129,11 +129,23 @@ test('trial profile onboarding uses checkbox qbanks and language-specific MCCQE 
 test('trial dashboard keeps reliability and candidate metrics side by side on mobile', () => {
   assert.match(trialDashboard, /grid grid-cols-2 rounded-\[24px\]/);
   assert.doesNotMatch(trialDashboard, /sm:grid-cols-2/);
+  assert.match(trialDashboard, /w-\[72px\]/);
+  assert.match(trialDashboard, /grid-cols-\[auto_minmax\(0,1fr\)_minmax\(60px,auto\)\]/);
+  assert.match(trialDashboard, /sm:grid-cols-\[auto_minmax\(0,1fr\)_auto\]/);
+  assert.match(trialDashboard, /text-\[12px\] font-bold leading-snug/);
+  assert.match(trialDashboard, /sm:min-w-\[110px\]/);
   assert.match(trialDashboard, /<ReliabilityInfo labels=\{labels\} \/>/);
   assert.match(trialDashboard, /reliabilityInfoTitle: 'Score composition'/);
   assert.match(trialDashboard, /Attendance 30%/);
   assert.match(trialDashboard, /reviewed questions 20%/);
   assert.match(trialDashboard, /peer validation 10%/);
+  assert.match(trialDashboard, /function MetricValue/);
+  assert.match(trialDashboard, /TrendingUp/);
+  assert.match(trialDashboard, /TrendingDown/);
+  assert.match(trialDashboard, /<MetricValue value=\{trueMastery\} direction="up" \/>/);
+  assert.match(trialDashboard, /<MetricValue value=\{falseConfidence\} direction="down" \/>/);
+  assert.match(dashboardGroupZone, /TrendingUp/);
+  assert.match(dashboardGroupZone, /TrendingDown/);
 });
 
 test('landing hero stays compact with updated proof copy and wider device visual', () => {

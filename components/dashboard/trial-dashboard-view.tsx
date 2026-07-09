@@ -10,6 +10,8 @@ import {
   Plus,
   Radio,
   RotateCcw,
+  TrendingDown,
+  TrendingUp,
   Users,
 } from 'lucide-react';
 
@@ -187,10 +189,10 @@ function formatTime(locale: string, value: string) {
 
 function ParticipantsBadge() {
   return (
-    <div className="flex h-14 w-24 shrink-0 items-center justify-center gap-1 rounded-full border border-[#20D9A3]/20 bg-white/[0.035] text-slate-300 shadow-[inset_0_0_24px_rgba(32,217,163,0.07)] sm:h-16 sm:w-32">
-      <Users className="h-5 w-5 opacity-80" aria-hidden="true" />
-      <Users className="h-5 w-5 text-[#20D9A3]" aria-hidden="true" />
-      <Users className="h-5 w-5 opacity-80" aria-hidden="true" />
+    <div className="flex h-12 w-[72px] shrink-0 items-center justify-center gap-0.5 rounded-full border border-[#20D9A3]/20 bg-white/[0.035] text-slate-300 shadow-[inset_0_0_24px_rgba(32,217,163,0.07)] min-[390px]:w-20 sm:h-16 sm:w-32 sm:gap-1">
+      <Users className="h-4 w-4 opacity-80 sm:h-5 sm:w-5" aria-hidden="true" />
+      <Users className="h-4 w-4 text-[#20D9A3] sm:h-5 sm:w-5" aria-hidden="true" />
+      <Users className="h-4 w-4 opacity-80 sm:h-5 sm:w-5" aria-hidden="true" />
     </div>
   );
 }
@@ -219,34 +221,34 @@ function TrialSessionRow({
   return (
     <Link
       href={`/sessions/${session.id}?stage=progress`}
-      className="group grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-[#20D9A3]/25 bg-[#082c24]/68 px-4 py-3 text-left shadow-[inset_0_0_38px_rgba(32,217,163,0.035)] transition hover:border-[#20D9A3]/55 hover:bg-[#0b3a30]/78 sm:gap-5 sm:px-5"
+      className="group grid grid-cols-[auto_minmax(0,1fr)_minmax(60px,auto)] items-center gap-2 rounded-[18px] border border-[#20D9A3]/25 bg-[#082c24]/68 px-3 py-3 text-left shadow-[inset_0_0_38px_rgba(32,217,163,0.035)] transition hover:border-[#20D9A3]/55 hover:bg-[#0b3a30]/78 min-[390px]:grid-cols-[auto_minmax(0,1fr)_minmax(72px,auto)] sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-5 sm:px-5"
     >
       <ParticipantsBadge />
       <div className="min-w-0">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <h3 className="truncate text-lg font-extrabold text-white sm:text-xl">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
+          <h3 className="max-w-full truncate text-base font-extrabold text-white min-[390px]:text-lg sm:text-xl">
             {title}
           </h3>
           <span
-            className={`inline-flex min-h-7 items-center rounded-full border px-3 text-xs font-extrabold ${getStatusClass(status)}`}
+            className={`inline-flex min-h-6 max-w-full items-center rounded-full border px-2 text-[10px] font-extrabold leading-none sm:min-h-7 sm:px-3 sm:text-xs ${getStatusClass(status)}`}
           >
             {labels.statuses[status]}
           </span>
         </div>
-        <p className="mt-1 truncate text-base font-semibold text-[#a8bcb7]">
+        <p className="mt-1 truncate text-sm font-semibold text-[#a8bcb7] sm:text-base">
           {answered}/{target}Q
           <span className="px-2 text-[#5b7771]">·</span>
           {timerSeconds}sec
         </p>
       </div>
-      <div className="flex min-w-[84px] flex-col items-end justify-center text-right text-base font-bold text-[#b8c7c4] sm:min-w-[110px]">
+      <div className="flex min-w-0 flex-col items-end justify-center text-right text-[12px] font-bold leading-snug text-[#b8c7c4] min-[390px]:text-sm sm:min-w-[110px] sm:text-base">
         {isActionable ? (
           <>
-            <span>{formatDate(locale, session.scheduled_at)}</span>
+            <span className="max-w-full truncate">{formatDate(locale, session.scheduled_at)}</span>
             <span>{formatTime(locale, session.scheduled_at)}</span>
           </>
         ) : session.status === 'completed' ? (
-          <MoreVertical className="h-8 w-8 text-[#9aaca8]" aria-hidden="true" />
+          <MoreVertical className="h-7 w-7 text-[#9aaca8] sm:h-8 sm:w-8" aria-hidden="true" />
         ) : (
           <span>XXhXX</span>
         )}
@@ -263,26 +265,26 @@ function EmptyTrialSessionRow({
   labels: ReturnType<typeof getCopy>;
 }) {
   return (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-[#20D9A3]/15 bg-[#08261f]/48 px-4 py-3 opacity-90 sm:gap-5 sm:px-5">
+    <div className="grid grid-cols-[auto_minmax(0,1fr)_minmax(60px,auto)] items-center gap-2 rounded-[18px] border border-[#20D9A3]/15 bg-[#08261f]/48 px-3 py-3 opacity-90 min-[390px]:grid-cols-[auto_minmax(0,1fr)_minmax(72px,auto)] sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-5 sm:px-5">
       <ParticipantsBadge />
       <div className="min-w-0">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <h3 className="truncate text-lg font-extrabold text-white sm:text-xl">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
+          <h3 className="truncate text-base font-extrabold text-white min-[390px]:text-lg sm:text-xl">
             Session {index + 1}
           </h3>
           <span
-            className={`inline-flex min-h-7 items-center rounded-full border px-3 text-xs font-extrabold ${getStatusClass('nextSessionPlanned')}`}
+            className={`inline-flex min-h-6 max-w-full items-center rounded-full border px-2 text-[10px] font-extrabold leading-none sm:min-h-7 sm:px-3 sm:text-xs ${getStatusClass('nextSessionPlanned')}`}
           >
             {labels.statuses.nextSessionPlanned}
           </span>
         </div>
-        <p className="mt-1 text-base font-semibold text-[#a8bcb7]">
+        <p className="mt-1 truncate text-sm font-semibold text-[#a8bcb7] sm:text-base">
           0Q
           <span className="px-2 text-[#5b7771]">·</span>
           90sec
         </p>
       </div>
-      <div className="min-w-[84px] text-right text-base font-bold text-[#b8c7c4] sm:min-w-[110px]">
+      <div className="min-w-0 text-right text-[12px] font-bold leading-snug text-[#b8c7c4] min-[390px]:text-sm sm:min-w-[110px] sm:text-base">
         XXhXX
       </div>
     </div>
@@ -306,6 +308,27 @@ function ReliabilityInfo({ labels }: { labels: ReturnType<typeof getCopy> }) {
         <span className="mt-1 block">{labels.reliabilityInfo}</span>
       </span>
     </span>
+  );
+}
+
+function MetricValue({
+  value,
+  direction,
+}: {
+  value: number;
+  direction: 'up' | 'down';
+}) {
+  const Icon = direction === 'up' ? TrendingUp : TrendingDown;
+
+  return (
+    <div className="inline-flex items-end justify-center gap-1.5 text-3xl font-black leading-none text-[#20D9A3] min-[390px]:text-4xl sm:gap-2 sm:text-5xl">
+      <span>{value}%</span>
+      <Icon
+        className="mb-1 h-6 w-6 sm:h-8 sm:w-8"
+        aria-hidden="true"
+        strokeWidth={3}
+      />
+    </div>
   );
 }
 
@@ -462,28 +485,26 @@ export function TrialDashboardView({
           </Link>
         </div>
 
-        <div className="relative rounded-[24px] border border-white/[0.1] bg-[#082c24]/70 p-5 shadow-[inset_0_0_40px_rgba(32,217,163,0.05)] sm:p-6">
+        <div className="relative rounded-[24px] border border-white/[0.1] bg-[#082c24]/70 p-4 shadow-[inset_0_0_40px_rgba(32,217,163,0.05)] sm:p-6">
           <div className="grid grid-cols-2 divide-x divide-white/[0.07]">
-            <div className="text-center">
-              <div className="text-4xl font-black text-[#20D9A3] sm:text-5xl">
-                {trueMastery}%
-              </div>
-              <p className="mt-2 text-sm font-semibold text-[#b8c7c4] sm:text-base">
+            <div className="px-2 text-center sm:px-0">
+              <MetricValue value={trueMastery} direction="up" />
+              <p className="mt-2 text-[13px] font-semibold leading-snug text-[#b8c7c4] sm:text-base">
                 {labels.trueMastery}
               </p>
             </div>
-            <div className="text-center">
-              <div className="text-4xl font-black text-[#9ff0ce] sm:text-5xl">
-                {falseConfidence}%
-              </div>
-              <p className="mt-2 text-sm font-semibold text-[#b8c7c4] sm:text-base">
+            <div className="px-2 text-center sm:px-0">
+              <MetricValue value={falseConfidence} direction="down" />
+              <p className="mt-2 text-[13px] font-semibold leading-snug text-[#b8c7c4] sm:text-base">
                 {labels.falseConfidence}
               </p>
             </div>
           </div>
-          <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-1.5 text-xs font-bold text-[#a8bcb7]">
-            <CheckCircle2 className="h-4 w-4 text-[#20D9A3]" aria-hidden="true" />
-            {reviewedQuestions} {labels.reviewedQuestions}
+          <div className="mt-5 flex justify-center sm:justify-start">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-1.5 text-[11px] font-bold text-[#a8bcb7] sm:text-xs">
+              <CheckCircle2 className="h-4 w-4 text-[#20D9A3]" aria-hidden="true" />
+              {reviewedQuestions} {labels.reviewedQuestions}
+            </div>
           </div>
         </div>
 
