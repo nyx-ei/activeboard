@@ -37,7 +37,14 @@ export default async function CreateGroupPage({ params }: CreateGroupPageProps) 
           ? {
               displayName: profile.data?.display_name ?? user.user_metadata.full_name ?? user.email?.split('@')[0] ?? '',
               email: profile.data?.email ?? user.email ?? '',
-              examType: (profile.data?.exam_type as 'mccqe1' | 'usmle' | 'plab' | 'other' | null) ?? '',
+              examType:
+                (profile.data?.exam_type as
+                  | 'mccqe_fr'
+                  | 'mccqe_en'
+                  | 'usmle'
+                  | 'plab'
+                  | 'other'
+                  | null) ?? '',
               examSession:
                 (profile.data?.exam_session as
                   | 'april_may_2026'
@@ -61,6 +68,7 @@ export default async function CreateGroupPage({ params }: CreateGroupPageProps) 
         password: t('password'),
         passwordHint: t('passwordHint'),
         examType: t('examType'),
+        examTypeMccqeFrench: t('examTypeMccqeFrench'),
         examSession: t('examSession'),
         language: t('language'),
         timezone: t('timezone'),

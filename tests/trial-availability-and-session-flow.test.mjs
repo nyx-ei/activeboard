@@ -14,6 +14,10 @@ const onboardingActions = readFileSync(
   'app/[locale]/onboarding/actions.ts',
   'utf8',
 );
+const splitMccqeMigration = readFileSync(
+  'supabase/migrations/20260709120000_split_mccqe_exam_language.sql',
+  'utf8',
+);
 const sessionPage = readFileSync(
   'app/[locale]/sessions/[sessionId]/page.tsx',
   'utf8',
@@ -98,6 +102,21 @@ test('availability onboarding requires 5 slots and recommends 7 with status colo
     onboardingActions,
     /getSlotCount\(grid\) < MIN_AVAILABILITY_SLOTS/,
   );
+});
+
+test('trial profile onboarding uses checkbox qbanks and language-specific MCCQE exam choices', () => {
+  assert.match(trialForms, /mccqe_fr: 'MCCQE in French'/);
+  assert.match(trialForms, /mccqe_en: 'MCCQE in English'/);
+  assert.match(trialForms, /mccqe_fr: 'EACMC en francais'/);
+  assert.match(trialForms, /mccqe_en: 'EACMC en anglais'/);
+  assert.match(trialForms, /type="checkbox"/);
+  assert.match(trialForms, /name="qbank"/);
+  assert.match(trialForms, /defaultChecked=\{selectedQbanks\.has\(value\)\}/);
+  assert.match(onboardingActions, /formData\s*\.\s*getAll\('qbank'\)/);
+  assert.match(onboardingActions, /question_banks: questionBanks/);
+  assert.match(onboardingActions, /'mccqe_fr'/);
+  assert.match(onboardingActions, /'mccqe_en'/);
+  assert.match(splitMccqeMigration, /exam_type in \('mccqe_fr', 'mccqe_en', 'usmle', 'plab', 'other'\)/);
 });
 
 test('trial dashboard keeps reliability and candidate metrics side by side on mobile', () => {

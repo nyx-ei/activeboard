@@ -24,6 +24,7 @@ type CreateGroupWizardLabels = {
   languageEnglish: string;
   languageFrench: string;
   selectPlaceholder: string;
+  examTypeMccqeFrench: string;
   examTypeMccqe1: string;
   examTypeUsmle: string;
   examTypePlab: string;
@@ -84,7 +85,7 @@ type CreateGroupWizardLabels = {
 };
 
 type WizardStep = 0 | 1 | 2 | 3 | 4 | 5;
-type ExamType = 'mccqe1' | 'usmle' | 'plab' | 'other';
+type ExamType = 'mccqe_fr' | 'mccqe_en' | 'usmle' | 'plab' | 'other';
 type ExamSession = 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead' | '';
 type PlanType = 'starter' | 'unlimited';
 type ScheduleSlot = {
@@ -175,7 +176,7 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
         displayName?: string;
         email?: string;
         password?: string;
-        examType?: ExamType;
+        examType?: ExamType | 'mccqe1';
         examSession?: ExamSession;
         locale?: 'en' | 'fr';
         timezone?: string;
@@ -184,7 +185,9 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
       if (draft.displayName) setDisplayName(draft.displayName);
       if (draft.email) setEmail(draft.email);
       if (draft.password) setPassword(draft.password);
-      if (draft.examType) setExamType(draft.examType);
+      if (draft.examType) {
+        setExamType(draft.examType === 'mccqe1' ? 'mccqe_en' : draft.examType);
+      }
       if (draft.examSession) setExamSession(draft.examSession);
       if (draft.locale) setSelectedLocale(draft.locale);
       if (draft.timezone) setTimezone(draft.timezone);
@@ -382,7 +385,8 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
                   <span className="mb-2 block text-sm font-semibold text-slate-300">{labels.examType}</span>
                   <select value={examType} onChange={(event) => setExamType(event.target.value as ExamType)} className="field h-10 rounded-[6px] px-3 text-sm">
                     <option value="">{labels.selectPlaceholder}</option>
-                    <option value="mccqe1">{labels.examTypeMccqe1}</option>
+                    <option value="mccqe_fr">{labels.examTypeMccqeFrench}</option>
+                    <option value="mccqe_en">{labels.examTypeMccqe1}</option>
                     <option value="usmle">{labels.examTypeUsmle}</option>
                     <option value="plab">{labels.examTypePlab}</option>
                     <option value="other">{labels.examTypeOther}</option>

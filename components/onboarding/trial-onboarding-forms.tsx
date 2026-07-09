@@ -72,7 +72,8 @@ const copy = {
     days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
     dayShort: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     exams: {
-      mccqe1: 'MCCQE in English',
+      mccqe_fr: 'MCCQE in French',
+      mccqe_en: 'MCCQE in English',
       usmle: 'USMLE',
       plab: 'PLAB',
       other: 'Other',
@@ -82,7 +83,7 @@ const copy = {
       canadaqbank: 'CanadaQBank',
       amboss: 'Amboss',
       aceqbank: 'AceQbank',
-      cmc: 'CMC prep material',
+      cmc_prep: 'CMC prep material',
       other: 'Other',
     },
   },
@@ -132,7 +133,8 @@ const copy = {
     days: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'],
     dayShort: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
     exams: {
-      mccqe1: 'EACMC',
+      mccqe_fr: 'EACMC en francais',
+      mccqe_en: 'EACMC en anglais',
       usmle: 'USMLE',
       plab: 'PLAB',
       other: 'Autre',
@@ -142,7 +144,7 @@ const copy = {
       canadaqbank: 'CanadaQBank',
       amboss: 'Amboss',
       aceqbank: 'AceQbank',
-      cmc: 'Matériel préparatoire CMC',
+      cmc_prep: 'Materiel preparatoire CMC',
       other: 'Autre',
     },
   },
@@ -386,18 +388,21 @@ export function TrialAccountForm({ locale }: { locale: AppLocale }) {
 export function TrialProfileForm({
   locale,
   initialPhoneNumber = '',
-  initialExamType = 'mccqe1',
-  initialQbank = '',
+  initialExamType = 'mccqe_en',
+  initialQbanks = [],
   initialTimezone = 'UTC',
 }: {
   locale: AppLocale;
   initialPhoneNumber?: string | null;
   initialExamType?: string | null;
-  initialQbank?: string | null;
+  initialQbanks?: string[] | null;
   initialTimezone?: string | null;
 }) {
   const t = copy[locale];
   const [timezone, setTimezone] = useState(initialTimezone || 'UTC');
+  const selectedQbanks = new Set(initialQbanks ?? []);
+  const normalizedExamType =
+    initialExamType === 'mccqe1' ? 'mccqe_en' : initialExamType || 'mccqe_en';
 
   useEffect(() => {
     const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -430,7 +435,7 @@ export function TrialProfileForm({
           <select
             className={inputWithIconClassName}
             name="examType"
-            defaultValue={initialExamType || 'mccqe1'}
+            defaultValue={normalizedExamType}
           >
             {Object.entries(t.exams).map(([value, label]) => (
               <option key={value} value={value} className="bg-[#111827]">
@@ -439,22 +444,29 @@ export function TrialProfileForm({
             ))}
           </select>
         </Field>
-        <Field label={t.qbank} icon={<BookOpen className="h-5 w-5" aria-hidden />}>
-          <select
-            className={inputWithIconClassName}
-            name="qbank"
-            defaultValue={initialQbank ?? ''}
-          >
-            <option value="" className="bg-[#111827]">
-              {t.qbankPlaceholder}
-            </option>
+        <div className="grid gap-2 text-sm font-bold text-slate-200">
+          <span className="inline-flex items-center gap-2">
+            <BookOpen className="h-5 w-5 text-brand" aria-hidden />
+            {t.qbank}
+          </span>
+          <div className="grid grid-cols-2 gap-2">
             {Object.entries(t.qbanks).map(([value, label]) => (
-              <option key={value} value={value} className="bg-[#111827]">
-                {label}
-              </option>
+              <label key={value} className="block">
+                <input
+                  type="checkbox"
+                  name="qbank"
+                  value={value}
+                  defaultChecked={selectedQbanks.has(value)}
+                  className="peer sr-only"
+                />
+                <span className="flex min-h-12 items-center gap-2 rounded-[7px] border border-white/10 bg-white/[0.035] px-3 text-sm font-bold text-slate-300 transition peer-checked:border-brand/45 peer-checked:bg-brand/12 peer-checked:text-brand peer-checked:[&>svg]:opacity-100">
+                  <Check className="h-4 w-4 opacity-0 transition" aria-hidden />
+                  <span className="truncate">{label}</span>
+                </span>
+              </label>
             ))}
-          </select>
-        </Field>
+          </div>
+        </div>
         <button
           type="submit"
           className="button-primary mt-16 h-16 w-full rounded-[6px] text-base"
