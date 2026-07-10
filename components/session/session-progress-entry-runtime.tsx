@@ -13,19 +13,6 @@ type SessionProgressEntryRuntimeProps = {
   feedbackSubmitted?: boolean;
 };
 
-const copy = {
-  en: {
-    reviewed: 'reviewed',
-  },
-  fr: {
-    reviewed: 'revisees',
-  },
-} as const;
-
-function getCopy(locale: string) {
-  return locale === 'fr' ? copy.fr : copy.en;
-}
-
 function getActiveStep({
   status,
   reviewedCount,
@@ -61,7 +48,6 @@ export function SessionProgressEntryRuntime({
   feedbackSubmitted = false,
 }: SessionProgressEntryRuntimeProps) {
   const language = locale === 'fr' ? 'fr' : 'en';
-  const t = getCopy(language);
   const reviewDone = reviewedCount >= questionGoal || status === 'completed';
   const canOpenPlanNext = feedbackSubmitted;
   const activeStep = getActiveStep({
@@ -85,7 +71,6 @@ export function SessionProgressEntryRuntime({
         canOpenPlanNext ? `/sessions/${sessionId}?stage=plan-next` : undefined
       }
       sessionMeta={`${Math.min(answeredCount, questionGoal)}/${questionGoal}Q - ${timerSeconds} sec`}
-      feedbackMeta={`${Math.min(reviewedCount, questionGoal)}/${questionGoal} ${t.reviewed}`}
     />
   );
 }

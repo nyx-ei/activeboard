@@ -382,6 +382,11 @@ export function TrialDashboardView({
         )
       : 0;
   const reviewedQuestions = performanceProps.progressQuadrantQuestions.length;
+  const seriousUnlocked = Boolean(
+    sessionsProps.planNextAccess?.canInviteCandidates,
+  );
+  const createSessionLabel =
+    locale === 'fr' ? 'Creer une seance' : 'Create session';
   const firstActionableSession = trialSessions.find(
     (session) => session.status !== 'completed',
   );
@@ -390,18 +395,16 @@ export function TrialDashboardView({
   });
 
   return (
-    <section className="rounded-[28px] border border-white/[0.07] bg-[radial-gradient(circle_at_50%_10%,rgba(32,217,163,0.13),rgba(1,24,20,0.78)_42%,rgba(0,16,15,0.95)_100%)] px-4 py-5 shadow-[0_24px_80px_rgba(0,0,0,0.36)] sm:px-8 sm:py-7 lg:px-12">
-      <div className="mx-auto w-full max-w-[900px] space-y-6 lg:max-w-none">
-        <div className="rounded-[20px] border border-[#20D9A3]/45 bg-[#04231d]/70 p-3 shadow-[inset_0_0_28px_rgba(32,217,163,0.06)]">
-          <div className="flex items-center gap-3 text-sm font-extrabold text-white sm:text-lg">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[#20D9A3]/25 bg-[#062f27] text-[#20D9A3]">
+    <section className="rounded-[28px] border border-white/[0.07] bg-[radial-gradient(circle_at_50%_10%,rgba(32,217,163,0.13),rgba(1,24,20,0.78)_42%,rgba(0,16,15,0.95)_100%)] px-4 py-4 shadow-[0_24px_80px_rgba(0,0,0,0.36)] sm:px-8 sm:py-7 lg:px-12">
+      <div className="mx-auto w-full max-w-[900px] space-y-5 lg:max-w-none">
+        <div className="rounded-[20px] border border-[#20D9A3]/45 bg-[#04231d]/70 p-2.5 shadow-[inset_0_0_28px_rgba(32,217,163,0.06)] sm:p-3">
+          <div className="flex min-w-0 items-center gap-2 text-[11px] font-extrabold text-white min-[390px]:text-xs sm:gap-3 sm:text-lg">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[#20D9A3]/25 bg-[#062f27] text-[#20D9A3] sm:h-12 sm:w-12">
               <LockKeyhole className="h-5 w-5" aria-hidden="true" />
             </span>
-            <span>{labels.unlock(remainingSessions)}</span>
-            <ArrowRight
-              className="h-5 w-5 shrink-0 text-[#20D9A3]"
-              aria-hidden="true"
-            />
+            <span className="min-w-0 truncate whitespace-nowrap">
+              {labels.unlock(remainingSessions)}
+            </span>
           </div>
         </div>
 
@@ -511,17 +514,33 @@ export function TrialDashboardView({
         <div className="flex items-end justify-end gap-4">
           <button
             type="button"
-            aria-label={labels.seriousPoolLocked}
-            disabled
-            className="relative grid h-20 w-20 place-items-center rounded-full border border-[#20D9A3]/40 bg-[#0c3a31] text-[#9ff0ce] opacity-90 shadow-[0_0_38px_rgba(32,217,163,0.16)] sm:h-24 sm:w-24"
+            aria-label={
+              seriousUnlocked ? createSessionLabel : labels.seriousPoolLocked
+            }
+            disabled={!seriousUnlocked}
+            onClick={() => {
+              if (!seriousUnlocked) {
+                return;
+              }
+              window.dispatchEvent(
+                new CustomEvent('activeboard:open-create-session'),
+              );
+            }}
+            className={`relative grid h-20 w-20 place-items-center rounded-full border border-[#20D9A3]/40 bg-[#0c3a31] text-[#9ff0ce] shadow-[0_0_38px_rgba(32,217,163,0.16)] transition sm:h-24 sm:w-24 ${
+              seriousUnlocked
+                ? 'hover:border-[#20D9A3]/70 hover:bg-[#125242]'
+                : 'opacity-90'
+            }`}
           >
             <Plus className="h-12 w-12" aria-hidden="true" />
-            <span className="absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full bg-amber-300 text-[#062b22]">
-              <LockKeyhole className="h-4 w-4" aria-hidden="true" />
-            </span>
+            {!seriousUnlocked ? (
+              <span className="absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full bg-amber-300 text-[#062b22]">
+                <LockKeyhole className="h-4 w-4" aria-hidden="true" />
+              </span>
+            ) : null}
           </button>
           <span className="pb-2 text-sm font-bold text-[#b8c7c4] sm:text-base">
-            {labels.seriousPoolLocked}
+            {seriousUnlocked ? createSessionLabel : labels.seriousPoolLocked}
           </span>
         </div>
 

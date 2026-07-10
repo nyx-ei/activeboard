@@ -7,7 +7,6 @@ import { DashboardViewShell } from '@/components/dashboard/dashboard-view-shell'
 import type { DashboardPerformanceViewProps } from '@/components/dashboard/dashboard-performance-view';
 import type { DashboardSessionsViewProps } from '@/components/dashboard/dashboard-sessions-view';
 import type { AppLocale } from '@/i18n/routing';
-import { canAccessAdminConsole } from '@/lib/admin/access';
 import { requireUser } from '@/lib/auth';
 import {
   getUserAccessState,
@@ -17,7 +16,6 @@ import {
   getDashboardPerformanceSummaryData,
   getDashboardSessionsData,
 } from '@/lib/demo/data';
-import { Link } from '@/i18n/navigation';
 import { getOnboardingCompletion } from '@/lib/onboarding/completion';
 import { ensureInitialTestSessions } from '@/lib/session/initial-test-sessions';
 import { getPlanNextAccess } from '@/lib/session/plan-next-access';
@@ -39,25 +37,6 @@ type DashboardPageProps = {
     sessionJoinFeedback?: string;
   };
 };
-
-function canAccessOpsDashboard(email: string | undefined) {
-  const allowlist = process.env.OPS_DASHBOARD_ALLOWED_EMAILS;
-
-  if (!allowlist) {
-    return true;
-  }
-
-  const normalizedEmail = email?.trim().toLowerCase();
-  if (!normalizedEmail) {
-    return false;
-  }
-
-  return allowlist
-    .split(',')
-    .map((item) => item.trim().toLowerCase())
-    .filter(Boolean)
-    .includes(normalizedEmail);
-}
 
 export default async function DashboardPage({
   params,
@@ -96,9 +75,6 @@ export default async function DashboardPage({
     accessState,
     'canBrowseLookupLayer',
   );
-  const canOpenOpsDashboard = canAccessOpsDashboard(user.email);
-  const canOpenAdminConsole = canAccessAdminConsole(user.email);
-
   const liveGroupIds = new Set(
     (sessionsData?.activeSessions ?? []).map((session) => session.group_id),
   );
@@ -406,27 +382,7 @@ export default async function DashboardPage({
         feedbackId={isSessionJoinFeedback ? undefined : searchParams.feedbackId}
       />
 
-      <section className="mx-auto w-full max-w-[1440px] space-y-[14px] px-3 py-0 sm:space-y-[18px] sm:px-2">
-        {canOpenOpsDashboard || canOpenAdminConsole ? (
-          <div className="flex justify-end gap-2">
-            {canOpenAdminConsole ? (
-              <Link
-                href="/admin"
-                className="inline-flex h-9 items-center rounded-[9px] border border-[#20D9A3]/25 bg-[#20D9A3]/10 px-3 text-[12px] font-semibold text-[#9FF0CE] transition hover:border-[#20D9A3]/45 hover:bg-[#20D9A3]/15"
-              >
-                Admin console
-              </Link>
-            ) : null}
-            {canOpenOpsDashboard ? (
-            <Link
-              href="/ops"
-              className="inline-flex h-9 items-center rounded-[9px] border border-white/[0.07] bg-white/[0.025] px-3 text-[12px] font-semibold text-[#9FF0CE] transition hover:border-[#20D9A3]/35 hover:bg-[#20D9A3]/10"
-            >
-              Ops dashboard
-            </Link>
-            ) : null}
-          </div>
-        ) : null}
+      <section className="mx-auto w-full max-w-[1440px] px-3 py-0 sm:px-2">
         <DashboardViewShell
           sessionsProps={sessionsProps}
           performanceProps={performanceProps}

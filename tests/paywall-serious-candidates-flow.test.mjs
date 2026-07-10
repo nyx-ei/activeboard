@@ -22,6 +22,8 @@ test('dashboard triggers serious-candidate paywall after trial sessions', () => 
   assert.match(seriousPanel, /Unlock serious candidates/);
   assert.match(seriousPanel, /href="\/billing"/);
   assert.match(trialDashboard, /<SeriousCandidatesPanel/);
+  assert.match(trialDashboard, /seriousUnlocked/);
+  assert.match(trialDashboard, /activeboard:open-create-session/);
 });
 
 test('serious candidates are gated, ranked, and expose reliability indicators', () => {
@@ -60,4 +62,13 @@ test('paid users can create max-five serious study groups from eligible candidat
   assert.match(seriousGroupsRoute, /sendGroupInviteEmail/);
   assert.match(seriousPanel, /current\.length >= 4/);
   assert.match(seriousPanel, /\/api\/serious-groups/);
+});
+
+test('dashboard keeps the unlock card compact and hides operator shortcuts', () => {
+  assert.match(trialDashboard, /truncate whitespace-nowrap/);
+  assert.match(trialDashboard, /disabled=\{!seriousUnlocked\}/);
+  assert.doesNotMatch(dashboardPage, /Admin console/);
+  assert.doesNotMatch(dashboardPage, /Ops dashboard/);
+  assert.doesNotMatch(dashboardPage, /canOpenOpsDashboard/);
+  assert.doesNotMatch(dashboardPage, /canOpenAdminConsole/);
 });
