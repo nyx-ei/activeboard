@@ -1,8 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
-  Archive,
   ArrowRight,
   CheckCircle2,
   Info,
@@ -140,19 +139,33 @@ function getStatusClass(status: TrialStatus) {
   }
 }
 
-function getPriority(status: SessionListItem['status']) {
-  switch (status) {
-    case 'active':
-      return 0;
-    case 'incomplete':
-      return 1;
-    case 'scheduled':
-      return 2;
-    case 'completed':
-      return 3;
-    default:
-      return 4;
+function getSessionSortPriority(session: SessionListItem) {
+  if (session.status === 'active') {
+    return 0;
   }
+
+  if (session.status === 'incomplete') {
+    return 1;
+  }
+
+  if (session.status === 'scheduled' && session.meeting_link) {
+    return 2;
+  }
+
+  if (session.status === 'scheduled') {
+    return 3;
+  }
+
+  return 4;
+}
+
+function getNaturalSessionOrder(session: SessionListItem) {
+  const label = session.name ?? '';
+  const match = label.match(
+    /(?:session\s*(?:test)?|séance\s*(?:test)?)\D*(\d+)/i,
+  );
+
+  return match?.[1] ? Number(match[1]) : Number.POSITIVE_INFINITY;
 }
 
 function selectTrialSessions(sessions: SessionListItem[]) {
@@ -163,28 +176,24 @@ function selectTrialSessions(sessions: SessionListItem[]) {
     )
     .slice()
     .sort((left, right) => {
-      const priorityDelta = getPriority(left.status) - getPriority(right.status);
+      const priorityDelta =
+        getSessionSortPriority(left) - getSessionSortPriority(right);
       if (priorityDelta !== 0) {
         return priorityDelta;
       }
 
+      const naturalOrderDelta =
+        getNaturalSessionOrder(left) - getNaturalSessionOrder(right);
+      if (naturalOrderDelta !== 0) {
+        return naturalOrderDelta;
+      }
+
       return (
-        new Date(right.scheduled_at).getTime() -
-        new Date(left.scheduled_at).getTime()
+        new Date(left.scheduled_at).getTime() -
+        new Date(right.scheduled_at).getTime()
       );
     })
     .slice(0, 3);
-}
-
-function selectArchivedSessions(sessions: SessionListItem[]) {
-  return sessions
-    .filter((session) => session.status === 'completed')
-    .slice()
-    .sort(
-      (left, right) =>
-        new Date(right.scheduled_at).getTime() -
-        new Date(left.scheduled_at).getTime(),
-    );
 }
 
 function formatDate(locale: string, value: string) {
@@ -453,13 +462,8 @@ export function TrialDashboardView({
   performanceProps,
 }: TrialDashboardViewProps) {
   const labels = getCopy(locale);
-  const [showArchivedSessions, setShowArchivedSessions] = useState(false);
   const trialSessions = useMemo(
     () => selectTrialSessions(sessionsProps.sessions),
-    [sessionsProps.sessions],
-  );
-  const archivedSessions = useMemo(
-    () => selectArchivedSessions(sessionsProps.sessions),
     [sessionsProps.sessions],
   );
   const completedSessions = sessionsProps.sessions.filter(
@@ -513,15 +517,8 @@ export function TrialDashboardView({
   );
   const createSessionLabel =
     locale === 'fr' ? 'Créer une séance' : 'Create session';
-  const archiveLabel = locale === 'fr' ? 'Archives' : 'Archive';
-  const archivedTitle =
-    locale === 'fr' ? 'Séances archivées' : 'Archived sessions';
-  const backLabel = locale === 'fr' ? 'Retour' : 'Back';
-  const displayedSessions = showArchivedSessions
-    ? archivedSessions
-    : trialSessions;
   const emptyRows = Array.from({
-    length: showArchivedSessions ? 0 : Math.max(0, 3 - trialSessions.length),
+    length: Math.max(0, 3 - trialSessions.length),
   });
 
   return (
@@ -572,30 +569,11 @@ export function TrialDashboardView({
         </div>
 
         <div className="space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-white sm:text-3xl">
-              {showArchivedSessions ? archivedTitle : labels.testSessions}
-            </h1>
-            <button
-              type="button"
-              onClick={() =>
-                setShowArchivedSessions((current) => !current)
-              }
-              className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[#20D9A3] px-4 text-sm font-extrabold text-[#062b22] shadow-[0_16px_32px_rgba(32,217,163,0.18)] transition hover:bg-[#2fe9b1]"
-              aria-label={showArchivedSessions ? backLabel : archiveLabel}
-            >
-              {showArchivedSessions ? (
-                <ArrowRight className="h-4 w-4 rotate-180" aria-hidden="true" />
-              ) : (
-                <Archive className="h-4 w-4" aria-hidden="true" />
-              )}
-              <span className="max-[420px]:sr-only">
-                {showArchivedSessions ? backLabel : archiveLabel}
-              </span>
-            </button>
-          </div>
+          <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-white sm:text-3xl">
+            {labels.testSessions}
+          </h1>
 
-          {displayedSessions.map((session, index) => (
+          {trialSessions.map((session, index) => (
             <TrialSessionRow
               key={session.id}
               session={session}

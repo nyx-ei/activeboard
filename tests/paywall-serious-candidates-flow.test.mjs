@@ -69,7 +69,7 @@ test('paid users can create max-five serious study groups from eligible candidat
 
 test('dashboard keeps the unlock card compact and hides operator shortcuts', () => {
   assert.match(trialDashboard, /truncate whitespace-nowrap/);
-  assert.match(trialDashboard, /px-2\.5 py-1\.5/);
+  assert.match(trialDashboard, /px-2 py-1/);
   assert.match(trialDashboard, /disabled=\{!seriousUnlocked\}/);
   assert.doesNotMatch(dashboardPage, /Admin console/);
   assert.doesNotMatch(dashboardPage, /Ops dashboard/);
@@ -77,11 +77,15 @@ test('dashboard keeps the unlock card compact and hides operator shortcuts', () 
   assert.doesNotMatch(dashboardPage, /canOpenAdminConsole/);
 });
 
-test('dashboard archives completed sessions and uses dynamic single-user badges', () => {
-  assert.match(trialDashboard, /selectArchivedSessions/);
+test('dashboard hides completed sessions and uses dynamic single-user badges', () => {
   assert.match(trialDashboard, /session\.status !== 'completed'/);
-  assert.match(trialDashboard, /showArchivedSessions/);
-  assert.match(trialDashboard, /<Archive/);
+  assert.doesNotMatch(trialDashboard, /selectArchivedSessions/);
+  assert.doesNotMatch(trialDashboard, /showArchivedSessions/);
+  assert.doesNotMatch(trialDashboard, /<Archive/);
+  assert.match(trialDashboard, /getSessionSortPriority/);
+  assert.match(trialDashboard, /session\.status === 'active'/);
+  assert.match(trialDashboard, /session\.status === 'scheduled' && session\.meeting_link/);
+  assert.match(trialDashboard, /getNaturalSessionOrder/);
   assert.match(trialDashboard, /getSessionMemberCount/);
   assert.match(trialDashboard, /Array\.from\(\{ length: visibleCount \}\)/);
   assert.match(trialDashboard, /activeCandidates - 1/);
