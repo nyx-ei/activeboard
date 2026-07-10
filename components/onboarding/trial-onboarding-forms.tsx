@@ -292,10 +292,13 @@ export function TrialAccountForm({ locale }: { locale: AppLocale }) {
       const supabase = createSupabaseBrowserClient();
       const origin = window.location.origin;
       const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+      const nextPath = `/${locale}/onboarding/profile`;
+      const callbackUrl = new URL(`/${locale}/auth/callback`, origin);
+      callbackUrl.searchParams.set('next', nextPath);
       const { error: otpError } = await supabase.auth.signInWithOtp({
         email: email.trim().toLowerCase(),
         options: {
-          emailRedirectTo: `${origin}/${locale}/auth/callback?next=/${locale}/onboarding/profile`,
+          emailRedirectTo: callbackUrl.toString(),
           data: {
             first_name: firstName.trim(),
             last_name: lastName.trim(),

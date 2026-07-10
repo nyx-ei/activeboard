@@ -12,6 +12,7 @@ export type SessionListItem = {
   name: string | null;
   scheduled_at: string;
   share_code: string;
+  meeting_link?: string | null;
   status: 'scheduled' | 'active' | 'incomplete' | 'completed' | 'cancelled';
   question_goal?: number;
   timer_seconds?: number;

@@ -1,10 +1,11 @@
 import { Check } from 'lucide-react';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
 import { SessionActiveRuntime } from '@/components/session/session-active-runtime';
 import { SessionAutoStartRuntime } from '@/components/session/session-auto-start-runtime';
+import { SessionConfigureRuntime } from '@/components/session/session-configure-runtime';
 import { SessionPeerFeedbackRuntime } from '@/components/session/session-peer-feedback-runtime';
 import { SessionPlanNextRuntime } from '@/components/session/session-plan-next-runtime';
 import { SessionProgressEntryRuntime } from '@/components/session/session-progress-entry-runtime';
@@ -17,6 +18,7 @@ import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
 import { getSessionPageData } from '@/lib/demo/data';
+import { getAppPolicySettings } from '@/lib/policy/app-policy';
 import { getPlanNextAccess } from '@/lib/session/plan-next-access';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
@@ -72,13 +74,27 @@ async function getReviewPeers(groupId: string, currentUserId: string) {
     return [];
   }
 
-  const { data: profiles } = await supabase
+  const [{ data: profiles }, { data: metrics }] = await Promise.all([
+    supabase
     .schema('public')
     .from('users')
-    .select('id, email, display_name, avatar_url')
-    .in('id', peerIds);
+    .select(
+      'id, email, display_name, avatar_url',
+    )
+    .in('id', peerIds),
+    supabase
+      .schema('public')
+      .from('candidate_matching_profiles')
+      .select(
+        'user_id, questions_reviewed, sessions_joined, positive_peer_votes, total_peer_votes',
+      )
+      .in('user_id', peerIds),
+  ]);
 
   const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+  const metricsById = new Map(
+    (metrics ?? []).map((metric) => [metric.user_id, metric]),
+  );
 
   return peerIds.map((peerId) => {
     const profile = profileById.get(peerId);
@@ -88,8 +104,107 @@ async function getReviewPeers(groupId: string, currentUserId: string) {
       name: profile?.display_name ?? profile?.email ?? 'ActiveBoard',
       email: profile?.email ?? '',
       avatarUrl: profile?.avatar_url ?? null,
+      reliabilityScore: computePeerReliabilityScore(metricsById.get(peerId)),
     };
   });
+}
+
+function computePeerReliabilityScore(profile: {
+  questions_reviewed?: number | null;
+  sessions_joined?: number | null;
+  positive_peer_votes?: number | null;
+  total_peer_votes?: number | null;
+} | null | undefined) {
+  const reviewedScore = Math.min((profile?.questions_reviewed ?? 0) / 60, 1) * 35;
+  const attendanceScore = Math.min((profile?.sessions_joined ?? 0) / 3, 1) * 35;
+  const peerScore =
+    (profile?.total_peer_votes ?? 0) > 0
+      ? ((profile?.positive_peer_votes ?? 0) /
+          Math.max(profile?.total_peer_votes ?? 1, 1)) *
+        30
+      : 0;
+
+  return Math.round(reviewedScore + attendanceScore + peerScore);
+}
+
+async function getConfigureGroup(groupId: string) {
+  const supabase = createSupabaseAdminClient();
+  const [{ data: group }, { data: memberships }] = await Promise.all([
+    supabase
+      .schema('public')
+      .from('groups')
+      .select('id, name, max_members')
+      .eq('id', groupId)
+      .maybeSingle(),
+    supabase
+      .schema('public')
+      .from('group_members')
+      .select('user_id')
+      .eq('group_id', groupId),
+  ]);
+
+  const memberIds = [
+    ...new Set(
+      (memberships ?? [])
+        .map((membership) => membership.user_id)
+        .filter((memberId): memberId is string => Boolean(memberId)),
+    ),
+  ];
+  const { data: profiles } =
+    memberIds.length > 0
+      ? await supabase
+          .schema('public')
+          .from('users')
+          .select('id, email, display_name, avatar_url, phone_number')
+          .in('id', memberIds)
+      : { data: [] };
+
+  return {
+    id: group?.id ?? groupId,
+    name: group?.name ?? 'ActiveBoard',
+    memberCount: Math.max(memberIds.length, 1),
+    maxMembers: group?.max_members ?? 5,
+    membersPreview: (profiles ?? []).map((profile) => {
+      const label = profile.display_name ?? profile.email ?? 'AB';
+      const initials =
+        label
+          .split(/[\s@._-]+/)
+          .map((part) => part.trim()[0])
+          .filter(Boolean)
+          .slice(0, 2)
+          .join('')
+          .toUpperCase() || 'AB';
+
+      return {
+        id: profile.id,
+        initials,
+        name: profile.display_name,
+        email: profile.email,
+        phoneNumber: profile.phone_number,
+        avatarUrl: profile.avatar_url,
+      };
+    }),
+  };
+}
+
+function canEditScheduledSessionTime(session: {
+  status: string | null;
+  scheduled_at: string | null;
+  meeting_link?: string | null;
+}) {
+  if (session.status !== 'scheduled') {
+    return false;
+  }
+
+  if (!session.meeting_link) {
+    return true;
+  }
+
+  if (!session.scheduled_at) {
+    return false;
+  }
+
+  return new Date(session.scheduled_at).getTime() - Date.now() > 60 * 60 * 1000;
 }
 
 export default async function SessionPage({
@@ -167,6 +282,7 @@ export default async function SessionPage({
   const isFeedback = searchParams.stage === 'feedback';
   const isPlanNext = searchParams.stage === 'plan-next';
   const isProgress = searchParams.stage === 'progress';
+  const isConfigure = searchParams.stage === 'configure';
   const isPostAnswerStage = isReview || isFeedback || isPlanNext;
   const reviewedQuestionCount =
     'reviewedQuestionCount' in data &&
@@ -202,12 +318,52 @@ export default async function SessionPage({
     typeof currentIndex === 'number' ? `&q=${currentIndex}` : '';
   const progressSessionHref =
     data.session.status === 'scheduled'
-      ? `/sessions/${params.sessionId}?q=0`
+      ? canEditScheduledSessionTime(data.session)
+        ? `/sessions/${params.sessionId}?stage=configure`
+        : `/sessions/${params.sessionId}?q=0`
       : data.session.status === 'incomplete' ||
           data.session.status === 'completed' ||
           question?.phase === 'review'
         ? `/sessions/${params.sessionId}?stage=review&q=${currentIndex}`
         : `/sessions/${params.sessionId}?q=${currentIndex}`;
+
+  if (isConfigure) {
+    if (!canEditScheduledSessionTime(data.session)) {
+      redirect(`/${locale}/sessions/${params.sessionId}?stage=progress`);
+    }
+
+    const [sessionPolicy, configureGroup] = await Promise.all([
+      getAppPolicySettings(),
+      getConfigureGroup(data.group.id),
+    ]);
+
+    return (
+      <main className="flex flex-1 flex-col">
+        <SessionTabPresence sessionId={params.sessionId} />
+        <FeedbackBanner
+          message={searchParams.feedbackMessage}
+          tone={searchParams.feedbackTone}
+          feedbackId={searchParams.feedbackId}
+        />
+        <SessionConfigureRuntime
+          locale={locale}
+          groups={[configureGroup]}
+          sessionPolicy={sessionPolicy}
+          planNextAccess={planNextAccess}
+          existingSession={{
+            id: params.sessionId,
+            groupId: data.group.id,
+            name: data.session.name,
+            scheduledAt: data.session.scheduled_at ?? new Date().toISOString(),
+            questionGoal: questionGoal,
+            timerMode: data.session.timer_mode,
+            timerSeconds: data.session.timer_seconds,
+            meetingLink: data.session.meeting_link ?? null,
+          }}
+        />
+      </main>
+    );
+  }
 
   if (isProgress) {
     return (
@@ -228,10 +384,16 @@ export default async function SessionPage({
           timerSeconds={data.session.timer_seconds}
           answeredCount={answeredCount}
           reviewedCount={reviewedQuestionCount}
+          scheduledAt={data.session.scheduled_at ?? undefined}
+          meetingLink={data.session.meeting_link}
           feedbackSubmitted={searchParams.feedback === 'done'}
         />
       </main>
     );
+  }
+
+  if (data.session.status === 'scheduled' && !data.session.meeting_link) {
+    redirect(`/${locale}/sessions/${params.sessionId}?stage=configure`);
   }
 
   if (data.session.status === 'scheduled') {
@@ -366,6 +528,7 @@ export default async function SessionPage({
           sessionId={params.sessionId}
           sessionTitle={data.session.name ?? data.group.name}
           peers={reviewPeers}
+          questionsTogether={questionGoal}
         />
       </main>
     );

@@ -18,6 +18,7 @@ type Peer = {
   name: string;
   email: string;
   avatarUrl: string | null;
+  reliabilityScore: number;
 };
 
 type FeedbackValue = 'yes' | 'no' | 'not_enough';
@@ -27,6 +28,7 @@ type SessionPeerFeedbackRuntimeProps = {
   sessionId: string;
   sessionTitle: string;
   peers: Peer[];
+  questionsTogether: number;
 };
 
 const copy = {
@@ -42,6 +44,7 @@ const copy = {
     submit: 'Submit feedback',
     submitting: 'Submitting...',
     error: 'Feedback could not be submitted. Please try again.',
+    peerMetrics: '{questions} questions together - {score}% reliability',
   },
   fr: {
     back: 'Retour',
@@ -55,6 +58,7 @@ const copy = {
     submit: 'Soumettre le feedback',
     submitting: 'Soumission...',
     error: "Le feedback n'a pas pu être soumis. Réessaie.",
+    peerMetrics: '{questions} questions ensemble - {score}% fiabilite',
   },
 } as const;
 
@@ -63,6 +67,7 @@ export function SessionPeerFeedbackRuntime({
   sessionId,
   sessionTitle,
   peers,
+  questionsTogether,
 }: SessionPeerFeedbackRuntimeProps) {
   const language = locale === 'fr' ? 'fr' : 'en';
   const t = copy[language];
@@ -174,6 +179,11 @@ export function SessionPeerFeedbackRuntime({
                       </p>
                       <p className="truncate text-xs font-semibold text-slate-500">
                         {peer.email}
+                      </p>
+                      <p className="mt-1 truncate text-[11px] font-bold text-brand/85">
+                        {t.peerMetrics
+                          .replace('{questions}', String(questionsTogether))
+                          .replace('{score}', String(peer.reliabilityScore))}
                       </p>
                     </div>
                   </div>

@@ -49,6 +49,7 @@ export function CreateSessionModal({
   sessionPolicy = DEFAULT_SESSION_CREATION_POLICY,
   planNextAccess,
   onClose,
+  existingSession,
 }: {
   locale: string;
   groups: Array<{
@@ -66,27 +67,48 @@ export function CreateSessionModal({
   }>;
   initialGroupId: string;
   canCreateSession: boolean;
-  action: (formData: FormData) => void | Promise<void>;
+  action?: (formData: FormData) => void | Promise<void>;
   labels: CreateSessionModalLabels;
   sessionPolicy?: SessionCreationPolicy;
   planNextAccess?: PlanNextAccess;
   onClose: () => void;
+  existingSession?: {
+    id: string;
+    groupId: string;
+    name: string | null;
+    scheduledAt: string;
+    questionGoal: number;
+    timerMode: 'per_question' | 'global';
+    timerSeconds: number;
+    meetingLink: string | null;
+  };
 }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const [name, setName] = useState('');
-  const [selectedGroupId, setSelectedGroupId] = useState(initialGroupId);
+  const isExistingSessionPlan = Boolean(existingSession);
+  const [name, setName] = useState(existingSession?.name ?? '');
+  const [selectedGroupId, setSelectedGroupId] = useState(
+    existingSession?.groupId ?? initialGroupId,
+  );
   const [participantSearch, setParticipantSearch] = useState('');
   const [scheduledAt, setScheduledAt] = useState(() =>
-    getDefaultScheduledAtInputValue(),
+    existingSession
+      ? formatDateTimeLocalValue(new Date(existingSession.scheduledAt))
+      : getDefaultScheduledAtInputValue(),
   );
   const [questionGoal, setQuestionGoal] = useState(
-    String(sessionPolicy.defaultQuestionGoal),
+    String(existingSession?.questionGoal ?? sessionPolicy.defaultQuestionGoal),
   );
   const [timerMode, setTimerMode] = useState<'per_question' | 'global'>(
-    'per_question',
+    existingSession?.timerMode ?? 'per_question',
   );
   const [timerSeconds, setTimerSeconds] = useState(
-    String(sessionPolicy.perQuestionTimerDefaultSeconds),
+    String(
+      existingSession?.timerSeconds ??
+        sessionPolicy.perQuestionTimerDefaultSeconds,
+    ),
+  );
+  const [meetingLink, setMeetingLink] = useState(
+    existingSession?.meetingLink ?? '',
   );
   const [timerHelpMode, setTimerHelpMode] = useState<
     'per_question' | 'global' | null
@@ -99,8 +121,11 @@ export function CreateSessionModal({
   const minScheduledAt = getMinScheduledAtInputValue();
   const canInviteCandidates = Boolean(planNextAccess?.canInviteCandidates);
   const isLockedTestPlan = Boolean(
-    planNextAccess?.isTestPhase && !canInviteCandidates,
+    (planNextAccess?.isTestPhase && !canInviteCandidates) ||
+      isExistingSessionPlan,
   );
+  const shouldLockTimerSettings =
+    isLockedTestPlan && !isExistingSessionPlan;
 
   const updateTimerMode = (value: 'per_question' | 'global') => {
     setTimerMode(value);
@@ -175,7 +200,9 @@ export function CreateSessionModal({
   }, [canInviteCandidates, participantCandidates, participantSearch, selectedGroupId]);
   const selectedParticipantCount = selectedParticipantIds.length;
   const returnTo = selectedGroup
-    ? `/${locale}/dashboard?groupId=${encodeURIComponent(selectedGroup.id)}`
+    ? existingSession
+      ? `/${locale}/sessions/${existingSession.id}?stage=progress`
+      : `/${locale}/dashboard?groupId=${encodeURIComponent(selectedGroup.id)}`
     : `/${locale}/dashboard`;
   const participantCopy = getCleanParticipantCopy(locale);
   const timerModeCopy = getCleanTimerModeCopy(locale);
@@ -184,6 +211,11 @@ export function CreateSessionModal({
       ? 'Session test'
       : 'Test session'
     : labels.newSession;
+  const submitLabel = isExistingSessionPlan
+    ? locale === 'fr'
+      ? 'Planifier la séance'
+      : 'Schedule session'
+    : labels.createSession;
 
   useEffect(() => {
     if (!canInviteCandidates) {
@@ -247,7 +279,7 @@ export function CreateSessionModal({
   }, [canInviteCandidates, locale, participantSearch]);
 
   useEffect(() => {
-    if (!isLockedTestPlan) {
+    if (!isLockedTestPlan || isExistingSessionPlan) {
       return;
     }
 
@@ -261,6 +293,7 @@ export function CreateSessionModal({
     setTimerSeconds(String(sessionPolicy.perQuestionTimerDefaultSeconds));
   }, [
     isLockedTestPlan,
+    isExistingSessionPlan,
     planNextAccess?.lockedQuestionGoal,
     sessionPolicy.defaultQuestionGoal,
     sessionPolicy.perQuestionTimerDefaultSeconds,
@@ -270,13 +303,17 @@ export function CreateSessionModal({
     locale,
     canCreateSession,
     selectedParticipantCount,
-    minimumParticipantCount: sessionPolicy.minimumGroupMembersToStart,
+    minimumParticipantCount: isExistingSessionPlan
+      ? 1
+      : sessionPolicy.minimumGroupMembersToStart,
     name,
     scheduledAt,
     questionGoal,
     maxQuestionGoal: sessionPolicy.maxQuestionGoal,
     timerSeconds,
     maxTimerSeconds: sessionPolicy.maxTimerSeconds,
+    meetingLink,
+    requireMeetingLink: isExistingSessionPlan,
   });
   return (
     <Modal
@@ -325,7 +362,11 @@ export function CreateSessionModal({
           );
           const startedAt = performance.now();
           const formData = new FormData(event.currentTarget);
-          void fetch('/api/sessions', {
+          void fetch(
+            existingSession
+              ? `/api/sessions/${existingSession.id}/schedule`
+              : '/api/sessions',
+            {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -342,8 +383,10 @@ export function CreateSessionModal({
               questionGoal: Number(formData.get('questionGoal')),
               timerMode: formData.get('timerMode'),
               timerSeconds: Number(formData.get('timerSeconds')),
+              meetingLink: formData.get('meetingLink'),
             }),
-          })
+            },
+          )
             .then(async (response) => {
               const payload = (await response.json().catch(() => null)) as {
                 ok?: boolean;
@@ -456,8 +499,9 @@ export function CreateSessionModal({
             rows={2}
             value={name}
             onChange={(event) => setName(event.target.value)}
+            readOnly={isExistingSessionPlan}
             placeholder={labels.sessionNamePlaceholder}
-            className="field mt-2 min-h-[76px] resize-none rounded-[9px] px-3 py-2 text-sm leading-5"
+            className="field mt-2 min-h-[76px] resize-none rounded-[9px] px-3 py-2 text-sm leading-5 read-only:cursor-not-allowed read-only:opacity-70"
             autoComplete="off"
           />
         </label>
@@ -643,6 +687,21 @@ export function CreateSessionModal({
           </div>
         </div>
 
+        <label className="block">
+          <span className="text-sm font-bold text-slate-300">
+            {locale === 'fr' ? 'Lien de réunion' : 'Meeting link'}
+          </span>
+          <input
+            name="meetingLink"
+            type="url"
+            value={meetingLink}
+            onChange={(event) => setMeetingLink(event.target.value)}
+            placeholder="https://..."
+            className="field mt-2 h-10 rounded-[7px] px-3 py-2 text-sm"
+            autoComplete="off"
+          />
+        </label>
+
         <div className="grid min-w-0 grid-cols-2 gap-1.5 sm:gap-2">
           <label className="block min-w-0">
             <span className="block text-xs font-bold leading-tight text-slate-300 sm:text-sm">
@@ -671,7 +730,7 @@ export function CreateSessionModal({
               min="1"
               max={sessionPolicy.maxTimerSeconds}
               value={timerSeconds}
-              readOnly={isLockedTestPlan}
+              readOnly={shouldLockTimerSettings}
               onChange={(event) => setTimerSeconds(event.target.value)}
               className="field mt-2 h-10 min-w-0 rounded-[7px] px-2 py-2 text-sm read-only:cursor-not-allowed read-only:opacity-70 sm:px-3"
             />
@@ -721,10 +780,10 @@ export function CreateSessionModal({
                     value={value}
                     checked={timerMode === value}
                     onChange={() =>
-                      !isLockedTestPlan &&
+                      !shouldLockTimerSettings &&
                       updateTimerMode(value as 'per_question' | 'global')
                     }
-                    disabled={isLockedTestPlan}
+                    disabled={shouldLockTimerSettings}
                     className="sr-only"
                   />
                   <Clock
@@ -803,7 +862,7 @@ export function CreateSessionModal({
           className="button-primary disabled:bg-brand/40 h-10 w-full rounded-[7px] py-2 text-sm disabled:text-white/60"
           disabled={isCreating}
         >
-          {isCreating ? labels.createSessionPending : labels.createSession}
+          {isCreating ? labels.createSessionPending : submitLabel}
         </SubmitButton>
       </form>
     </Modal>
@@ -888,6 +947,8 @@ function getCreateSessionValidationIssue({
   maxQuestionGoal,
   timerSeconds,
   maxTimerSeconds,
+  meetingLink,
+  requireMeetingLink = false,
 }: {
   locale: string;
   canCreateSession: boolean;
@@ -899,6 +960,8 @@ function getCreateSessionValidationIssue({
   maxQuestionGoal: number;
   timerSeconds: string;
   maxTimerSeconds: number;
+  meetingLink?: string;
+  requireMeetingLink?: boolean;
 }) {
   const copy = getCreateSessionValidationCopy(locale);
   const questionGoalValue = Number(questionGoal);
@@ -920,6 +983,10 @@ function getCreateSessionValidationIssue({
 
   if (!isValidScheduledAtInput(scheduledAt)) {
     return copy.scheduledAt;
+  }
+
+  if (requireMeetingLink && !meetingLink?.trim()) {
+    return copy.meetingLink;
   }
 
   if (
@@ -950,6 +1017,7 @@ function getCreateSessionValidationCopy(locale: string) {
         'Sélectionne au moins {minimum} participants pour créer une session. Actuellement : {selected}.',
       sessionName: 'Ajoute un objectif de séance.',
       scheduledAt: 'Choisis une date et une heure valides.',
+      meetingLink: 'Ajoute le lien de réunion avant de planifier la séance.',
       questionGoal:
         'Le nombre de questions doit être compris entre 1 et {maximum}.',
       timerSeconds:
@@ -964,6 +1032,7 @@ function getCreateSessionValidationCopy(locale: string) {
       'Select at least {minimum} participants to create a session. Current selection: {selected}.',
     sessionName: 'Add a session objective.',
     scheduledAt: 'Choose a valid date and time.',
+    meetingLink: 'Add the meeting link before scheduling the session.',
     questionGoal: 'Number of questions must be between 1 and {maximum}.',
     timerSeconds: 'Timer must be between 1 and {maximum} seconds.',
   };

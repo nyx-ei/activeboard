@@ -32,6 +32,7 @@ type DashboardSession = {
   scheduled_at: string;
   started_at: string | null;
   share_code: string;
+  meeting_link?: string | null;
   status: 'scheduled' | 'active' | 'incomplete' | 'completed' | 'cancelled';
   timer_mode: 'per_question' | 'global';
   timer_seconds: number;
@@ -260,6 +261,7 @@ type DashboardUserSessionRow = {
   scheduled_at: string | null;
   started_at: string | null;
   share_code: string | null;
+  meeting_link: string | null;
   status:
     | 'scheduled'
     | 'active'
@@ -282,6 +284,7 @@ type DashboardGroupSessionRow = {
   scheduled_at: string | null;
   started_at: string | null;
   share_code: string | null;
+  meeting_link: string | null;
   status:
     | 'scheduled'
     | 'active'
@@ -903,7 +906,7 @@ async function getDashboardCore(userId: string) {
       .schema('public')
       .from('dashboard_user_sessions')
       .select(
-        'id, group_id, name, scheduled_at, started_at, share_code, status, timer_mode, timer_seconds, leader_id, question_goal, question_count, answered_question_count',
+        'id, group_id, name, scheduled_at, started_at, share_code, meeting_link, status, timer_mode, timer_seconds, leader_id, question_goal, question_count, answered_question_count',
       )
       .eq('user_id', userId)
       .neq('status', 'cancelled')
@@ -971,7 +974,7 @@ async function getDashboardCore(userId: string) {
             .schema('public')
             .from('sessions')
             .select(
-              'id, group_id, name, scheduled_at, started_at, share_code, status, timer_mode, timer_seconds, leader_id, question_goal',
+              'id, group_id, name, scheduled_at, started_at, share_code, meeting_link, status, timer_mode, timer_seconds, leader_id, question_goal',
             )
             .in('group_id', groupIds)
             .in('status', ['scheduled', 'active'])
@@ -1083,6 +1086,7 @@ async function getDashboardCore(userId: string) {
       scheduled_at: row.scheduled_at,
       started_at: row.started_at,
       share_code: row.share_code,
+      meeting_link: row.meeting_link,
       status: row.status,
       timer_mode: row.timer_mode,
       timer_seconds: row.timer_seconds,
@@ -1125,6 +1129,7 @@ async function getDashboardCore(userId: string) {
       scheduled_at: row.scheduled_at,
       started_at: row.started_at,
       share_code: row.share_code,
+      meeting_link: row.meeting_link,
       status: row.status,
       timer_mode: row.timer_mode,
       timer_seconds: row.timer_seconds,
@@ -1147,6 +1152,69 @@ async function getDashboardCore(userId: string) {
       new Date(right.scheduled_at).getTime() -
       new Date(left.scheduled_at).getTime(),
   );
+
+  if (sessions.length > 0) {
+    const sessionQuestionRows = (
+      await Promise.all(
+        chunkArray(
+          sessions.map((session) => session.id),
+          200,
+        ).map((ids) =>
+          supabaseAdmin
+            .schema('public')
+            .from('questions')
+            .select('id, session_id')
+            .in('session_id', ids),
+        ),
+      )
+    ).flatMap((result) => result.data ?? []);
+    const questionSessionById = new Map(
+      sessionQuestionRows
+        .filter((question) => question.id && question.session_id)
+        .map((question) => [question.id as string, question.session_id as string]),
+    );
+    const answeredQuestionIds =
+      questionSessionById.size > 0
+        ? (
+            await Promise.all(
+              chunkArray([...questionSessionById.keys()], 200).map((ids) =>
+                supabaseAdmin
+                  .schema('public')
+                  .from('answers')
+                  .select('question_id')
+                  .eq('user_id', userId)
+                  .in('question_id', ids),
+              ),
+            )
+          ).flatMap((result) => result.data ?? [])
+        : [];
+    const answeredCountBySession = new Map<string, Set<string>>();
+
+    for (const answer of answeredQuestionIds) {
+      const questionId = answer.question_id;
+      const sessionId = questionId ? questionSessionById.get(questionId) : null;
+      if (!questionId || !sessionId) {
+        continue;
+      }
+
+      const current = answeredCountBySession.get(sessionId) ?? new Set<string>();
+      current.add(questionId);
+      answeredCountBySession.set(sessionId, current);
+    }
+
+    for (const session of sessions) {
+      session.questionCount = Math.max(
+        session.questionCount ?? 0,
+        [...questionSessionById.values()].filter(
+          (sessionId) => sessionId === session.id,
+        ).length,
+      );
+      session.answeredQuestionCount =
+        answeredCountBySession.get(session.id)?.size ??
+        session.answeredQuestionCount ??
+        0;
+    }
+  }
 
   const activeSessionIds = [
     ...new Set(

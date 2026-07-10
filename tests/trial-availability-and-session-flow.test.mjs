@@ -17,6 +17,15 @@ const onboardingActions = readFileSync(
   'app/[locale]/onboarding/actions.ts',
   'utf8',
 );
+const accountOnboardingForms = readFileSync(
+  'components/onboarding/trial-onboarding-forms.tsx',
+  'utf8',
+);
+const authCallbackRoute = readFileSync(
+  'app/[locale]/auth/callback/route.ts',
+  'utf8',
+);
+const authForm = readFileSync('components/auth/auth-form.tsx', 'utf8');
 const splitMccqeMigration = readFileSync(
   'supabase/migrations/20260709120000_split_mccqe_exam_language.sql',
   'utf8',
@@ -62,6 +71,18 @@ const advanceRoute = readFileSync(
   'utf8',
 );
 const sessionsRoute = readFileSync('app/api/sessions/route.ts', 'utf8');
+const scheduleRoute = readFileSync(
+  'app/api/sessions/[sessionId]/schedule/route.ts',
+  'utf8',
+);
+const initialTestSessions = readFileSync(
+  'lib/session/initial-test-sessions.ts',
+  'utf8',
+);
+const createSessionModal = readFileSync(
+  'components/sessions/create-session-modal.tsx',
+  'utf8',
+);
 const trialDashboard = readFileSync(
   'components/dashboard/trial-dashboard-view.tsx',
   'utf8',
@@ -159,16 +180,33 @@ test('landing hero stays compact with updated proof copy and wider device visual
   assert.match(landingEnMessages, /Prepare it with candidates as committed as you are\./);
   assert.match(landingEnMessages, /No promises\. Only proof\./);
   assert.match(landingEnMessages, /Free to start/);
+  assert.match(landingEnMessages, /Unlock serious study partners/);
+  assert.match(landingFrMessages, /Comment ça marche/);
   assert.match(landingEnMessages, /Start Your First Sprint/);
   assert.match(landingFrMessages, /Joigner 40\+ DHCEU/);
   assert.match(landingFrMessages, /La préparation EACMC/);
   assert.match(landingPage, /heroProofLine/);
   assert.match(landingPage, /heroPatternLine/);
+  assert.match(landingPage, /howTitle/);
+  assert.match(landingPage, /noCreditCard'\)}\. \{t\('heroProofLine/);
   assert.match(landingPage, /xl:text-\[52px\]/);
   assert.match(landingPage, /lg:w-\[min\(54vw,900px\)\]/);
   assert.match(landingPage, /lg:left-1\/2/);
   assert.match(landingPage, /translate\(-50%,-50%\)_rotateY/);
   assert.doesNotMatch(landingPage, /secondaryCta/);
+});
+
+test('onboarding email verification returns to the current onboarding step', () => {
+  assert.match(accountOnboardingForms, /new URL\(`\/\$\{locale\}\/auth\/callback`, origin\)/);
+  assert.match(accountOnboardingForms, /callbackUrl\.searchParams\.set\('next', nextPath\)/);
+  assert.match(accountOnboardingForms, /emailRedirectTo: callbackUrl\.toString\(\)/);
+  assert.match(authCallbackRoute, /next\?\.startsWith\(`\/\$\{locale\}\/onboarding`\)/);
+  assert.match(authCallbackRoute, /getOnboardingCompletion\(user\.id, locale\)/);
+});
+
+test('login page exposes a back link to the landing page', () => {
+  assert.match(authForm, /ArrowLeft/);
+  assert.match(authForm, /href=\{`\/\$\{locale\}` as never\}/);
 });
 
 test('dashboard progression details route is not linked or mounted', () => {
@@ -188,11 +226,7 @@ test('trial session review to feedback to plan-next to dashboard remains reachab
   );
   assert.match(
     trialDashboard,
-    /href=\{`\/sessions\/\$\{session\.id\}\?stage=progress`\}/,
-  );
-  assert.match(
-    trialDashboard,
-    /href=\{`\/sessions\/\$\{firstActionableSession\.id\}\?stage=progress`\}/,
+    /href=\{sessionHref\}/,
   );
   assert.match(
     sessionCard,
@@ -232,7 +266,8 @@ test('trial session review to feedback to plan-next to dashboard remains reachab
   assert.match(progressPanel, /border-dashed/);
   assert.match(progressPanel, /statusStarted/);
   assert.doesNotMatch(progressPanel, /sm:grid-cols-3/);
-  assert.match(progressEntryRuntime, /sessionMeta=\{`\$\{Math\.min\(answeredCount, questionGoal\)\}\/\$\{questionGoal\}Q - \$\{timerSeconds\} sec`\}/);
+  assert.match(progressEntryRuntime, /countdownLabel/);
+  assert.match(progressEntryRuntime, /sessionMeta=\{`\$\{Math\.min\(answeredCount, questionGoal\)\}\/\$\{questionGoal\}Q - \$\{timerSeconds\} sec/);
   assert.doesNotMatch(progressEntryRuntime, /feedbackMeta=/);
   assert.match(progressPanel, /FeedbackAvatarPreview/);
   assert.match(progressPanel, /\[0, 1, 2, 3\]\.map/);
@@ -291,4 +326,24 @@ test('scheduled sessions auto-start instead of showing the old start screen', ()
   assert.match(autoStartRuntime, /Starting sprint/);
   assert.match(autoStartRuntime, /stage=progress/);
   assert.match(startRuntime, /labels\.startSession/);
+});
+
+test('generated test sessions require time and meeting link before sprint', () => {
+  assert.match(initialTestSessions, /TEST_SESSION_QUESTION_GOAL = 20/);
+  assert.match(initialTestSessions, /date\.setHours\(0, 0, 0, 0\)/);
+  assert.doesNotMatch(initialTestSessions, /sendSessionCalendarInvites/);
+  assert.match(trialDashboard, /!session\.meeting_link/);
+  assert.match(trialDashboard, /\?stage=configure/);
+  assert.match(trialDashboard, /<span>XXhXX<\/span>/);
+  assert.match(sessionPage, /const isConfigure = searchParams\.stage === 'configure'/);
+  assert.match(sessionPage, /<SessionConfigureRuntime/);
+  assert.match(sessionPage, /!data\.session\.meeting_link/);
+  assert.match(createSessionModal, /existingSession/);
+  assert.match(createSessionModal, /meetingLink/);
+  assert.match(createSessionModal, /\/api\/sessions\/\$\{existingSession\.id\}\/schedule/);
+  assert.match(scheduleRoute, /EDIT_LOCK_WINDOW_MS = 60 \* 60 \* 1000/);
+  assert.match(scheduleRoute, /candidate_matching_profiles/);
+  assert.match(scheduleRoute, /sendSessionCalendarInvites/);
+  assert.match(feedbackRuntime, /peerMetrics/);
+  assert.match(feedbackRuntime, /questionsTogether/);
 });
