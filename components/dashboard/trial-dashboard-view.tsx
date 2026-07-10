@@ -1,18 +1,17 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
+  Archive,
   ArrowRight,
   CheckCircle2,
   Info,
   LockKeyhole,
-  MoreVertical,
   Plus,
-  Radio,
   RotateCcw,
   TrendingDown,
   TrendingUp,
-  Users,
+  UserRound,
 } from 'lucide-react';
 
 import { Link } from '@/i18n/navigation';
@@ -146,7 +145,10 @@ function getPriority(status: SessionListItem['status']) {
 
 function selectTrialSessions(sessions: SessionListItem[]) {
   return sessions
-    .filter((session) => session.status !== 'cancelled')
+    .filter(
+      (session) =>
+        session.status !== 'cancelled' && session.status !== 'completed',
+    )
     .slice()
     .sort((left, right) => {
       const priorityDelta = getPriority(left.status) - getPriority(right.status);
@@ -160,6 +162,17 @@ function selectTrialSessions(sessions: SessionListItem[]) {
       );
     })
     .slice(0, 3);
+}
+
+function selectArchivedSessions(sessions: SessionListItem[]) {
+  return sessions
+    .filter((session) => session.status === 'completed')
+    .slice()
+    .sort(
+      (left, right) =>
+        new Date(right.scheduled_at).getTime() -
+        new Date(left.scheduled_at).getTime(),
+    );
 }
 
 function formatDate(locale: string, value: string) {
@@ -187,12 +200,26 @@ function formatTime(locale: string, value: string) {
   }).format(date);
 }
 
-function ParticipantsBadge() {
+function ParticipantsBadge({ count }: { count: number }) {
+  const visibleCount = Math.max(1, Math.min(count, 3));
+  const overflowCount = Math.max(0, count - visibleCount);
+
   return (
     <div className="flex h-12 w-[72px] shrink-0 items-center justify-center gap-0.5 rounded-full border border-[#20D9A3]/20 bg-white/[0.035] text-slate-300 shadow-[inset_0_0_24px_rgba(32,217,163,0.07)] min-[390px]:w-20 sm:h-16 sm:w-32 sm:gap-1">
-      <Users className="h-4 w-4 opacity-80 sm:h-5 sm:w-5" aria-hidden="true" />
-      <Users className="h-4 w-4 text-[#20D9A3] sm:h-5 sm:w-5" aria-hidden="true" />
-      <Users className="h-4 w-4 opacity-80 sm:h-5 sm:w-5" aria-hidden="true" />
+      {Array.from({ length: visibleCount }).map((_, index) => (
+        <UserRound
+          key={index}
+          className={`h-4 w-4 sm:h-5 sm:w-5 ${
+            index === 1 ? 'text-[#20D9A3]' : 'opacity-80'
+          }`}
+          aria-hidden="true"
+        />
+      ))}
+      {overflowCount > 0 ? (
+        <span className="pl-0.5 text-[11px] font-black text-[#20D9A3] sm:text-sm">
+          +{overflowCount}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -202,11 +229,13 @@ function TrialSessionRow({
   index,
   locale,
   labels,
+  memberCount,
 }: {
   session: SessionListItem;
   index: number;
   locale: string;
   labels: ReturnType<typeof getCopy>;
+  memberCount: number;
 }) {
   const status = getSessionStatus(session);
   const answered = session.answeredQuestionCount ?? 0;
@@ -216,14 +245,15 @@ function TrialSessionRow({
   const isActionable =
     session.status === 'active' ||
     session.status === 'incomplete' ||
-    session.status === 'scheduled';
+    session.status === 'scheduled' ||
+    session.status === 'completed';
 
   return (
     <Link
       href={`/sessions/${session.id}?stage=progress`}
       className="group grid grid-cols-[auto_minmax(0,1fr)_minmax(60px,auto)] items-center gap-2 rounded-[18px] border border-[#20D9A3]/25 bg-[#082c24]/68 px-3 py-3 text-left shadow-[inset_0_0_38px_rgba(32,217,163,0.035)] transition hover:border-[#20D9A3]/55 hover:bg-[#0b3a30]/78 min-[390px]:grid-cols-[auto_minmax(0,1fr)_minmax(72px,auto)] sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-5 sm:px-5"
     >
-      <ParticipantsBadge />
+      <ParticipantsBadge count={memberCount} />
       <div className="min-w-0">
         <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
           <h3 className="max-w-full truncate text-base font-extrabold text-white min-[390px]:text-lg sm:text-xl">
@@ -247,8 +277,6 @@ function TrialSessionRow({
             <span className="max-w-full truncate">{formatDate(locale, session.scheduled_at)}</span>
             <span>{formatTime(locale, session.scheduled_at)}</span>
           </>
-        ) : session.status === 'completed' ? (
-          <MoreVertical className="h-7 w-7 text-[#9aaca8] sm:h-8 sm:w-8" aria-hidden="true" />
         ) : (
           <span>XXhXX</span>
         )}
@@ -266,7 +294,7 @@ function EmptyTrialSessionRow({
 }) {
   return (
     <div className="grid grid-cols-[auto_minmax(0,1fr)_minmax(60px,auto)] items-center gap-2 rounded-[18px] border border-[#20D9A3]/15 bg-[#08261f]/48 px-3 py-3 opacity-90 min-[390px]:grid-cols-[auto_minmax(0,1fr)_minmax(72px,auto)] sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-5 sm:px-5">
-      <ParticipantsBadge />
+      <ParticipantsBadge count={3} />
       <div className="min-w-0">
         <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
           <h3 className="truncate text-base font-extrabold text-white min-[390px]:text-lg sm:text-xl">
@@ -332,14 +360,29 @@ function MetricValue({
   );
 }
 
+function getSessionMemberCount(
+  session: SessionListItem,
+  groups: TrialDashboardViewProps['sessionsProps']['groups'],
+) {
+  return Math.max(
+    1,
+    groups.find((group) => group.id === session.group_id)?.memberCount ?? 1,
+  );
+}
+
 export function TrialDashboardView({
   locale,
   sessionsProps,
   performanceProps,
 }: TrialDashboardViewProps) {
   const labels = getCopy(locale);
+  const [showArchivedSessions, setShowArchivedSessions] = useState(false);
   const trialSessions = useMemo(
     () => selectTrialSessions(sessionsProps.sessions),
+    [sessionsProps.sessions],
+  );
+  const archivedSessions = useMemo(
+    () => selectArchivedSessions(sessionsProps.sessions),
     [sessionsProps.sessions],
   );
   const completedSessions = sessionsProps.sessions.filter(
@@ -387,20 +430,24 @@ export function TrialDashboardView({
   );
   const createSessionLabel =
     locale === 'fr' ? 'Creer une seance' : 'Create session';
-  const firstActionableSession = trialSessions.find(
-    (session) => session.status !== 'completed',
-  );
+  const archiveLabel = locale === 'fr' ? 'Archives' : 'Archive';
+  const archivedTitle =
+    locale === 'fr' ? 'Seances archivees' : 'Archived sessions';
+  const backLabel = locale === 'fr' ? 'Retour' : 'Back';
+  const displayedSessions = showArchivedSessions
+    ? archivedSessions
+    : trialSessions;
   const emptyRows = Array.from({
-    length: Math.max(0, 3 - trialSessions.length),
+    length: showArchivedSessions ? 0 : Math.max(0, 3 - trialSessions.length),
   });
 
   return (
     <section className="rounded-[28px] border border-white/[0.07] bg-[radial-gradient(circle_at_50%_10%,rgba(32,217,163,0.13),rgba(1,24,20,0.78)_42%,rgba(0,16,15,0.95)_100%)] px-4 py-4 shadow-[0_24px_80px_rgba(0,0,0,0.36)] sm:px-8 sm:py-7 lg:px-12">
       <div className="mx-auto w-full max-w-[900px] space-y-5 lg:max-w-none">
-        <div className="rounded-[20px] border border-[#20D9A3]/45 bg-[#04231d]/70 p-2.5 shadow-[inset_0_0_28px_rgba(32,217,163,0.06)] sm:p-3">
-          <div className="flex min-w-0 items-center gap-2 text-[11px] font-extrabold text-white min-[390px]:text-xs sm:gap-3 sm:text-lg">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[#20D9A3]/25 bg-[#062f27] text-[#20D9A3] sm:h-12 sm:w-12">
-              <LockKeyhole className="h-5 w-5" aria-hidden="true" />
+        <div className="rounded-[16px] border border-[#20D9A3]/45 bg-[#04231d]/70 px-2.5 py-1.5 shadow-[inset_0_0_24px_rgba(32,217,163,0.05)] sm:px-3 sm:py-2">
+          <div className="flex min-w-0 items-center gap-2 text-[11px] font-extrabold text-white min-[390px]:text-xs sm:gap-2.5 sm:text-base">
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-[#20D9A3]/25 bg-[#062f27] text-[#20D9A3] sm:h-9 sm:w-9">
+              <LockKeyhole className="h-4 w-4" aria-hidden="true" />
             </span>
             <span className="min-w-0 truncate whitespace-nowrap">
               {labels.unlock(remainingSessions)}
@@ -422,10 +469,10 @@ export function TrialDashboardView({
           <div className="flex min-h-[150px] flex-col items-center justify-center p-4 text-center sm:min-h-[180px] sm:p-6">
             <div className="flex items-center gap-2 sm:gap-4">
               <span className="grid h-14 w-20 place-items-center rounded-full border border-[#20D9A3]/20 bg-[#0c3a31] text-[#20D9A3] shadow-[0_0_32px_rgba(32,217,163,0.12)] min-[390px]:h-16 min-[390px]:w-24 sm:h-20 sm:w-32">
-                <Users className="h-8 w-8 sm:h-12 sm:w-12" aria-hidden="true" />
+                <UserRound className="h-8 w-8 sm:h-12 sm:w-12" aria-hidden="true" />
               </span>
               <span className="text-3xl font-black text-[#20D9A3] sm:text-4xl">
-                +{Math.max(activeCandidates, 0)}
+                +{Math.max(activeCandidates - 1, 0)}
               </span>
             </div>
             <p className="mt-4 text-sm font-semibold leading-snug text-[#b8c7c4] min-[390px]:text-base sm:mt-5 sm:text-xl">
@@ -444,28 +491,35 @@ export function TrialDashboardView({
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
             <h1 className="text-2xl font-extrabold tracking-[-0.03em] text-white sm:text-3xl">
-              {labels.testSessions}
+              {showArchivedSessions ? archivedTitle : labels.testSessions}
             </h1>
-            {firstActionableSession ? (
-              <Link
-                href={`/sessions/${firstActionableSession.id}?stage=progress`}
-                className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[#20D9A3] px-4 text-sm font-extrabold text-[#062b22] shadow-[0_16px_32px_rgba(32,217,163,0.18)] transition hover:bg-[#2fe9b1]"
-              >
-                <Radio className="h-4 w-4" aria-hidden="true" />
-                <span className="max-[420px]:sr-only">
-                  {labels.startSession}
-                </span>
-              </Link>
-            ) : null}
+            <button
+              type="button"
+              onClick={() =>
+                setShowArchivedSessions((current) => !current)
+              }
+              className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[#20D9A3] px-4 text-sm font-extrabold text-[#062b22] shadow-[0_16px_32px_rgba(32,217,163,0.18)] transition hover:bg-[#2fe9b1]"
+              aria-label={showArchivedSessions ? backLabel : archiveLabel}
+            >
+              {showArchivedSessions ? (
+                <ArrowRight className="h-4 w-4 rotate-180" aria-hidden="true" />
+              ) : (
+                <Archive className="h-4 w-4" aria-hidden="true" />
+              )}
+              <span className="max-[420px]:sr-only">
+                {showArchivedSessions ? backLabel : archiveLabel}
+              </span>
+            </button>
           </div>
 
-          {trialSessions.map((session, index) => (
+          {displayedSessions.map((session, index) => (
             <TrialSessionRow
               key={session.id}
               session={session}
               index={index}
               locale={locale}
               labels={labels}
+              memberCount={getSessionMemberCount(session, sessionsProps.groups)}
             />
           ))}
           {emptyRows.map((_, index) => (

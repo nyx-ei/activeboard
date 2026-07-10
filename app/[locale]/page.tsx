@@ -74,10 +74,6 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
               {t('landingSubtitle')}
             </p>
 
-            <p className="mt-3 text-[15px] font-extrabold text-white sm:text-base">
-              {t('heroProofLine')}
-            </p>
-
             <div className="mt-2.5 grid max-w-[590px] gap-1.5">
               {proofItems.map(({ key, Icon }) => {
                 return (
@@ -95,10 +91,6 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
               })}
             </div>
 
-            <p className="mt-2.5 max-w-[590px] text-[14px] font-semibold leading-6 text-[#d2dcda] sm:text-[15px]">
-              {t('heroPatternLine')}
-            </p>
-
             <div className="mt-3 max-w-[590px] space-y-2.5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <a
@@ -113,7 +105,9 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
               <div className="flex flex-wrap items-center gap-3 text-[13px] font-semibold text-white/72">
                 <span className="inline-flex items-center gap-2">
                   <Lock className="h-4 w-4 text-white/55" aria-hidden />
-                  {t('noCreditCard')}
+                  <span>
+                    {t('noCreditCard')}. {t('heroProofLine')}
+                  </span>
                 </span>
               </div>
             </div>
@@ -137,25 +131,35 @@ export default async function LocaleHomePage({ params }: LocaleHomePageProps) {
 
       <section
         id="how-it-works"
-        className="mx-auto grid w-full max-w-[1180px] gap-4 px-5 py-8 sm:px-8 lg:grid-cols-3 lg:px-12"
+        className="mx-auto w-full max-w-[1180px] px-5 py-8 sm:px-8 lg:px-12"
       >
-        {[
-          ['1', 'howStep1'],
-          ['2', 'howStep2'],
-          ['3', 'howStep3'],
-        ].map(([number, key]) => (
-          <div
-            key={number}
-            className="rounded-[8px] border border-white/[0.08] bg-white/[0.03] p-5"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-sm font-extrabold text-[#04120e]">
-              {number}
+        <div className="mb-5">
+          <h2 className="text-2xl font-extrabold text-white sm:text-3xl">
+            {t('howTitle')}
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-[#d2dcda] sm:text-base">
+            {t('heroPatternLine')}
+          </p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          {[
+            ['1', 'howStep1'],
+            ['2', 'howStep2'],
+            ['3', 'howStep3'],
+          ].map(([number, key]) => (
+            <div
+              key={number}
+              className="rounded-[8px] border border-white/[0.08] bg-white/[0.03] p-5"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-sm font-extrabold text-[#04120e]">
+                {number}
+              </div>
+              <p className="mt-4 text-base font-extrabold leading-snug text-white">
+                {t(key)}
+              </p>
             </div>
-            <p className="mt-4 text-base font-extrabold leading-snug text-white">
-              {t(key)}
-            </p>
-          </div>
-        ))}
+          ))}
+        </div>
       </section>
     </main>
   );

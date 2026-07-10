@@ -1,4 +1,5 @@
 import { getTranslations } from 'next-intl/server';
+import { ArrowLeft, LockKeyhole } from 'lucide-react';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
 import { Link } from '@/i18n/navigation';
@@ -42,7 +43,15 @@ export default async function LookupPage({
         feedbackId={searchParams.feedbackId}
       />
 
-      <section className="rounded-[16px] border border-white/[0.055] bg-[#071f1c] px-4 py-4 sm:px-5">
+      <section className="flex items-center gap-3 rounded-[16px] border border-white/[0.055] bg-[#071f1c] px-4 py-4 sm:px-5">
+        <Link
+          href="/dashboard"
+          prefetch={false}
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.035] text-slate-300 transition hover:border-brand/45 hover:text-white"
+          aria-label={language === 'fr' ? 'Retour dashboard' : 'Back to dashboard'}
+        >
+          <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+        </Link>
         <h1 className="inline-flex rounded-full border border-brand/25 bg-brand/10 px-3 py-1 text-xs font-extrabold text-brand">
           {t('eyebrow')}
         </h1>
@@ -69,13 +78,21 @@ export default async function LookupPage({
       )}
 
       {!canRevealProfiles ? (
-        <div className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-5 pt-12 [background:linear-gradient(180deg,rgba(0,16,15,0),rgba(0,16,15,0.92)_42%,rgba(0,16,15,0.98))]">
-          <Link
-            href="/billing"
-            className="flex h-14 w-full max-w-[420px] items-center justify-center rounded-[14px] border border-amber-300/35 bg-[#17210f]/95 px-5 text-base font-black text-amber-200 shadow-[0_20px_60px_rgba(0,0,0,0.45)] transition hover:bg-[#1e2a14]"
-          >
-            {t('unlockContacts')}
-          </Link>
+        <div className="fixed inset-0 z-30 flex items-center justify-center px-4 py-8 [background:radial-gradient(circle_at_50%_35%,rgba(0,16,15,0.25),rgba(0,16,15,0.72))]">
+          <div className="w-full max-w-[420px] rounded-[22px] border border-amber-300/35 bg-[#111827]/95 p-5 text-center shadow-[0_28px_90px_rgba(0,0,0,0.55)] backdrop-blur-sm">
+            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-amber-300 text-[#062b22]">
+              <LockKeyhole className="h-5 w-5" aria-hidden="true" />
+            </div>
+            <p className="mt-4 text-lg font-black text-white">
+              {t('unlockContacts')}
+            </p>
+            <Link
+              href="/billing"
+              className="mt-5 flex h-12 w-full items-center justify-center rounded-[12px] border border-amber-300/35 bg-[#17210f]/95 px-5 text-sm font-black text-amber-200 shadow-[0_20px_60px_rgba(0,0,0,0.35)] transition hover:bg-[#1e2a14]"
+            >
+              {t('unlockContacts')}
+            </Link>
+          </div>
         </div>
       ) : null}
     </main>

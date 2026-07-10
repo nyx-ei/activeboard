@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 
+import { Link } from '@/i18n/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { AppLocale } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
@@ -331,8 +333,18 @@ export function AuthForm({
   return (
     <div className={cn('w-full max-w-[410px]', variant === 'modal' && 'max-w-none')}>
       {variant === 'page' ? (
-        <div className="mx-auto flex h-[52px] w-[52px] items-center justify-center rounded-[8px] bg-brand text-xl font-extrabold text-white">
-          AB
+        <div className="flex flex-col items-center">
+          <Link
+            href={`/${locale}` as never}
+            prefetch={false}
+            className="mb-4 inline-flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-4 text-sm font-extrabold text-slate-300 transition hover:border-brand/45 hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            <span>{locale === 'fr' ? 'Retour' : 'Back'}</span>
+          </Link>
+          <div className="flex h-[52px] w-[52px] items-center justify-center rounded-[8px] bg-brand text-xl font-extrabold text-white">
+            AB
+          </div>
         </div>
       ) : (
         <div className="flex items-center gap-2">

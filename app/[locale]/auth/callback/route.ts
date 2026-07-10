@@ -101,7 +101,10 @@ export async function GET(request: Request, { params }: RouteContext) {
 
   let redirectPath = next?.startsWith('/') ? next : `/${locale}/dashboard`;
 
-  if (!next && user?.id) {
+  if (user?.id && next?.startsWith(`/${locale}/onboarding`)) {
+    const onboarding = await getOnboardingCompletion(user.id, locale);
+    redirectPath = onboarding.nextPath ?? `/${locale}/dashboard`;
+  } else if (!next && user?.id) {
     const normalizedEmail = user.email?.trim().toLowerCase() ?? '';
     const { data: pendingInvite } = await supabase
       .schema('public')
