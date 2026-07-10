@@ -25,6 +25,10 @@ const authCallbackRoute = readFileSync(
   'app/[locale]/auth/callback/route.ts',
   'utf8',
 );
+const onboardingEmailOtpRoute = readFileSync(
+  'app/api/onboarding/email-otp/route.ts',
+  'utf8',
+);
 const authForm = readFileSync('components/auth/auth-form.tsx', 'utf8');
 const splitMccqeMigration = readFileSync(
   'supabase/migrations/20260709120000_split_mccqe_exam_language.sql',
@@ -197,10 +201,14 @@ test('landing hero stays compact with updated proof copy and wider device visual
 });
 
 test('onboarding email verification returns to the current onboarding step', () => {
-  assert.match(accountOnboardingForms, /new URL\(`\/\$\{locale\}\/auth\/callback`, origin\)/);
-  assert.match(accountOnboardingForms, /callbackUrl\.searchParams\.set\('next', nextPath\)/);
-  assert.match(accountOnboardingForms, /emailRedirectTo: callbackUrl\.toString\(\)/);
+  assert.match(accountOnboardingForms, /fetch\('\/api\/onboarding\/email-otp'/);
+  assert.match(onboardingEmailOtpRoute, /persistSession: false/);
+  assert.match(onboardingEmailOtpRoute, /callbackUrl\.searchParams\.set\('next', `\/\$\{locale\}\/onboarding\/profile`\)/);
+  assert.match(onboardingEmailOtpRoute, /callbackUrl\.searchParams\.set\('email', email\)/);
+  assert.match(onboardingEmailOtpRoute, /emailRedirectTo: callbackUrl\.toString\(\)/);
   assert.match(authCallbackRoute, /next\?\.startsWith\(`\/\$\{locale\}\/onboarding`\)/);
+  assert.match(authCallbackRoute, /await supabase\.auth\.signOut\(\)/);
+  assert.match(authCallbackRoute, /actualEmail !== expectedEmail/);
   assert.match(authCallbackRoute, /getOnboardingCompletion\(user\.id, locale\)/);
 });
 
