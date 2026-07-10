@@ -87,6 +87,10 @@ const createSessionModal = readFileSync(
   'components/sessions/create-session-modal.tsx',
   'utf8',
 );
+const configureRuntime = readFileSync(
+  'components/session/session-configure-runtime.tsx',
+  'utf8',
+);
 const trialDashboard = readFileSync(
   'components/dashboard/trial-dashboard-view.tsx',
   'utf8',
@@ -356,12 +360,22 @@ test('generated test sessions require time and meeting link before sprint', () =
   assert.match(createSessionModal, /Avec les membres du groupe, fixez le temps/);
   assert.match(createSessionModal, /Avec les membres du groupe, choisissez le mode de session/);
   assert.match(createSessionModal, /name="sessionName" value=\{name\}/);
+  assert.doesNotMatch(createSessionModal, /const modalTitle/);
+  assert.match(createSessionModal, /next: 'Suivant'/);
+  assert.match(createSessionModal, /copyAction: 'Copier'/);
+  assert.match(createSessionModal, /isValidScheduledAtInput\(\s*scheduledAt,\s*isLockedTestPlan/s);
+  assert.doesNotMatch(createSessionModal, /Only the time can be changed/);
   assert.doesNotMatch(createSessionModal, /<textarea/);
+  assert.match(configureRuntime, /setIsOpen\(false\)/);
+  assert.match(configureRuntime, /router\.replace/);
   assert.match(createSessionModal, /meetingLink/);
   assert.match(createSessionModal, /toScheduledAtPayload/);
   assert.match(createSessionModal, /return date\.toISOString\(\)/);
   assert.match(createSessionModal, /\/api\/sessions\/\$\{existingSession\.id\}\/schedule/);
+  assert.match(scheduleRoute, /isSameLocalDay/);
   assert.match(progressPanel, /Planifier la prochaine session/);
+  assert.match(progressEntryRuntime, /en direct/);
+  assert.match(trialDashboard, /En direct/);
   assert.match(scheduleRoute, /EDIT_LOCK_WINDOW_MS = 60 \* 60 \* 1000/);
   assert.match(scheduleRoute, /candidate_matching_profiles/);
   assert.match(scheduleRoute, /sendSessionCalendarInvites/);

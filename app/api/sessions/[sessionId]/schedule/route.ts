@@ -30,14 +30,19 @@ function parseScheduledAt(value: string | undefined) {
   }
 
   const date = new Date(value);
-  if (
-    !Number.isFinite(date.getTime()) ||
-    date.getTime() < Date.now() - 5 * 60 * 1000
-  ) {
+  if (!Number.isFinite(date.getTime())) {
     return null;
   }
 
   return date;
+}
+
+function isSameLocalDay(left: Date, right: Date) {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  );
 }
 
 function getFeedback(locale: AppLocale, key: 'invalid' | 'locked' | 'failed') {
@@ -99,6 +104,17 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json(
       { ok: false, message: getFeedback(locale, 'failed') },
       { status: 404 },
+    );
+  }
+
+  const assignedDate = new Date(session.scheduled_at);
+  const isAssignedDay =
+    Number.isFinite(assignedDate.getTime()) &&
+    isSameLocalDay(scheduledAt, assignedDate);
+  if (scheduledAt.getTime() < Date.now() - 5 * 60 * 1000 && !isAssignedDay) {
+    return NextResponse.json(
+      { ok: false, message: getFeedback(locale, 'invalid') },
+      { status: 400 },
     );
   }
 

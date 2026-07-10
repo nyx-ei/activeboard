@@ -239,7 +239,7 @@ function getSessionCountdownLabel(locale: string, scheduledAt: string) {
 
   const diffMs = date.getTime() - now.getTime();
   if (diffMs <= 0) {
-    return locale === 'fr' ? 'Maintenant' : 'Now';
+    return locale === 'fr' ? 'En direct' : 'Live';
   }
 
   const hours = Math.max(1, Math.ceil(diffMs / (60 * 60 * 1000)));
