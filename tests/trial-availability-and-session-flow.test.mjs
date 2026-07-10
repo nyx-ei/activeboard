@@ -33,6 +33,10 @@ const startRuntime = readFileSync(
   'components/session/session-start-runtime.tsx',
   'utf8',
 );
+const autoStartRuntime = readFileSync(
+  'components/session/session-auto-start-runtime.tsx',
+  'utf8',
+);
 const progressEntryRuntime = readFileSync(
   'components/session/session-progress-entry-runtime.tsx',
   'utf8',
@@ -195,7 +199,10 @@ test('trial session review to feedback to plan-next to dashboard remains reachab
     /router\.push\(`\/sessions\/\$\{session\.id\}\?stage=progress`\)/,
   );
   assert.match(progressEntryRuntime, /<SessionProgressPanel/);
-  assert.match(sessionPage, /\?stage=start/);
+  assert.doesNotMatch(sessionPage, /\?stage=start/);
+  assert.match(sessionPage, /<SessionAutoStartRuntime/);
+  assert.match(autoStartRuntime, /\/api\/sessions\/\$\{sessionId\}\/start/);
+  assert.match(autoStartRuntime, /router\.replace/);
   assert.match(sessionPage, /sessionHref=\{progressSessionHref\}/);
   assert.match(progressEntryRuntime, /\?stage=feedback/);
   assert.match(progressEntryRuntime, /\?stage=plan-next/);
@@ -226,6 +233,9 @@ test('trial session review to feedback to plan-next to dashboard remains reachab
   assert.match(progressPanel, /statusStarted/);
   assert.doesNotMatch(progressPanel, /sm:grid-cols-3/);
   assert.match(progressEntryRuntime, /sessionMeta=\{`\$\{Math\.min\(answeredCount, questionGoal\)\}\/\$\{questionGoal\}Q - \$\{timerSeconds\} sec`\}/);
+  assert.doesNotMatch(progressEntryRuntime, /feedbackMeta=/);
+  assert.match(progressPanel, /FeedbackAvatarPreview/);
+  assert.match(progressPanel, /\[0, 1, 2, 3\]\.map/);
   assert.match(
     activeRuntime,
     /const reviewHref = `\/\$\{locale\}\/sessions\/\$\{sessionId\}\?stage=review&q=\$\{runtimeQuestionIndex\}`/,
@@ -275,10 +285,10 @@ test('trial session review to feedback to plan-next to dashboard remains reachab
   assert.doesNotMatch(sessionsRoute, /minimumGroupMembersToStart &&\s*!isContinuityPlan/);
 });
 
-test('start session screen exposes meeting link and sprint CTA copy', () => {
-  assert.match(sessionPage, /meetingLink=\{data\.session\.meeting_link\}/);
-  assert.match(sessionPage, /meetingLink: t\('meetingLink'\)/);
-  assert.match(sessionPage, /joinCall: t\('joinCall'\)/);
-  assert.match(startRuntime, /href=\{meetingLink\}/);
-  assert.match(startRuntime, /labels\.joinCall/);
+test('scheduled sessions auto-start instead of showing the old start screen', () => {
+  assert.doesNotMatch(sessionPage, /SessionStartRuntime/);
+  assert.match(sessionPage, /SessionAutoStartRuntime/);
+  assert.match(autoStartRuntime, /Starting sprint/);
+  assert.match(autoStartRuntime, /stage=progress/);
+  assert.match(startRuntime, /labels\.startSession/);
 });

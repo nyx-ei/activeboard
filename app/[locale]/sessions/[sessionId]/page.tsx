@@ -4,13 +4,13 @@ import { getTranslations } from 'next-intl/server';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
 import { SessionActiveRuntime } from '@/components/session/session-active-runtime';
+import { SessionAutoStartRuntime } from '@/components/session/session-auto-start-runtime';
 import { SessionPeerFeedbackRuntime } from '@/components/session/session-peer-feedback-runtime';
 import { SessionPlanNextRuntime } from '@/components/session/session-plan-next-runtime';
 import { SessionProgressEntryRuntime } from '@/components/session/session-progress-entry-runtime';
 import { SessionQuitButton } from '@/components/session/session-quit-button';
 import { SessionReviewRuntime } from '@/components/session/session-review-runtime';
 import { SessionStageRefresh } from '@/components/session/session-stage-refresh';
-import { SessionStartRuntime } from '@/components/session/session-start-runtime';
 import { SessionTabPresence } from '@/components/session/session-tab-channel';
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
@@ -202,7 +202,7 @@ export default async function SessionPage({
     typeof currentIndex === 'number' ? `&q=${currentIndex}` : '';
   const progressSessionHref =
     data.session.status === 'scheduled'
-      ? `/sessions/${params.sessionId}?stage=start`
+      ? `/sessions/${params.sessionId}?q=0`
       : data.session.status === 'incomplete' ||
           data.session.status === 'completed' ||
           question?.phase === 'review'
@@ -235,11 +235,6 @@ export default async function SessionPage({
   }
 
   if (data.session.status === 'scheduled') {
-    const timerLabel =
-      data.session.timer_mode === 'global'
-        ? `${data.session.timer_seconds}s ${t('globalShort')}`
-        : `${data.session.timer_seconds}s ${t('perQuestionShort')}`;
-
     return (
       <main className="flex flex-1 flex-col">
         <SessionTabPresence sessionId={params.sessionId} />
@@ -248,59 +243,10 @@ export default async function SessionPage({
           tone={searchParams.feedbackTone}
           feedbackId={searchParams.feedbackId}
         />
-        <SessionStartRuntime
-          advanceAction={advanceSessionStepAction}
+        <SessionAutoStartRuntime
           locale={locale}
           sessionId={params.sessionId}
-          currentUserId={user.id}
-          sessionTitle={data.session.name ?? data.group.name}
-          sessionShareLabel={t('shareCodeLabel', {
-            code: data.session.share_code,
-          })}
-          meetingLink={data.session.meeting_link}
-          timerLabel={timerLabel}
-          timerMode={data.session.timer_mode}
-          timerSeconds={data.session.timer_seconds}
-          questionGoal={questionGoal}
-          memberCount={memberCount}
-          canStartSession={canAdvanceQuestion || !data.session.leader_id}
-          canTakeOverStartResponsibility={canTakeOverStartResponsibility}
-          canInviteTeammate={canInviteTeammate}
-          inviteTeammateDisabledReason={inviteTeammateDisabledReason}
-          takeOverStartResponsibilityAction={takeOverStartResponsibilityAction}
-          labels={{
-            questionsUnit: t('questionsUnit'),
-            startSession: t('startSession'),
-            startSessionPending: t('startSessionPending'),
-            takeOverStartResponsibility: t('takeOverStartResponsibility'),
-            takeOverStartResponsibilityPending: t('takeOverStartResponsibilityPending'),
-            currentStartResponsible: t('currentStartResponsible'),
-            meetingLink: t('meetingLink'),
-            joinCall: t('joinCall'),
-            quitSession: t('quitSession'),
-            questionUpper: t('questionUpper'),
-            confidenceTitle: t('confidenceLevel'),
-            confidenceLow: t('confidenceLow'),
-            confidenceMedium: t('confidenceMedium'),
-            confidenceHigh: t('confidenceHigh'),
-            customOptionLabel: t('customOptionLabel'),
-            customOptionPlaceholder: t('customOptionPlaceholder'),
-            submit: t('submitAnswer'),
-            submitPending: t('submitAnswerPending'),
-            nextQuestion: t('nextQuestion'),
-            nextQuestionPending: t('nextQuestionPending'),
-            allAnswersReceived: t('allAnswersSubmitted'),
-            waitingForCaptainAdvance: t('waitingForCaptainAdvance'),
-            allAnswersSubmitted: t('allAnswersSubmitted'),
-            questionsCompletedValue: t('questionsCompletedValue', {
-              current: questionGoal,
-              total: questionGoal,
-            }),
-            goToReview: t('goToReview'),
-            quitPending: t('quitPending'),
-            quitConfirm: quitConfirmLabels,
-            inviteTeammate: inviteTeammateLabels,
-          }}
+          backLabel={t('quitSession')}
         />
       </main>
     );

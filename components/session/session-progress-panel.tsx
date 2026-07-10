@@ -1,4 +1,4 @@
-import { ArrowLeft, Check } from 'lucide-react';
+import { ArrowLeft, Check, UserRound } from 'lucide-react';
 import type React from 'react';
 
 import { Link } from '@/i18n/navigation';
@@ -16,7 +16,7 @@ type SessionProgressPanelProps = {
   feedbackHref?: string;
   planNextHref?: string;
   sessionMeta?: string;
-  feedbackMeta?: string;
+  feedbackMeta?: React.ReactNode;
   planNextMeta?: string;
   children?: React.ReactNode;
 };
@@ -86,7 +86,7 @@ function ProgressStep({
   isLast = false,
 }: {
   label: string;
-  meta: string;
+  meta: React.ReactNode;
   state: SessionProgressStepState;
   href?: string;
   statusLabel: string | null;
@@ -135,9 +135,9 @@ function ProgressStep({
             >
               {label}
             </p>
-            <p className="mt-1 truncate text-[11px] font-semibold text-[#8fa7a2]">
+            <div className="mt-1 min-h-[18px] text-[11px] font-semibold text-[#8fa7a2]">
               {meta}
-            </p>
+            </div>
           </div>
           {statusLabel ? (
             <span
@@ -163,6 +163,26 @@ function ProgressStep({
     <Link href={href} prefetch={false} className="block">
       {content}
     </Link>
+  );
+}
+
+function FeedbackAvatarPreview() {
+  return (
+    <div
+      className="flex -space-x-1.5"
+      aria-label="Peer feedback participants"
+    >
+      {[0, 1, 2, 3].map((index) => (
+        <span
+          key={index}
+          className={`grid h-5 w-5 place-items-center rounded-full border border-[#071f1c] bg-[#123b34] text-[#9ff0ce] ${
+            index === 1 ? 'bg-brand text-[#04120e]' : ''
+          }`}
+        >
+          <UserRound className="h-3 w-3" aria-hidden="true" />
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -238,7 +258,7 @@ export function SessionProgressPanel({
             href={feedbackHref}
             state={feedbackState}
             label={t.feedback}
-            meta={feedbackMeta ?? t.feedbackMeta}
+            meta={feedbackMeta ?? <FeedbackAvatarPreview />}
             statusLabel={getStatusLabel('feedback', feedbackState)}
           />
           <ProgressStep
