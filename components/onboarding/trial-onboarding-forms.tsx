@@ -17,7 +17,6 @@ import {
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 import type { AvailabilityGrid } from '@/lib/schedule/availability';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import {
   completeTrialAvailabilityAction,
   completeTrialProfileAction,
@@ -43,6 +42,10 @@ const copy = {
       'Open the verification link to continue your trial setup.',
     accountError: 'Enter your first name, last name, and a valid email.',
     otpError: 'The verification email could not be sent. Please try again.',
+    verificationFailed:
+      'The verification link could not be used. Please request a new email.',
+    emailMismatch:
+      'This verification link does not match the email being verified. Please request a new email.',
     profileTitle: 'Complete your account',
     timezone: 'Timezone',
     whatsapp: 'WhatsApp phone number',
@@ -103,6 +106,10 @@ const copy = {
       'Ouvrez le lien de vérification pour continuer la configuration.',
     accountError: 'Saisissez le prénom, le nom et un email valide.',
     otpError: 'L’email de vérification n’a pas pu être envoyé. Réessayez.',
+    verificationFailed:
+      'Le lien de vérification n’a pas pu être utilisé. Demandez un nouvel email.',
+    emailMismatch:
+      'Ce lien de vérification ne correspond pas à l’email à vérifier. Demandez un nouvel email.',
     profileTitle: 'Compléter votre compte',
     timezone: 'Fuseau horaire',
     whatsapp: 'Numéro WhatsApp',
@@ -265,12 +272,28 @@ function Field({
 const inputWithIconClassName =
   'field h-14 rounded-[6px] px-12 text-base';
 
-export function TrialAccountForm({ locale }: { locale: AppLocale }) {
+export function TrialAccountForm({
+  locale,
+  initialError,
+}: {
+  locale: AppLocale;
+  initialError?: 'verification_failed' | 'email_mismatch';
+}) {
   const t = copy[locale];
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => {
+    if (initialError === 'email_mismatch') {
+      return t.emailMismatch;
+    }
+
+    if (initialError === 'verification_failed') {
+      return t.verificationFailed;
+    }
+
+    return '';
+  });
   const [sent, setSent] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -289,29 +312,36 @@ export function TrialAccountForm({ locale }: { locale: AppLocale }) {
     }
 
     startTransition(async () => {
-      const supabase = createSupabaseBrowserClient();
-      const origin = window.location.origin;
+      const normalizedEmail = email.trim().toLowerCase();
       const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
-      const nextPath = `/${locale}/onboarding/profile`;
-      const callbackUrl = new URL(`/${locale}/auth/callback`, origin);
-      callbackUrl.searchParams.set('next', nextPath);
-      const { error: otpError } = await supabase.auth.signInWithOtp({
-        email: email.trim().toLowerCase(),
-        options: {
-          emailRedirectTo: callbackUrl.toString(),
-          data: {
-            first_name: firstName.trim(),
-            last_name: lastName.trim(),
-            full_name: fullName,
-            locale,
-            onboarding_flow: 'trial_3_sessions',
-          },
-        },
-      });
 
-      if (otpError) {
+      const response = await fetch('/api/onboarding/email-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: normalizedEmail,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          fullName,
+          locale,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | { ok?: boolean }
+        | null;
+
+      if (!response.ok || !payload?.ok) {
         setError(t.otpError);
         return;
+      }
+
+      try {
+        window.localStorage.setItem(
+          'activeboard:onboarding-email',
+          normalizedEmail,
+        );
+      } catch {
+        // Storage is only used to restore context after the email handoff.
       }
 
       setSent(true);

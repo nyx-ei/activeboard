@@ -19,18 +19,33 @@ export async function GET(request: Request, { params }: RouteContext) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
   const next = requestUrl.searchParams.get('next');
+  const expectedEmail = requestUrl.searchParams.get('email')?.trim().toLowerCase() ?? null;
+  const flow = requestUrl.searchParams.get('flow');
   const locale: AppLocale = routing.locales.includes(params.locale as AppLocale)
     ? (params.locale as AppLocale)
     : routing.defaultLocale;
+  const isOnboardingCallback =
+    flow === 'trial_onboarding' || next?.startsWith(`/${locale}/onboarding`);
 
   if (!code) {
     return NextResponse.redirect(new URL(`/${locale}/auth/login`, requestUrl.origin));
   }
 
   const supabase = createSupabaseServerClient();
+  if (isOnboardingCallback) {
+    await supabase.auth.signOut();
+  }
+
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
+    if (isOnboardingCallback) {
+      await supabase.auth.signOut();
+      return NextResponse.redirect(
+        new URL(`/${locale}/onboarding/account?error=verification_failed`, requestUrl.origin),
+      );
+    }
+
     return NextResponse.redirect(
       new URL(`/${locale}/auth/login?error=auth_callback_failed`, requestUrl.origin),
     );
@@ -39,6 +54,16 @@ export async function GET(request: Request, { params }: RouteContext) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (isOnboardingCallback) {
+    const actualEmail = user?.email?.trim().toLowerCase() ?? null;
+    if (!user?.id || (expectedEmail && actualEmail !== expectedEmail)) {
+      await supabase.auth.signOut();
+      return NextResponse.redirect(
+        new URL(`/${locale}/onboarding/account?error=email_mismatch`, requestUrl.origin),
+      );
+    }
+  }
 
   if (user?.id) {
     const { data: existingProfile } = await supabase

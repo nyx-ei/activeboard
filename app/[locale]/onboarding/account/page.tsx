@@ -7,10 +7,12 @@ import { getOnboardingCompletion } from '@/lib/onboarding/completion';
 
 type TrialAccountPageProps = {
   params: { locale: string };
+  searchParams?: { error?: string };
 };
 
 export default async function TrialAccountPage({
   params,
+  searchParams,
 }: TrialAccountPageProps) {
   const locale = (params.locale === 'fr' ? 'fr' : 'en') as AppLocale;
   const user = await getCurrentUser();
@@ -20,6 +22,11 @@ export default async function TrialAccountPage({
     redirect(onboarding.nextPath ?? `/${locale}/dashboard`);
   }
 
-  return <TrialAccountForm locale={locale} />;
-}
+  const initialError =
+    searchParams?.error === 'email_mismatch' ||
+    searchParams?.error === 'verification_failed'
+      ? searchParams.error
+      : undefined;
 
+  return <TrialAccountForm locale={locale} initialError={initialError} />;
+}
