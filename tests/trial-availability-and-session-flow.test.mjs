@@ -283,7 +283,9 @@ test('trial session review to feedback to plan-next to dashboard remains reachab
   assert.match(progressEntryRuntime, /countdownLabel/);
   assert.match(progressEntryRuntime, /const sessionStatusLabel =/);
   assert.match(progressEntryRuntime, /sessionStatusLabel=\{sessionStatusLabel\}/);
-  assert.match(progressEntryRuntime, /sessionMeta=\{`\$\{Math\.min\(answeredCount, questionGoal\)\}\/\$\{questionGoal\}Q - \$\{timerSeconds\} sec/);
+  assert.match(progressEntryRuntime, /sessionMeta=\{/);
+  assert.match(progressEntryRuntime, /Math\.min\(answeredCount, questionGoal\)\}\/\{questionGoal\}Q/);
+  assert.match(progressEntryRuntime, /isLiveCountdown \? \(/);
   assert.doesNotMatch(progressEntryRuntime, /feedbackMeta=/);
   assert.match(progressPanel, /FeedbackAvatarPreview/);
   assert.match(progressPanel, /\[0, 1, 2, 3\]\.map/);
@@ -363,6 +365,10 @@ test('generated test sessions require time and meeting link before sprint', () =
   assert.doesNotMatch(createSessionModal, /const modalTitle/);
   assert.match(createSessionModal, /next: 'Suivant'/);
   assert.match(createSessionModal, /copyAction: 'Copier'/);
+  assert.match(createSessionModal, /className="button-primary order-\[40\]/);
+  assert.match(createSessionModal, /\['per_question', labels\.perQuestionMode\]/);
+  assert.match(createSessionModal, /\['global', labels\.globalMode\]/);
+  assert.match(createSessionModal, /max-w-\[min\(68vw,340px\)\]/);
   assert.match(createSessionModal, /isValidScheduledAtInput\(\s*scheduledAt,\s*isLockedTestPlan/s);
   assert.doesNotMatch(createSessionModal, /Only the time can be changed/);
   assert.doesNotMatch(createSessionModal, /<textarea/);
@@ -375,7 +381,9 @@ test('generated test sessions require time and meeting link before sprint', () =
   assert.match(scheduleRoute, /isSameLocalDay/);
   assert.match(progressPanel, /Planifier la prochaine session/);
   assert.match(progressEntryRuntime, /en direct/);
+  assert.match(progressEntryRuntime, /<Radio className="h-3\.5 w-3\.5 text-brand"/);
   assert.match(trialDashboard, /En direct/);
+  assert.match(trialDashboard, /<Radio className="h-3\.5 w-3\.5 text-\[#20D9A3\]/);
   assert.match(scheduleRoute, /EDIT_LOCK_WINDOW_MS = 60 \* 60 \* 1000/);
   assert.match(scheduleRoute, /candidate_matching_profiles/);
   assert.match(scheduleRoute, /sendSessionCalendarInvites/);

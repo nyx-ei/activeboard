@@ -15,7 +15,7 @@ type SessionProgressPanelProps = {
   sessionHref?: string;
   feedbackHref?: string;
   planNextHref?: string;
-  sessionMeta?: string;
+  sessionMeta?: React.ReactNode;
   sessionStatusLabel?: string;
   feedbackMeta?: React.ReactNode;
   planNextMeta?: string;

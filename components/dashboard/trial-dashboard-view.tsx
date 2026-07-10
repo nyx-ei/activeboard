@@ -7,6 +7,7 @@ import {
   Info,
   LockKeyhole,
   Plus,
+  Radio,
   RotateCcw,
   TrendingDown,
   TrendingUp,
@@ -314,6 +315,7 @@ function TrialSessionRow({
     session.status === 'scheduled' && session.meeting_link
       ? getSessionCountdownLabel(locale, session.scheduled_at)
       : null;
+  const isLiveCountdown = isLiveSessionCountdownLabel(scheduledTimeLabel);
 
   return (
     <Link
@@ -348,7 +350,12 @@ function TrialSessionRow({
         {isScheduledWithoutTime ? (
           <span>XXhXX</span>
         ) : scheduledTimeLabel ? (
-          <span>{scheduledTimeLabel}</span>
+          <span className="inline-flex items-center justify-end gap-1">
+            {isLiveCountdown ? (
+              <Radio className="h-3.5 w-3.5 text-[#20D9A3] sm:h-4 sm:w-4" aria-hidden="true" />
+            ) : null}
+            <span>{scheduledTimeLabel}</span>
+          </span>
         ) : isActionable ? (
           <>
             <span className="max-w-full truncate">{formatDate(locale, session.scheduled_at)}</span>
@@ -360,6 +367,11 @@ function TrialSessionRow({
       </div>
     </Link>
   );
+}
+
+function isLiveSessionCountdownLabel(label: string | null) {
+  const normalized = label?.trim().toLowerCase();
+  return normalized === 'en direct' || normalized === 'live';
 }
 
 function EmptyTrialSessionRow({
