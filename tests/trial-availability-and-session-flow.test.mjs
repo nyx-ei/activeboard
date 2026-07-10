@@ -352,6 +352,8 @@ test('generated test sessions require time and meeting link before sprint', () =
   assert.match(sessionPage, /!data\.session\.meeting_link/);
   assert.match(createSessionModal, /existingSession/);
   assert.match(createSessionModal, /meetingLink/);
+  assert.match(createSessionModal, /toScheduledAtPayload/);
+  assert.match(createSessionModal, /return date\.toISOString\(\)/);
   assert.match(createSessionModal, /\/api\/sessions\/\$\{existingSession\.id\}\/schedule/);
   assert.match(scheduleRoute, /EDIT_LOCK_WINDOW_MS = 60 \* 60 \* 1000/);
   assert.match(scheduleRoute, /candidate_matching_profiles/);

@@ -126,6 +126,46 @@ export function CreateSessionModal({
   );
   const shouldLockTimerSettings =
     isLockedTestPlan && !isExistingSessionPlan;
+  const existingSessionId = existingSession?.id;
+  const existingSessionGroupId = existingSession?.groupId;
+  const existingSessionName = existingSession?.name;
+  const existingSessionScheduledAt = existingSession?.scheduledAt;
+  const existingSessionQuestionGoal = existingSession?.questionGoal;
+  const existingSessionTimerMode = existingSession?.timerMode;
+  const existingSessionTimerSeconds = existingSession?.timerSeconds;
+  const existingSessionMeetingLink = existingSession?.meetingLink;
+
+  useEffect(() => {
+    if (!existingSessionId || !existingSessionGroupId) {
+      return;
+    }
+
+    setName(existingSessionName ?? '');
+    setSelectedGroupId(existingSessionGroupId);
+    setScheduledAt(
+      formatDateTimeLocalValue(new Date(existingSessionScheduledAt ?? '')),
+    );
+    setQuestionGoal(String(existingSessionQuestionGoal ?? sessionPolicy.defaultQuestionGoal));
+    setTimerMode(existingSessionTimerMode ?? 'per_question');
+    setTimerSeconds(
+      String(
+        existingSessionTimerSeconds ??
+          sessionPolicy.perQuestionTimerDefaultSeconds,
+      ),
+    );
+    setMeetingLink(existingSessionMeetingLink ?? '');
+  }, [
+    existingSessionGroupId,
+    existingSessionId,
+    existingSessionMeetingLink,
+    existingSessionName,
+    existingSessionQuestionGoal,
+    existingSessionScheduledAt,
+    existingSessionTimerMode,
+    existingSessionTimerSeconds,
+    sessionPolicy.defaultQuestionGoal,
+    sessionPolicy.perQuestionTimerDefaultSeconds,
+  ]);
 
   const updateTimerMode = (value: 'per_question' | 'global') => {
     setTimerMode(value);
@@ -379,7 +419,9 @@ export function CreateSessionModal({
               groupId: formData.get('groupId'),
               participantUserIds: formData.getAll('participantUserIds'),
               sessionName: formData.get('sessionName'),
-              scheduledAt: formData.get('scheduledAt'),
+              scheduledAt: toScheduledAtPayload(
+                String(formData.get('scheduledAt') ?? ''),
+              ),
               questionGoal: Number(formData.get('questionGoal')),
               timerMode: formData.get('timerMode'),
               timerSeconds: Number(formData.get('timerSeconds')),
@@ -869,7 +911,7 @@ export function CreateSessionModal({
   );
 }
 
-function getDefaultScheduledAtInputValue() {
+function getDefaultScheduledAtInputValue(): string {
   const next = new Date();
   next.setMinutes(next.getMinutes() + 60);
   next.setSeconds(0, 0);
@@ -884,19 +926,33 @@ function getDefaultScheduledAtInputValue() {
   return formatDateTimeLocalValue(next);
 }
 
-function getMinScheduledAtInputValue() {
+function getMinScheduledAtInputValue(): string {
   const now = new Date();
   now.setSeconds(0, 0);
 
   return formatDateTimeLocalValue(now);
 }
 
-function formatDateTimeLocalValue(date: Date) {
+function formatDateTimeLocalValue(date: Date): string {
   const pad = (value: number) => String(value).padStart(2, '0');
+
+  if (!Number.isFinite(date.getTime())) {
+    return getDefaultScheduledAtInputValue();
+  }
 
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
     date.getDate(),
   )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function toScheduledAtPayload(value: string) {
+  const date = new Date(value);
+
+  if (!Number.isFinite(date.getTime())) {
+    return value;
+  }
+
+  return date.toISOString();
 }
 
 function mergeLockedDateWithTime(currentValue: string, nextValue: string) {
