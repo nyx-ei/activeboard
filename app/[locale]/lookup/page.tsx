@@ -1,15 +1,18 @@
 import { getTranslations } from 'next-intl/server';
-import { ArrowLeft, LockKeyhole } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 import { FeedbackBanner } from '@/components/app/feedback-banner';
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
 import { getUserBillingSnapshot } from '@/lib/billing/user-tier';
+import { hasStripeEnv } from '@/lib/env';
+import { isFeatureEnabled } from '@/lib/features/flags';
 import { getRankedSeriousCandidates } from '@/lib/matching/serious-candidates';
 import type { RankedSeriousCandidate } from '@/lib/matching/serious-candidates';
 import { getPlanNextAccess } from '@/lib/session/plan-next-access';
 import { getUnlimitedPaymentLink } from '@/lib/stripe/payment-links';
+import { getBillingPlans } from '@/lib/stripe/pricing';
 
 type LookupPageProps = {
   params: { locale: string };
@@ -27,16 +30,23 @@ export default async function LookupPage({
   const locale = params.locale as AppLocale;
   const language = locale === 'fr' ? 'fr' : 'en';
   const user = await requireUser(locale);
-  const [t, planNextAccess, billingSnapshot] = await Promise.all([
+  const [t, billingT, planNextAccess, billingSnapshot, billingEnabled] = await Promise.all([
     getTranslations('Lookup'),
+    getTranslations('Billing'),
     getPlanNextAccess(user.id),
     getUserBillingSnapshot(user.id),
+    isFeatureEnabled('canUseStripeBilling'),
   ]);
   const canRevealProfiles = planNextAccess.canInviteCandidates;
   const { candidates } = await getRankedSeriousCandidates({
     userId: user.id,
     locale: language,
   });
+  const stripeConfigured = hasStripeEnv();
+  const plans = stripeConfigured ? await getBillingPlans(locale) : [];
+  const primaryPlan = plans.find((plan) => plan.highlight) ?? plans[0] ?? null;
+  const monthlyPrice = locale === 'fr' ? '15$' : '$15';
+  const billingReady = Boolean(billingEnabled && stripeConfigured && primaryPlan);
   const paymentLink = getUnlimitedPaymentLink(
     billingSnapshot?.email ?? user.email ?? null,
   );
@@ -84,27 +94,91 @@ export default async function LookupPage({
       )}
 
       {!canRevealProfiles ? (
-        <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/42 px-4 py-5 sm:items-center">
-          <div className="w-full max-w-[420px] rounded-[22px] border border-amber-300/35 bg-[#111827]/96 p-5 text-center shadow-[0_28px_90px_rgba(0,0,0,0.55)]">
-            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-amber-300 text-[#062b22]">
-              <LockKeyhole className="h-5 w-5" aria-hidden="true" />
-            </div>
-            <p className="mt-4 text-lg font-black text-white">
-              {language === 'fr'
-                ? 'Débloque les candidats sérieux'
-                : 'Unlock serious candidates'}
-            </p>
-            <p className="mt-2 text-sm font-semibold leading-5 text-slate-400">
-              {language === 'fr'
-                ? 'Les scores restent visibles. Les contacts et profils complets se débloquent après paiement.'
-                : 'Scores stay visible. Contacts and complete profiles unlock after payment.'}
-            </p>
-            <a
-              href={paymentLink}
-              className="mt-5 flex h-12 w-full items-center justify-center rounded-[12px] border border-amber-300/35 bg-[#17210f]/95 px-5 text-sm font-black text-amber-200 shadow-[0_20px_60px_rgba(0,0,0,0.35)] transition hover:bg-[#1e2a14]"
-            >
-              {t('unlockContacts')}
-            </a>
+        <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/20 px-0 py-0 sm:px-4 sm:pb-6">
+          <div className="w-full max-w-[420px] animate-in slide-in-from-bottom-4 duration-200 sm:max-w-[460px]">
+            <section className="rounded-t-[16px] border border-white/[0.06] bg-[#11192c] p-5 shadow-[0_-24px_70px_rgba(0,0,0,0.55)] sm:rounded-[15px] sm:p-6">
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="text-lg font-extrabold tracking-tight text-white">
+                  {billingT('title')}
+                </h2>
+                <Link
+                  href="/dashboard"
+                  className="text-2xl leading-none text-slate-400 transition hover:text-white"
+                  aria-label={billingT('close')}
+                >
+                  x
+                </Link>
+              </div>
+
+              <div className="mt-5 rounded-[10px] border border-white/[0.06] bg-[#172237] p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-extrabold text-white">
+                      {billingT('freePlanTitle')}
+                    </p>
+                    <ul className="mt-3 space-y-1.5 text-xs font-semibold text-slate-400">
+                      <li className="flex gap-2">
+                        <span className="text-slate-500">+</span>
+                        <span>{billingT('freePlanFeatureQuestions')}</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-slate-500/20 px-2 py-0.5 text-[10px] font-extrabold text-slate-300">
+                      {billingT('currentPlan')}
+                    </span>
+                    <p className="text-xl font-extrabold text-white">$0</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-[10px] border border-white/[0.06] bg-[#172237] p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-extrabold text-white">
+                      {billingT('unlimitedPlanTitle')}
+                    </p>
+                    <ul className="mt-3 space-y-1.5 text-xs font-semibold text-slate-300">
+                      <li className="flex gap-2">
+                        <span className="text-brand">+</span>
+                        <span>{billingT('unlimitedFeatureAnswers')}</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="text-brand">+</span>
+                        <span>{billingT('unlimitedFeatureGroups')}</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-extrabold text-brand">
+                      <span className="mr-2 text-sm font-semibold text-slate-500 line-through">
+                        {billingT('regularPrice')}
+                      </span>
+                      {monthlyPrice}{' '}
+                      <span className="text-sm font-semibold text-slate-400">
+                        / {billingT('perMonth')}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+                <a
+                  href={paymentLink}
+                  className="mt-4 flex h-9 w-full items-center justify-center rounded-[7px] bg-brand text-sm font-extrabold text-background transition hover:opacity-90"
+                >
+                  {billingT('upgradeToUnlimited')}
+                </a>
+
+                <p className="mt-3 text-center text-xs font-semibold text-slate-500">
+                  {billingT('unlimitedCheckoutHint')}
+                </p>
+                {!billingEnabled || !stripeConfigured || !billingReady ? (
+                  <p className="sr-only">
+                    {billingT('subscriptionPlansMissing')}
+                  </p>
+                ) : null}
+              </div>
+            </section>
           </div>
         </div>
       ) : null}
