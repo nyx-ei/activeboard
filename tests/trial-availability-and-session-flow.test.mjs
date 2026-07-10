@@ -363,6 +363,10 @@ test('generated test sessions require time and meeting link before sprint', () =
   assert.doesNotMatch(createSessionModal, /const modalTitle/);
   assert.match(createSessionModal, /next: 'Suivant'/);
   assert.match(createSessionModal, /copyAction: 'Copier'/);
+  assert.match(createSessionModal, /className="button-primary order-\[40\]/);
+  assert.match(createSessionModal, /\['per_question', labels\.perQuestionMode\]/);
+  assert.match(createSessionModal, /\['global', labels\.globalMode\]/);
+  assert.match(createSessionModal, /max-w-\[min\(68vw,340px\)\]/);
   assert.match(createSessionModal, /isValidScheduledAtInput\(\s*scheduledAt,\s*isLockedTestPlan/s);
   assert.doesNotMatch(createSessionModal, /Only the time can be changed/);
   assert.doesNotMatch(createSessionModal, /<textarea/);

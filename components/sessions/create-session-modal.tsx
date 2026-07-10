@@ -424,13 +424,20 @@ export function CreateSessionModal({
                 <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               </button>
             ) : null}
-            <ModalTitle className="flex min-w-0 flex-1 items-center gap-2 text-xl font-extrabold text-white">
+            <ModalTitle className="flex min-w-0 items-center gap-2 text-xl font-extrabold text-white">
               <input
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 readOnly={isExistingSessionPlan}
                 placeholder={labels.sessionNamePlaceholder}
-                className="min-w-0 flex-1 truncate bg-transparent text-xl font-extrabold text-white outline-none placeholder:text-slate-500 read-only:cursor-not-allowed"
+                size={Math.max(
+                  8,
+                  Math.min(
+                    (name || labels.sessionNamePlaceholder).length,
+                    24,
+                  ),
+                )}
+                className="min-w-0 max-w-[min(68vw,340px)] truncate bg-transparent text-xl font-extrabold text-white outline-none placeholder:text-slate-500 read-only:cursor-not-allowed"
                 autoComplete="off"
                 aria-label={labels.sessionName}
               />
@@ -917,20 +924,12 @@ export function CreateSessionModal({
           </div>
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             {[
-              [
-                'per_question',
-                labels.perQuestionMode,
-                timerModeCopy.perQuestionTitle,
-              ],
-              [
-                'global',
-                labels.globalMode,
-                timerModeCopy.globalTitle,
-              ],
-            ].map(([value, label, title]) => (
+              ['per_question', labels.perQuestionMode],
+              ['global', labels.globalMode],
+            ].map(([value, title]) => (
               <div
                 key={value}
-                className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-[10px] border px-3 py-2 text-left transition ${
+                className={`flex min-h-12 cursor-pointer items-center gap-2 rounded-[10px] border px-2.5 py-2 text-left transition sm:gap-3 sm:px-3 ${
                   timerMode === value
                     ? 'border-brand bg-brand text-[#06120e]'
                     : 'hover:border-brand/50 border-white/[0.08] bg-white/[0.035] text-slate-300'
@@ -954,11 +953,8 @@ export function CreateSessionModal({
                     strokeWidth={1.8}
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-extrabold">
+                    <span className="block truncate whitespace-nowrap text-[12px] font-extrabold sm:text-sm">
                       {title}
-                    </span>
-                    <span className="mt-0.5 block text-[10px] font-bold uppercase tracking-[0.12em] opacity-75">
-                      {label}
                     </span>
                   </span>
                 </label>
@@ -1020,14 +1016,14 @@ export function CreateSessionModal({
             type="button"
             onClick={goToNextWizardStep}
             disabled={stepHasIssue}
-            className="button-primary disabled:bg-brand/40 h-10 w-full rounded-[7px] py-2 text-sm font-extrabold disabled:text-white/60"
+            className="button-primary order-[40] h-10 w-full rounded-[7px] py-2 text-sm font-extrabold disabled:bg-brand/40 disabled:text-white/60"
           >
             {wizardCopy.next}
           </button>
         ) : (
           <SubmitButton
             pendingLabel={labels.createSessionPending}
-            className="button-primary disabled:bg-brand/40 h-10 w-full rounded-[7px] py-2 text-sm disabled:text-white/60"
+            className="button-primary order-[40] h-10 w-full rounded-[7px] py-2 text-sm disabled:bg-brand/40 disabled:text-white/60"
             disabled={isCreating || stepHasIssue}
           >
             {isCreating ? labels.createSessionPending : submitLabel}
