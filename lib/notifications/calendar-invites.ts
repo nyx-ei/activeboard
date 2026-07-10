@@ -94,7 +94,7 @@ function buildCalendarInviteCopy(args: {
     {
       label:
         args.locale === 'fr'
-          ? 'Creer le groupe WhatsApp'
+          ? 'Créer le groupe WhatsApp'
           : 'Create WhatsApp group',
       value: args.whatsappUrl,
     },

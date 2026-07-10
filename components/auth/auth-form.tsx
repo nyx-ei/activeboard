@@ -335,12 +335,12 @@ export function AuthForm({
       {variant === 'page' ? (
         <div className="flex flex-col items-center">
           <Link
-            href={`/${locale}` as never}
+            href="/"
             prefetch={false}
-            className="mb-4 inline-flex h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-4 text-sm font-extrabold text-slate-300 transition hover:border-brand/45 hover:text-white"
+            className="fixed left-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.035] text-slate-300 transition hover:border-brand/45 hover:text-white sm:left-6 sm:top-6"
+            aria-label={locale === 'fr' ? 'Retour à l’accueil' : 'Back to landing page'}
           >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            <span>{locale === 'fr' ? 'Retour' : 'Back'}</span>
           </Link>
           <div className="flex h-[52px] w-[52px] items-center justify-center rounded-[8px] bg-brand text-xl font-extrabold text-white">
             AB

@@ -65,6 +65,12 @@ export function SessionProgressEntryRuntime({
     status === 'scheduled' && meetingLink && scheduledAt
       ? getTodayCountdownLabel(language, scheduledAt)
       : null;
+  const sessionStatusLabel =
+    status === 'scheduled'
+      ? language === 'fr'
+        ? 'Planifiée'
+        : 'Planned'
+      : undefined;
 
   return (
     <SessionProgressPanel
@@ -82,6 +88,7 @@ export function SessionProgressEntryRuntime({
       sessionMeta={`${Math.min(answeredCount, questionGoal)}/${questionGoal}Q - ${timerSeconds} sec${
         countdownLabel ? ` · ${countdownLabel}` : ''
       }`}
+      sessionStatusLabel={sessionStatusLabel}
     />
   );
 }

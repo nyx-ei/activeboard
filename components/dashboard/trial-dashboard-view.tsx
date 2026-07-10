@@ -42,8 +42,14 @@ const COPY = {
         : 'Candidats sérieux débloqués.',
     reliabilityScore: 'Score de fiabilité',
     reliabilityInfoTitle: 'Composition du score',
-    reliabilityInfo:
-      'Presence 30%, ponctualite 15%, completion 15%, questions revisees 20%, prochaine seance 10%, validation pair-a-pair 10%.',
+    reliabilityItems: [
+      ['Présence', '30%'],
+      ['Ponctualité', '15%'],
+      ['Complétion', '15%'],
+      ['Questions révisées', '20%'],
+      ['Prochaine séance', '10%'],
+      ['Validation pair-à-pair', '10%'],
+    ],
     activeCandidates: 'candidats actifs',
     viewMore: 'Voir plus',
     testSessions: 'Séances tests',
@@ -69,8 +75,14 @@ const COPY = {
         : 'Serious candidates unlocked.',
     reliabilityScore: 'Reliability score',
     reliabilityInfoTitle: 'Score composition',
-    reliabilityInfo:
-      'Attendance 30%, punctuality 15%, completion 15%, reviewed questions 20%, next session planned 10%, peer validation 10%.',
+    reliabilityItems: [
+      ['Attendance', '30%'],
+      ['Punctuality', '15%'],
+      ['Completion', '15%'],
+      ['Reviewed questions', '20%'],
+      ['Next session planned', '10%'],
+      ['Peer validation', '10%'],
+    ],
     activeCandidates: 'active candidates',
     viewMore: 'View more',
     testSessions: 'Test sessions',
@@ -385,11 +397,20 @@ function ReliabilityInfo({ labels }: { labels: ReturnType<typeof getCopy> }) {
       >
         <Info className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
-      <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden w-[min(260px,calc(100vw-48px))] -translate-x-1/2 rounded-[10px] border border-white/[0.08] bg-[#071a18] p-3 text-left text-[11px] font-semibold leading-5 text-[#b8c7c4] shadow-[0_18px_50px_rgba(0,0,0,0.5)] group-hover:block group-focus-within:block">
+      <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden w-[min(340px,calc(100vw-48px))] -translate-x-1/2 rounded-[10px] border border-white/[0.08] bg-[#071a18] p-3 text-left text-[11px] font-semibold leading-5 text-[#b8c7c4] shadow-[0_18px_50px_rgba(0,0,0,0.5)] group-hover:block group-focus-within:block">
         <span className="block text-xs font-extrabold text-white">
           {labels.reliabilityInfoTitle}
         </span>
-        <span className="mt-1 block">{labels.reliabilityInfo}</span>
+        <span className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
+          {labels.reliabilityItems.map(([label, weight]) => (
+            <span key={label} className="flex gap-1.5">
+              <span className="text-[#20D9A3]" aria-hidden="true">•</span>
+              <span>
+                {label} <strong className="text-white">{weight}</strong>
+              </span>
+            </span>
+          ))}
+        </span>
       </span>
     </span>
   );
@@ -480,15 +501,21 @@ export function TrialDashboardView({
             100,
         )
       : 0;
-  const reviewedQuestions = performanceProps.progressQuadrantQuestions.length;
+  const reviewedQuestions = Math.max(
+    performanceProps.progressQuadrantQuestions.length,
+    sessionsProps.sessions.reduce(
+      (total, session) => total + (session.answeredQuestionCount ?? 0),
+      0,
+    ),
+  );
   const seriousUnlocked = Boolean(
     sessionsProps.planNextAccess?.canInviteCandidates,
   );
   const createSessionLabel =
-    locale === 'fr' ? 'Creer une seance' : 'Create session';
+    locale === 'fr' ? 'Créer une séance' : 'Create session';
   const archiveLabel = locale === 'fr' ? 'Archives' : 'Archive';
   const archivedTitle =
-    locale === 'fr' ? 'Seances archivees' : 'Archived sessions';
+    locale === 'fr' ? 'Séances archivées' : 'Archived sessions';
   const backLabel = locale === 'fr' ? 'Retour' : 'Back';
   const displayedSessions = showArchivedSessions
     ? archivedSessions
@@ -500,10 +527,10 @@ export function TrialDashboardView({
   return (
     <section className="rounded-[28px] border border-white/[0.07] bg-[radial-gradient(circle_at_50%_10%,rgba(32,217,163,0.13),rgba(1,24,20,0.78)_42%,rgba(0,16,15,0.95)_100%)] px-4 py-4 shadow-[0_24px_80px_rgba(0,0,0,0.36)] sm:px-8 sm:py-7 lg:px-12">
       <div className="mx-auto w-full max-w-[900px] space-y-5 lg:max-w-none">
-        <div className="rounded-[16px] border border-[#20D9A3]/45 bg-[#04231d]/70 px-2.5 py-1.5 shadow-[inset_0_0_24px_rgba(32,217,163,0.05)] sm:px-3 sm:py-2">
-          <div className="flex min-w-0 items-center gap-2 text-[11px] font-extrabold text-white min-[390px]:text-xs sm:gap-2.5 sm:text-base">
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-[#20D9A3]/25 bg-[#062f27] text-[#20D9A3] sm:h-9 sm:w-9">
-              <LockKeyhole className="h-4 w-4" aria-hidden="true" />
+        <div className="rounded-[14px] border border-[#20D9A3]/45 bg-[#04231d]/70 px-2 py-1 shadow-[inset_0_0_24px_rgba(32,217,163,0.05)] sm:px-3 sm:py-1.5">
+          <div className="flex min-w-0 items-center gap-1.5 text-[10px] font-extrabold text-white min-[390px]:text-[11px] sm:gap-2 sm:text-sm">
+            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-[#20D9A3]/25 bg-[#062f27] text-[#20D9A3] sm:h-8 sm:w-8">
+              <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />
             </span>
             <span className="min-w-0 truncate whitespace-nowrap">
               {labels.unlock(remainingSessions)}

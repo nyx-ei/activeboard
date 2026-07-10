@@ -842,7 +842,7 @@ export function CreateSessionModal({
         <p className="text-xs italic text-slate-500">
           {isLockedTestPlan
             ? locale === 'fr'
-              ? `Seule l'heure est modifiable pendant les ${planNextAccess?.requiredTestSessions ?? 3} seances test.`
+              ? `Seule l'heure est modifiable pendant les ${planNextAccess?.requiredTestSessions ?? 3} séances test.`
               : `Only the time can be changed during the first ${planNextAccess?.requiredTestSessions ?? 3} test sessions.`
             : labels.modalHint}
         </p>
