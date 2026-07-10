@@ -1,40 +1,19 @@
 import 'server-only';
 
 import type { AppPolicySettings } from '@/lib/policy/defaults';
-import { hasEmailEnv } from '@/lib/env';
-import { sendSessionCalendarInvites } from '@/lib/notifications/calendar-invites';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import type { Database } from '@/lib/supabase/types';
 import { generateInviteCode } from '@/lib/utils';
 
 const TEST_SESSION_TARGET = 3;
 const TEST_SESSION_SPACING_DAYS = 2;
+const TEST_SESSION_QUESTION_GOAL = 20;
 
 type AdminClient = ReturnType<typeof createSupabaseAdminClient>;
 
-type UserRow = Pick<
-  Database['public']['Tables']['users']['Row'],
-  'id'
->;
-type SessionRow = Database['public']['Tables']['sessions']['Row'];
-type TestSessionInviteRow = Pick<
-  SessionRow,
-  | 'id'
-  | 'group_id'
-  | 'name'
-  | 'scheduled_at'
-  | 'share_code'
-  | 'meeting_link'
-  | 'timer_seconds'
-  | 'leader_id'
->;
-
+type UserRow = { id: string };
 export async function ensureInitialTestSessions(
   user: UserRow,
-  policy: Pick<
-    AppPolicySettings,
-    'defaultQuestionGoal' | 'perQuestionTimerDefaultSeconds'
-  >,
+  policy: Pick<AppPolicySettings, 'perQuestionTimerDefaultSeconds'>,
 ) {
   const admin = createSupabaseAdminClient();
   const groupId = await getOrCreateTestGroup(admin, user);
@@ -54,26 +33,21 @@ export async function ensureInitialTestSessions(
       scheduled_at: getDefaultTestSessionDate(now, sessionNumber).toISOString(),
       timer_mode: 'per_question' as const,
       timer_seconds: policy.perQuestionTimerDefaultSeconds,
-      question_goal: policy.defaultQuestionGoal,
+      question_goal: TEST_SESSION_QUESTION_GOAL,
       created_by: user.id,
       leader_id: user.id,
       status: 'scheduled' as const,
     };
   });
 
-  const { data: createdSessions, error } = await admin
+  const { error } = await admin
     .schema('public')
     .from('sessions')
     .insert(sessions)
-    .select(
-      'id, group_id, name, scheduled_at, share_code, meeting_link, timer_seconds, leader_id',
-    );
 
   if (error) {
     throw error;
   }
-
-  dispatchTestSessionInvites(createdSessions ?? []);
 }
 
 async function countExistingTestWindowSessions(
@@ -157,20 +131,10 @@ async function createUniqueInviteCode(admin: AdminClient) {
 function getDefaultTestSessionDate(now: Date, sessionNumber: number) {
   const date = new Date(now);
   date.setDate(now.getDate() + 1 + (sessionNumber - 1) * TEST_SESSION_SPACING_DAYS);
-  date.setHours(18, 0, 0, 0);
+  date.setHours(0, 0, 0, 0);
   return date;
 }
 
 function getFallbackTestGroupName(user: UserRow) {
   return `${user.id.slice(0, 8)} - test`;
-}
-
-function dispatchTestSessionInvites(sessions: TestSessionInviteRow[]) {
-  if (!hasEmailEnv() || sessions.length === 0) {
-    return;
-  }
-
-  void Promise.allSettled(
-    sessions.map((session) => sendSessionCalendarInvites(session)),
-  );
 }

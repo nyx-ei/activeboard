@@ -10,6 +10,8 @@ type SessionProgressEntryRuntimeProps = {
   timerSeconds: number;
   answeredCount: number;
   reviewedCount: number;
+  scheduledAt?: string;
+  meetingLink?: string | null;
   feedbackSubmitted?: boolean;
 };
 
@@ -45,6 +47,8 @@ export function SessionProgressEntryRuntime({
   timerSeconds,
   answeredCount,
   reviewedCount,
+  scheduledAt,
+  meetingLink,
   feedbackSubmitted = false,
 }: SessionProgressEntryRuntimeProps) {
   const language = locale === 'fr' ? 'fr' : 'en';
@@ -56,6 +60,11 @@ export function SessionProgressEntryRuntime({
     questionGoal,
     feedbackSubmitted,
   });
+
+  const countdownLabel =
+    status === 'scheduled' && meetingLink && scheduledAt
+      ? getTodayCountdownLabel(language, scheduledAt)
+      : null;
 
   return (
     <SessionProgressPanel
@@ -70,7 +79,31 @@ export function SessionProgressEntryRuntime({
       planNextHref={
         canOpenPlanNext ? `/sessions/${sessionId}?stage=plan-next` : undefined
       }
-      sessionMeta={`${Math.min(answeredCount, questionGoal)}/${questionGoal}Q - ${timerSeconds} sec`}
+      sessionMeta={`${Math.min(answeredCount, questionGoal)}/${questionGoal}Q - ${timerSeconds} sec${
+        countdownLabel ? ` · ${countdownLabel}` : ''
+      }`}
     />
   );
+}
+
+function getTodayCountdownLabel(locale: 'en' | 'fr', scheduledAt: string) {
+  const date = new Date(scheduledAt);
+  const now = new Date();
+
+  if (
+    !Number.isFinite(date.getTime()) ||
+    date.getFullYear() !== now.getFullYear() ||
+    date.getMonth() !== now.getMonth() ||
+    date.getDate() !== now.getDate()
+  ) {
+    return null;
+  }
+
+  const diffMs = date.getTime() - now.getTime();
+  if (diffMs <= 0) {
+    return locale === 'fr' ? 'maintenant' : 'now';
+  }
+
+  const hours = Math.max(1, Math.ceil(diffMs / (60 * 60 * 1000)));
+  return locale === 'fr' ? `dans ${hours}h` : `in ${hours}h`;
 }

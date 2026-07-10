@@ -54,7 +54,7 @@ const COPY = {
     falseConfidence: 'Fausse confiance',
     startSession: 'Démarrer',
     statuses: {
-      notStarted: 'Non démarrée',
+      notStarted: 'Programmée',
       started: 'Démarrée',
       review: 'Révision',
       feedback: 'Feedback',
@@ -81,7 +81,7 @@ const COPY = {
     falseConfidence: 'False confidence',
     startSession: 'Start session',
     statuses: {
-      notStarted: 'Not started',
+      notStarted: 'Scheduled',
       started: 'Started',
       review: 'Review',
       feedback: 'Feedback',
@@ -200,6 +200,43 @@ function formatTime(locale: string, value: string) {
   }).format(date);
 }
 
+function isSameLocalDay(left: Date, right: Date) {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  );
+}
+
+function getSessionCountdownLabel(locale: string, scheduledAt: string) {
+  const date = new Date(scheduledAt);
+  const now = new Date();
+
+  if (!Number.isFinite(date.getTime()) || !isSameLocalDay(date, now)) {
+    return null;
+  }
+
+  const diffMs = date.getTime() - now.getTime();
+  if (diffMs <= 0) {
+    return locale === 'fr' ? 'Maintenant' : 'Now';
+  }
+
+  const hours = Math.max(1, Math.ceil(diffMs / (60 * 60 * 1000)));
+  return locale === 'fr' ? `dans ${hours}h` : `in ${hours}h`;
+}
+
+function canEditScheduledSessionTime(session: SessionListItem) {
+  if (session.status !== 'scheduled') {
+    return false;
+  }
+
+  if (!session.meeting_link) {
+    return true;
+  }
+
+  return new Date(session.scheduled_at).getTime() - Date.now() > 60 * 60 * 1000;
+}
+
 function ParticipantsBadge({ count }: { count: number }) {
   const visibleCount = Math.max(1, Math.min(count, 3));
   const overflowCount = Math.max(0, count - visibleCount);
@@ -247,10 +284,19 @@ function TrialSessionRow({
     session.status === 'incomplete' ||
     session.status === 'scheduled' ||
     session.status === 'completed';
+  const isScheduledWithoutTime =
+    session.status === 'scheduled' && !session.meeting_link;
+  const sessionHref = canEditScheduledSessionTime(session)
+    ? `/sessions/${session.id}?stage=configure`
+    : `/sessions/${session.id}?stage=progress`;
+  const scheduledTimeLabel =
+    session.status === 'scheduled' && session.meeting_link
+      ? getSessionCountdownLabel(locale, session.scheduled_at)
+      : null;
 
   return (
     <Link
-      href={`/sessions/${session.id}?stage=progress`}
+      href={sessionHref}
       className="group grid grid-cols-[auto_minmax(0,1fr)_minmax(60px,auto)] items-center gap-2 rounded-[18px] border border-[#20D9A3]/25 bg-[#082c24]/68 px-3 py-3 text-left shadow-[inset_0_0_38px_rgba(32,217,163,0.035)] transition hover:border-[#20D9A3]/55 hover:bg-[#0b3a30]/78 min-[390px]:grid-cols-[auto_minmax(0,1fr)_minmax(72px,auto)] sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-5 sm:px-5"
     >
       <ParticipantsBadge count={memberCount} />
@@ -262,7 +308,13 @@ function TrialSessionRow({
           <span
             className={`inline-flex min-h-6 max-w-full items-center rounded-full border px-2 text-[10px] font-extrabold leading-none sm:min-h-7 sm:px-3 sm:text-xs ${getStatusClass(status)}`}
           >
-            {labels.statuses[status]}
+            {isScheduledWithoutTime
+              ? labels.statuses.notStarted
+              : session.status === 'scheduled' && session.meeting_link
+                ? locale === 'fr'
+                  ? 'Planifiée'
+                  : 'Planned'
+                : labels.statuses[status]}
           </span>
         </div>
         <p className="mt-1 truncate text-sm font-semibold text-[#a8bcb7] sm:text-base">
@@ -272,7 +324,11 @@ function TrialSessionRow({
         </p>
       </div>
       <div className="flex min-w-0 flex-col items-end justify-center text-right text-[12px] font-bold leading-snug text-[#b8c7c4] min-[390px]:text-sm sm:min-w-[110px] sm:text-base">
-        {isActionable ? (
+        {isScheduledWithoutTime ? (
+          <span>XXhXX</span>
+        ) : scheduledTimeLabel ? (
+          <span>{scheduledTimeLabel}</span>
+        ) : isActionable ? (
           <>
             <span className="max-w-full truncate">{formatDate(locale, session.scheduled_at)}</span>
             <span>{formatTime(locale, session.scheduled_at)}</span>

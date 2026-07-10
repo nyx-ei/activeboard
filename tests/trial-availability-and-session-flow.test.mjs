@@ -71,6 +71,18 @@ const advanceRoute = readFileSync(
   'utf8',
 );
 const sessionsRoute = readFileSync('app/api/sessions/route.ts', 'utf8');
+const scheduleRoute = readFileSync(
+  'app/api/sessions/[sessionId]/schedule/route.ts',
+  'utf8',
+);
+const initialTestSessions = readFileSync(
+  'lib/session/initial-test-sessions.ts',
+  'utf8',
+);
+const createSessionModal = readFileSync(
+  'components/sessions/create-session-modal.tsx',
+  'utf8',
+);
 const trialDashboard = readFileSync(
   'components/dashboard/trial-dashboard-view.tsx',
   'utf8',
@@ -214,7 +226,7 @@ test('trial session review to feedback to plan-next to dashboard remains reachab
   );
   assert.match(
     trialDashboard,
-    /href=\{`\/sessions\/\$\{session\.id\}\?stage=progress`\}/,
+    /href=\{sessionHref\}/,
   );
   assert.match(
     sessionCard,
@@ -254,7 +266,8 @@ test('trial session review to feedback to plan-next to dashboard remains reachab
   assert.match(progressPanel, /border-dashed/);
   assert.match(progressPanel, /statusStarted/);
   assert.doesNotMatch(progressPanel, /sm:grid-cols-3/);
-  assert.match(progressEntryRuntime, /sessionMeta=\{`\$\{Math\.min\(answeredCount, questionGoal\)\}\/\$\{questionGoal\}Q - \$\{timerSeconds\} sec`\}/);
+  assert.match(progressEntryRuntime, /countdownLabel/);
+  assert.match(progressEntryRuntime, /sessionMeta=\{`\$\{Math\.min\(answeredCount, questionGoal\)\}\/\$\{questionGoal\}Q - \$\{timerSeconds\} sec/);
   assert.doesNotMatch(progressEntryRuntime, /feedbackMeta=/);
   assert.match(progressPanel, /FeedbackAvatarPreview/);
   assert.match(progressPanel, /\[0, 1, 2, 3\]\.map/);
@@ -313,4 +326,24 @@ test('scheduled sessions auto-start instead of showing the old start screen', ()
   assert.match(autoStartRuntime, /Starting sprint/);
   assert.match(autoStartRuntime, /stage=progress/);
   assert.match(startRuntime, /labels\.startSession/);
+});
+
+test('generated test sessions require time and meeting link before sprint', () => {
+  assert.match(initialTestSessions, /TEST_SESSION_QUESTION_GOAL = 20/);
+  assert.match(initialTestSessions, /date\.setHours\(0, 0, 0, 0\)/);
+  assert.doesNotMatch(initialTestSessions, /sendSessionCalendarInvites/);
+  assert.match(trialDashboard, /!session\.meeting_link/);
+  assert.match(trialDashboard, /\?stage=configure/);
+  assert.match(trialDashboard, /<span>XXhXX<\/span>/);
+  assert.match(sessionPage, /const isConfigure = searchParams\.stage === 'configure'/);
+  assert.match(sessionPage, /<SessionConfigureRuntime/);
+  assert.match(sessionPage, /!data\.session\.meeting_link/);
+  assert.match(createSessionModal, /existingSession/);
+  assert.match(createSessionModal, /meetingLink/);
+  assert.match(createSessionModal, /\/api\/sessions\/\$\{existingSession\.id\}\/schedule/);
+  assert.match(scheduleRoute, /EDIT_LOCK_WINDOW_MS = 60 \* 60 \* 1000/);
+  assert.match(scheduleRoute, /candidate_matching_profiles/);
+  assert.match(scheduleRoute, /sendSessionCalendarInvites/);
+  assert.match(feedbackRuntime, /peerMetrics/);
+  assert.match(feedbackRuntime, /questionsTogether/);
 });
