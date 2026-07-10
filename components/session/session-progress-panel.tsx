@@ -47,7 +47,7 @@ const copy = {
     sessionMeta: '30/30Q - 90 sec',
     feedback: 'Feedback',
     feedbackMeta: '1 question, 1 min',
-    planNext: 'Planifier la suite',
+    planNext: 'Planifier la prochaine session',
     planNextMeta: 'XX - XXhXX',
     statusStarted: 'Démarrée',
     statusPlanned: 'Planifiée',

@@ -3,10 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
+  ArrowLeft,
   Clock,
   Copy,
   HelpCircle,
   Lock,
+  Pencil,
   Search,
   UsersRound,
 } from 'lucide-react';
@@ -113,6 +115,7 @@ export function CreateSessionModal({
   const [timerHelpMode, setTimerHelpMode] = useState<
     'per_question' | 'global' | null
   >(null);
+  const [wizardStep, setWizardStep] = useState(0);
   const [paidCandidateResults, setPaidCandidateResults] = useState<
     ParticipantCandidate[]
   >([]);
@@ -246,6 +249,7 @@ export function CreateSessionModal({
     : `/${locale}/dashboard`;
   const participantCopy = getCleanParticipantCopy(locale);
   const timerModeCopy = getCleanTimerModeCopy(locale);
+  const wizardCopy = getSessionWizardCopy(locale);
   const modalTitle = isLockedTestPlan
     ? locale === 'fr'
       ? 'Session test'
@@ -256,6 +260,40 @@ export function CreateSessionModal({
       ? 'Planifier la séance'
       : 'Schedule session'
     : labels.createSession;
+
+  const requiredLabel = locale === 'fr' ? 'Obligatoire' : 'Required';
+  const isNameInvalid = !name.trim();
+  const isParticipantsInvalid =
+    selectedParticipantCount <
+    (isExistingSessionPlan ? 1 : sessionPolicy.minimumGroupMembersToStart);
+  const isScheduledAtInvalid = !isValidScheduledAtInput(scheduledAt);
+  const isMeetingLinkInvalid = isExistingSessionPlan && !meetingLink.trim();
+  const isQuestionGoalInvalid =
+    !Number.isFinite(Number(questionGoal)) ||
+    Number(questionGoal) < 1 ||
+    Number(questionGoal) > sessionPolicy.maxQuestionGoal;
+  const isTimerSecondsInvalid =
+    !Number.isFinite(Number(timerSeconds)) ||
+    Number(timerSeconds) < 1 ||
+    Number(timerSeconds) > sessionPolicy.maxTimerSeconds;
+  const stepHasIssue =
+    wizardStep === 0
+      ? isNameInvalid || isParticipantsInvalid
+      : wizardStep === 1
+        ? isScheduledAtInvalid
+        : isMeetingLinkInvalid ||
+          isQuestionGoalInvalid ||
+          isTimerSecondsInvalid;
+
+  function goToNextWizardStep() {
+    setErrorMessage(null);
+    setWizardStep((current) => Math.min(current + 1, 2));
+  }
+
+  function goToPreviousWizardStep() {
+    setErrorMessage(null);
+    setWizardStep((current) => Math.max(current - 1, 0));
+  }
 
   useEffect(() => {
     if (!canInviteCandidates) {
@@ -364,10 +402,61 @@ export function CreateSessionModal({
       mobileSheet
       contentClassName="max-h-[90vh] w-full max-w-[calc(100vw-12px)] overscroll-contain overflow-x-hidden overflow-y-auto rounded-t-[18px] bg-[#111827] p-2.5 shadow-2xl ring-1 ring-white/[0.08] [scrollbar-width:none] sm:max-w-[540px] sm:rounded-[14px] sm:p-6 [&::-webkit-scrollbar]:hidden"
     >
-      <div className="flex items-center justify-between">
-        <ModalTitle className="text-lg font-extrabold text-white">
-          {modalTitle}
-        </ModalTitle>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            {wizardStep > 0 ? (
+              <button
+                type="button"
+                onClick={goToPreviousWizardStep}
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/[0.08] bg-white/[0.035] text-slate-300 transition hover:border-brand/50 hover:text-white"
+                aria-label={wizardCopy.previous}
+              >
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              </button>
+            ) : null}
+            <ModalTitle className="min-w-0 text-lg font-extrabold text-white">
+              {modalTitle}
+            </ModalTitle>
+          </div>
+          <div className="mt-3 rounded-[12px] border border-white/[0.08] bg-white/[0.025] p-3">
+            <div className="flex items-center gap-2">
+              {isExistingSessionPlan ? (
+                <Lock className="h-4 w-4 shrink-0 text-amber-200" aria-hidden="true" />
+              ) : (
+                <Pencil className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
+              )}
+              <input
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                readOnly={isExistingSessionPlan}
+                placeholder={labels.sessionNamePlaceholder}
+                className="min-w-0 flex-1 bg-transparent text-base font-black text-white outline-none placeholder:text-slate-500 read-only:cursor-not-allowed read-only:text-slate-300"
+                autoComplete="off"
+                aria-label={labels.sessionName}
+              />
+            </div>
+            {isNameInvalid ? (
+              <p className="mt-1 text-xs font-bold text-rose-300">
+                {requiredLabel}
+              </p>
+            ) : null}
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-1.5">
+            {wizardCopy.steps.map((step, index) => (
+              <span
+                key={step}
+                className={`h-1.5 rounded-full ${
+                  index <= wizardStep ? 'bg-brand' : 'bg-white/[0.08]'
+                }`}
+                aria-hidden="true"
+              />
+            ))}
+          </div>
+          <p className="mt-3 text-sm font-extrabold text-white">
+            {wizardCopy.steps[wizardStep]}
+          </p>
+        </div>
         <button
           ref={closeButtonRef}
           type="button"
@@ -381,7 +470,7 @@ export function CreateSessionModal({
 
       <form
         action={action}
-        className="mt-5 min-w-0 space-y-4"
+        className="mt-5 flex min-w-0 flex-col gap-4"
         onSubmit={(event) => {
           if (isCreating) {
             event.preventDefault();
@@ -389,6 +478,11 @@ export function CreateSessionModal({
           }
 
           event.preventDefault();
+          if (wizardStep < 2) {
+            goToNextWizardStep();
+            return;
+          }
+
           if (validationIssue) {
             setErrorMessage(validationIssue);
             return;
@@ -493,6 +587,13 @@ export function CreateSessionModal({
       >
         <input type="hidden" name="locale" value={locale} />
         <input type="hidden" name="returnTo" value={returnTo} />
+        <input type="hidden" name="groupId" value={selectedGroupId} />
+        <input type="hidden" name="sessionName" value={name} />
+        <input type="hidden" name="scheduledAt" value={scheduledAt} />
+        <input type="hidden" name="questionGoal" value={questionGoal} />
+        <input type="hidden" name="timerMode" value={timerMode} />
+        <input type="hidden" name="timerSeconds" value={timerSeconds} />
+        <input type="hidden" name="meetingLink" value={meetingLink} />
         {selectedParticipantIds.map((participantId) => (
           <input
             key={participantId}
@@ -501,16 +602,15 @@ export function CreateSessionModal({
             value={participantId}
           />
         ))}
-        {isLockedTestPlan ? (
-          <input type="hidden" name="groupId" value={selectedGroupId} />
-        ) : null}
-
-        <label className={isLockedTestPlan ? 'hidden' : 'block'}>
+        <label
+          className={
+            isLockedTestPlan || wizardStep !== 0 ? 'hidden' : 'block'
+          }
+        >
           <span className="text-sm font-bold text-slate-300">
             {participantCopy.poolLabel}
           </span>
           <select
-            name={isLockedTestPlan ? undefined : 'groupId'}
             disabled={isLockedTestPlan}
             value={selectedGroupId}
             onChange={(event) => {
@@ -532,23 +632,7 @@ export function CreateSessionModal({
           </select>
         </label>
 
-        <label className="block">
-          <span className="text-sm font-bold text-slate-300">
-            {labels.sessionName}
-          </span>
-          <textarea
-            name="sessionName"
-            rows={2}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            readOnly={isExistingSessionPlan}
-            placeholder={labels.sessionNamePlaceholder}
-            className="field mt-2 min-h-[76px] resize-none rounded-[9px] px-3 py-2 text-sm leading-5 read-only:cursor-not-allowed read-only:opacity-70"
-            autoComplete="off"
-          />
-        </label>
-
-        <div>
+        <div className={wizardStep === 0 ? 'block' : 'hidden'}>
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm font-bold text-slate-300">
               {participantCopy.participants}
@@ -678,13 +762,17 @@ export function CreateSessionModal({
               )}
             </div>
           </div>
+          {isParticipantsInvalid ? (
+            <p className="mt-1 text-xs font-bold text-rose-300">
+              {requiredLabel}
+            </p>
+          ) : null}
         </div>
 
-        <div>
+        <div className={wizardStep === 1 ? 'block' : 'hidden'}>
           <span className="text-sm font-bold text-slate-300">
             {labels.scheduledAt}
           </span>
-          <input type="hidden" name="scheduledAt" value={scheduledAt} />
           <div className="mt-2 grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,0.64fr)] gap-1.5 sm:gap-2">
             <label className="relative block min-w-0">
               {isLockedTestPlan ? (
@@ -727,14 +815,18 @@ export function CreateSessionModal({
               }
             />
           </div>
+          {isScheduledAtInvalid ? (
+            <p className="mt-1 text-xs font-bold text-rose-300">
+              {requiredLabel}
+            </p>
+          ) : null}
         </div>
 
-        <label className="block">
+        <label className={wizardStep === 2 ? 'order-[32] block' : 'hidden'}>
           <span className="text-sm font-bold text-slate-300">
             {locale === 'fr' ? 'Lien de réunion' : 'Meeting link'}
           </span>
           <input
-            name="meetingLink"
             type="url"
             value={meetingLink}
             onChange={(event) => setMeetingLink(event.target.value)}
@@ -742,23 +834,42 @@ export function CreateSessionModal({
             className="field mt-2 h-10 rounded-[7px] px-3 py-2 text-sm"
             autoComplete="off"
           />
+          {isMeetingLinkInvalid ? (
+            <p className="mt-1 text-xs font-bold text-rose-300">
+              {requiredLabel}
+            </p>
+          ) : null}
         </label>
 
-        <div className="grid min-w-0 grid-cols-2 gap-1.5 sm:gap-2">
-          <label className="block min-w-0">
+        <div
+          className={`order-[31] grid min-w-0 grid-cols-2 gap-1.5 sm:gap-2 ${
+            wizardStep === 2 ? '' : 'hidden'
+          }`}
+        >
+          <label className="relative block min-w-0">
             <span className="block text-xs font-bold leading-tight text-slate-300 sm:text-sm">
               {labels.questionCount}
             </span>
+            {isLockedTestPlan ? (
+              <Lock
+                className="pointer-events-none absolute right-3 top-[38px] h-4 w-4 text-amber-200"
+                aria-hidden="true"
+              />
+            ) : null}
             <input
-              name="questionGoal"
               type="number"
               min="1"
               max={sessionPolicy.maxQuestionGoal}
               value={questionGoal}
               readOnly={isLockedTestPlan}
               onChange={(event) => setQuestionGoal(event.target.value)}
-              className="field mt-2 h-10 min-w-0 rounded-[7px] px-2 py-2 text-sm read-only:cursor-not-allowed read-only:opacity-70 sm:px-3"
+              className="field mt-2 h-10 min-w-0 rounded-[7px] px-2 py-2 text-sm read-only:cursor-not-allowed read-only:pr-9 read-only:opacity-70 sm:px-3"
             />
+            {isQuestionGoalInvalid ? (
+              <p className="mt-1 text-xs font-bold text-rose-300">
+                {requiredLabel}
+              </p>
+            ) : null}
           </label>
           <label className="block min-w-0">
             <span className="block text-xs font-bold leading-tight text-slate-300 sm:text-sm">
@@ -767,7 +878,6 @@ export function CreateSessionModal({
                 : labels.timerSeconds}
             </span>
             <input
-              name="timerSeconds"
               type="number"
               min="1"
               max={sessionPolicy.maxTimerSeconds}
@@ -776,10 +886,15 @@ export function CreateSessionModal({
               onChange={(event) => setTimerSeconds(event.target.value)}
               className="field mt-2 h-10 min-w-0 rounded-[7px] px-2 py-2 text-sm read-only:cursor-not-allowed read-only:opacity-70 sm:px-3"
             />
+            {isTimerSecondsInvalid ? (
+              <p className="mt-1 text-xs font-bold text-rose-300">
+                {requiredLabel}
+              </p>
+            ) : null}
           </label>
         </div>
 
-        <div>
+        <div className={wizardStep === 2 ? 'order-[30] block' : 'hidden'}>
           <div className="flex items-center gap-2">
             <span className="text-sm font-bold text-slate-300">
               {labels.timerMode}
@@ -818,7 +933,6 @@ export function CreateSessionModal({
                 <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
                   <input
                     type="radio"
-                    name="timerMode"
                     value={value}
                     checked={timerMode === value}
                     onChange={() =>
@@ -899,13 +1013,24 @@ export function CreateSessionModal({
             <span className="min-w-0">{errorMessage}</span>
           </div>
         ) : null}
-        <SubmitButton
-          pendingLabel={labels.createSessionPending}
-          className="button-primary disabled:bg-brand/40 h-10 w-full rounded-[7px] py-2 text-sm disabled:text-white/60"
-          disabled={isCreating}
-        >
-          {isCreating ? labels.createSessionPending : submitLabel}
-        </SubmitButton>
+        {wizardStep < 2 ? (
+          <button
+            type="button"
+            onClick={goToNextWizardStep}
+            disabled={stepHasIssue}
+            className="button-primary disabled:bg-brand/40 h-10 w-full rounded-[7px] py-2 text-sm font-extrabold disabled:text-white/60"
+          >
+            {wizardCopy.next}
+          </button>
+        ) : (
+          <SubmitButton
+            pendingLabel={labels.createSessionPending}
+            className="button-primary disabled:bg-brand/40 h-10 w-full rounded-[7px] py-2 text-sm disabled:text-white/60"
+            disabled={isCreating || stepHasIssue}
+          >
+            {isCreating ? labels.createSessionPending : submitLabel}
+          </SubmitButton>
+        )}
       </form>
     </Modal>
   );
@@ -1224,6 +1349,30 @@ function getCleanParticipantCopy(locale: string) {
     copyPhone: 'Copy phone number',
     contactUnavailable: 'No phone',
     empty: 'No member available',
+  };
+}
+
+function getSessionWizardCopy(locale: string) {
+  if (locale === 'fr') {
+    return {
+      previous: 'Étape précédente',
+      next: 'Next',
+      steps: [
+        'Organisez un groupe WhatsApp',
+        'Avec les membres du groupe, fixez le temps',
+        'Avec les membres du groupe, choisissez le mode de session',
+      ],
+    };
+  }
+
+  return {
+    previous: 'Previous step',
+    next: 'Next',
+    steps: [
+      'Organize a WhatsApp group',
+      'With the group members, set the time',
+      'With the group members, choose the session mode',
+    ],
   };
 }
 

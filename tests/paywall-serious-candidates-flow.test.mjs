@@ -46,10 +46,11 @@ test('lookup preview is reachable before payment and masks contact details', () 
   assert.match(lookupPage, /canRevealProfiles = planNextAccess\.canInviteCandidates/);
   assert.match(lookupPage, /profileScore/);
   assert.match(lookupPage, /maskPersonName/);
-  assert.match(lookupPage, /href="\/billing"/);
+  assert.match(lookupPage, /getUnlimitedPaymentLink/);
+  assert.match(lookupPage, /href=\{paymentLink\}/);
   assert.match(lookupPage, /href="\/dashboard"/);
   assert.match(lookupPage, /fixed inset-0/);
-  assert.match(lookupPage, /backdrop-blur-sm/);
+  assert.doesNotMatch(lookupPage, /backdrop-blur-sm/);
   assert.doesNotMatch(lookupPage, /candidate\.email/);
   assert.doesNotMatch(lookupPage, /phoneNumber/);
   assert.doesNotMatch(lookupPage, /sessionsAttended/);

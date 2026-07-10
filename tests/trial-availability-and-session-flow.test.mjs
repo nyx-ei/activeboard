@@ -351,10 +351,17 @@ test('generated test sessions require time and meeting link before sprint', () =
   assert.match(sessionPage, /<SessionConfigureRuntime/);
   assert.match(sessionPage, /!data\.session\.meeting_link/);
   assert.match(createSessionModal, /existingSession/);
+  assert.match(createSessionModal, /wizardStep/);
+  assert.match(createSessionModal, /Organisez un groupe WhatsApp/);
+  assert.match(createSessionModal, /Avec les membres du groupe, fixez le temps/);
+  assert.match(createSessionModal, /Avec les membres du groupe, choisissez le mode de session/);
+  assert.match(createSessionModal, /name="sessionName" value=\{name\}/);
+  assert.doesNotMatch(createSessionModal, /<textarea/);
   assert.match(createSessionModal, /meetingLink/);
   assert.match(createSessionModal, /toScheduledAtPayload/);
   assert.match(createSessionModal, /return date\.toISOString\(\)/);
   assert.match(createSessionModal, /\/api\/sessions\/\$\{existingSession\.id\}\/schedule/);
+  assert.match(progressPanel, /Planifier la prochaine session/);
   assert.match(scheduleRoute, /EDIT_LOCK_WINDOW_MS = 60 \* 60 \* 1000/);
   assert.match(scheduleRoute, /candidate_matching_profiles/);
   assert.match(scheduleRoute, /sendSessionCalendarInvites/);

@@ -5,9 +5,11 @@ import { FeedbackBanner } from '@/components/app/feedback-banner';
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
+import { getUserBillingSnapshot } from '@/lib/billing/user-tier';
 import { getRankedSeriousCandidates } from '@/lib/matching/serious-candidates';
 import type { RankedSeriousCandidate } from '@/lib/matching/serious-candidates';
 import { getPlanNextAccess } from '@/lib/session/plan-next-access';
+import { getUnlimitedPaymentLink } from '@/lib/stripe/payment-links';
 
 type LookupPageProps = {
   params: { locale: string };
@@ -25,15 +27,19 @@ export default async function LookupPage({
   const locale = params.locale as AppLocale;
   const language = locale === 'fr' ? 'fr' : 'en';
   const user = await requireUser(locale);
-  const [t, planNextAccess] = await Promise.all([
+  const [t, planNextAccess, billingSnapshot] = await Promise.all([
     getTranslations('Lookup'),
     getPlanNextAccess(user.id),
+    getUserBillingSnapshot(user.id),
   ]);
   const canRevealProfiles = planNextAccess.canInviteCandidates;
   const { candidates } = await getRankedSeriousCandidates({
     userId: user.id,
     locale: language,
   });
+  const paymentLink = getUnlimitedPaymentLink(
+    billingSnapshot?.email ?? user.email ?? null,
+  );
 
   return (
     <main className="relative flex flex-1 flex-col gap-5 pb-28">
@@ -78,20 +84,27 @@ export default async function LookupPage({
       )}
 
       {!canRevealProfiles ? (
-        <div className="fixed inset-0 z-30 flex items-center justify-center px-4 py-8 [background:radial-gradient(circle_at_50%_35%,rgba(0,16,15,0.25),rgba(0,16,15,0.72))]">
-          <div className="w-full max-w-[420px] rounded-[22px] border border-amber-300/35 bg-[#111827]/95 p-5 text-center shadow-[0_28px_90px_rgba(0,0,0,0.55)] backdrop-blur-sm">
+        <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/42 px-4 py-5 sm:items-center">
+          <div className="w-full max-w-[420px] rounded-[22px] border border-amber-300/35 bg-[#111827]/96 p-5 text-center shadow-[0_28px_90px_rgba(0,0,0,0.55)]">
             <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-amber-300 text-[#062b22]">
               <LockKeyhole className="h-5 w-5" aria-hidden="true" />
             </div>
             <p className="mt-4 text-lg font-black text-white">
-              {t('unlockContacts')}
+              {language === 'fr'
+                ? 'Débloque les candidats sérieux'
+                : 'Unlock serious candidates'}
             </p>
-            <Link
-              href="/billing"
+            <p className="mt-2 text-sm font-semibold leading-5 text-slate-400">
+              {language === 'fr'
+                ? 'Les scores restent visibles. Les contacts et profils complets se débloquent après paiement.'
+                : 'Scores stay visible. Contacts and complete profiles unlock after payment.'}
+            </p>
+            <a
+              href={paymentLink}
               className="mt-5 flex h-12 w-full items-center justify-center rounded-[12px] border border-amber-300/35 bg-[#17210f]/95 px-5 text-sm font-black text-amber-200 shadow-[0_20px_60px_rgba(0,0,0,0.35)] transition hover:bg-[#1e2a14]"
             >
               {t('unlockContacts')}
-            </Link>
+            </a>
           </div>
         </div>
       ) : null}
