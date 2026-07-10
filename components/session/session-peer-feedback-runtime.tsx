@@ -58,7 +58,7 @@ const copy = {
     submit: 'Soumettre le feedback',
     submitting: 'Soumission...',
     error: "Le feedback n'a pas pu être soumis. Réessaie.",
-    peerMetrics: '{questions} questions ensemble - {score}% fiabilite',
+    peerMetrics: '{questions} questions ensemble - {score}% fiabilité',
   },
 } as const;
 

@@ -46,6 +46,40 @@ type DashboardSession = {
   accuracyPercent?: number | null;
 };
 
+async function getUserSessionAnsweredQuestionCount(
+  supabase: PublicClient,
+  sessionId: string,
+  userId: string,
+) {
+  const questionsResult = await supabase
+    .schema('public')
+    .from('questions')
+    .select('id')
+    .eq('session_id', sessionId);
+
+  const questionIds =
+    questionsResult.data
+      ?.map((question) => question.id)
+      .filter((id): id is string => typeof id === 'string') ?? [];
+
+  if (questionIds.length === 0) {
+    return 0;
+  }
+
+  const answersResult = await supabase
+    .schema('public')
+    .from('answers')
+    .select('question_id')
+    .eq('user_id', userId)
+    .in('question_id', questionIds);
+
+  return new Set(
+    (answersResult.data ?? [])
+      .map((answer) => answer.question_id)
+      .filter((id): id is string => typeof id === 'string'),
+  ).size;
+}
+
 type DashboardGroupMemberPreview = {
   id: string;
   initials: string;
@@ -2434,13 +2468,11 @@ export const getSessionPageData = cache(
       };
     }
 
-    const answeredCountPromise = supabase
-      .schema('public')
-      .from('dashboard_user_session_answer_counts')
-      .select('answered_question_count')
-      .eq('user_id', user.id)
-      .eq('session_id', sessionId)
-      .maybeSingle();
+    const answeredCountPromise = getUserSessionAnsweredQuestionCount(
+      supabase,
+      sessionId,
+      user.id,
+    );
 
     if (normalizedStage === 'review') {
       const hasExplicitQuestionIndex = Number.isFinite(questionIndex);
@@ -2521,7 +2553,7 @@ export const getSessionPageData = cache(
         group,
         membership,
         members,
-        answeredCount: answeredCountResult.data?.answered_question_count ?? 0,
+        answeredCount: answeredCountResult,
         reviewedQuestionCount: currentUserReviewAnswers.filter(
           (answer) => answer.review_correct_option,
         ).length,
@@ -2667,7 +2699,7 @@ export const getSessionPageData = cache(
       group,
       membership,
       members,
-      answeredCount: answeredCountResult.data?.answered_question_count ?? 0,
+      answeredCount: answeredCountResult,
       resolvedQuestionIndex: currentQuestion?.order_index ?? 0,
       questionGoal:
         session.question_goal ??

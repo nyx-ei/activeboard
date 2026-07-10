@@ -16,6 +16,7 @@ type SessionProgressPanelProps = {
   feedbackHref?: string;
   planNextHref?: string;
   sessionMeta?: string;
+  sessionStatusLabel?: string;
   feedbackMeta?: React.ReactNode;
   planNextMeta?: string;
   children?: React.ReactNode;
@@ -33,24 +34,26 @@ const copy = {
     planNext: 'Plan next session',
     planNextMeta: 'XX - XXhXX',
     statusStarted: 'Started',
+    statusPlanned: 'Planned',
     statusReview: 'Review',
     statusPlan: 'Next',
     statusDone: 'Done',
   },
   fr: {
     back: 'Retour',
-    progress: 'Progression de la seance',
+    progress: 'Progression de la séance',
     sessionActive: 'Sprint',
-    sessionDone: 'Sprint revise',
+    sessionDone: 'Sprint révisé',
     sessionMeta: '30/30Q - 90 sec',
     feedback: 'Feedback',
     feedbackMeta: '1 question, 1 min',
     planNext: 'Planifier la suite',
     planNextMeta: 'XX - XXhXX',
-    statusStarted: 'Demarree',
+    statusStarted: 'Démarrée',
+    statusPlanned: 'Planifiée',
     statusReview: 'Review',
     statusPlan: 'Suite',
-    statusDone: 'Terminee',
+    statusDone: 'Terminée',
   },
 } as const;
 
@@ -196,6 +199,7 @@ export function SessionProgressPanel({
   feedbackHref,
   planNextHref,
   sessionMeta,
+  sessionStatusLabel,
   feedbackMeta,
   planNextMeta,
   children,
@@ -218,7 +222,7 @@ export function SessionProgressPanel({
     }
 
     if (step === 'session') {
-      return t.statusStarted;
+      return sessionStatusLabel ?? t.statusStarted;
     }
 
     return step === 'feedback' ? t.statusReview : t.statusPlan;

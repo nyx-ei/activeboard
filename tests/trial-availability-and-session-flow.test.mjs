@@ -161,9 +161,9 @@ test('trial dashboard keeps reliability and candidate metrics side by side on mo
   assert.match(trialDashboard, /sm:min-w-\[110px\]/);
   assert.match(trialDashboard, /<ReliabilityInfo labels=\{labels\} \/>/);
   assert.match(trialDashboard, /reliabilityInfoTitle: 'Score composition'/);
-  assert.match(trialDashboard, /Attendance 30%/);
-  assert.match(trialDashboard, /reviewed questions 20%/);
-  assert.match(trialDashboard, /peer validation 10%/);
+  assert.match(trialDashboard, /\['Attendance', '30%'\]/);
+  assert.match(trialDashboard, /\['Reviewed questions', '20%'\]/);
+  assert.match(trialDashboard, /\['Peer validation', '10%'\]/);
   assert.match(trialDashboard, /function MetricValue/);
   assert.match(trialDashboard, /TrendingUp/);
   assert.match(trialDashboard, /TrendingDown/);
@@ -206,7 +206,8 @@ test('onboarding email verification returns to the current onboarding step', () 
 
 test('login page exposes a back link to the landing page', () => {
   assert.match(authForm, /ArrowLeft/);
-  assert.match(authForm, /href=\{`\/\$\{locale\}` as never\}/);
+  assert.match(authForm, /href="\/"/);
+  assert.match(authForm, /Retour à l’accueil/);
 });
 
 test('dashboard progression details route is not linked or mounted', () => {
@@ -262,11 +263,14 @@ test('trial session review to feedback to plan-next to dashboard remains reachab
   );
   assert.match(progressPanel, /Session progress/);
   assert.match(progressPanel, /sessionActive: 'Sprint'/);
+  assert.match(progressPanel, /sessionStatusLabel \?\? t\.statusStarted/);
   assert.match(progressPanel, /grid-cols-\[22px_minmax\(0,1fr\)\]/);
   assert.match(progressPanel, /border-dashed/);
   assert.match(progressPanel, /statusStarted/);
   assert.doesNotMatch(progressPanel, /sm:grid-cols-3/);
   assert.match(progressEntryRuntime, /countdownLabel/);
+  assert.match(progressEntryRuntime, /const sessionStatusLabel =/);
+  assert.match(progressEntryRuntime, /sessionStatusLabel=\{sessionStatusLabel\}/);
   assert.match(progressEntryRuntime, /sessionMeta=\{`\$\{Math\.min\(answeredCount, questionGoal\)\}\/\$\{questionGoal\}Q - \$\{timerSeconds\} sec/);
   assert.doesNotMatch(progressEntryRuntime, /feedbackMeta=/);
   assert.match(progressPanel, /FeedbackAvatarPreview/);
