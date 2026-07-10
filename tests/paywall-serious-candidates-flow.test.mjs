@@ -47,10 +47,17 @@ test('lookup preview is reachable before payment and masks contact details', () 
   assert.match(lookupPage, /profileScore/);
   assert.match(lookupPage, /maskPersonName/);
   assert.match(lookupPage, /getUnlimitedPaymentLink/);
+  assert.match(lookupPage, /getTranslations\('Billing'\)/);
+  assert.match(lookupPage, /billingT\('title'\)/);
+  assert.match(lookupPage, /billingT\('freePlanTitle'\)/);
+  assert.match(lookupPage, /billingT\('unlimitedPlanTitle'\)/);
   assert.match(lookupPage, /href=\{paymentLink\}/);
   assert.match(lookupPage, /href="\/dashboard"/);
-  assert.match(lookupPage, /fixed inset-0/);
+  assert.match(lookupPage, /fixed inset-0 z-30 flex items-end justify-center/);
   assert.doesNotMatch(lookupPage, /backdrop-blur-sm/);
+  assert.doesNotMatch(lookupPage, /LockKeyhole/);
+  assert.doesNotMatch(lookupPage, /Débloque les candidats sérieux/);
+  assert.doesNotMatch(lookupPage, /Scores stay visible/);
   assert.doesNotMatch(lookupPage, /candidate\.email/);
   assert.doesNotMatch(lookupPage, /phoneNumber/);
   assert.doesNotMatch(lookupPage, /sessionsAttended/);

@@ -4,12 +4,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   ArrowLeft,
+  CalendarClock,
   Clock,
   Copy,
   HelpCircle,
   Lock,
+  MessageCircle,
   Pencil,
   Search,
+  SlidersHorizontal,
   UsersRound,
 } from 'lucide-react';
 
@@ -242,6 +245,9 @@ export function CreateSessionModal({
     );
   }, [canInviteCandidates, participantCandidates, participantSearch, selectedGroupId]);
   const selectedParticipantCount = selectedParticipantIds.length;
+  const minimumParticipantCount = isExistingSessionPlan
+    ? 1
+    : sessionPolicy.minimumGroupMembersToStart;
   const returnTo = selectedGroup
     ? existingSession
       ? `/${locale}/sessions/${existingSession.id}?stage=progress`
@@ -250,11 +256,6 @@ export function CreateSessionModal({
   const participantCopy = getCleanParticipantCopy(locale);
   const timerModeCopy = getCleanTimerModeCopy(locale);
   const wizardCopy = getSessionWizardCopy(locale);
-  const modalTitle = isLockedTestPlan
-    ? locale === 'fr'
-      ? 'Session test'
-      : 'Test session'
-    : labels.newSession;
   const submitLabel = isExistingSessionPlan
     ? locale === 'fr'
       ? 'Planifier la séance'
@@ -264,9 +265,11 @@ export function CreateSessionModal({
   const requiredLabel = locale === 'fr' ? 'Obligatoire' : 'Required';
   const isNameInvalid = !name.trim();
   const isParticipantsInvalid =
-    selectedParticipantCount <
-    (isExistingSessionPlan ? 1 : sessionPolicy.minimumGroupMembersToStart);
-  const isScheduledAtInvalid = !isValidScheduledAtInput(scheduledAt);
+    !isLockedTestPlan && selectedParticipantCount < minimumParticipantCount;
+  const isScheduledAtInvalid = !isValidScheduledAtInput(
+    scheduledAt,
+    isLockedTestPlan,
+  );
   const isMeetingLinkInvalid = isExistingSessionPlan && !meetingLink.trim();
   const isQuestionGoalInvalid =
     !Number.isFinite(Number(questionGoal)) ||
@@ -294,6 +297,13 @@ export function CreateSessionModal({
     setErrorMessage(null);
     setWizardStep((current) => Math.max(current - 1, 0));
   }
+
+  const WizardStepIcon =
+    wizardStep === 0
+      ? MessageCircle
+      : wizardStep === 1
+        ? CalendarClock
+        : SlidersHorizontal;
 
   useEffect(() => {
     if (!canInviteCandidates) {
@@ -381,9 +391,7 @@ export function CreateSessionModal({
     locale,
     canCreateSession,
     selectedParticipantCount,
-    minimumParticipantCount: isExistingSessionPlan
-      ? 1
-      : sessionPolicy.minimumGroupMembersToStart,
+    minimumParticipantCount,
     name,
     scheduledAt,
     questionGoal,
@@ -392,6 +400,7 @@ export function CreateSessionModal({
     maxTimerSeconds: sessionPolicy.maxTimerSeconds,
     meetingLink,
     requireMeetingLink: isExistingSessionPlan,
+    allowPastScheduledAt: isLockedTestPlan,
   });
   return (
     <Modal
@@ -415,33 +424,28 @@ export function CreateSessionModal({
                 <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               </button>
             ) : null}
-            <ModalTitle className="min-w-0 text-lg font-extrabold text-white">
-              {modalTitle}
-            </ModalTitle>
-          </div>
-          <div className="mt-3 rounded-[12px] border border-white/[0.08] bg-white/[0.025] p-3">
-            <div className="flex items-center gap-2">
-              {isExistingSessionPlan ? (
-                <Lock className="h-4 w-4 shrink-0 text-amber-200" aria-hidden="true" />
-              ) : (
-                <Pencil className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
-              )}
+            <ModalTitle className="flex min-w-0 flex-1 items-center gap-2 text-xl font-extrabold text-white">
               <input
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 readOnly={isExistingSessionPlan}
                 placeholder={labels.sessionNamePlaceholder}
-                className="min-w-0 flex-1 bg-transparent text-base font-black text-white outline-none placeholder:text-slate-500 read-only:cursor-not-allowed read-only:text-slate-300"
+                className="min-w-0 flex-1 truncate bg-transparent text-xl font-extrabold text-white outline-none placeholder:text-slate-500 read-only:cursor-not-allowed"
                 autoComplete="off"
                 aria-label={labels.sessionName}
               />
-            </div>
-            {isNameInvalid ? (
-              <p className="mt-1 text-xs font-bold text-rose-300">
-                {requiredLabel}
-              </p>
-            ) : null}
+              {isExistingSessionPlan ? (
+                <Lock className="h-4 w-4 shrink-0 text-amber-200" aria-hidden="true" />
+              ) : (
+                <Pencil className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
+              )}
+            </ModalTitle>
           </div>
+          {isNameInvalid ? (
+            <p className="mt-1 text-xs font-bold text-rose-300">
+              {requiredLabel}
+            </p>
+          ) : null}
           <div className="mt-3 grid grid-cols-3 gap-1.5">
             {wizardCopy.steps.map((step, index) => (
               <span
@@ -453,7 +457,8 @@ export function CreateSessionModal({
               />
             ))}
           </div>
-          <p className="mt-3 text-sm font-extrabold text-white">
+          <p className="mt-3 flex items-center justify-center gap-2 text-center text-sm font-extrabold text-white">
+            <WizardStepIcon className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
             {wizardCopy.steps[wizardStep]}
           </p>
         </div>
@@ -700,7 +705,7 @@ export function CreateSessionModal({
                   return (
                     <label
                       key={candidate.id}
-                      className={`grid h-10 cursor-pointer grid-cols-[32px_minmax(72px,1fr)_minmax(82px,0.86fr)_32px] items-center gap-2 rounded-[9px] px-2 transition ${
+                      className={`grid h-10 cursor-pointer grid-cols-[32px_minmax(72px,1fr)_minmax(82px,0.86fr)_auto] items-center gap-2 rounded-[9px] px-2 transition ${
                         isSelected
                           ? 'bg-brand/10 text-white'
                           : 'text-slate-300 hover:bg-white/[0.04]'
@@ -742,11 +747,12 @@ export function CreateSessionModal({
                             event.stopPropagation();
                             void copyCandidatePhone(candidatePhone);
                           }}
-                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04] text-slate-400 transition hover:border-brand/40 hover:text-brand"
+                          className="flex h-7 shrink-0 items-center justify-center gap-1 rounded-full border border-white/[0.08] bg-white/[0.04] px-2 text-[10px] font-bold text-slate-400 transition hover:border-brand/40 hover:text-brand"
                           aria-label={participantCopy.copyPhone}
                           title={participantCopy.copyPhone}
                         >
                           <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span>{participantCopy.copyAction}</span>
                         </button>
                       ) : (
                         <span aria-hidden="true" />
@@ -995,13 +1001,9 @@ export function CreateSessionModal({
           ) : null}
         </div>
 
-        <p className="text-xs italic text-slate-500">
-          {isLockedTestPlan
-            ? locale === 'fr'
-              ? `Seule l'heure est modifiable pendant les ${planNextAccess?.requiredTestSessions ?? 3} séances test.`
-              : `Only the time can be changed during the first ${planNextAccess?.requiredTestSessions ?? 3} test sessions.`
-            : labels.modalHint}
-        </p>
+        {!isLockedTestPlan ? (
+          <p className="text-xs italic text-slate-500">{labels.modalHint}</p>
+        ) : null}
         {errorMessage ? (
           <div
             role="alert"
@@ -1104,17 +1106,18 @@ function mergeDateWithTime(currentValue: string, nextDate: string) {
   return `${safeDate}T${currentTime}`;
 }
 
-function isValidScheduledAtInput(value: string) {
+function isValidScheduledAtInput(value: string, allowPast = false) {
   if (!value) {
     return false;
   }
 
   const scheduledAt = new Date(value);
 
-  return (
-    Number.isFinite(scheduledAt.getTime()) &&
-    scheduledAt.getTime() >= Date.now() - 5 * 60 * 1000
-  );
+  if (!Number.isFinite(scheduledAt.getTime())) {
+    return false;
+  }
+
+  return allowPast || scheduledAt.getTime() >= Date.now() - 5 * 60 * 1000;
 }
 
 function getCreateSessionValidationIssue({
@@ -1130,6 +1133,7 @@ function getCreateSessionValidationIssue({
   maxTimerSeconds,
   meetingLink,
   requireMeetingLink = false,
+  allowPastScheduledAt = false,
 }: {
   locale: string;
   canCreateSession: boolean;
@@ -1143,6 +1147,7 @@ function getCreateSessionValidationIssue({
   maxTimerSeconds: number;
   meetingLink?: string;
   requireMeetingLink?: boolean;
+  allowPastScheduledAt?: boolean;
 }) {
   const copy = getCreateSessionValidationCopy(locale);
   const questionGoalValue = Number(questionGoal);
@@ -1162,7 +1167,7 @@ function getCreateSessionValidationIssue({
     return copy.sessionName;
   }
 
-  if (!isValidScheduledAtInput(scheduledAt)) {
+  if (!isValidScheduledAtInput(scheduledAt, allowPastScheduledAt)) {
     return copy.scheduledAt;
   }
 
@@ -1196,7 +1201,7 @@ function getCreateSessionValidationCopy(locale: string) {
         "La création de session n'est pas disponible pour ton profil actuel.",
       minimumParticipants:
         'Sélectionne au moins {minimum} participants pour créer une session. Actuellement : {selected}.',
-      sessionName: 'Ajoute un objectif de séance.',
+      sessionName: 'Ajoute un nom de séance.',
       scheduledAt: 'Choisis une date et une heure valides.',
       meetingLink: 'Ajoute le lien de réunion avant de planifier la séance.',
       questionGoal:
@@ -1211,7 +1216,7 @@ function getCreateSessionValidationCopy(locale: string) {
       'Session creation is not available for your current profile.',
     minimumParticipants:
       'Select at least {minimum} participants to create a session. Current selection: {selected}.',
-    sessionName: 'Add a session objective.',
+    sessionName: 'Add a session name.',
     scheduledAt: 'Choose a valid date and time.',
     meetingLink: 'Add the meeting link before scheduling the session.',
     questionGoal: 'Number of questions must be between 1 and {maximum}.',
@@ -1332,6 +1337,7 @@ function getCleanParticipantCopy(locale: string) {
       unlockSearch: 'Débloquer la recherche',
       questions: '{count} Q',
       copyPhone: 'Copier le téléphone',
+      copyAction: 'Copier',
       contactUnavailable: 'Téléphone non renseigné',
       empty: 'Aucun membre disponible',
     };
@@ -1347,6 +1353,7 @@ function getCleanParticipantCopy(locale: string) {
     unlockSearch: 'Unlock search',
     questions: '{count} Q',
     copyPhone: 'Copy phone number',
+    copyAction: 'Copy',
     contactUnavailable: 'No phone',
     empty: 'No member available',
   };
@@ -1356,7 +1363,7 @@ function getSessionWizardCopy(locale: string) {
   if (locale === 'fr') {
     return {
       previous: 'Étape précédente',
-      next: 'Next',
+      next: 'Suivant',
       steps: [
         'Organisez un groupe WhatsApp',
         'Avec les membres du groupe, fixez le temps',
