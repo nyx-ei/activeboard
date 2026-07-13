@@ -348,7 +348,10 @@ function TrialSessionRow({
       </div>
       <div className="flex min-w-0 flex-col items-end justify-center text-right text-[12px] font-bold leading-snug text-[#b8c7c4] min-[390px]:text-sm sm:min-w-[110px] sm:text-base">
         {isScheduledWithoutTime ? (
-          <span>XXhXX</span>
+          <>
+            <span className="max-w-full truncate">{formatDate(locale, session.scheduled_at)}</span>
+            <span>XXhXX</span>
+          </>
         ) : scheduledTimeLabel ? (
           <span className="inline-flex items-center justify-end gap-1">
             {isLiveCountdown ? (

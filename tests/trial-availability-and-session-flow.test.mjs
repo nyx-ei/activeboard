@@ -297,6 +297,9 @@ test('trial session review to feedback to plan-next to dashboard remains reachab
     activeRuntime,
     /redirectTo=\{`\/\$\{locale\}\/sessions\/\$\{sessionId\}\?stage=progress`\}/,
   );
+  assert.match(activeRuntime, /const currentDeadlineMs = answerDeadlineAt/);
+  assert.match(activeRuntime, /currentDeadlineMs > now/);
+  assert.match(activeRuntime, /new Date\(now \+ timerSeconds \* 1000\)\.toISOString\(\)/);
   assert.match(
     activeRuntime,
     /href=\{`\/sessions\/\$\{sessionId\}\?stage=review`\}/,
@@ -352,6 +355,7 @@ test('generated test sessions require time and meeting link before sprint', () =
   assert.doesNotMatch(initialTestSessions, /sendSessionCalendarInvites/);
   assert.match(trialDashboard, /!session\.meeting_link/);
   assert.match(trialDashboard, /\?stage=configure/);
+  assert.match(trialDashboard, /formatDate\(locale, session\.scheduled_at\)/);
   assert.match(trialDashboard, /<span>XXhXX<\/span>/);
   assert.match(sessionPage, /const isConfigure = searchParams\.stage === 'configure'/);
   assert.match(sessionPage, /<SessionConfigureRuntime/);
@@ -374,6 +378,8 @@ test('generated test sessions require time and meeting link before sprint', () =
   assert.doesNotMatch(createSessionModal, /<textarea/);
   assert.match(configureRuntime, /setIsOpen\(false\)/);
   assert.match(configureRuntime, /router\.replace/);
+  assert.match(configureRuntime, /Total time \(seconds\)/);
+  assert.match(configureRuntime, /Temps total \(secondes\)/);
   assert.match(createSessionModal, /meetingLink/);
   assert.match(createSessionModal, /toScheduledAtPayload/);
   assert.match(createSessionModal, /return date\.toISOString\(\)/);

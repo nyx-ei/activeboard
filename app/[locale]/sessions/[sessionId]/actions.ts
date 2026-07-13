@@ -886,7 +886,7 @@ export async function launchQuestionAction(formData: FormData) {
     .from('sessions')
     .update({
       status: 'active',
-      started_at: new Date().toISOString(),
+      started_at: safeSession.started_at ?? launchedAt.toISOString(),
       leader_id: safeSession.leader_id ?? user.id,
     })
     .eq('id', sessionId);
