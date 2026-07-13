@@ -19,6 +19,10 @@ const atomicAdvanceMigration = readFileSync(
   'supabase/migrations/20260605150000_atomic_session_advance_rpc.sql',
   'utf8',
 );
+const globalAdvanceDeadlineMigration = readFileSync(
+  'supabase/migrations/20260713120000_fix_global_exam_advance_deadline.sql',
+  'utf8',
+);
 const advanceRoute = readFileSync(
   'app/api/sessions/[sessionId]/advance/route.ts',
   'utf8',
@@ -78,6 +82,21 @@ test('question advance is handled by an atomic session RPC', () => {
     /rpc\('activeboard_advance_session_question'/,
   );
   assert.doesNotMatch(advanceRoute, /ensureQuestion\(/);
+});
+
+test('global exam advance refreshes stale question deadlines', () => {
+  assert.match(
+    globalAdvanceDeadlineMigration,
+    /create or replace function public\.activeboard_advance_session_question/,
+  );
+  assert.match(
+    globalAdvanceDeadlineMigration,
+    /when session_row\.timer_mode = 'global'\s+then excluded\.answer_deadline_at/,
+  );
+  assert.match(
+    globalAdvanceDeadlineMigration,
+    /else coalesce\(public\.questions\.answer_deadline_at, excluded\.answer_deadline_at\)/,
+  );
 });
 
 test('per-question review prepares the next question through server privileges', () => {
