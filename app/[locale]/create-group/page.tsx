@@ -50,6 +50,9 @@ export default async function CreateGroupPage({ params }: CreateGroupPageProps) 
                   | 'april_may_2026'
                   | 'august_september_2026'
                   | 'october_2026'
+                  | 'april_may_2027'
+                  | 'august_september_2027'
+                  | 'october_2027'
                   | 'planning_ahead'
                   | null) ?? '',
               language: profile.data?.locale === 'fr' ? 'fr' : 'en',
@@ -79,9 +82,11 @@ export default async function CreateGroupPage({ params }: CreateGroupPageProps) 
         examTypeUsmle: t('examTypeUsmle'),
         examTypePlab: t('examTypePlab'),
         examTypeOther: t('examTypeOther'),
-        examAprilMay2026: t('examAprilMay2026'),
         examAugustSeptember2026: t('examAugustSeptember2026'),
         examOctober2026: t('examOctober2026'),
+        examAprilMay2027: t('examAprilMay2027'),
+        examAugustSeptember2027: t('examAugustSeptember2027'),
+        examOctober2027: t('examOctober2027'),
         examPlanningAhead: t('examPlanningAhead'),
         stepAccount: t('stepAccount'),
         continueToPlan: t('continueToPlan'),

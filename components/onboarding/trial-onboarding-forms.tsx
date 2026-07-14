@@ -83,9 +83,11 @@ const copy = {
       other: 'Other',
     },
     examSessions: {
-      april_may_2026: 'April / May 2026',
       august_september_2026: 'August / September 2026',
       october_2026: 'October 2026',
+      april_may_2027: 'April / May 2027',
+      august_september_2027: 'August / September 2027',
+      october_2027: 'October 2027',
       planning_ahead: 'Planning ahead',
     },
     qbanks: {
@@ -155,9 +157,11 @@ const copy = {
       other: 'Autre',
     },
     examSessions: {
-      april_may_2026: 'Avril / mai 2026',
       august_september_2026: 'Août / septembre 2026',
       october_2026: 'Octobre 2026',
+      april_may_2027: 'Avril / mai 2027',
+      august_september_2027: 'Août / septembre 2027',
+      october_2027: 'Octobre 2027',
       planning_ahead: 'Je planifie plus tard',
     },
     qbanks: {

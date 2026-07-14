@@ -29,9 +29,11 @@ type CreateGroupWizardLabels = {
   examTypeUsmle: string;
   examTypePlab: string;
   examTypeOther: string;
-  examAprilMay2026: string;
   examAugustSeptember2026: string;
   examOctober2026: string;
+  examAprilMay2027: string;
+  examAugustSeptember2027: string;
+  examOctober2027: string;
   examPlanningAhead: string;
   stepAccount: string;
   continueToPlan: string;
@@ -86,7 +88,15 @@ type CreateGroupWizardLabels = {
 
 type WizardStep = 0 | 1 | 2 | 3 | 4 | 5;
 type ExamType = 'mccqe_fr' | 'mccqe_en' | 'usmle' | 'plab' | 'other';
-type ExamSession = 'april_may_2026' | 'august_september_2026' | 'october_2026' | 'planning_ahead' | '';
+type ExamSession =
+  | 'april_may_2026'
+  | 'august_september_2026'
+  | 'october_2026'
+  | 'april_may_2027'
+  | 'august_september_2027'
+  | 'october_2027'
+  | 'planning_ahead'
+  | '';
 type PlanType = 'starter' | 'unlimited';
 type ScheduleSlot = {
   id: string;
@@ -396,9 +406,11 @@ export function CreateGroupWizard({ locale, labels, initialProfile, isAuthentica
                   <span className="mb-2 block text-sm font-semibold text-slate-300">{labels.examSession}</span>
                   <select value={examSession} onChange={(event) => setExamSession(event.target.value as ExamSession)} className="field h-10 rounded-[6px] px-3 text-sm">
                     <option value="">{labels.selectPlaceholder}</option>
-                    <option value="april_may_2026">{labels.examAprilMay2026}</option>
                     <option value="august_september_2026">{labels.examAugustSeptember2026}</option>
                     <option value="october_2026">{labels.examOctober2026}</option>
+                    <option value="april_may_2027">{labels.examAprilMay2027}</option>
+                    <option value="august_september_2027">{labels.examAugustSeptember2027}</option>
+                    <option value="october_2027">{labels.examOctober2027}</option>
                     <option value="planning_ahead">{labels.examPlanningAhead}</option>
                   </select>
                 </label>

@@ -166,14 +166,22 @@ test('trial profile onboarding uses checkbox qbanks and language-specific MCCQE 
   assert.match(trialForms, /examSession: 'Exam date'/);
   assert.match(trialForms, /examSession: "Date d'examen"/);
   assert.match(trialForms, /name="examSession"/);
+  assert.doesNotMatch(trialForms, /april_may_2026: 'April \/ May 2026'/);
   assert.match(trialForms, /august_september_2026: 'August \/ September 2026'/);
+  assert.match(trialForms, /april_may_2027: 'April \/ May 2027'/);
+  assert.match(trialForms, /august_september_2027: 'August \/ September 2027'/);
+  assert.match(trialForms, /october_2027: 'October 2027'/);
   assert.match(trialForms, /august_september_2026: 'Août \/ septembre 2026'/);
+  assert.match(trialForms, /april_may_2027: 'Avril \/ mai 2027'/);
   assert.match(trialForms, /defaultChecked=\{selectedQbanks\.has\(value\)\}/);
   assert.match(onboardingActions, /formData\s*\.\s*getAll\('qbank'\)/);
   assert.match(onboardingActions, /question_banks: questionBanks/);
   assert.match(onboardingActions, /VALID_EXAM_SESSIONS/);
   assert.match(onboardingActions, /formData\.get\('examSession'\)/);
   assert.match(onboardingActions, /exam_session: examSession/);
+  assert.match(onboardingActions, /'april_may_2027'/);
+  assert.match(onboardingActions, /'august_september_2027'/);
+  assert.match(onboardingActions, /'october_2027'/);
   assert.match(onboardingActions, /'mccqe_fr'/);
   assert.match(onboardingActions, /'mccqe_en'/);
   assert.match(splitMccqeMigration, /exam_type in \('mccqe_fr', 'mccqe_en', 'usmle', 'plab', 'other'\)/);
@@ -450,6 +458,9 @@ test('past scheduled test sessions expire and require availability refresh for r
     initialTestSessions,
     /\.not\('status', 'in', '\("cancelled","expired"\)'\)/,
   );
+  assert.match(initialTestSessions, /getOccupiedTestSessionNumbers/);
+  assert.match(initialTestSessions, /missingSessionNumbers/);
+  assert.match(initialTestSessions, /name: `Session test \$\{sessionNumber\}`/);
   assert.match(
     onboardingActions,
     /ensureInitialTestSessions\(user, policy, \{ replaceExpired: true \}\)/,
@@ -457,6 +468,8 @@ test('past scheduled test sessions expire and require availability refresh for r
   assert.match(trialDashboard, /session\.status === 'expired'/);
   assert.match(trialDashboard, /labels\.expiredHint/);
   assert.match(trialDashboard, /cursor-not-allowed/);
+  assert.match(trialDashboard, /answered >= target/);
+  assert.doesNotMatch(trialDashboard, /emptyRows\.map/);
   assert.match(sessionPage, /data\.session\.status === 'expired'/);
   assert.match(startRoute, /expirePastScheduledSession\(sessionId\)/);
   assert.match(scheduleRoute, /expirePastScheduledSession\(params\.sessionId\)/);

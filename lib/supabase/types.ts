@@ -724,6 +724,9 @@ type UsersRow = {
     | 'april_may_2026'
     | 'august_september_2026'
     | 'october_2026'
+    | 'april_may_2027'
+    | 'august_september_2027'
+    | 'october_2027'
     | 'planning_ahead'
     | null;
   has_valid_payment_method: boolean;
@@ -759,6 +762,9 @@ type UsersInsert = {
     | 'april_may_2026'
     | 'august_september_2026'
     | 'october_2026'
+    | 'april_may_2027'
+    | 'august_september_2027'
+    | 'october_2027'
     | 'planning_ahead'
     | null;
   has_valid_payment_method?: boolean;
@@ -794,6 +800,9 @@ type UsersUpdate = {
     | 'april_may_2026'
     | 'august_september_2026'
     | 'october_2026'
+    | 'april_may_2027'
+    | 'august_september_2027'
+    | 'october_2027'
     | 'planning_ahead'
     | null;
   has_valid_payment_method?: boolean;

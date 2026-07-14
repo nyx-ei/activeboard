@@ -40,9 +40,11 @@ type InviteOnboardingWizardProps = {
     examStepDescription: string;
     examSession: string;
     selectPlaceholder: string;
-    examAprilMay2026: string;
     examAugustSeptember2026: string;
     examOctober2026: string;
+    examAprilMay2027: string;
+    examAugustSeptember2027: string;
+    examOctober2027: string;
     examPlanningAhead: string;
     language: string;
     languageEnglish: string;
@@ -208,9 +210,11 @@ export function InviteOnboardingWizard({
                 className="field h-10 rounded-[8px] px-3 py-2 text-sm"
               >
                 <option value="">{labels.selectPlaceholder}</option>
-                <option value="april_may_2026">{labels.examAprilMay2026}</option>
                 <option value="august_september_2026">{labels.examAugustSeptember2026}</option>
                 <option value="october_2026">{labels.examOctober2026}</option>
+                <option value="april_may_2027">{labels.examAprilMay2027}</option>
+                <option value="august_september_2027">{labels.examAugustSeptember2027}</option>
+                <option value="october_2027">{labels.examOctober2027}</option>
                 <option value="planning_ahead">{labels.examPlanningAhead}</option>
               </select>
             </label>

@@ -12,6 +12,7 @@ const TEST_SESSION_QUESTION_GOAL = 20;
 type AdminClient = ReturnType<typeof createSupabaseAdminClient>;
 
 type UserRow = { id: string };
+type TestSessionSlotRow = { name: string | null };
 export async function ensureInitialTestSessions(
   user: UserRow,
   policy: Pick<AppPolicySettings, 'perQuestionTimerDefaultSeconds'>,
@@ -20,20 +21,31 @@ export async function ensureInitialTestSessions(
   const admin = createSupabaseAdminClient();
   const groupId = await getOrCreateTestGroup(admin, user);
   await expirePastScheduledSessionsForGroups(admin, [groupId]);
-  const [existingCount, totalCount] = await Promise.all([
-    countExistingTestWindowSessions(admin, groupId),
+  const [existingSessions, totalCount] = await Promise.all([
+    listExistingTestWindowSessions(admin, groupId),
     countAllTestSessions(admin, groupId),
   ]);
+  const existingCount = Math.min(existingSessions.length, TEST_SESSION_TARGET);
   const missingCount = TEST_SESSION_TARGET - existingCount;
 
   if (missingCount <= 0 || (totalCount > 0 && !options.replaceExpired)) {
     return;
   }
 
+  const occupiedSessionNumbers = getOccupiedTestSessionNumbers(existingSessions);
+  const missingSessionNumbers = Array.from(
+    { length: TEST_SESSION_TARGET },
+    (_, index) => index + 1,
+  )
+    .filter((sessionNumber) => !occupiedSessionNumbers.has(sessionNumber))
+    .slice(0, missingCount);
+
+  if (missingSessionNumbers.length === 0) {
+    return;
+  }
+
   const now = new Date();
-  const sessions = Array.from({ length: missingCount }, (_, index) => {
-    const sessionNumber = existingCount + index + 1;
-    return {
+  const sessions = missingSessionNumbers.map((sessionNumber) => ({
       group_id: groupId,
       name: `Session test ${sessionNumber}`,
       scheduled_at: getDefaultTestSessionDate(now, sessionNumber).toISOString(),
@@ -43,8 +55,7 @@ export async function ensureInitialTestSessions(
       created_by: user.id,
       leader_id: user.id,
       status: 'scheduled' as const,
-    };
-  });
+    }));
 
   const { error } = await admin
     .schema('public')
@@ -66,18 +77,55 @@ async function countAllTestSessions(admin: AdminClient, groupId: string) {
   return count ?? 0;
 }
 
-async function countExistingTestWindowSessions(
+async function listExistingTestWindowSessions(
   admin: AdminClient,
   groupId: string,
 ) {
-  const { count } = await admin
+  const { data } = await admin
     .schema('public')
     .from('sessions')
-    .select('id', { count: 'exact', head: true })
+    .select('name')
     .eq('group_id', groupId)
     .not('status', 'in', '("cancelled","expired")');
 
-  return Math.min(count ?? 0, TEST_SESSION_TARGET);
+  return (data ?? []) as TestSessionSlotRow[];
+}
+
+function getOccupiedTestSessionNumbers(sessions: TestSessionSlotRow[]) {
+  const occupied = new Set<number>();
+  let unnamedSessionCount = 0;
+
+  for (const session of sessions) {
+    const sessionNumber = extractTestSessionNumber(session.name);
+    if (sessionNumber && sessionNumber <= TEST_SESSION_TARGET) {
+      occupied.add(sessionNumber);
+      continue;
+    }
+
+    unnamedSessionCount += 1;
+  }
+
+  for (
+    let sessionNumber = 1;
+    sessionNumber <= TEST_SESSION_TARGET;
+    sessionNumber += 1
+  ) {
+    if (unnamedSessionCount <= 0) {
+      break;
+    }
+
+    if (!occupied.has(sessionNumber)) {
+      occupied.add(sessionNumber);
+      unnamedSessionCount -= 1;
+    }
+  }
+
+  return occupied;
+}
+
+function extractTestSessionNumber(name: string | null | undefined) {
+  const match = name?.match(/session\s*test\D*(\d+)/i);
+  return match?.[1] ? Number(match[1]) : null;
 }
 
 async function getOrCreateTestGroup(admin: AdminClient, user: UserRow) {

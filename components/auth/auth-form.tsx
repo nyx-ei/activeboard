@@ -437,9 +437,11 @@ export function AuthForm({
               className="field h-10 rounded-[6px] px-3 text-sm"
             >
               <option value="">{t('examSessionPlaceholder')}</option>
-              <option value="april_may_2026">{t('examAprilMay2026')}</option>
               <option value="august_september_2026">{t('examAugustSeptember2026')}</option>
               <option value="october_2026">{t('examOctober2026')}</option>
+              <option value="april_may_2027">{t('examAprilMay2027')}</option>
+              <option value="august_september_2027">{t('examAugustSeptember2027')}</option>
+              <option value="october_2027">{t('examOctober2027')}</option>
               <option value="planning_ahead">{t('examPlanningAhead')}</option>
             </select>
             <span className="mt-1 block text-xs text-slate-500">{t('examSessionHint')}</span>
