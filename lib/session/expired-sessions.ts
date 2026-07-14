@@ -85,15 +85,14 @@ export async function expirePastScheduledSessionsForGroups(
     Date.now() - SESSION_START_GRACE_MS,
   ).toISOString();
 
-  const { data: expiredUnplanned, error: unplannedError } = await admin
+  const { count: expiredUnplannedCount, error: unplannedError } = await admin
     .schema('public')
     .from('sessions')
-    .update({ status: 'expired' })
+    .update({ status: 'expired' }, { count: 'exact' })
     .in('group_id', uniqueGroupIds)
     .eq('status', 'scheduled')
     .is('meeting_link', null)
-    .lt('scheduled_at', scheduledDayCutoff)
-    .select('id');
+    .lt('scheduled_at', scheduledDayCutoff);
 
   if (unplannedError) {
     console.error('[sessions] failed to expire past scheduled sessions', {
@@ -101,15 +100,14 @@ export async function expirePastScheduledSessionsForGroups(
     });
   }
 
-  const { data: expiredPlanned, error: plannedError } = await admin
+  const { count: expiredPlannedCount, error: plannedError } = await admin
     .schema('public')
     .from('sessions')
-    .update({ status: 'expired' })
+    .update({ status: 'expired' }, { count: 'exact' })
     .in('group_id', uniqueGroupIds)
     .eq('status', 'scheduled')
     .not('meeting_link', 'is', null)
-    .lt('scheduled_at', plannedTimeCutoff)
-    .select('id');
+    .lt('scheduled_at', plannedTimeCutoff);
 
   if (plannedError) {
     console.error('[sessions] failed to expire missed planned sessions', {
@@ -117,7 +115,7 @@ export async function expirePastScheduledSessionsForGroups(
     });
   }
 
-  return (expiredUnplanned?.length ?? 0) + (expiredPlanned?.length ?? 0);
+  return (expiredUnplannedCount ?? 0) + (expiredPlannedCount ?? 0);
 }
 
 export async function expirePastScheduledSession(sessionId: string) {

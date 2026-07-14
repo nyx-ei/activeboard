@@ -17,6 +17,8 @@ const onboardingActions = readFileSync(
   'app/[locale]/onboarding/actions.ts',
   'utf8',
 );
+const dashboardPage = readFileSync('app/[locale]/dashboard/page.tsx', 'utf8');
+const dashboardData = readFileSync('lib/demo/data.ts', 'utf8');
 const expiredSessionsHelper = readFileSync(
   'lib/session/expired-sessions.ts',
   'utf8',
@@ -451,12 +453,22 @@ test('past scheduled test sessions expire and require availability refresh for r
     /\.not\('meeting_link', 'is', null\)\s+\.lt\('scheduled_at', plannedTimeCutoff\)/,
   );
   assert.match(
+    expiredSessionsHelper,
+    /update\(\{ status: 'expired' \}, \{ count: 'exact' \}\)/,
+  );
+  assert.match(
     initialTestSessions,
     /totalCount > 0 && !options\.replaceExpired/,
   );
   assert.match(
     initialTestSessions,
-    /\.not\('status', 'in', '\("cancelled","expired"\)'\)/,
+    /session\.status !== 'cancelled' && session\.status !== 'expired'/,
+  );
+  assert.match(initialTestSessions, /skipExpiration\?: boolean/);
+  assert.match(dashboardPage, /skipExpiration: true/);
+  assert.match(
+    dashboardData,
+    /const questionCountBySession = new Map<string, number>\(\)/,
   );
   assert.match(initialTestSessions, /getOccupiedTestSessionNumbers/);
   assert.match(initialTestSessions, /missingSessionNumbers/);

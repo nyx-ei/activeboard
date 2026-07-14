@@ -60,13 +60,15 @@ export default async function DashboardPage({
   }
 
   await expirePastScheduledSessionsForUser(user.id);
-  await ensureInitialTestSessions(user, accessState.policy);
+  await ensureInitialTestSessions(user, accessState.policy, {
+    skipExpiration: true,
+  });
 
-  const [sessionsData, performanceData] = await Promise.all([
+  const [sessionsData, performanceData, planNextAccess] = await Promise.all([
     getDashboardSessionsData(user),
     getDashboardPerformanceSummaryData(user.id),
+    getPlanNextAccess(user.id, accessState.policy),
   ]);
-  const planNextAccess = await getPlanNextAccess(user.id, accessState.policy);
 
   const canJoinSessions = hasUserTierCapability(accessState, 'canJoinSessions');
   const canCreateSession = hasUserTierCapability(
