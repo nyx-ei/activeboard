@@ -163,9 +163,17 @@ test('trial profile onboarding uses checkbox qbanks and language-specific MCCQE 
   assert.match(trialForms, /mccqe_en: 'EACMC en anglais'/);
   assert.match(trialForms, /type="checkbox"/);
   assert.match(trialForms, /name="qbank"/);
+  assert.match(trialForms, /examSession: 'Exam date'/);
+  assert.match(trialForms, /examSession: "Date d'examen"/);
+  assert.match(trialForms, /name="examSession"/);
+  assert.match(trialForms, /august_september_2026: 'August \/ September 2026'/);
+  assert.match(trialForms, /august_september_2026: 'Août \/ septembre 2026'/);
   assert.match(trialForms, /defaultChecked=\{selectedQbanks\.has\(value\)\}/);
   assert.match(onboardingActions, /formData\s*\.\s*getAll\('qbank'\)/);
   assert.match(onboardingActions, /question_banks: questionBanks/);
+  assert.match(onboardingActions, /VALID_EXAM_SESSIONS/);
+  assert.match(onboardingActions, /formData\.get\('examSession'\)/);
+  assert.match(onboardingActions, /exam_session: examSession/);
   assert.match(onboardingActions, /'mccqe_fr'/);
   assert.match(onboardingActions, /'mccqe_en'/);
   assert.match(splitMccqeMigration, /exam_type in \('mccqe_fr', 'mccqe_en', 'usmle', 'plab', 'other'\)/);
@@ -281,9 +289,15 @@ test('trial session review to feedback to plan-next to dashboard remains reachab
     feedbackRuntime,
     /href=\{`\/sessions\/\$\{sessionId\}\?stage=progress`\}/,
   );
+  assert.match(planNextRuntime, /<CreateSessionModal/);
+  assert.match(planNextRuntime, /continuitySessionId=\{sessionId\}/);
+  assert.match(planNextRuntime, /continuityReturnTo=\{returnTo\}/);
+  assert.match(planNextRuntime, /forceCreate/);
+  assert.match(createSessionModal, /continuitySessionId/);
+  assert.match(createSessionModal, /continuityReturnTo/);
   assert.match(
-    planNextRuntime,
-    /href=\{`\/sessions\/\$\{sessionId\}\?stage=progress&feedback=done`\}/,
+    createSessionModal,
+    /`\/api\/sessions\/\$\{continuitySessionId\}\/finish-review`/,
   );
   assert.match(progressPanel, /Session progress/);
   assert.match(progressPanel, /sessionActive: 'Sprint'/);
@@ -338,12 +352,6 @@ test('trial session review to feedback to plan-next to dashboard remains reachab
   assert.match(
     feedbackRuntime,
     /stage=progress&feedback=done/,
-  );
-  assert.match(planNextRuntime, /continuitySessionId: sessionId/);
-  assert.match(planNextRuntime, /createPayload\?\.message \?\? t\.error/);
-  assert.match(
-    planNextRuntime,
-    /`\/api\/sessions\/\$\{sessionId\}\/finish-review`/,
   );
   assert.match(
     planNextRuntime,

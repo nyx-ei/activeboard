@@ -51,6 +51,7 @@ const copy = {
     whatsapp: 'WhatsApp phone number',
     whatsappPlaceholder: '+1 999 999 9999',
     exam: 'Exam',
+    examSession: 'Exam date',
     qbank: 'Qbank used',
     qbankPlaceholder: 'Optional',
     continue: 'Continue',
@@ -80,6 +81,12 @@ const copy = {
       usmle: 'USMLE',
       plab: 'PLAB',
       other: 'Other',
+    },
+    examSessions: {
+      april_may_2026: 'April / May 2026',
+      august_september_2026: 'August / September 2026',
+      october_2026: 'October 2026',
+      planning_ahead: 'Planning ahead',
     },
     qbanks: {
       uworld: 'UWorld',
@@ -115,6 +122,7 @@ const copy = {
     whatsapp: 'Numéro WhatsApp',
     whatsappPlaceholder: '+1 999 999 9999',
     exam: 'Examen',
+    examSession: "Date d'examen",
     qbank: 'Qbank utilisée',
     qbankPlaceholder: 'Optionnel',
     continue: 'Continuer',
@@ -145,6 +153,12 @@ const copy = {
       usmle: 'USMLE',
       plab: 'PLAB',
       other: 'Autre',
+    },
+    examSessions: {
+      april_may_2026: 'Avril / mai 2026',
+      august_september_2026: 'Août / septembre 2026',
+      october_2026: 'Octobre 2026',
+      planning_ahead: 'Je planifie plus tard',
     },
     qbanks: {
       uworld: 'UWorld',
@@ -422,12 +436,14 @@ export function TrialProfileForm({
   locale,
   initialPhoneNumber = '',
   initialExamType = 'mccqe_en',
+  initialExamSession = 'planning_ahead',
   initialQbanks = [],
   initialTimezone = 'UTC',
 }: {
   locale: AppLocale;
   initialPhoneNumber?: string | null;
   initialExamType?: string | null;
+  initialExamSession?: string | null;
   initialQbanks?: string[] | null;
   initialTimezone?: string | null;
 }) {
@@ -436,6 +452,7 @@ export function TrialProfileForm({
   const selectedQbanks = new Set(initialQbanks ?? []);
   const normalizedExamType =
     initialExamType === 'mccqe1' ? 'mccqe_en' : initialExamType || 'mccqe_en';
+  const normalizedExamSession = initialExamSession || 'planning_ahead';
 
   useEffect(() => {
     const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -471,6 +488,19 @@ export function TrialProfileForm({
             defaultValue={normalizedExamType}
           >
             {Object.entries(t.exams).map(([value, label]) => (
+              <option key={value} value={value} className="bg-[#111827]">
+                {label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label={t.examSession} icon={<Clock className="h-5 w-5" aria-hidden />}>
+          <select
+            className={inputWithIconClassName}
+            name="examSession"
+            defaultValue={normalizedExamSession}
+          >
+            {Object.entries(t.examSessions).map(([value, label]) => (
               <option key={value} value={value} className="bg-[#111827]">
                 {label}
               </option>

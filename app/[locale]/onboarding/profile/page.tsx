@@ -30,7 +30,7 @@ export default async function TrialProfilePage({
     supabase
       .schema('public')
       .from('users')
-      .select('phone_number, exam_type, question_banks')
+      .select('phone_number, exam_type, exam_session, question_banks')
       .eq('id', user.id)
       .maybeSingle(),
     supabase
@@ -46,6 +46,7 @@ export default async function TrialProfilePage({
       locale={locale}
       initialPhoneNumber={profileResult.data?.phone_number ?? ''}
       initialExamType={profileResult.data?.exam_type ?? 'mccqe_en'}
+      initialExamSession={profileResult.data?.exam_session ?? 'planning_ahead'}
       initialQbanks={profileResult.data?.question_banks ?? []}
       initialTimezone={scheduleResult.data?.timezone ?? 'UTC'}
     />

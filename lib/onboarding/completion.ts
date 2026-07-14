@@ -25,7 +25,7 @@ export const getOnboardingCompletion = cache(
       supabase
         .schema('public')
         .from('users')
-        .select('display_name, phone_number, exam_type')
+        .select('display_name, phone_number, exam_type, exam_session')
         .eq('id', userId)
         .maybeSingle(),
       supabase
@@ -37,9 +37,10 @@ export const getOnboardingCompletion = cache(
     ]);
 
     const profileComplete = Boolean(
-      profileResult.data?.display_name?.trim() &&
+        profileResult.data?.display_name?.trim() &&
         profileResult.data?.phone_number?.trim() &&
-        profileResult.data?.exam_type,
+        profileResult.data?.exam_type &&
+        profileResult.data?.exam_session,
     );
     const availabilityComplete =
       getAvailabilitySlotCount(
