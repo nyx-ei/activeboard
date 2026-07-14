@@ -375,7 +375,19 @@ test('past scheduled test sessions expire and require availability refresh for r
   );
   assert.match(
     expiredSessionsHelper,
-    /\.eq\('status', 'scheduled'\)\s+\.lt\('scheduled_at', getStartOfTodayUtc\(\)\.toISOString\(\)\)/,
+    /const SESSION_START_GRACE_MS = 30 \* 60 \* 1000/,
+  );
+  assert.match(
+    expiredSessionsHelper,
+    /scheduledTime \+ SESSION_START_GRACE_MS < Date\.now\(\)/,
+  );
+  assert.match(
+    expiredSessionsHelper,
+    /\.is\('meeting_link', null\)\s+\.lt\('scheduled_at', scheduledDayCutoff\)/,
+  );
+  assert.match(
+    expiredSessionsHelper,
+    /\.not\('meeting_link', 'is', null\)\s+\.lt\('scheduled_at', plannedTimeCutoff\)/,
   );
   assert.match(
     initialTestSessions,

@@ -3,6 +3,7 @@ import 'server-only';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 type AdminClient = ReturnType<typeof createSupabaseAdminClient>;
+const SESSION_START_GRACE_MS = 30 * 60 * 1000;
 
 function getStartOfTodayUtc() {
   const now = new Date();
@@ -22,6 +23,29 @@ export function isPastScheduledDay(scheduledAt: string | null | undefined) {
   }
 
   return scheduledDate.getTime() < getStartOfTodayUtc().getTime();
+}
+
+export function isMissedScheduledSession({
+  scheduledAt,
+  meetingLink,
+}: {
+  scheduledAt: string | null | undefined;
+  meetingLink?: string | null;
+}) {
+  if (!scheduledAt) {
+    return false;
+  }
+
+  const scheduledTime = new Date(scheduledAt).getTime();
+  if (!Number.isFinite(scheduledTime)) {
+    return false;
+  }
+
+  if (meetingLink) {
+    return scheduledTime + SESSION_START_GRACE_MS < Date.now();
+  }
+
+  return isPastScheduledDay(scheduledAt);
 }
 
 export async function expirePastScheduledSessionsForUser(userId: string) {
@@ -56,23 +80,44 @@ export async function expirePastScheduledSessionsForGroups(
     return 0;
   }
 
-  const { data, error } = await admin
+  const scheduledDayCutoff = getStartOfTodayUtc().toISOString();
+  const plannedTimeCutoff = new Date(
+    Date.now() - SESSION_START_GRACE_MS,
+  ).toISOString();
+
+  const { data: expiredUnplanned, error: unplannedError } = await admin
     .schema('public')
     .from('sessions')
     .update({ status: 'expired' })
     .in('group_id', uniqueGroupIds)
     .eq('status', 'scheduled')
-    .lt('scheduled_at', getStartOfTodayUtc().toISOString())
+    .is('meeting_link', null)
+    .lt('scheduled_at', scheduledDayCutoff)
     .select('id');
 
-  if (error) {
+  if (unplannedError) {
     console.error('[sessions] failed to expire past scheduled sessions', {
-      error,
+      error: unplannedError,
     });
-    return 0;
   }
 
-  return data?.length ?? 0;
+  const { data: expiredPlanned, error: plannedError } = await admin
+    .schema('public')
+    .from('sessions')
+    .update({ status: 'expired' })
+    .in('group_id', uniqueGroupIds)
+    .eq('status', 'scheduled')
+    .not('meeting_link', 'is', null)
+    .lt('scheduled_at', plannedTimeCutoff)
+    .select('id');
+
+  if (plannedError) {
+    console.error('[sessions] failed to expire missed planned sessions', {
+      error: plannedError,
+    });
+  }
+
+  return (expiredUnplanned?.length ?? 0) + (expiredPlanned?.length ?? 0);
 }
 
 export async function expirePastScheduledSession(sessionId: string) {
@@ -80,7 +125,7 @@ export async function expirePastScheduledSession(sessionId: string) {
   const { data: session } = await admin
     .schema('public')
     .from('sessions')
-    .select('id, status, scheduled_at')
+    .select('id, status, scheduled_at, meeting_link')
     .eq('id', sessionId)
     .maybeSingle();
 
@@ -95,7 +140,12 @@ export async function expirePastScheduledSession(sessionId: string) {
     return true;
   }
 
-  if (!isPastScheduledDay(session.scheduled_at)) {
+  if (
+    !isMissedScheduledSession({
+      scheduledAt: session.scheduled_at,
+      meetingLink: session.meeting_link,
+    })
+  ) {
     return false;
   }
 
