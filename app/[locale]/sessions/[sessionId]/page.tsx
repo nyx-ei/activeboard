@@ -535,6 +535,11 @@ export default async function SessionPage({
   }
 
   if (isPlanNext) {
+    const [sessionPolicy, configureGroup] = await Promise.all([
+      getAppPolicySettings(),
+      getConfigureGroup(data.group.id),
+    ]);
+
     return (
       <main className="flex flex-1 flex-col">
         <SessionTabPresence sessionId={params.sessionId} />
@@ -546,11 +551,13 @@ export default async function SessionPage({
         <SessionPlanNextRuntime
           locale={locale}
           sessionId={params.sessionId}
-          groupId={data.group.id}
+          groups={[configureGroup]}
+          initialGroupId={data.group.id}
           sessionTitle={data.session.name ?? data.group.name}
           questionGoal={questionGoal}
           timerSeconds={data.session.timer_seconds}
           timerMode={data.session.timer_mode}
+          sessionPolicy={sessionPolicy}
           planNextAccess={planNextAccess}
         />
       </main>

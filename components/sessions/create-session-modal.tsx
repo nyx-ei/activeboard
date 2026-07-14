@@ -55,6 +55,10 @@ export function CreateSessionModal({
   planNextAccess,
   onClose,
   existingSession,
+  initialSessionName,
+  continuitySessionId,
+  continuityReturnTo,
+  forceCreate = false,
 }: {
   locale: string;
   groups: Array<{
@@ -87,10 +91,14 @@ export function CreateSessionModal({
     timerSeconds: number;
     meetingLink: string | null;
   };
+  initialSessionName?: string;
+  continuitySessionId?: string;
+  continuityReturnTo?: string;
+  forceCreate?: boolean;
 }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const isExistingSessionPlan = Boolean(existingSession);
-  const [name, setName] = useState(existingSession?.name ?? '');
+  const [name, setName] = useState(existingSession?.name ?? initialSessionName ?? '');
   const [selectedGroupId, setSelectedGroupId] = useState(
     existingSession?.groupId ?? initialGroupId,
   );
@@ -249,7 +257,9 @@ export function CreateSessionModal({
     ? 1
     : sessionPolicy.minimumGroupMembersToStart;
   const returnTo = selectedGroup
-    ? existingSession
+    ? continuityReturnTo
+      ? continuityReturnTo
+      : existingSession
       ? `/${locale}/sessions/${existingSession.id}?stage=progress`
       : `/${locale}/dashboard?groupId=${encodeURIComponent(selectedGroup.id)}`
     : `/${locale}/dashboard`;
@@ -532,6 +542,8 @@ export function CreateSessionModal({
               timerMode: formData.get('timerMode'),
               timerSeconds: Number(formData.get('timerSeconds')),
               meetingLink: formData.get('meetingLink'),
+              forceCreate,
+              continuitySessionId,
             }),
             },
           )
@@ -545,6 +557,43 @@ export function CreateSessionModal({
               } | null;
 
               if (payload?.redirectTo && response.ok) {
+                const nextRedirectTo =
+                  continuitySessionId && continuityReturnTo
+                    ? continuityReturnTo
+                    : payload.redirectTo;
+
+                if (continuitySessionId) {
+                  const finishResponse = await fetch(
+                    `/api/sessions/${continuitySessionId}/finish-review`,
+                    {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      credentials: 'same-origin',
+                      cache: 'no-store',
+                      body: JSON.stringify({ locale }),
+                    },
+                  );
+                  const finishPayload = (await finishResponse
+                    .json()
+                    .catch(() => null)) as {
+                    message?: string;
+                    redirectTo?: string;
+                  } | null;
+
+                  if (!finishResponse.ok) {
+                    window.sessionStorage.removeItem(
+                      'activeboard:session-flow-active',
+                    );
+                    setErrorMessage(
+                      finishPayload?.message ?? labels.createSessionPending,
+                    );
+                    setIsCreating(false);
+                    return;
+                  }
+                }
+
                 console.info(
                   `[perf] createSession:api ${Math.round(performance.now() - startedAt)}ms`,
                 );
@@ -562,7 +611,7 @@ export function CreateSessionModal({
                 window.sessionStorage.removeItem(
                   'activeboard:session-flow-active',
                 );
-                window.location.assign(payload.redirectTo);
+                window.location.assign(nextRedirectTo);
                 onClose();
                 return;
               }

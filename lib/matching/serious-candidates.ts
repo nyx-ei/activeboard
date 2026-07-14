@@ -31,6 +31,7 @@ export type RankedSeriousCandidate = {
   classification: string | null;
   classificationLabel: string;
   language: string | null;
+  examSession: string | null;
   questionsCompleted: number;
   questionsReviewed: number;
   sessionsJoined: number;
@@ -74,7 +75,7 @@ export async function getRankedSeriousCandidates({
   const requesterResult = await admin
     .schema('public')
     .from('candidate_matching_profiles')
-    .select('user_id, language, exam_type')
+    .select('user_id, language, exam_type, exam_session')
     .eq('user_id', userId)
     .maybeSingle();
 
@@ -82,7 +83,7 @@ export async function getRankedSeriousCandidates({
     .schema('public')
     .from('candidate_matching_profiles')
     .select(
-      'user_id, display_name, email, avatar_url, phone_number, language, exam_type, has_valid_payment_method, subscription_status, user_tier, sessions_joined, questions_completed, questions_reviewed, review_completed_sessions, next_sessions_planned, positive_peer_votes, total_peer_votes, candidate_classification',
+      'user_id, display_name, email, avatar_url, phone_number, language, exam_type, exam_session, has_valid_payment_method, subscription_status, user_tier, sessions_joined, questions_completed, questions_reviewed, review_completed_sessions, next_sessions_planned, positive_peer_votes, total_peer_votes, candidate_classification',
     )
     .neq('user_id', userId);
 
@@ -189,6 +190,10 @@ export async function getRankedSeriousCandidates({
         candidate.exam_type === requesterResult.data.exam_type
           ? 8
           : 0) +
+        (requesterResult.data?.exam_session &&
+        candidate.exam_session === requesterResult.data.exam_session
+          ? 8
+          : 0) +
         (requesterTimezone && candidateTimezone === requesterTimezone ? 4 : 0) +
         Math.min(8, Number(candidate.positive_peer_votes ?? 0) * 2);
 
@@ -257,6 +262,7 @@ export async function getRankedSeriousCandidates({
             locale,
           ).label,
           language: candidate.language,
+          examSession: candidate.exam_session,
           questionsCompleted: candidate.questions_completed ?? 0,
           questionsReviewed: candidate.questions_reviewed ?? 0,
           sessionsJoined: candidate.sessions_joined ?? 0,

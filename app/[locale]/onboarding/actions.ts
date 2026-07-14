@@ -12,6 +12,12 @@ import { requireUser } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 const VALID_EXAMS = new Set(['mccqe_fr', 'mccqe_en', 'usmle', 'plab', 'other']);
+const VALID_EXAM_SESSIONS = new Set([
+  'april_may_2026',
+  'august_september_2026',
+  'october_2026',
+  'planning_ahead',
+]);
 const VALID_QBANKS = new Set([
   'uworld',
   'canadaqbank',
@@ -98,6 +104,9 @@ export async function completeTrialProfileAction(formData: FormData) {
   const examType = normalizeExamType(
     ((formData.get('examType') as string | null) ?? '').trim(),
   );
+  const examSession =
+    ((formData.get('examSession') as string | null) ?? '').trim() ||
+    'planning_ahead';
   const questionBanks = [
     ...new Set(
       formData
@@ -117,7 +126,11 @@ export async function completeTrialProfileAction(formData: FormData) {
     user.email,
   );
 
-  if (!phoneNumber || !VALID_EXAMS.has(examType)) {
+  if (
+    !phoneNumber ||
+    !VALID_EXAMS.has(examType) ||
+    !VALID_EXAM_SESSIONS.has(examSession)
+  ) {
     redirect(`/${locale}/onboarding/profile?error=missing_fields`);
   }
 
@@ -132,6 +145,7 @@ export async function completeTrialProfileAction(formData: FormData) {
       full_name: displayName,
       phone_number: phoneNumber,
       exam_type: examType,
+      exam_session: examSession,
       question_banks: questionBanks,
       timezone,
     },
@@ -148,6 +162,11 @@ export async function completeTrialProfileAction(formData: FormData) {
       display_name: displayName,
       phone_number: phoneNumber,
       exam_type: examType as 'mccqe_fr' | 'mccqe_en' | 'usmle' | 'plab' | 'other',
+      exam_session: examSession as
+        | 'april_may_2026'
+        | 'august_september_2026'
+        | 'october_2026'
+        | 'planning_ahead',
       question_banks: questionBanks,
       locale,
     },

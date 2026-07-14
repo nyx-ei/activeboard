@@ -33,6 +33,11 @@ test('serious candidates are gated, ranked, and expose reliability indicators', 
   assert.match(rankedCandidates, /isActiveOrReliableCandidate/);
   assert.match(rankedCandidates, /compatibilityScore/);
   assert.match(rankedCandidates, /profileScore/);
+  assert.match(rankedCandidates, /exam_session/);
+  assert.match(
+    rankedCandidates,
+    /candidate\.exam_session === requesterResult\.data\.exam_session/,
+  );
   assert.match(rankedCandidates, /punctualityRate/);
   assert.match(rankedCandidates, /lastActiveAt/);
   assert.match(seriousPanel, /positivePeerVotes/);
