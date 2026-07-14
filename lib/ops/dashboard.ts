@@ -93,7 +93,13 @@ type SessionRow = {
   scheduled_at: string;
   started_at: string | null;
   ended_at: string | null;
-  status: 'scheduled' | 'active' | 'incomplete' | 'completed' | 'cancelled';
+  status:
+    | 'scheduled'
+    | 'active'
+    | 'incomplete'
+    | 'completed'
+    | 'cancelled'
+    | 'expired';
 };
 
 type QuestionRow = {

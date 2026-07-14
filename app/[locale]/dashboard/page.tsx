@@ -17,6 +17,7 @@ import {
   getDashboardSessionsData,
 } from '@/lib/demo/data';
 import { getOnboardingCompletion } from '@/lib/onboarding/completion';
+import { expirePastScheduledSessionsForUser } from '@/lib/session/expired-sessions';
 import { ensureInitialTestSessions } from '@/lib/session/initial-test-sessions';
 import { getPlanNextAccess } from '@/lib/session/plan-next-access';
 
@@ -58,6 +59,7 @@ export default async function DashboardPage({
     redirect(onboarding.nextPath);
   }
 
+  await expirePastScheduledSessionsForUser(user.id);
   await ensureInitialTestSessions(user, accessState.policy);
 
   const [sessionsData, performanceData] = await Promise.all([
@@ -150,6 +152,7 @@ export default async function DashboardPage({
       statusCompleted: t('statusCompleted'),
       statusIncomplete: t('statusIncomplete'),
       statusCancelled: t('statusCancelled'),
+      statusExpired: locale === 'fr' ? 'Expirée' : 'Expired',
       soloSessionProgressHint: t('soloSessionProgressHint'),
       groupAccessHint: t('groupAccessHint'),
       availabilityRefresh: t('availabilityRefresh'),

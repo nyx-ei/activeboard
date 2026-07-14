@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { getCurrentUser } from '@/lib/auth';
 import { getDashboardSessionsData } from '@/lib/demo/data';
+import { expirePastScheduledSessionsForUser } from '@/lib/session/expired-sessions';
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -10,6 +11,7 @@ export async function GET() {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
+  await expirePastScheduledSessionsForUser(user.id);
   const data = await getDashboardSessionsData(user);
   const liveGroupIds = new Set(
     data.activeSessions.map((session) => session.group_id),

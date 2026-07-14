@@ -32,7 +32,8 @@ type TrialStatus =
   | 'review'
   | 'feedback'
   | 'nextSessionPlanned'
-  | 'done';
+  | 'done'
+  | 'expired';
 
 const COPY = {
   fr: {
@@ -54,6 +55,8 @@ const COPY = {
     viewMore: 'Voir plus',
     testSessions: 'Séances tests',
     updateAvailability: 'Modifier mes disponibilités',
+    expiredHint:
+      'Cette séance est expirée. Mets à jour tes disponibilités pour générer une séance de rattrapage.',
     seriousPoolLocked: 'Pool sérieux verrouillé',
     reviewedQuestions: 'Questions révisées',
     trueMastery: 'Maîtrise réelle',
@@ -66,6 +69,7 @@ const COPY = {
       feedback: 'Feedback',
       nextSessionPlanned: 'À planifier',
       done: 'Terminée',
+      expired: 'Expirée',
     },
   },
   en: {
@@ -87,6 +91,8 @@ const COPY = {
     viewMore: 'View more',
     testSessions: 'Test sessions',
     updateAvailability: 'Update availability',
+    expiredHint:
+      'This session expired. Update your availability to generate a replacement test session.',
     seriousPoolLocked: 'Serious pool locked',
     reviewedQuestions: 'Questions reviewed',
     trueMastery: 'True mastery',
@@ -99,6 +105,7 @@ const COPY = {
       feedback: 'Feedback',
       nextSessionPlanned: 'Next session planned',
       done: 'Done',
+      expired: 'Expired',
     },
   },
 };
@@ -110,6 +117,10 @@ function getCopy(locale: string) {
 function getSessionStatus(session: SessionListItem): TrialStatus {
   if (session.status === 'completed') {
     return 'done';
+  }
+
+  if (session.status === 'expired') {
+    return 'expired';
   }
 
   if (session.status === 'active') {
@@ -127,6 +138,8 @@ function getStatusClass(status: TrialStatus) {
   switch (status) {
     case 'done':
       return 'border-violet-300/45 bg-violet-400/10 text-violet-200';
+    case 'expired':
+      return 'border-slate-300/30 bg-slate-400/10 text-slate-300';
     case 'started':
       return 'border-[#20D9A3]/45 bg-[#20D9A3]/12 text-[#77f1c7]';
     case 'review':
@@ -150,8 +163,10 @@ function getPriority(status: SessionListItem['status']) {
       return 2;
     case 'completed':
       return 3;
-    default:
+    case 'expired':
       return 4;
+    default:
+      return 5;
   }
 }
 
@@ -298,6 +313,7 @@ function TrialSessionRow({
     session.status === 'completed';
   const isScheduledWithoutTime =
     session.status === 'scheduled' && !session.meeting_link;
+  const isExpired = session.status === 'expired';
   const sessionHref = canEditScheduledSessionTime(session)
     ? `/sessions/${session.id}?stage=configure`
     : `/sessions/${session.id}?stage=progress`;
@@ -306,11 +322,8 @@ function TrialSessionRow({
       ? getSessionCountdownLabel(locale, session.scheduled_at)
       : null;
 
-  return (
-    <Link
-      href={sessionHref}
-      className="group grid grid-cols-[auto_minmax(0,1fr)_minmax(60px,auto)] items-center gap-2 rounded-[18px] border border-[#20D9A3]/25 bg-[#082c24]/68 px-3 py-3 text-left shadow-[inset_0_0_38px_rgba(32,217,163,0.035)] transition hover:border-[#20D9A3]/55 hover:bg-[#0b3a30]/78 min-[390px]:grid-cols-[auto_minmax(0,1fr)_minmax(72px,auto)] sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-5 sm:px-5"
-    >
+  const content = (
+    <>
       <ParticipantsBadge count={memberCount} />
       <div className="min-w-0">
         <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
@@ -322,7 +335,9 @@ function TrialSessionRow({
           >
             {isScheduledWithoutTime
               ? labels.statuses.notStarted
-              : session.status === 'scheduled' && session.meeting_link
+              : isExpired
+                ? labels.statuses.expired
+                : session.status === 'scheduled' && session.meeting_link
                 ? locale === 'fr'
                   ? 'Planifiée'
                   : 'Planned'
@@ -334,6 +349,11 @@ function TrialSessionRow({
           <span className="px-2 text-[#5b7771]">·</span>
           {timerSeconds}sec
         </p>
+        {isExpired ? (
+          <p className="mt-1 line-clamp-2 text-[11px] font-bold leading-snug text-amber-200/90 sm:text-xs">
+            {labels.expiredHint}
+          </p>
+        ) : null}
       </div>
       <div className="flex min-w-0 flex-col items-end justify-center text-right text-[12px] font-bold leading-snug text-[#b8c7c4] min-[390px]:text-sm sm:min-w-[110px] sm:text-base">
         {isScheduledWithoutTime ? (
@@ -349,6 +369,21 @@ function TrialSessionRow({
           <span>XXhXX</span>
         )}
       </div>
+    </>
+  );
+  const rowClassName = `group grid grid-cols-[auto_minmax(0,1fr)_minmax(60px,auto)] items-center gap-2 rounded-[18px] border px-3 py-3 text-left shadow-[inset_0_0_38px_rgba(32,217,163,0.035)] transition min-[390px]:grid-cols-[auto_minmax(0,1fr)_minmax(72px,auto)] sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-5 sm:px-5 ${
+    isExpired
+      ? 'cursor-not-allowed border-white/[0.08] bg-slate-900/45 opacity-60 grayscale'
+      : 'border-[#20D9A3]/25 bg-[#082c24]/68 hover:border-[#20D9A3]/55 hover:bg-[#0b3a30]/78'
+  }`;
+
+  if (isExpired) {
+    return <div className={rowClassName}>{content}</div>;
+  }
+
+  return (
+    <Link href={sessionHref} className={rowClassName}>
+      {content}
     </Link>
   );
 }

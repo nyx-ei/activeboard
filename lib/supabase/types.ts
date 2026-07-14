@@ -547,7 +547,13 @@ type SessionsRow = {
   scheduled_at: string;
   share_code: string;
   started_at: string | null;
-  status: 'scheduled' | 'active' | 'incomplete' | 'completed' | 'cancelled';
+  status:
+    | 'scheduled'
+    | 'active'
+    | 'incomplete'
+    | 'completed'
+    | 'cancelled'
+    | 'expired';
   timer_mode: 'per_question' | 'global';
   timer_seconds: number;
 };
@@ -566,7 +572,13 @@ type SessionsInsert = {
   scheduled_at: string;
   share_code?: string;
   started_at?: string | null;
-  status?: 'scheduled' | 'active' | 'incomplete' | 'completed' | 'cancelled';
+  status?:
+    | 'scheduled'
+    | 'active'
+    | 'incomplete'
+    | 'completed'
+    | 'cancelled'
+    | 'expired';
   timer_mode?: 'per_question' | 'global';
   timer_seconds?: number;
 };
@@ -585,7 +597,13 @@ type SessionsUpdate = {
   scheduled_at?: string;
   share_code?: string;
   started_at?: string | null;
-  status?: 'scheduled' | 'active' | 'incomplete' | 'completed' | 'cancelled';
+  status?:
+    | 'scheduled'
+    | 'active'
+    | 'incomplete'
+    | 'completed'
+    | 'cancelled'
+    | 'expired';
   timer_mode?: 'per_question' | 'global';
   timer_seconds?: number;
 };

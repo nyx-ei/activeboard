@@ -33,7 +33,13 @@ type DashboardSession = {
   started_at: string | null;
   share_code: string;
   meeting_link?: string | null;
-  status: 'scheduled' | 'active' | 'incomplete' | 'completed' | 'cancelled';
+  status:
+    | 'scheduled'
+    | 'active'
+    | 'incomplete'
+    | 'completed'
+    | 'cancelled'
+    | 'expired';
   timer_mode: 'per_question' | 'global';
   timer_seconds: number;
   leader_id: string | null;
@@ -302,6 +308,7 @@ type DashboardUserSessionRow = {
     | 'incomplete'
     | 'completed'
     | 'cancelled'
+    | 'expired'
     | null;
   timer_mode: 'per_question' | 'global' | null;
   timer_seconds: number | null;
@@ -325,6 +332,7 @@ type DashboardGroupSessionRow = {
     | 'incomplete'
     | 'completed'
     | 'cancelled'
+    | 'expired'
     | null;
   timer_mode: 'per_question' | 'global' | null;
   timer_seconds: number | null;
@@ -425,6 +433,7 @@ function dedupeDashboardSessions<
     incomplete: 4,
     scheduled: 3,
     completed: 2,
+    expired: 2,
     cancelled: 1,
   };
 

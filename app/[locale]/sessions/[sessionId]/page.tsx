@@ -19,6 +19,7 @@ import { requireUser } from '@/lib/auth';
 import type { ConfidenceLevel } from '@/lib/demo/confidence';
 import { getSessionPageData } from '@/lib/demo/data';
 import { getAppPolicySettings } from '@/lib/policy/app-policy';
+import { expirePastScheduledSession } from '@/lib/session/expired-sessions';
 import { getPlanNextAccess } from '@/lib/session/plan-next-access';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
@@ -218,6 +219,7 @@ export default async function SessionPage({
     typeof searchParams.q === 'string' && searchParams.q.length > 0
       ? Math.max(0, Number(searchParams.q) || 0)
       : undefined;
+  await expirePastScheduledSession(params.sessionId);
   const data = await getSessionPageData(
     params.sessionId,
     user,
@@ -317,7 +319,9 @@ export default async function SessionPage({
   const progressQuestionQuery =
     typeof currentIndex === 'number' ? `&q=${currentIndex}` : '';
   const progressSessionHref =
-    data.session.status === 'scheduled'
+    data.session.status === 'expired'
+      ? undefined
+      : data.session.status === 'scheduled'
       ? canEditScheduledSessionTime(data.session)
         ? `/sessions/${params.sessionId}?stage=configure`
         : `/sessions/${params.sessionId}?q=0`
@@ -390,6 +394,10 @@ export default async function SessionPage({
         />
       </main>
     );
+  }
+
+  if (data.session.status === 'expired') {
+    redirect(`/${locale}/dashboard`);
   }
 
   if (data.session.status === 'scheduled' && !data.session.meeting_link) {

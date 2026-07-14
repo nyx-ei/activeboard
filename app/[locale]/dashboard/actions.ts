@@ -220,7 +220,11 @@ export async function joinSessionByCodeAction(formData: FormData) {
     );
   }
 
-  if (session.status === 'cancelled' || session.status === 'incomplete') {
+  if (
+    session.status === 'cancelled' ||
+    session.status === 'incomplete' ||
+    session.status === 'expired'
+  ) {
     redirect(
       withSessionJoinFeedback(sessionsPath, 'error', t('sessionInactive')),
     );

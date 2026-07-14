@@ -5,7 +5,7 @@ type SessionProgressEntryRuntimeProps = {
   sessionId: string;
   sessionTitle: string;
   status: string;
-  sessionHref: string;
+  sessionHref?: string;
   questionGoal: number;
   timerSeconds: number;
   answeredCount: number;
@@ -28,6 +28,10 @@ function getActiveStep({
 }) {
   if (status === 'completed' || feedbackSubmitted) {
     return 'plan-next' as const;
+  }
+
+  if (status === 'expired') {
+    return 'session' as const;
   }
 
   if (reviewedCount >= questionGoal) {
@@ -66,11 +70,15 @@ export function SessionProgressEntryRuntime({
       ? getTodayCountdownLabel(language, scheduledAt)
       : null;
   const sessionStatusLabel =
-    status === 'scheduled'
+    status === 'expired'
       ? language === 'fr'
-        ? 'Planifiée'
-        : 'Planned'
-      : undefined;
+        ? 'Expirée'
+        : 'Expired'
+      : status === 'scheduled'
+        ? language === 'fr'
+          ? 'Planifiée'
+          : 'Planned'
+        : undefined;
 
   return (
     <SessionProgressPanel

@@ -63,7 +63,13 @@ export type DashboardGroupZoneSession = {
   name: string | null;
   scheduled_at: string;
   started_at?: string | null;
-  status?: 'scheduled' | 'active' | 'incomplete' | 'completed' | 'cancelled';
+  status?:
+    | 'scheduled'
+    | 'active'
+    | 'incomplete'
+    | 'completed'
+    | 'cancelled'
+    | 'expired';
   share_code: string;
   timer_seconds: number;
   question_goal: number;
@@ -1891,6 +1897,10 @@ function getSessionStatusLabel(
 
   if (session.status === 'incomplete') {
     return locale === 'fr' ? 'À reprendre' : 'Resume';
+  }
+
+  if (session.status === 'expired') {
+    return locale === 'fr' ? 'Expirée' : 'Expired';
   }
 
   return locale === 'fr' ? 'Programmée' : 'Scheduled';

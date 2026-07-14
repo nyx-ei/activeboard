@@ -6,6 +6,7 @@ import { APP_EVENTS } from '@/lib/logging/events';
 import { logAppEvent } from '@/lib/logging/logger';
 import { sendSessionCalendarInvites } from '@/lib/notifications/calendar-invites';
 import { createGroupNotifications } from '@/lib/notifications/in-app';
+import { expirePastScheduledSession } from '@/lib/session/expired-sessions';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -40,12 +41,17 @@ function parseScheduledAt(value: string | undefined) {
   return date;
 }
 
-function getFeedback(locale: AppLocale, key: 'invalid' | 'locked' | 'failed') {
+function getFeedback(
+  locale: AppLocale,
+  key: 'invalid' | 'locked' | 'failed' | 'expired',
+) {
   if (locale === 'fr') {
     return key === 'invalid'
       ? "Ajoute une heure valide et un lien de réunion."
       : key === 'locked'
         ? "L'heure ne peut plus être modifiée à moins d'une heure du début."
+        : key === 'expired'
+          ? "Cette séance est expirée. Mets à jour tes disponibilités pour générer une séance de rattrapage."
         : "La séance n'a pas pu être planifiée. Réessaie.";
   }
 
@@ -53,6 +59,8 @@ function getFeedback(locale: AppLocale, key: 'invalid' | 'locked' | 'failed') {
     ? 'Add a valid time and meeting link.'
     : key === 'locked'
       ? 'The session time can no longer be changed less than one hour before it starts.'
+      : key === 'expired'
+        ? 'This session expired. Update your availability to generate a replacement test session.'
       : 'The session could not be scheduled. Please try again.';
 }
 
@@ -65,6 +73,14 @@ export async function POST(request: Request, { params }: RouteContext) {
   const meetingLink = body?.meetingLink?.trim() ?? '';
   const timerMode = body?.timerMode === 'global' ? 'global' : 'per_question';
   const timerSeconds = Number(body?.timerSeconds);
+  const isExpired = await expirePastScheduledSession(params.sessionId);
+
+  if (isExpired) {
+    return NextResponse.json(
+      { ok: false, message: getFeedback(locale, 'expired') },
+      { status: 410 },
+    );
+  }
 
   if (!scheduledAt || !meetingLink || !Number.isFinite(timerSeconds)) {
     return NextResponse.json(
