@@ -1232,6 +1232,14 @@ async function getDashboardCore(userId: string) {
           ).flatMap((result) => result.data ?? [])
         : [];
     const answeredCountBySession = new Map<string, Set<string>>();
+    const questionCountBySession = new Map<string, number>();
+
+    for (const sessionId of questionSessionById.values()) {
+      questionCountBySession.set(
+        sessionId,
+        (questionCountBySession.get(sessionId) ?? 0) + 1,
+      );
+    }
 
     for (const answer of answeredQuestionIds) {
       const questionId = answer.question_id;
@@ -1248,9 +1256,7 @@ async function getDashboardCore(userId: string) {
     for (const session of sessions) {
       session.questionCount = Math.max(
         session.questionCount ?? 0,
-        [...questionSessionById.values()].filter(
-          (sessionId) => sessionId === session.id,
-        ).length,
+        questionCountBySession.get(session.id) ?? 0,
       );
       session.answeredQuestionCount =
         answeredCountBySession.get(session.id)?.size ??

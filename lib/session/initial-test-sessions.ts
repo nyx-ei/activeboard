@@ -12,19 +12,28 @@ const TEST_SESSION_QUESTION_GOAL = 20;
 type AdminClient = ReturnType<typeof createSupabaseAdminClient>;
 
 type UserRow = { id: string };
-type TestSessionSlotRow = { name: string | null };
+type TestSessionSlotRow = { name: string | null; status: string | null };
+type EnsureInitialTestSessionsOptions = {
+  replaceExpired?: boolean;
+  skipExpiration?: boolean;
+};
+
 export async function ensureInitialTestSessions(
   user: UserRow,
   policy: Pick<AppPolicySettings, 'perQuestionTimerDefaultSeconds'>,
-  options: { replaceExpired?: boolean } = {},
+  options: EnsureInitialTestSessionsOptions = {},
 ) {
   const admin = createSupabaseAdminClient();
   const groupId = await getOrCreateTestGroup(admin, user);
-  await expirePastScheduledSessionsForGroups(admin, [groupId]);
-  const [existingSessions, totalCount] = await Promise.all([
-    listExistingTestWindowSessions(admin, groupId),
-    countAllTestSessions(admin, groupId),
-  ]);
+  if (!options.skipExpiration) {
+    await expirePastScheduledSessionsForGroups(admin, [groupId]);
+  }
+
+  const testSessions = await listTestSessions(admin, groupId);
+  const existingSessions = testSessions.filter(
+    (session) => session.status !== 'cancelled' && session.status !== 'expired',
+  );
+  const totalCount = testSessions.length;
   const existingCount = Math.min(existingSessions.length, TEST_SESSION_TARGET);
   const missingCount = TEST_SESSION_TARGET - existingCount;
 
@@ -67,26 +76,12 @@ export async function ensureInitialTestSessions(
   }
 }
 
-async function countAllTestSessions(admin: AdminClient, groupId: string) {
-  const { count } = await admin
-    .schema('public')
-    .from('sessions')
-    .select('id', { count: 'exact', head: true })
-    .eq('group_id', groupId);
-
-  return count ?? 0;
-}
-
-async function listExistingTestWindowSessions(
-  admin: AdminClient,
-  groupId: string,
-) {
+async function listTestSessions(admin: AdminClient, groupId: string) {
   const { data } = await admin
     .schema('public')
     .from('sessions')
-    .select('name')
-    .eq('group_id', groupId)
-    .not('status', 'in', '("cancelled","expired")');
+    .select('name, status')
+    .eq('group_id', groupId);
 
   return (data ?? []) as TestSessionSlotRow[];
 }
