@@ -105,7 +105,11 @@ export async function POST(request: Request) {
     );
   }
 
-  if (session.status === 'cancelled' || session.status === 'incomplete') {
+  if (
+    session.status === 'cancelled' ||
+    session.status === 'incomplete' ||
+    session.status === 'expired'
+  ) {
     return NextResponse.json(
       { ok: false, message: await getFeedback('sessionInactive') },
       { status: 400 },

@@ -17,6 +17,10 @@ const onboardingActions = readFileSync(
   'app/[locale]/onboarding/actions.ts',
   'utf8',
 );
+const expiredSessionsHelper = readFileSync(
+  'lib/session/expired-sessions.ts',
+  'utf8',
+);
 const accountOnboardingForms = readFileSync(
   'components/onboarding/trial-onboarding-forms.tsx',
   'utf8',
@@ -79,8 +83,16 @@ const scheduleRoute = readFileSync(
   'app/api/sessions/[sessionId]/schedule/route.ts',
   'utf8',
 );
+const startRoute = readFileSync(
+  'app/api/sessions/[sessionId]/start/route.ts',
+  'utf8',
+);
 const initialTestSessions = readFileSync(
   'lib/session/initial-test-sessions.ts',
+  'utf8',
+);
+const expiredSessionMigration = readFileSync(
+  'supabase/migrations/20260714120000_expired_session_status.sql',
   'utf8',
 );
 const createSessionModal = readFileSync(
@@ -395,4 +407,49 @@ test('generated test sessions require time and meeting link before sprint', () =
   assert.match(scheduleRoute, /sendSessionCalendarInvites/);
   assert.match(feedbackRuntime, /peerMetrics/);
   assert.match(feedbackRuntime, /questionsTogether/);
+});
+
+test('past scheduled test sessions expire and require availability refresh for replacement', () => {
+  assert.match(
+    expiredSessionMigration,
+    /status in \('scheduled', 'active', 'incomplete', 'completed', 'cancelled', 'expired'\)/,
+  );
+  assert.match(
+    expiredSessionsHelper,
+    /update\(\{ status: 'expired' \}\)/,
+  );
+  assert.match(
+    expiredSessionsHelper,
+    /const SESSION_START_GRACE_MS = 30 \* 60 \* 1000/,
+  );
+  assert.match(
+    expiredSessionsHelper,
+    /scheduledTime \+ SESSION_START_GRACE_MS < Date\.now\(\)/,
+  );
+  assert.match(
+    expiredSessionsHelper,
+    /\.is\('meeting_link', null\)\s+\.lt\('scheduled_at', scheduledDayCutoff\)/,
+  );
+  assert.match(
+    expiredSessionsHelper,
+    /\.not\('meeting_link', 'is', null\)\s+\.lt\('scheduled_at', plannedTimeCutoff\)/,
+  );
+  assert.match(
+    initialTestSessions,
+    /totalCount > 0 && !options\.replaceExpired/,
+  );
+  assert.match(
+    initialTestSessions,
+    /\.not\('status', 'in', '\("cancelled","expired"\)'\)/,
+  );
+  assert.match(
+    onboardingActions,
+    /ensureInitialTestSessions\(user, policy, \{ replaceExpired: true \}\)/,
+  );
+  assert.match(trialDashboard, /session\.status === 'expired'/);
+  assert.match(trialDashboard, /labels\.expiredHint/);
+  assert.match(trialDashboard, /cursor-not-allowed/);
+  assert.match(sessionPage, /data\.session\.status === 'expired'/);
+  assert.match(startRoute, /expirePastScheduledSession\(sessionId\)/);
+  assert.match(scheduleRoute, /expirePastScheduledSession\(params\.sessionId\)/);
 });

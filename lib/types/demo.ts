@@ -13,7 +13,8 @@ export type SessionStatus =
   | 'active'
   | 'incomplete'
   | 'completed'
-  | 'cancelled';
+  | 'cancelled'
+  | 'expired';
 
 export type QuestionPhase = 'draft' | 'answering' | 'review' | 'closed';
 

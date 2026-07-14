@@ -9,6 +9,8 @@ import {
   type AvailabilityGrid,
 } from '@/lib/schedule/availability';
 import { requireUser } from '@/lib/auth';
+import { getAppPolicySettings } from '@/lib/policy/app-policy';
+import { ensureInitialTestSessions } from '@/lib/session/initial-test-sessions';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 const VALID_EXAMS = new Set(['mccqe_fr', 'mccqe_en', 'usmle', 'plab', 'other']);
@@ -210,6 +212,9 @@ export async function completeTrialAvailabilityAction(formData: FormData) {
   if (error) {
     redirect(availabilityErrorPath('save_failed'));
   }
+
+  const policy = await getAppPolicySettings();
+  await ensureInitialTestSessions(user, policy, { replaceExpired: true });
 
   revalidatePath(`/${locale}/dashboard`);
   redirect(`/${locale}/dashboard`);

@@ -6,6 +6,7 @@ import { deriveUserTier, getUserTierCapabilities } from '@/lib/billing/user-tier
 import { createGroupNotifications } from '@/lib/notifications/in-app';
 import { createPerfTracker } from '@/lib/observability/perf';
 import { getAppPolicySettings } from '@/lib/policy/app-policy';
+import { expirePastScheduledSession } from '@/lib/session/expired-sessions';
 import { createInitialQuestionFast } from '@/lib/session/flow';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -46,6 +47,12 @@ async function notifySessionStarted({
   });
 }
 
+function getExpiredFeedback(locale: AppLocale) {
+  return locale === 'fr'
+    ? "Cette séance est expirée. Mets à jour tes disponibilités pour générer une séance de rattrapage."
+    : 'This session expired. Update your availability to generate a replacement test session.';
+}
+
 export async function POST(request: Request, { params }: RouteContext) {
   const sessionId = params.sessionId;
   const body = (await request.json().catch(() => null)) as StartPayload | null;
@@ -70,6 +77,14 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   perf.setContext({ locale });
   const supabase = createSupabaseServerClient();
+  const isExpired = await expirePastScheduledSession(sessionId);
+  if (isExpired) {
+    return NextResponse.json(
+      { ok: false, message: getExpiredFeedback(locale) },
+      { status: 410 },
+    );
+  }
+
   const policy = await getAppPolicySettings();
   const { data: fastRows, error: fastError } = await (
     supabase.schema('public') as unknown as {

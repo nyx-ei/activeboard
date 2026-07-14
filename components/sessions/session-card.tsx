@@ -13,7 +13,13 @@ export type SessionListItem = {
   scheduled_at: string;
   share_code: string;
   meeting_link?: string | null;
-  status: 'scheduled' | 'active' | 'incomplete' | 'completed' | 'cancelled';
+  status:
+    | 'scheduled'
+    | 'active'
+    | 'incomplete'
+    | 'completed'
+    | 'cancelled'
+    | 'expired';
   question_goal?: number;
   timer_seconds?: number;
   answeredQuestionCount?: number;
@@ -29,6 +35,7 @@ export type SessionCardLabels = {
   statusCompleted: string;
   statusIncomplete: string;
   statusCancelled: string;
+  statusExpired?: string;
 };
 
 function StatusBadge({
@@ -47,10 +54,18 @@ function StatusBadge({
           ? labels.statusCompleted
           : status === 'cancelled'
             ? labels.statusCancelled
-            : labels.statusScheduled;
+            : status === 'expired'
+              ? (labels.statusExpired ?? 'Expired')
+              : labels.statusScheduled;
 
   return (
-    <span className="border-brand/20 bg-brand/12 inline-flex min-h-6 items-center rounded-full border px-2.5 py-1 text-[11px] font-bold text-brand shadow-[0_0_0_1px_rgba(16,185,129,0.08)]">
+    <span
+      className={`inline-flex min-h-6 items-center rounded-full border px-2.5 py-1 text-[11px] font-bold shadow-[0_0_0_1px_rgba(16,185,129,0.08)] ${
+        status === 'expired'
+          ? 'border-white/15 bg-white/[0.04] text-slate-400'
+          : 'border-brand/20 bg-brand/12 text-brand'
+      }`}
+    >
       {label}
     </span>
   );
@@ -77,7 +92,12 @@ export const SessionCard = memo(function SessionCard({
   const [, startTransition] = useTransition();
   const answeredCount = session.answeredQuestionCount ?? 0;
   const targetCount = session.question_goal || session.questionCount || 10;
+  const isExpired = session.status === 'expired';
   const openSession = () => {
+    if (isExpired) {
+      return;
+    }
+
     startTransition(() => {
       router.push(`/sessions/${session.id}?stage=progress`);
     });
@@ -116,11 +136,19 @@ export const SessionCard = memo(function SessionCard({
       tabIndex={0}
       onClick={openSession}
       onKeyDown={(event) => {
+        if (isExpired) {
+          return;
+        }
+
         if (event.key === 'Enter' || event.key === ' ') {
           openSession();
         }
       }}
-      className="hover:border-brand/70 group cursor-pointer rounded-[10px] border border-white/[0.07] bg-[#0f1628] px-4 py-3 transition hover:bg-[#111b30]"
+      className={`group rounded-[10px] border px-4 py-3 transition ${
+        isExpired
+          ? 'cursor-not-allowed border-white/[0.05] bg-[#101827]/50 opacity-55 grayscale'
+          : 'cursor-pointer border-white/[0.07] bg-[#0f1628] hover:border-brand/70 hover:bg-[#111b30]'
+      }`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">

@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { AppPolicySettings } from '@/lib/policy/defaults';
+import { expirePastScheduledSessionsForGroups } from '@/lib/session/expired-sessions';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { generateInviteCode } from '@/lib/utils';
 
@@ -14,13 +15,18 @@ type UserRow = { id: string };
 export async function ensureInitialTestSessions(
   user: UserRow,
   policy: Pick<AppPolicySettings, 'perQuestionTimerDefaultSeconds'>,
+  options: { replaceExpired?: boolean } = {},
 ) {
   const admin = createSupabaseAdminClient();
   const groupId = await getOrCreateTestGroup(admin, user);
-  const existingCount = await countExistingTestWindowSessions(admin, groupId);
+  await expirePastScheduledSessionsForGroups(admin, [groupId]);
+  const [existingCount, totalCount] = await Promise.all([
+    countExistingTestWindowSessions(admin, groupId),
+    countAllTestSessions(admin, groupId),
+  ]);
   const missingCount = TEST_SESSION_TARGET - existingCount;
 
-  if (missingCount <= 0) {
+  if (missingCount <= 0 || (totalCount > 0 && !options.replaceExpired)) {
     return;
   }
 
@@ -43,11 +49,21 @@ export async function ensureInitialTestSessions(
   const { error } = await admin
     .schema('public')
     .from('sessions')
-    .insert(sessions)
+    .insert(sessions);
 
   if (error) {
     throw error;
   }
+}
+
+async function countAllTestSessions(admin: AdminClient, groupId: string) {
+  const { count } = await admin
+    .schema('public')
+    .from('sessions')
+    .select('id', { count: 'exact', head: true })
+    .eq('group_id', groupId);
+
+  return count ?? 0;
 }
 
 async function countExistingTestWindowSessions(
@@ -59,7 +75,7 @@ async function countExistingTestWindowSessions(
     .from('sessions')
     .select('id', { count: 'exact', head: true })
     .eq('group_id', groupId)
-    .neq('status', 'cancelled');
+    .not('status', 'in', '("cancelled","expired")');
 
   return Math.min(count ?? 0, TEST_SESSION_TARGET);
 }
