@@ -16,6 +16,9 @@ type FounderExamSession =
   | 'april_may_2026'
   | 'august_september_2026'
   | 'october_2026'
+  | 'april_may_2027'
+  | 'august_september_2027'
+  | 'october_2027'
   | 'planning_ahead';
 
 type LandingGroupSetupDraft = {
@@ -61,6 +64,9 @@ const VALID_EXAM_SESSIONS = new Set<FounderExamSession>([
   'april_may_2026',
   'august_september_2026',
   'october_2026',
+  'april_may_2027',
+  'august_september_2027',
+  'october_2027',
   'planning_ahead',
 ]);
 

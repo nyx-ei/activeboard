@@ -27,9 +27,11 @@ type LandingGroupSetupLabels = {
   inviteExists: string;
   genericError: string;
   emailWarning: string;
-  examAprilMay2026: string;
   examAugustSeptember2026: string;
   examOctober2026: string;
+  examAprilMay2027: string;
+  examAugustSeptember2027: string;
+  examOctober2027: string;
   examPlanningAhead: string;
   languageEnglish: string;
   languageFrench: string;
@@ -188,11 +190,15 @@ export function LandingGroupSetupForm({
               onChange={(event) => setExamSession(event.target.value)}
               className="field h-11 rounded-[7px] px-3 text-sm"
             >
-              <option value="april_may_2026">{labels.examAprilMay2026}</option>
               <option value="august_september_2026">
                 {labels.examAugustSeptember2026}
               </option>
               <option value="october_2026">{labels.examOctober2026}</option>
+              <option value="april_may_2027">{labels.examAprilMay2027}</option>
+              <option value="august_september_2027">
+                {labels.examAugustSeptember2027}
+              </option>
+              <option value="october_2027">{labels.examOctober2027}</option>
               <option value="planning_ahead">{labels.examPlanningAhead}</option>
             </select>
           </label>

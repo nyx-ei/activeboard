@@ -124,6 +124,12 @@ function getSessionStatus(session: SessionListItem): TrialStatus {
   }
 
   if (session.status === 'active') {
+    const target = session.question_goal || session.questionCount || 20;
+    const answered = session.answeredQuestionCount ?? 0;
+    if (answered >= target) {
+      return 'review';
+    }
+
     return 'started';
   }
 
@@ -410,7 +416,7 @@ function isLiveSessionCountdownLabel(label: string | null) {
   return normalized === 'en direct' || normalized === 'live';
 }
 
-function EmptyTrialSessionRow({
+export function EmptyTrialSessionRowUnused({
   index,
   labels,
 }: {
@@ -565,10 +571,6 @@ export function TrialDashboardView({
   );
   const createSessionLabel =
     locale === 'fr' ? 'Créer une séance' : 'Create session';
-  const emptyRows = Array.from({
-    length: Math.max(0, 3 - trialSessions.length),
-  });
-
   return (
     <section className="rounded-[28px] border border-white/[0.07] bg-[radial-gradient(circle_at_50%_10%,rgba(32,217,163,0.13),rgba(1,24,20,0.78)_42%,rgba(0,16,15,0.95)_100%)] px-4 py-4 shadow-[0_24px_80px_rgba(0,0,0,0.36)] sm:px-8 sm:py-7 lg:px-12">
       <div className="mx-auto w-full max-w-[900px] space-y-5 lg:max-w-none">
@@ -629,13 +631,6 @@ export function TrialDashboardView({
               locale={locale}
               labels={labels}
               memberCount={getSessionMemberCount(session, sessionsProps.groups)}
-            />
-          ))}
-          {emptyRows.map((_, index) => (
-            <EmptyTrialSessionRow
-              key={`empty-${index}`}
-              index={trialSessions.length + index}
-              labels={labels}
             />
           ))}
         </div>
