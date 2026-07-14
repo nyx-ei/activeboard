@@ -291,8 +291,20 @@ export function SessionActiveRuntime({
   const getOptimisticDeadline = () => {
     const now = Date.now();
     if (timerMode === 'global') {
+      const currentDeadlineMs = answerDeadlineAt
+        ? new Date(answerDeadlineAt).getTime()
+        : Number.NaN;
+      if (Number.isFinite(currentDeadlineMs) && currentDeadlineMs > now) {
+        return answerDeadlineAt;
+      }
+
       const startedAtMs = startedAt ? new Date(startedAt).getTime() : now;
-      return new Date(startedAtMs + timerSeconds * 1000).toISOString();
+      const sessionDeadlineMs = startedAtMs + timerSeconds * 1000;
+      if (Number.isFinite(sessionDeadlineMs) && sessionDeadlineMs > now) {
+        return new Date(sessionDeadlineMs).toISOString();
+      }
+
+      return new Date(now + timerSeconds * 1000).toISOString();
     }
 
     return new Date(now + timerSeconds * 1000).toISOString();

@@ -1,4 +1,5 @@
 import { SessionProgressPanel } from '@/components/session/session-progress-panel';
+import { Radio } from 'lucide-react';
 
 type SessionProgressEntryRuntimeProps = {
   locale: string;
@@ -69,6 +70,7 @@ export function SessionProgressEntryRuntime({
     status === 'scheduled' && meetingLink && scheduledAt
       ? getTodayCountdownLabel(language, scheduledAt)
       : null;
+  const isLiveCountdown = isLiveSessionCountdownLabel(countdownLabel);
   const sessionStatusLabel =
     status === 'expired'
       ? language === 'fr'
@@ -93,12 +95,33 @@ export function SessionProgressEntryRuntime({
       planNextHref={
         canOpenPlanNext ? `/sessions/${sessionId}?stage=plan-next` : undefined
       }
-      sessionMeta={`${Math.min(answeredCount, questionGoal)}/${questionGoal}Q - ${timerSeconds} sec${
-        countdownLabel ? ` · ${countdownLabel}` : ''
-      }`}
+      sessionMeta={
+        <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
+          <span>
+            {Math.min(answeredCount, questionGoal)}/{questionGoal}Q -{' '}
+            {timerSeconds} sec
+          </span>
+          {countdownLabel ? (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="inline-flex items-center gap-1">
+                {isLiveCountdown ? (
+                  <Radio className="h-3.5 w-3.5 text-brand" aria-hidden="true" />
+                ) : null}
+                <span>{countdownLabel}</span>
+              </span>
+            </>
+          ) : null}
+        </span>
+      }
       sessionStatusLabel={sessionStatusLabel}
     />
   );
+}
+
+function isLiveSessionCountdownLabel(label: string | null) {
+  const normalized = label?.trim().toLowerCase();
+  return normalized === 'en direct' || normalized === 'live';
 }
 
 function getTodayCountdownLabel(locale: 'en' | 'fr', scheduledAt: string) {
@@ -116,7 +139,7 @@ function getTodayCountdownLabel(locale: 'en' | 'fr', scheduledAt: string) {
 
   const diffMs = date.getTime() - now.getTime();
   if (diffMs <= 0) {
-    return locale === 'fr' ? 'maintenant' : 'now';
+    return locale === 'fr' ? 'en direct' : 'live';
   }
 
   const hours = Math.max(1, Math.ceil(diffMs / (60 * 60 * 1000)));

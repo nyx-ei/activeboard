@@ -29,6 +29,10 @@ const authCallbackRoute = readFileSync(
   'app/[locale]/auth/callback/route.ts',
   'utf8',
 );
+const onboardingEmailOtpRoute = readFileSync(
+  'app/api/onboarding/email-otp/route.ts',
+  'utf8',
+);
 const authForm = readFileSync('components/auth/auth-form.tsx', 'utf8');
 const splitMccqeMigration = readFileSync(
   'supabase/migrations/20260709120000_split_mccqe_exam_language.sql',
@@ -93,6 +97,10 @@ const expiredSessionMigration = readFileSync(
 );
 const createSessionModal = readFileSync(
   'components/sessions/create-session-modal.tsx',
+  'utf8',
+);
+const configureRuntime = readFileSync(
+  'components/session/session-configure-runtime.tsx',
   'utf8',
 );
 const trialDashboard = readFileSync(
@@ -209,10 +217,14 @@ test('landing hero stays compact with updated proof copy and wider device visual
 });
 
 test('onboarding email verification returns to the current onboarding step', () => {
-  assert.match(accountOnboardingForms, /new URL\(`\/\$\{locale\}\/auth\/callback`, origin\)/);
-  assert.match(accountOnboardingForms, /callbackUrl\.searchParams\.set\('next', nextPath\)/);
-  assert.match(accountOnboardingForms, /emailRedirectTo: callbackUrl\.toString\(\)/);
+  assert.match(accountOnboardingForms, /fetch\('\/api\/onboarding\/email-otp'/);
+  assert.match(onboardingEmailOtpRoute, /persistSession: false/);
+  assert.match(onboardingEmailOtpRoute, /callbackUrl\.searchParams\.set\('next', `\/\$\{locale\}\/onboarding\/profile`\)/);
+  assert.match(onboardingEmailOtpRoute, /callbackUrl\.searchParams\.set\('email', email\)/);
+  assert.match(onboardingEmailOtpRoute, /emailRedirectTo: callbackUrl\.toString\(\)/);
   assert.match(authCallbackRoute, /next\?\.startsWith\(`\/\$\{locale\}\/onboarding`\)/);
+  assert.match(authCallbackRoute, /await supabase\.auth\.signOut\(\)/);
+  assert.match(authCallbackRoute, /actualEmail !== expectedEmail/);
   assert.match(authCallbackRoute, /getOnboardingCompletion\(user\.id, locale\)/);
 });
 
@@ -283,7 +295,9 @@ test('trial session review to feedback to plan-next to dashboard remains reachab
   assert.match(progressEntryRuntime, /countdownLabel/);
   assert.match(progressEntryRuntime, /const sessionStatusLabel =/);
   assert.match(progressEntryRuntime, /sessionStatusLabel=\{sessionStatusLabel\}/);
-  assert.match(progressEntryRuntime, /sessionMeta=\{`\$\{Math\.min\(answeredCount, questionGoal\)\}\/\$\{questionGoal\}Q - \$\{timerSeconds\} sec/);
+  assert.match(progressEntryRuntime, /sessionMeta=\{/);
+  assert.match(progressEntryRuntime, /Math\.min\(answeredCount, questionGoal\)\}\/\{questionGoal\}Q/);
+  assert.match(progressEntryRuntime, /isLiveCountdown \? \(/);
   assert.doesNotMatch(progressEntryRuntime, /feedbackMeta=/);
   assert.match(progressPanel, /FeedbackAvatarPreview/);
   assert.match(progressPanel, /\[0, 1, 2, 3\]\.map/);
@@ -295,6 +309,9 @@ test('trial session review to feedback to plan-next to dashboard remains reachab
     activeRuntime,
     /redirectTo=\{`\/\$\{locale\}\/sessions\/\$\{sessionId\}\?stage=progress`\}/,
   );
+  assert.match(activeRuntime, /const currentDeadlineMs = answerDeadlineAt/);
+  assert.match(activeRuntime, /currentDeadlineMs > now/);
+  assert.match(activeRuntime, /new Date\(now \+ timerSeconds \* 1000\)\.toISOString\(\)/);
   assert.match(
     activeRuntime,
     /href=\{`\/sessions\/\$\{sessionId\}\?stage=review`\}/,
@@ -350,13 +367,41 @@ test('generated test sessions require time and meeting link before sprint', () =
   assert.doesNotMatch(initialTestSessions, /sendSessionCalendarInvites/);
   assert.match(trialDashboard, /!session\.meeting_link/);
   assert.match(trialDashboard, /\?stage=configure/);
+  assert.match(trialDashboard, /formatDate\(locale, session\.scheduled_at\)/);
   assert.match(trialDashboard, /<span>XXhXX<\/span>/);
   assert.match(sessionPage, /const isConfigure = searchParams\.stage === 'configure'/);
   assert.match(sessionPage, /<SessionConfigureRuntime/);
   assert.match(sessionPage, /!data\.session\.meeting_link/);
   assert.match(createSessionModal, /existingSession/);
+  assert.match(createSessionModal, /wizardStep/);
+  assert.match(createSessionModal, /Organisez un groupe WhatsApp/);
+  assert.match(createSessionModal, /Avec les membres du groupe, fixez le temps/);
+  assert.match(createSessionModal, /Avec les membres du groupe, choisissez le mode de session/);
+  assert.match(createSessionModal, /name="sessionName" value=\{name\}/);
+  assert.doesNotMatch(createSessionModal, /const modalTitle/);
+  assert.match(createSessionModal, /next: 'Suivant'/);
+  assert.match(createSessionModal, /copyAction: 'Copier'/);
+  assert.match(createSessionModal, /className="button-primary order-\[40\]/);
+  assert.match(createSessionModal, /\['per_question', labels\.perQuestionMode\]/);
+  assert.match(createSessionModal, /\['global', labels\.globalMode\]/);
+  assert.match(createSessionModal, /max-w-\[min\(68vw,340px\)\]/);
+  assert.match(createSessionModal, /isValidScheduledAtInput\(\s*scheduledAt,\s*isLockedTestPlan/s);
+  assert.doesNotMatch(createSessionModal, /Only the time can be changed/);
+  assert.doesNotMatch(createSessionModal, /<textarea/);
+  assert.match(configureRuntime, /setIsOpen\(false\)/);
+  assert.match(configureRuntime, /router\.replace/);
+  assert.match(configureRuntime, /Total time \(seconds\)/);
+  assert.match(configureRuntime, /Temps total \(secondes\)/);
   assert.match(createSessionModal, /meetingLink/);
+  assert.match(createSessionModal, /toScheduledAtPayload/);
+  assert.match(createSessionModal, /return date\.toISOString\(\)/);
   assert.match(createSessionModal, /\/api\/sessions\/\$\{existingSession\.id\}\/schedule/);
+  assert.match(scheduleRoute, /isSameLocalDay/);
+  assert.match(progressPanel, /Planifier la prochaine session/);
+  assert.match(progressEntryRuntime, /en direct/);
+  assert.match(progressEntryRuntime, /<Radio className="h-3\.5 w-3\.5 text-brand"/);
+  assert.match(trialDashboard, /En direct/);
+  assert.match(trialDashboard, /<Radio className="h-3\.5 w-3\.5 text-\[#20D9A3\]/);
   assert.match(scheduleRoute, /EDIT_LOCK_WINDOW_MS = 60 \* 60 \* 1000/);
   assert.match(scheduleRoute, /candidate_matching_profiles/);
   assert.match(scheduleRoute, /sendSessionCalendarInvites/);

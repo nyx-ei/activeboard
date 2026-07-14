@@ -42,6 +42,29 @@ export function getGlobalDeadline(
   return new Date(startedAtMs + timerSeconds * 1000);
 }
 
+function shouldRefreshAnswerDeadline(
+  currentDeadlineAt: string | null,
+  nextDeadlineAt: Date,
+  timerMode: 'per_question' | 'global',
+) {
+  if (!currentDeadlineAt) {
+    return true;
+  }
+
+  if (timerMode !== 'global') {
+    return false;
+  }
+
+  const currentDeadlineMs = new Date(currentDeadlineAt).getTime();
+  const nextDeadlineMs = nextDeadlineAt.getTime();
+
+  return (
+    !Number.isFinite(currentDeadlineMs) ||
+    currentDeadlineMs <= Date.now() ||
+    Math.abs(currentDeadlineMs - nextDeadlineMs) > 1000
+  );
+}
+
 export function isCustomAnswerLetter(value: string) {
   return /^[A-Z]$/.test(value);
 }
@@ -214,7 +237,13 @@ export async function ensureQuestion(
     .maybeSingle();
 
   if (existing) {
-    if (!existing.answer_deadline_at) {
+    const shouldRefreshDeadline = shouldRefreshAnswerDeadline(
+      existing.answer_deadline_at,
+      answerDeadlineAt,
+      session.timer_mode,
+    );
+
+    if (shouldRefreshDeadline) {
       await supabase
         .schema('public')
         .from('questions')
@@ -229,7 +258,9 @@ export async function ensureQuestion(
     return {
       id: existing.id,
       answerDeadlineAt:
-        existing.answer_deadline_at ?? answerDeadlineAt.toISOString(),
+        shouldRefreshDeadline
+          ? answerDeadlineAt.toISOString()
+          : existing.answer_deadline_at,
     };
   }
 
