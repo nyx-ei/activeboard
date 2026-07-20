@@ -15,6 +15,11 @@ const seriousGroupsRoute = readFileSync('app/api/serious-groups/route.ts', 'utf8
 const rankedCandidates = readFileSync('lib/matching/serious-candidates.ts', 'utf8');
 const lookupPage = readFileSync('app/[locale]/lookup/page.tsx', 'utf8');
 const dashboardPage = readFileSync('app/[locale]/dashboard/page.tsx', 'utf8');
+const dashboardShell = readFileSync(
+  'components/dashboard/dashboard-view-shell.tsx',
+  'utf8',
+);
+const adminAccess = readFileSync('lib/admin/access.ts', 'utf8');
 
 test('dashboard triggers serious-candidate paywall after trial sessions', () => {
   assert.match(seriousPanel, /completedTestSessions >= requiredTestSessions/);
@@ -80,14 +85,19 @@ test('paid users can create max-five serious study groups from eligible candidat
   assert.match(seriousPanel, /\/api\/serious-groups/);
 });
 
-test('dashboard keeps the unlock card compact and hides operator shortcuts', () => {
+test('dashboard keeps the unlock card compact and gates operator shortcuts', () => {
   assert.match(trialDashboard, /truncate whitespace-nowrap/);
   assert.match(trialDashboard, /px-2 py-1/);
   assert.match(trialDashboard, /disabled=\{!seriousUnlocked\}/);
-  assert.doesNotMatch(dashboardPage, /Admin console/);
-  assert.doesNotMatch(dashboardPage, /Ops dashboard/);
-  assert.doesNotMatch(dashboardPage, /canOpenOpsDashboard/);
-  assert.doesNotMatch(dashboardPage, /canOpenAdminConsole/);
+  assert.match(trialDashboard, /adminConsole: 'Admin console'/);
+  assert.match(trialDashboard, /opsDashboard: 'Ops dashboard'/);
+  assert.match(dashboardPage, /canAccessAdminConsole\(user\.email\)/);
+  assert.match(dashboardPage, /canAccessOpsDashboard\(user\.email\)/);
+  assert.match(dashboardShell, /canOpenAdminConsole=\{canOpenAdminConsole\}/);
+  assert.match(dashboardShell, /canOpenOpsDashboard=\{canOpenOpsDashboard\}/);
+  assert.match(adminAccess, /ADMIN_CONSOLE_ALLOWED_EMAILS/);
+  assert.match(adminAccess, /OPS_DASHBOARD_ALLOWED_EMAILS/);
+  assert.doesNotMatch(adminAccess, /admin_users/);
 });
 
 test('dashboard hides completed sessions and uses dynamic single-user badges', () => {

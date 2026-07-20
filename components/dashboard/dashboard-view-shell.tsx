@@ -22,6 +22,8 @@ type DashboardViewShellProps = {
   performanceProps: DashboardPerformanceViewProps;
   sprintActivityProps: DashboardSprintActivityZoneProps;
   groupZoneProps: DashboardGroupZoneProps;
+  canOpenAdminConsole?: boolean;
+  canOpenOpsDashboard?: boolean;
 };
 type DashboardSessionsPayload = {
   ok?: boolean;
@@ -61,6 +63,8 @@ export function DashboardViewShell({
   performanceProps,
   sprintActivityProps,
   groupZoneProps,
+  canOpenAdminConsole = false,
+  canOpenOpsDashboard = false,
 }: DashboardViewShellProps) {
   const [resolvedSessionsProps, setResolvedSessionsProps] =
     useState(sessionsProps);
@@ -287,6 +291,8 @@ export function DashboardViewShell({
         locale={resolvedSessionsProps.locale}
         sessionsProps={resolvedSessionsProps}
         performanceProps={resolvedPerformanceProps}
+        canOpenAdminConsole={canOpenAdminConsole}
+        canOpenOpsDashboard={canOpenOpsDashboard}
       />
       <DashboardSessionActionHost {...resolvedSessionsProps} />
     </div>

@@ -24,6 +24,8 @@ type TrialDashboardViewProps = {
   locale: string;
   sessionsProps: DashboardSessionsViewProps;
   performanceProps: DashboardPerformanceViewProps;
+  canOpenAdminConsole?: boolean;
+  canOpenOpsDashboard?: boolean;
 };
 
 type TrialStatus =
@@ -62,6 +64,8 @@ const COPY = {
     trueMastery: 'Maîtrise réelle',
     falseConfidence: 'Fausse confiance',
     startSession: 'Démarrer',
+    adminConsole: 'Console admin',
+    opsDashboard: 'Ops dashboard',
     statuses: {
       notStarted: 'Programmée',
       started: 'Démarrée',
@@ -98,6 +102,8 @@ const COPY = {
     trueMastery: 'True mastery',
     falseConfidence: 'False confidence',
     startSession: 'Start session',
+    adminConsole: 'Admin console',
+    opsDashboard: 'Ops dashboard',
     statuses: {
       notStarted: 'Scheduled',
       started: 'Started',
@@ -514,6 +520,8 @@ export function TrialDashboardView({
   locale,
   sessionsProps,
   performanceProps,
+  canOpenAdminConsole = false,
+  canOpenOpsDashboard = false,
 }: TrialDashboardViewProps) {
   const labels = getCopy(locale);
   const trialSessions = useMemo(
@@ -571,9 +579,31 @@ export function TrialDashboardView({
   );
   const createSessionLabel =
     locale === 'fr' ? 'Créer une séance' : 'Create session';
+  const showOperatorShortcuts = canOpenAdminConsole || canOpenOpsDashboard;
   return (
     <section className="rounded-[28px] border border-white/[0.07] bg-[radial-gradient(circle_at_50%_10%,rgba(32,217,163,0.13),rgba(1,24,20,0.78)_42%,rgba(0,16,15,0.95)_100%)] px-4 py-4 shadow-[0_24px_80px_rgba(0,0,0,0.36)] sm:px-8 sm:py-7 lg:px-12">
       <div className="mx-auto w-full max-w-[900px] space-y-5 lg:max-w-none">
+        {showOperatorShortcuts ? (
+          <div className="flex flex-wrap justify-end gap-2">
+            {canOpenAdminConsole ? (
+              <Link
+                href="/admin"
+                className="inline-flex h-10 items-center justify-center rounded-[12px] border border-white/[0.08] bg-[#0b2c25]/80 px-4 text-sm font-extrabold text-[#b8f7df] transition hover:border-[#20D9A3]/55 hover:text-[#20D9A3]"
+              >
+                {labels.adminConsole}
+              </Link>
+            ) : null}
+            {canOpenOpsDashboard ? (
+              <Link
+                href="/ops"
+                className="inline-flex h-10 items-center justify-center rounded-[12px] border border-white/[0.08] bg-[#0b2c25]/80 px-4 text-sm font-extrabold text-[#b8f7df] transition hover:border-[#20D9A3]/55 hover:text-[#20D9A3]"
+              >
+                {labels.opsDashboard}
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="rounded-[14px] border border-[#20D9A3]/45 bg-[#04231d]/70 px-2 py-1 shadow-[inset_0_0_24px_rgba(32,217,163,0.05)] sm:px-3 sm:py-1.5">
           <div className="flex min-w-0 items-center gap-1.5 text-[10px] font-extrabold text-white min-[390px]:text-[11px] sm:gap-2 sm:text-sm">
             <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-[#20D9A3]/25 bg-[#062f27] text-[#20D9A3] sm:h-8 sm:w-8">

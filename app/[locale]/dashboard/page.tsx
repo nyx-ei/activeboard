@@ -9,6 +9,10 @@ import type { DashboardSessionsViewProps } from '@/components/dashboard/dashboar
 import type { AppLocale } from '@/i18n/routing';
 import { requireUser } from '@/lib/auth';
 import {
+  canAccessAdminConsole,
+  canAccessOpsDashboard,
+} from '@/lib/admin/access';
+import {
   getUserAccessState,
   hasUserTierCapability,
 } from '@/lib/billing/gating';
@@ -69,6 +73,8 @@ export default async function DashboardPage({
     getDashboardPerformanceSummaryData(user.id),
     getPlanNextAccess(user.id, accessState.policy),
   ]);
+  const canOpenAdminConsole = canAccessAdminConsole(user.email);
+  const canOpenOpsDashboard = canAccessOpsDashboard(user.email);
 
   const canJoinSessions = hasUserTierCapability(accessState, 'canJoinSessions');
   const canCreateSession = hasUserTierCapability(
@@ -393,6 +399,8 @@ export default async function DashboardPage({
           performanceProps={performanceProps}
           sprintActivityProps={sprintActivityProps}
           groupZoneProps={groupZoneProps}
+          canOpenAdminConsole={canOpenAdminConsole}
+          canOpenOpsDashboard={canOpenOpsDashboard}
         />
       </section>
     </main>
