@@ -4,6 +4,7 @@ import { headers } from 'next/headers';
 
 import { OpsDashboardView } from '@/components/ops/ops-dashboard-view';
 import type { AppLocale } from '@/i18n/routing';
+import { canAccessOpsDashboard } from '@/lib/admin/access';
 import { requireUser } from '@/lib/auth';
 import { getOpsDashboardData } from '@/lib/ops/dashboard';
 
@@ -13,25 +14,6 @@ type OpsDashboardPageProps = {
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-
-function canAccessOpsDashboard(email: string | undefined) {
-  const allowlist = process.env.OPS_DASHBOARD_ALLOWED_EMAILS;
-
-  if (!allowlist) {
-    return true;
-  }
-
-  const normalizedEmail = email?.trim().toLowerCase();
-  if (!normalizedEmail) {
-    return false;
-  }
-
-  return allowlist
-    .split(',')
-    .map((item) => item.trim().toLowerCase())
-    .filter(Boolean)
-    .includes(normalizedEmail);
-}
 
 export default async function OpsDashboardPage({
   params,
